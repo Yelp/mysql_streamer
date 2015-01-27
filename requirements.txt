@@ -1,0 +1,12 @@
+# This list is a specific list of packages to make your application work.
+# This is what will be inside of the inenv and deployed to production.
+# You should be updating this list from 'pip freeze > requirements.txt'
+-e git+https://github.com/noplay/python-mysql-replication.git@c48f7f534cff24461c46a99ee49c02bfe196e675#egg=pymysqlreplication
+MySQL-python==1.2.5
+PyMySQL==0.6.2
+PyStaticConfiguration==0.8.0
+PyYAML==3.11
+avro==1.7.6
+kafka-python==0.9.2
+ipdb==0.8
+ipython==1.2.1
