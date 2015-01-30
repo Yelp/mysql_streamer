@@ -20,7 +20,7 @@ class TestRowsEventHandler(object):
         return json.dumps({"type": "record",
                            "name": "FakeRow",
                            "fields": [
-                               {"name": "number", "type": "int"},
+                               {"name": "a_number", "type": "int"},
                                ]})
 
     def avro_encoder(self, datum, payload_schema):
@@ -46,9 +46,9 @@ class TestRowsEventHandler(object):
         class RowsEvent(object):
             table = "fake_table"
             rows = list()
-            rows.append({'values': {'number': 100}})
-            rows.append({'values': {'number': 200}})
-            rows.append({'values': {'number': 300}})
+            rows.append({'values': {'a_number': 100}})
+            rows.append({'values': {'a_number': 200}})
+            rows.append({'values': {'a_number': 300}})
         return RowsEvent()
 
     @pytest.fixture
@@ -56,12 +56,12 @@ class TestRowsEventHandler(object):
         class RowsEvent(object):
             table = "fake_table"
             rows = list()
-            rows.append({'after_values': {'number': 100},
-                        'before_values': {'number': 110}})
-            rows.append({'after_values': {'number': 200},
-                        'before_values': {'number': 210}})
-            rows.append({'after_values': {'number': 300},
-                        'before_values': {'number': 310}})
+            rows.append({'after_values': {'a_number': 100},
+                        'before_values': {'a_number': 110}})
+            rows.append({'after_values': {'a_number': 200},
+                        'before_values': {'a_number': 210}})
+            rows.append({'after_values': {'a_number': 300},
+                        'before_values': {'a_number': 310}})
         return RowsEvent()
 
     def test_get_values(self,

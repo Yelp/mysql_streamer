@@ -55,7 +55,7 @@ class RowsEventHandler(EventHandler):
         payload_schema = self._get_payload_schema(event.table)
         for row in event.rows:
             datum = self._get_values(row)
-            payload = self._serialize_row(datum, payload_schema)
+            payload = self._serialize_payload(datum, payload_schema)
             self._publish_to_kafka(payload)
 
     def _publish_to_kafka(self, topic, message):
