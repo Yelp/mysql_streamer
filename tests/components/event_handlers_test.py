@@ -23,6 +23,16 @@ class TestRowsEventHandler(object):
                                {"name": "number", "type": "int"},
                                ]})
 
+    def avro_encoder(self, datum, payload_schema):
+        """Tests to make sure avro format is correct
+           Treating this avro encoder as truth
+        """
+        writer = avro.io.DatumWriter(writers_schema=payload_schema)
+        bytes_writer = io.BytesIO()
+        encoder = avro.io.BinaryEncoder(bytes_writer)
+        writer.write(datum, encoder)
+        return bytes_writer.getvalue()
+
     @pytest.fixture
     def schema_store_response(self, schema_in_json):
         avro_obj = avro.schema.parse(schema_in_json)
@@ -36,9 +46,9 @@ class TestRowsEventHandler(object):
         class RowsEvent(object):
             table = "fake_table"
             rows = list()
-            rows.append({'values': {'number': 0}})
-            rows.append({'values': {'number': 1}})
-            rows.append({'values': {'number': 2}})
+            rows.append({'values': {'number': 100}})
+            rows.append({'values': {'number': 200}})
+            rows.append({'values': {'number': 300}})
         return RowsEvent()
 
     @pytest.fixture
@@ -46,12 +56,12 @@ class TestRowsEventHandler(object):
         class RowsEvent(object):
             table = "fake_table"
             rows = list()
-            rows.append({'after_values': {'number': 0},
-                        'before_values': {'number': 10}})
-            rows.append({'after_values': {'number': 1},
-                        'before_values': {'number': 11}})
-            rows.append({'after_values': {'number': 2},
-                        'before_values': {'number': 12}})
+            rows.append({'after_values': {'number': 100},
+                        'before_values': {'number': 110}})
+            rows.append({'after_values': {'number': 200},
+                        'before_values': {'number': 210}})
+            rows.append({'after_values': {'number': 300},
+                        'before_values': {'number': 310}})
         return RowsEvent()
 
     def test_get_values(self,
@@ -82,10 +92,25 @@ class TestRowsEventHandler(object):
                                schema_store_response):
         """Tests to make sure avro format is correct"""
         payload_schema = schema_store_response.avro_obj
-        writer = avro.io.DatumWriter(writers_schema=payload_schema)
-        bytes_writer = io.BytesIO()
-        encoder = avro.io.BinaryEncoder(bytes_writer)
         datum = add_row_event.rows[0]['values']
-        writer.write(datum, encoder)
-        assert bytes_writer.getvalue() == \
+        assert self.avro_encoder(datum, payload_schema) == \
             row_event_handler._serialize_payload(datum, payload_schema)
+
+    def test_handle_event_to_publish_call(self,
+                                          row_event_handler,
+                                          add_row_event,
+                                          schema_store_response):
+        with mock.patch.object(row_event_handler,
+                               '_publish_to_kafka') \
+                as mock_publish_to_kafka:
+            with mock.patch.object(row_event_handler,
+                                   'get_schema_for_schema_cache',
+                                   return_value=schema_store_response):
+                row_event_handler.handle_event(add_row_event)
+                expected_publish_to_kafka_calls = \
+                    [self.avro_encoder(row_event_handler._get_values(row),
+                                       schema_store_response.avro_obj)
+                        for row in add_row_event.rows]
+                unpacked_call_args = \
+                    [i[0][0] for i in mock_publish_to_kafka.call_args_list]
+                assert expected_publish_to_kafka_calls == unpacked_call_args
