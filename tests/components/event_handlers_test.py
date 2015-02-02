@@ -12,7 +12,7 @@ from replication_handler.components.event_handlers import SchemaCacheEntry
 class TestRowsEventHandler(object):
 
     @pytest.fixture
-    def row_event_handler(self):
+    def rows_event_handler(self):
         return RowsEventHandler()
 
     @pytest.fixture
@@ -65,50 +65,50 @@ class TestRowsEventHandler(object):
         return RowsEvent()
 
     def test_get_values(self,
-                        row_event_handler,
+                        rows_event_handler,
                         add_row_event,
                         update_row_event):
-        assert row_event_handler._get_values(add_row_event.rows[0]) == \
+        assert rows_event_handler._get_values(add_row_event.rows[0]) == \
             add_row_event.rows[0]['values']
-        assert row_event_handler._get_values(update_row_event.rows[0]) == \
+        assert rows_event_handler._get_values(update_row_event.rows[0]) == \
             update_row_event.rows[0]['after_values']
 
     def test_call_to_populate_schema(self,
-                                     row_event_handler,
+                                     rows_event_handler,
                                      add_row_event,
                                      schema_store_response):
-        with mock.patch.object(row_event_handler,
+        with mock.patch.object(rows_event_handler,
                                'get_schema_for_schema_cache',
                                return_value=schema_store_response) \
                 as mock_get_schema:
-            assert add_row_event.table not in row_event_handler.schema_cache
-            row_event_handler._get_payload_schema(add_row_event.table)
+            assert add_row_event.table not in rows_event_handler.schema_cache
+            rows_event_handler._get_payload_schema(add_row_event.table)
             mock_get_schema.assert_called_once_with(add_row_event.table)
-            assert add_row_event.table in row_event_handler.schema_cache
+            assert add_row_event.table in rows_event_handler.schema_cache
 
     def test_serialize_payload(self,
-                               row_event_handler,
+                               rows_event_handler,
                                add_row_event,
                                schema_store_response):
         """Tests to make sure avro format is correct"""
         payload_schema = schema_store_response.avro_obj
         datum = add_row_event.rows[0]['values']
         assert self.avro_encoder(datum, payload_schema) == \
-            row_event_handler._serialize_payload(datum, payload_schema)
+            rows_event_handler._serialize_payload(datum, payload_schema)
 
     def test_handle_event_to_publish_call(self,
-                                          row_event_handler,
+                                          rows_event_handler,
                                           add_row_event,
                                           schema_store_response):
-        with mock.patch.object(row_event_handler,
+        with mock.patch.object(rows_event_handler,
                                '_publish_to_kafka') \
                 as mock_publish_to_kafka:
-            with mock.patch.object(row_event_handler,
+            with mock.patch.object(rows_event_handler,
                                    'get_schema_for_schema_cache',
                                    return_value=schema_store_response):
-                row_event_handler.handle_event(add_row_event)
+                rows_event_handler.handle_event(add_row_event)
                 expected_publish_to_kafka_calls = \
-                    [self.avro_encoder(row_event_handler._get_values(row),
+                    [self.avro_encoder(rows_event_handler._get_values(row),
                                        schema_store_response.avro_obj)
                         for row in add_row_event.rows]
                 unpacked_call_args = \
