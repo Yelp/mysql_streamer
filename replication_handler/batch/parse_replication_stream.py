@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
-from optparse import OptionGroup
 from pymysqlreplication.row_event import RowsEvent
 from pymysqlreplication.event import QueryEvent
 
 from yelp_batch import Batch
-from yelp_batch import batch_command_line_options
 from replication_handler.components.event_handlers import RowsEventHandler
 from replication_handler.components.event_handlers import QueryEventHandler
 from replication_handler.components.binlogevent_yielder import \
     BinlogEventYielder
-from replication_handler import config
 
 
 class ParseReplicationStream(Batch):
@@ -23,7 +20,6 @@ class ParseReplicationStream(Batch):
            that will encapsulate payloads.
     """
     notify_emails = ['bam+batch@yelp.com']
-
 
     def run(self):
 

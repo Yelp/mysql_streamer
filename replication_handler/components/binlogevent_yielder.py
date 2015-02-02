@@ -4,6 +4,7 @@ from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 from replication_handler import config
 
+
 class BinlogEventYielder(object):
 
     def __init__(self):
@@ -28,5 +29,3 @@ class BinlogEventYielder(object):
 
     def next(self):
         return self.stream.fetchone()
-
-
