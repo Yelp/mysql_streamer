@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-from pymysqlreplication.row_event import RowsEvent
-from pymysqlreplication.event import QueryEvent
+from pymysqlreplication.row_event import RowsEvent as DataEvent
+from pymysqlreplication.event import QueryEvent as SchemaEvent
 
 from yelp_batch import Batch
-from replication_handler.components.event_handlers import RowsEventHandler
-from replication_handler.components.event_handlers import QueryEventHandler
-from replication_handler.components.binlogevent_yielder import \
-    BinlogEventYielder
+from replication_handler.components.event_handlers import DataEventHandler
+from replication_handler.components.event_handlers import SchemaEventHandler
+from replication_handler.components.binlogevent_yielder import BinlogEventYielder
 
 
 class ParseReplicationStream(Batch):
@@ -23,17 +22,17 @@ class ParseReplicationStream(Batch):
 
     def run(self):
 
-        rows_event_handler = RowsEventHandler()
-        query_event_handler = QueryEventHandler()
+        data_event_handler = DataEventHandler()
+        schema_event_handler = SchemaEventHandler()
         binlog_event_yielder = BinlogEventYielder()
 
         # infinite loop
         for event in binlog_event_yielder:
 
-            if isinstance(event, RowsEvent):
-                rows_event_handler.handle_event(event)
-            elif isinstance(event, QueryEvent):
-                query_event_handler.handle_event(event)
+            if isinstance(event, DataEvent):
+                data_event_handler.handle_event(event)
+            elif isinstance(event, SchemaEvent):
+                schema_event_handler.handle_event(event)
 
 
 if __name__ == '__main__':

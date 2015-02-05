@@ -5,3 +5,9 @@ replication_database:
            port: 3306
            user: 'yelpdev'
            passwd: ''
+
+zookeeper_storage:
+    -  namespace: zookeeper
+       config:
+           host: '10.10.0.0'
+           port: 2181

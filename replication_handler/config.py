@@ -4,12 +4,15 @@ import os
 import staticconf
 
 
+# TODO setup logging
 # log = logging.getLogger('replication_handler.config')
 
 
 def replication_database():
     return staticconf.get('replication_database')[0]['config']
 
+def zookeeper_storage():
+    return staticconf.get('zookeeper_storage')[0]['config']
 
 def env_config_facade():
     """Returns object to watch the environment config file.
