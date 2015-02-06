@@ -18,9 +18,9 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def schema_in_json(self):
         return json.dumps({
-                 "type": "record",
-                 "name": "FakeRow",
-                 "fields": [{"name": "a_number", "type": "int"}]
+                   "type": "record",
+                   "name": "FakeRow",
+                   "fields": [{"name": "a_number", "type": "int"}]
                 })
 
     def avro_encoder(self, datum, payload_schema):
@@ -38,10 +38,10 @@ class TestDataEventHandler(object):
         avro_obj = avro.schema.parse(schema_in_json)
 
         return SchemaCacheEntry(
-                    avro_obj=avro_obj,
-                    kafka_topic="fake_topic",
-                    version=0
-               )
+            avro_obj=avro_obj,
+            kafka_topic="fake_topic",
+            version=0
+        )
 
     @pytest.fixture
     def add_data_event(self):
