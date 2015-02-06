@@ -18,10 +18,10 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def schema_in_json(self):
         return json.dumps({
-                   "type": "record",
-                   "name": "FakeRow",
-                   "fields": [{"name": "a_number", "type": "int"}]
-                })
+           "type": "record",
+           "name": "FakeRow",
+           "fields": [{"name": "a_number", "type": "int"}]
+        })
 
     def avro_encoder(self, datum, payload_schema):
         """Tests to make sure avro format is correct
