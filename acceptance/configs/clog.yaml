@@ -1,0 +1,3 @@
+clog_enable_file_logging: true
+scribe_disable: true
+log_dir: /tmp/logs

@@ -1,0 +1,15 @@
+topology:
+-   cluster: replication_handler
+    replica: master
+    entries:
+    -   db: yelp
+        host: dbmaster
+        passwd: ""
+        user: yelpdev
+-   cluster: replication_handler
+    replica: local
+    entries:
+    -   db: yelp
+        host: dblocal
+        passwd: ""
+        user: yelpdev
