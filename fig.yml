@@ -1,9 +1,9 @@
 dbmaster:
-    build: dbmaster/
+    build: acceptance/dbmaster/
     ports: [3306]
 
 dblocal:
-    build: dblocal/
+    build: acceptance/dblocal/
     ports: [3306]
 
 replicationhandlerconfigs:
