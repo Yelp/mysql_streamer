@@ -21,9 +21,7 @@ ADD     setup.py /code/setup.py
 RUN     virtualenv /code/virtualenv_run
 RUN     /code/virtualenv_run/bin/pip install \
             -i https://pypi.yelpcorp.com/simple \
-            -r /code/requirements.txt 
-#RUN     /code/virtualenv_run/bin/python /code/setup.py
-#RUN      /usr/bin/python /code/setup.py install 
+            -r /code/requirements.txt
 
 # Share the logging directory as a volume
 RUN     mkdir /tmp/logs
