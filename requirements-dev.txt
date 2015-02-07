@@ -4,6 +4,7 @@
 -r requirements.txt
 coverage
 flake8
-pytest
+ipython<2.0.0
 mock
-ipdb
+pytest
+pytest-ipdb

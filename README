@@ -1,0 +1,5 @@
+tox
+source .tox/py/bin/activate
+
+import ipdb;ipdb.set_trace()
+py.test -s tests/

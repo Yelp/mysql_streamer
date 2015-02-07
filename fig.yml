@@ -1,0 +1,20 @@
+dbmaster:
+    build: dbmaster/
+    ports: [3306]
+
+dblocal:
+    build: dblocal/
+    ports: [3306]
+
+replicationhandlerconfigs:
+    build: acceptance/configs/
+    volumes:
+        - /nail/srv/configs
+
+replicationhandlerservice:
+    build: .
+    links:
+        - dbmaster
+        - dblocal
+    volumes_from:
+        - replicationhandlerconfigs
