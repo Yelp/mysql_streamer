@@ -9,9 +9,6 @@ RUN     apt-get update && \
             python-virtualenv \
             python-pip
 
-# uwsgi deps
-RUN     apt-get install -y libyaml-0-2 libxml2 libpython2.6
-
 # Add the service code
 
 # Make workdir here because in requirements.txt -e . looks for setup.py
