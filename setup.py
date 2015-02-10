@@ -15,6 +15,8 @@ setup(
     setup_requires=['setuptools'],
     install_requires=[
         'mysql-replication',
+        'MySQL-python',
+        'PyMySQL'
     ],
     license='Copyright Yelp 2015, All Rights Reserved'
 )

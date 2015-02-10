@@ -42,10 +42,7 @@ CREATE TABLE `business` (
       KEY `phone` (`phone`),
       KEY `review_count` (`review_count`),
       KEY `geoquad` (`geoquad`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
-
-CREATE TABLE `replication_heartbeat` (
-  `serial` bigint(20) NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+
+insert into business (`name`) values ("CHENG RULEZ");

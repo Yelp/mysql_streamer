@@ -12,6 +12,8 @@ RUN     apt-get install -y percona-server-server-5.6
 ADD     ./startup.sh /opt/startup.sh
 ADD     ./my.cnf     /etc/my.cnf
 RUN     chown mysql /etc/my.cnf
+
+# Starts mysqld_safe, grants mysql privilidges
 RUN     bash /opt/startup.sh
 
 USER    mysql
@@ -21,8 +23,9 @@ CMD     mysqld --server-id=$((0x$(hostname) >> 16))
 USER    root
 RUN     apt-get update; apt-get install -y python-mysqldb
 
-# Setup mysqld
 ADD     . /code/
+
+# Create our database and user
 RUN     cd /code; bash setup.sh
 
 USER    mysql

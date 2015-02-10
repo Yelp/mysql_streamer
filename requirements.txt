@@ -8,8 +8,6 @@
 
 -e .
 mysql-replication==0.5
-MySQL-python==1.2.5
-PyMySQL==0.6.2
 PyStaticConfiguration==0.8.0
 PyYAML==3.11
 avro==1.7.6

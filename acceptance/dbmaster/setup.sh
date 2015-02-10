@@ -2,6 +2,7 @@
 bash /opt/startup.sh
 
 # Create our database and users
-cat setup.sql | mysql
+echo "CREATE DATABASE yelp DEFAULT CHARACTER SET utf8;" | mysql
+echo "GRANT ALL ON *.* TO 'yelpdev'@'%';" | mysql
 
 mysqladmin shutdown

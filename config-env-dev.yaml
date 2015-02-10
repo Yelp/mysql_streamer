@@ -1,7 +1,7 @@
 replication_database:
     -  namespace: replication_database
        config: 
-           host: '169.254.0.165'
+           host: dbmaster
            port: 3306
            user: 'yelpdev'
            passwd: ''
