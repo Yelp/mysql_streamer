@@ -19,6 +19,10 @@ SchemaStoreRegisterResponse = namedtuple(
     ('avro_dict', 'kafka_topic', 'version', 'table')
 )
 
+FetchAllResult = namedtuple('FetchAllResult', ('result'))
+
+ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
+
 log = logging.getLogger(__name__)
 
 
@@ -57,9 +61,8 @@ class EventHandler(object):
         )
 
     def _format_register_response(self, raw_resp):
-        """Isolate parts of the response to what replication handler prefers"""
-        # TODO resp can return table_name
-        # TODO resp 'schema_id' should be 'version' (better name)
+        """Isolate changes to the schematizer interface to here"""
+        # TODO iterate with schematizer as to exact interface
         return SchemaStoreRegisterResponse(
             avro_dict=raw_resp['schema'],
             table=raw_resp['kafka_topic'].split('.')[-2],
@@ -84,13 +87,9 @@ class SchemaEventHandler(EventHandler):
                 host=schema_tracker_mysql_config['host'],
                 port=schema_tracker_mysql_config['port'],
                 user=schema_tracker_mysql_config['user'],
-                passwd=schema_tracker_mysql_config['passwd'],
-                db='yelp'
+                passwd=schema_tracker_mysql_config['passwd']
             )
-        # TODO figure out how db='yelp' should be handled
-        # might not be needed at all
         return self._conn
-
 
     def handle_event(self, event):
         """Handle queries related to schema change,
@@ -115,12 +114,14 @@ class SchemaEventHandler(EventHandler):
         )
 
     def _get_show_create_statement(self, table):
-        """Gets SQL that would create a table. Response is formatted:
-            (('table_name', 'CREATE TABLE `table_name` ...'),) """
-        resp = self._execute_query_on_schema_tracking_db(
-            "SHOW CREATE TABLE `{0}`".format(table)
+        """Gets SQL that would create a table."""
+        res = ShowCreateResult(
+            *self._execute_query_on_schema_tracking_db(
+                "SHOW CREATE TABLE `{0}`".format(table)
+            ).result
         )
-        return resp[0][1]
+        assert table == res.table
+        return res.query
 
     def _handle_create_table_event(self, event):
         """Execute query on schema tracking db and pass show create
@@ -163,7 +164,7 @@ class SchemaEventHandler(EventHandler):
         try:
             with self.schema_tracking_db_conn as cursor:
                 cursor.execute(query_sql)
-                return cursor.fetchall()
+                return FetchAllResult(cursor.fetchall())
         except pymysql.MySQLError as e:
             except_str = 'Schema Tracking DB got error {!r}, errno is {}.'
             log.exception(except_str.format(e, e.args[0]))

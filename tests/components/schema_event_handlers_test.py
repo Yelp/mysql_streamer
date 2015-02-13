@@ -5,12 +5,12 @@ from collections import namedtuple
 import pytest
 import pymysql
 
+from replication_handler.components.event_handlers import FetchAllResult
 from replication_handler.components.event_handlers import SchemaEventHandler
+from replication_handler.components.event_handlers import ShowCreateResult
 
 
-ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 # cursor.fetchall(), which is used in SchemaEventHandler, returns a nested tuple
-FetchAllResult = namedtuple('FetchAllResult', ('result'))
 
 class TestSchemaEventHandler(object):
 
@@ -49,6 +49,7 @@ class TestSchemaEventHandler(object):
         create_table_schema_event,
         alter_table_schema_event
     ):
+        # Parsing to avoid repeating text in other fixtures
         alter_stmt = alter_table_schema_event.query
         create_str = "{0}, {1}".format(
             create_table_schema_event.query[:-1],
@@ -73,6 +74,8 @@ class TestSchemaEventHandler(object):
             def connect(self):
                 self.open=True
                 return self
+            def close(self):
+                self.open=False
         return Connection()
 
     def test_handle_event_routing(
@@ -185,6 +188,8 @@ class TestSchemaEventHandler(object):
                     mock.call(create_table_schema_event)
 
     def test_connection_management(self, schema_event_handler, connection):
+        """Tests to make sure connection is initialized when needed"""
+
         with mock.patch.object(
             pymysql, 'connect', return_value=connection.connect()
         ) as mock_connection:
@@ -209,8 +214,8 @@ class TestSchemaEventHandler(object):
             )
             assert mock_connection.call_count == 1
 
-            # Simulate connection closing for some reason
-            schema_event_handler._conn.open = False
+            # Simulate connection timeout or closing for some reason
+            connection.close()
 
             # Call it a third time, should call connect again since not open
             assert isinstance(
