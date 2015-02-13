@@ -3,8 +3,9 @@
 # These will be used for tox and other testing environments.
 -r requirements.txt
 coverage
+ipdb
+ipython
+fig
 flake8
-ipython<2.0.0
 mock
 pytest
-pytest-ipdb

@@ -16,9 +16,9 @@ class BinlogEventYielder(object):
         # or maybe we don't want to try to handle this automatically
         # at first
         config.env_config_facade()
-        repl_mysql_settings = config.replication_database()
+        repl_mysql_config = config.replication_database()
         self.stream = BinLogStreamReader(
-            connection_settings=repl_mysql_settings,
+            connection_settings=repl_mysql_config,
             server_id=1,
             blocking=True,
             only_events=[RotateEvent, QueryEvent, WriteRowsEvent]

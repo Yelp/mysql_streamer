@@ -5,6 +5,7 @@ import json
 import avro.schema
 import avro.io
 import io
+
 from replication_handler.components.event_handlers import DataEventHandler
 from replication_handler.components.event_handlers import SchemaCacheEntry
 
@@ -34,7 +35,7 @@ class TestDataEventHandler(object):
         return bytes_writer.getvalue()
 
     @pytest.fixture
-    def schema_store_response(self, schema_in_json):
+    def schema_cache_entry(self, schema_in_json):
         avro_obj = avro.schema.parse(schema_in_json)
 
         return SchemaCacheEntry(
@@ -45,17 +46,19 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def add_data_event(self):
-        class DataEvent(object):
+        # Rows event is a mysql/pymysqlreplication term
+        class RowsEvent(object):
             table = "fake_table"
             rows = list()
             rows.append({'values': {'a_number': 100}})
             rows.append({'values': {'a_number': 200}})
             rows.append({'values': {'a_number': 300}})
-        return DataEvent()
+        return RowsEvent()
 
     @pytest.fixture
     def update_data_event(self):
-        class DataEvent(object):
+        # Rows event is a mysql/pymysqlreplication term
+        class RowsEvent(object):
             table = "fake_table"
             rows = list()
             rows.append({'after_values': {'a_number': 100},
@@ -64,7 +67,7 @@ class TestDataEventHandler(object):
                          'before_values': {'a_number': 210}})
             rows.append({'after_values': {'a_number': 300},
                          'before_values': {'a_number': 310}})
-        return DataEvent()
+        return RowsEvent()
 
     def test_get_values(
         self,
@@ -82,13 +85,13 @@ class TestDataEventHandler(object):
         self,
         data_event_handler,
         add_data_event,
-        schema_store_response
+        schema_cache_entry
     ):
 
         with mock.patch.object(
             data_event_handler,
             'get_schema_for_schema_cache',
-            return_value=schema_store_response
+            return_value=schema_cache_entry
         ) as mock_get_schema:
 
             assert add_data_event.table not in data_event_handler.schema_cache
@@ -100,11 +103,11 @@ class TestDataEventHandler(object):
         self,
         data_event_handler,
         add_data_event,
-        schema_store_response
+        schema_cache_entry
     ):
         """Tests to make sure avro format is correct"""
 
-        payload_schema = schema_store_response.avro_obj
+        payload_schema = schema_cache_entry.avro_obj
         datum = add_data_event.rows[0]['values']
         assert self.avro_encoder(datum, payload_schema) \
             == data_event_handler._serialize_payload(datum, payload_schema)
@@ -113,7 +116,7 @@ class TestDataEventHandler(object):
         self,
         data_event_handler,
         add_data_event,
-        schema_store_response
+        schema_cache_entry
     ):
 
         with mock.patch.object(
@@ -123,16 +126,16 @@ class TestDataEventHandler(object):
             with mock.patch.object(
                 data_event_handler,
                 'get_schema_for_schema_cache',
-                return_value=schema_store_response
+                return_value=schema_cache_entry
             ):
 
                 data_event_handler.handle_event(add_data_event)
                 expected_publish_to_kafka_calls = [
                     (
-                        schema_store_response.kafka_topic,
+                        schema_cache_entry.kafka_topic,
                         self.avro_encoder(
                             data_event_handler._get_values(row),
-                            schema_store_response.avro_obj
+                            schema_cache_entry.avro_obj
                         )
                     )
                     for row in add_data_event.rows

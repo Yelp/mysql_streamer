@@ -9,7 +9,7 @@ replication_database:
 schema_tracking_database:
     -  namespace: schema_tracking_database
        config:
-           host: dblocal
+           host: 169.254.1.128
            port: 3306
            user: 'yelpdev'
            passwd: ''
