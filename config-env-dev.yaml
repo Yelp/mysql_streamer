@@ -6,7 +6,15 @@ replication_database:
            user: 'yelpdev'
            passwd: ''
 
-zookeeper_storage:
+schema_tracking_database:
+    -  namespace: schema_tracking_database
+       config:
+           host: dblocal
+           port: 3306
+           user: 'yelpdev'
+           passwd: ''
+
+zookeeper:
     -  namespace: zookeeper
        config:
            host: '10.10.0.0'
