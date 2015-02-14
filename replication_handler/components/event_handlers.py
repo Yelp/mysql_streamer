@@ -25,7 +25,7 @@ ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 
 log = logging.getLogger(__name__)
 
-
+#TODO add tests for base class
 class EventHandler(object):
     """Base class for handling binlog events for the Replication Handler"""
 
@@ -42,18 +42,19 @@ class EventHandler(object):
            by table names with entries having of SchemaCacheEntry type
         """
         if table in self.schema_cache:
-            return self.schema_cache['table']
+            return self.schema_cache[schema_cache_key]
 
         # TODO clean up when schema store is up
-        if table == 'business':
+        if table == Table(schema='yelp', table_name='business'):
             resp = stub_schemas.stub_business_schema()
         else:
             return
 
-        self._populate_schema_cache(resp)
+        self._populate_schema_cache(table, resp)
         return self.schema_cache[table]
 
-    def _populate_schema_cache(self, resp):
+    def _populate_schema_cache(self, table, resp):
+        # TODO iterate with schematizer as to exact interface
         self.schema_cache[table] = SchemaCacheEntry(
             avro_obj=avro.schema.parse(resp['schema']),
             kafka_topic=resp['kafka_topic'],
@@ -95,6 +96,7 @@ class SchemaEventHandler(EventHandler):
         """Handle queries related to schema change,
            schema registration.
         """
+        self.schema_tracking_db_conn.select_db(event.schema)
         if event.query.lower().startswith('create table'):
             self._handle_create_table_event(event)
         elif event.query.lower().startswith('alter table'):

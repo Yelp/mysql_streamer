@@ -22,6 +22,7 @@ class TestSchemaEventHandler(object):
     def create_table_schema_event(self):
         # Query event is a mysql/pymysqlreplication term
         class QueryEvent(object):
+            schema = "fake_schema"
             table = "fake_table"
             query = "CREATE TABLE `{0}` (`a_number` int)".format(table)
         return QueryEvent()
@@ -30,6 +31,7 @@ class TestSchemaEventHandler(object):
     def alter_table_schema_event(self, create_table_schema_event):
         # Query event is a mysql/pymysqlreplication term
         class QueryEvent(object):
+            schema = create_table_schema_event.schema
             table = create_table_schema_event.table
             query = "ALTER TABLE `{0}` ADD (`another_number` int)".format(table)
         return QueryEvent()
@@ -71,18 +73,22 @@ class TestSchemaEventHandler(object):
         class Connection(object):
             def __init__(self):
                 self.open=True
+                self.schema=None
             def connect(self):
                 self.open=True
                 return self
             def close(self):
                 self.open=False
+            def select_db(self, schema):
+                self.schema=schema
         return Connection()
 
-    def test_handle_event_routing(
+    def test_handle_event(
         self,
         schema_event_handler,
         create_table_schema_event,
-        alter_table_schema_event
+        alter_table_schema_event,
+        connection
     ):
         with mock.patch.object(
             schema_event_handler,
@@ -92,16 +98,21 @@ class TestSchemaEventHandler(object):
                 schema_event_handler,
                 '_handle_alter_table_event'
             ) as mock_handle_alter_table_event:
+                with mock.patch.object(
+                    pymysql, 'connect', return_value=connection.connect()
+                ) as mock_connect:
 
-                schema_event_handler.handle_event(create_table_schema_event)
-                assert mock_handle_alter_table_event.call_count == 0
-                assert mock_handle_create_table_event.call_args_list == \
-                    [mock.call(create_table_schema_event)]
+                    schema_event_handler.handle_event(create_table_schema_event)
+                    assert mock_handle_alter_table_event.call_count == 0
+                    assert mock_handle_create_table_event.call_args_list == \
+                        [mock.call(create_table_schema_event)]
 
-                schema_event_handler.handle_event(alter_table_schema_event)
-                assert mock_handle_create_table_event.call_count == 1
-                assert mock_handle_alter_table_event.call_args_list == \
-                    [mock.call(alter_table_schema_event)]
+                    schema_event_handler.handle_event(alter_table_schema_event)
+                    assert mock_handle_create_table_event.call_count == 1
+                    assert mock_handle_alter_table_event.call_args_list == \
+                        [mock.call(alter_table_schema_event)]
+
+                    assert connection.schema == alter_table_schema_event.schema
 
     def test_show_create_statement(
         self,
@@ -147,7 +158,9 @@ class TestSchemaEventHandler(object):
                      None,
                      show_create_result_after_alter]
 
-                schema_event_handler.handle_event(alter_table_schema_event)
+                schema_event_handler._handle_alter_table_event(
+                    alter_table_schema_event
+                )
 
                 assert mock_execute_query.call_args_list == \
                     [mock.call(show_create_query),
@@ -179,7 +192,9 @@ class TestSchemaEventHandler(object):
                 return_value=show_create_result_initial
             ) as mock_execute_query:
 
-                schema_event_handler.handle_event(create_table_schema_event)
+                schema_event_handler._handle_create_table_event(
+                    create_table_schema_event
+                )
 
                 assert mock_execute_query.call_args_list == \
                     [mock.call(create_table_schema_event.query)]
@@ -192,7 +207,7 @@ class TestSchemaEventHandler(object):
 
         with mock.patch.object(
             pymysql, 'connect', return_value=connection.connect()
-        ) as mock_connection:
+        ) as mock_connect:
 
             assert schema_event_handler._conn is None
 
@@ -212,7 +227,7 @@ class TestSchemaEventHandler(object):
                 schema_event_handler.schema_tracking_db_conn,
                 connection.__class__
             )
-            assert mock_connection.call_count == 1
+            assert mock_connect.call_count == 1
 
             # Simulate connection timeout or closing for some reason
             connection.close()
@@ -222,4 +237,4 @@ class TestSchemaEventHandler(object):
                 schema_event_handler.schema_tracking_db_conn,
                 connection.__class__
             )
-            assert mock_connection.call_count == 2
+            assert mock_connect.call_count == 2
