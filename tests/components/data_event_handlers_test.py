@@ -49,6 +49,7 @@ class TestDataEventHandler(object):
         # Rows event is a mysql/pymysqlreplication term
         class RowsEvent(object):
             table = "fake_table"
+            schema = "fake_database"
             rows = list()
             rows.append({'values': {'a_number': 100}})
             rows.append({'values': {'a_number': 200}})
@@ -56,10 +57,11 @@ class TestDataEventHandler(object):
         return RowsEvent()
 
     @pytest.fixture
-    def update_data_event(self):
+    def update_data_event(self, add_data_event):
         # Rows event is a mysql/pymysqlreplication term
         class RowsEvent(object):
-            table = "fake_table"
+            table = add_data_event.table
+            schema = add_data_event.schema
             rows = list()
             rows.append({'after_values': {'a_number': 100},
                          'before_values': {'a_number': 110}})

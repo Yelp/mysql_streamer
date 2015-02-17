@@ -19,19 +19,21 @@ SchemaStoreRegisterResponse = namedtuple(
     ('avro_dict', 'kafka_topic', 'version', 'table')
 )
 
+Table = namedtuple('Table', ('schema', 'table_name'))
+
 FetchAllResult = namedtuple('FetchAllResult', ('result'))
 
 ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 
 log = logging.getLogger(__name__)
 
-#TODO add tests for base class
+# TODO add tests for base class
 class EventHandler(object):
     """Base class for handling binlog events for the Replication Handler"""
 
     def __init__(self):
         self.schema_cache = {}
-        self.schema_store_client = None
+        self.schema_store_client = stub_schemas.StubSchemaClient()
 
     def get_schema_for_schema_cache(self, table):
         """populates the schema_cache object with SchemaCacheEntry tuples
@@ -42,11 +44,11 @@ class EventHandler(object):
            by table names with entries having of SchemaCacheEntry type
         """
         if table in self.schema_cache:
-            return self.schema_cache[schema_cache_key]
+            return self.schema_cache[table]
 
-        # TODO clean up when schema store is up
+        # TODO clean up when schema store is up (TODO cache reuse from schema handler)
         if table == Table(schema='yelp', table_name='business'):
-            resp = stub_schemas.stub_business_schema()
+            resp = self._format_register_response(stub_schemas.stub_business_schema())
         else:
             return
 
@@ -56,9 +58,9 @@ class EventHandler(object):
     def _populate_schema_cache(self, table, resp):
         # TODO iterate with schematizer as to exact interface
         self.schema_cache[table] = SchemaCacheEntry(
-            avro_obj=avro.schema.parse(resp['schema']),
-            kafka_topic=resp['kafka_topic'],
-            version=resp['schema_id']
+            avro_obj=avro.schema.parse(resp.avro_dict),
+            kafka_topic=resp.kafka_topic,
+            version=resp.version
         )
 
     def _format_register_response(self, raw_resp):
@@ -68,7 +70,7 @@ class EventHandler(object):
             avro_dict=raw_resp['schema'],
             table=raw_resp['kafka_topic'].split('.')[-2],
             kafka_topic=raw_resp['kafka_topic'],
-            version=raw_resp['id']
+            version=raw_resp['schema_id']
         )
 
 class SchemaEventHandler(EventHandler):
@@ -77,12 +79,12 @@ class SchemaEventHandler(EventHandler):
     def __init__(self):
         """Store credentials for local tracking database"""
         super(SchemaEventHandler, self).__init__()
-        config.env_config_facade()
         self._conn = None
 
     @property
     def schema_tracking_db_conn(self):
         if self._conn is None or not self._conn.open:
+            config.env_config_facade()
             schema_tracker_mysql_config = config.schema_tracking_database()
             self._conn = pymysql.connect(
                 host=schema_tracker_mysql_config['host'],
@@ -101,6 +103,8 @@ class SchemaEventHandler(EventHandler):
             self._handle_create_table_event(event)
         elif event.query.lower().startswith('alter table'):
             self._handle_alter_table_event(event)
+        else:
+            self._execute_query_on_schema_tracking_db(event.query)
 
     def _handle_alter_table_event(self, event):
         """Handles the interactions necessary for an alter table statement
@@ -146,9 +150,13 @@ class SchemaEventHandler(EventHandler):
             table_state_before,
             table_state_after
         )
+
+        # Things needed for alter register call in client lib
+        # show create before, show create after, alter stmt, database, and table
+
         resp = self._format_register_response(raw_resp)
-        assert event.table == resp.table
-        self._populate_schema_cache(resp)
+        table = Table(schema=event.schema, table_name=resp.table)
+        self._populate_schema_cache(table, resp)
 
     # TODO add some retry decorator
     def _register_create_table_with_schema_store(self, event):
@@ -158,8 +166,8 @@ class SchemaEventHandler(EventHandler):
         raw_resp = self.schema_store_client.add_schema_from_sql(
             event.query)
         resp = self._format_register_response(raw_resp)
-        assert event.table == resp.table
-        self._populate_schema_cache(resp)
+        table = Table(schema=event.schema, table_name=resp.table)
+        self._populate_schema_cache(table, resp)
 
     def _execute_query_on_schema_tracking_db(self, query_sql):
         """Execute query sql on schema tracking DB"""
@@ -170,8 +178,6 @@ class SchemaEventHandler(EventHandler):
         except pymysql.MySQLError as e:
             except_str = 'Schema Tracking DB got error {!r}, errno is {}.'
             log.exception(except_str.format(e, e.args[0]))
-        finally:
-            conn.close()
 
 
 class DataEventHandler(EventHandler):
@@ -186,16 +192,25 @@ class DataEventHandler(EventHandler):
 
     def handle_event(self, event):
         """Make sure that the schema cache has the table, serialize the data,
-           and publish to Kafka. Periodically checkpoint the GTID.
+         publish to Kafka. Periodically checkpoint the GTID.
         """
-        schema_cache_entry = self._get_payload_schema(event.table)
-        for row in event.rows:
-            datum = self._get_values(row)
-            payload = self._serialize_payload(
-                datum,
-                schema_cache_entry.avro_obj
-            )
-            self._publish_to_kafka(schema_cache_entry.kafka_topic, payload)
+        schema_cache_entry = self._get_payload_schema(
+            Table(schema=event.schema, table_name=event.table)
+        )
+        # event.rows, lazily loads all rows
+        self._handle_rows(schema_cache_entry, event.rows)
+
+    def _handle_rows(self, schema_cache_entry, rows):
+        for row in rows:
+            self._handle_row(schema_cache_entry, row)
+
+    def _handle_row(self, schema_cache_entry, row):
+        datum = self._get_values(row)
+        payload = self._serialize_payload(
+            datum,
+            schema_cache_entry.avro_obj
+        )
+        self._publish_to_kafka(schema_cache_entry.kafka_topic, payload)
 
     def _publish_to_kafka(self, topic, message):
         """Calls the clientlib for pushing payload to kafka.

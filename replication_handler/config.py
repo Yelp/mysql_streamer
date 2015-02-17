@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-import logging
 import os
 
 import staticconf
 
-#TODO setup logging
-#log = logging.getLogger('replication_handler.config')
+# TODO setup logging   import logging
+# log = logging.getLogger('replication_handler.config')
 
 def replication_database():
     return staticconf.get('replication_database')[0]['config']

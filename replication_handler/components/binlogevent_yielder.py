@@ -24,7 +24,7 @@ class BinlogEventYielder(object):
             only_events=[RotateEvent, QueryEvent, WriteRowsEvent]
         )
         # TODO add proper config and client to store GTID high watermark
-        zookeeper_conf = config.zookeeper_storage()
+        zookeeper_conf = config.zookeeper()
         self.zookeeper_client = zookeeper_conf
 
     def __iter__(self):

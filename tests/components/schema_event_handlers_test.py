@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import mock
 
-from collections import namedtuple
 import pytest
 import pymysql
 
@@ -70,17 +69,21 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture
     def connection(self):
+        """ fake connection object from pymysql """
         class Connection(object):
             def __init__(self):
-                self.open=True
-                self.schema=None
+                self.open = True
+                self.schema = None
+
             def connect(self):
-                self.open=True
+                self.open = True
                 return self
+
             def close(self):
-                self.open=False
+                self.open = False
+
             def select_db(self, schema):
-                self.schema=schema
+                self.schema = schema
         return Connection()
 
     def test_handle_event(
@@ -113,6 +116,7 @@ class TestSchemaEventHandler(object):
                         [mock.call(alter_table_schema_event)]
 
                     assert connection.schema == alter_table_schema_event.schema
+                    assert mock_connect.called
 
     def test_show_create_statement(
         self,
