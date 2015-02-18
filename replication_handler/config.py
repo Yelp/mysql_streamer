@@ -3,7 +3,6 @@ import os
 
 import staticconf
 
-# TODO setup logging   import logging
 # log = logging.getLogger('replication_handler.config')
 
 def replication_database():

@@ -12,9 +12,6 @@ class BinlogEventYielder(object):
            server_id doesn't seem to matter but must be set.
            blocking will keep this iterator infinite
         """
-        # TODO determine how to handle reloading of configuration
-        # or maybe we don't want to try to handle this automatically
-        # at first
         config.env_config_facade()
         repl_mysql_config = config.replication_database()
         self.stream = BinLogStreamReader(
@@ -23,7 +20,6 @@ class BinlogEventYielder(object):
             blocking=True,
             only_events=[RotateEvent, QueryEvent, WriteRowsEvent]
         )
-        # TODO add proper config and client to store GTID high watermark
         zookeeper_conf = config.zookeeper()
         self.zookeeper_client = zookeeper_conf
 
