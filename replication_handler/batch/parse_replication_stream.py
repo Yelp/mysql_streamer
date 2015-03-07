@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from pymysqlreplication.row_event import RowsEvent
+from collections import defaultdict
+from pymysqlreplication.row_event import WriteRowsEvent
 from pymysqlreplication.event import QueryEvent
 
 from yelp_batch import Batch
@@ -26,13 +27,13 @@ class ParseReplicationStream(Batch):
         schema_event_handler = SchemaEventHandler()
         binlog_event_yielder = BinlogEventYielder()
 
+        handler_map = defaultdict()
+        handler_map[WriteRowsEvent] = data_event_handler
+        handler_map[QueryEvent] = schema_event_handler
+
         # infinite loop
         for event in binlog_event_yielder:
-
-            if isinstance(event, RowsEvent):
-                data_event_handler.handle_event(event)
-            elif isinstance(event, QueryEvent):
-                schema_event_handler.handle_event(event)
+            handler_map[event.__class__].handle_event(event)
 
 
 if __name__ == '__main__':

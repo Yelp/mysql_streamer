@@ -2,26 +2,32 @@ from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.event import RotateEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
+from pymysqlreplication.row_event import TableMapEvent
 from replication_handler import config
 
 
 class BinlogEventYielder(object):
 
     def __init__(self):
-        """These are our default settings.
+        """Pull the default configuration and build a yielder from
+           python-mysql-replication library.
            server_id doesn't seem to matter but must be set.
-           blocking will keep this iterator infinite
+           blocking=True will keep this iterator infinite.
         """
-        config.env_config_facade()
-        repl_mysql_config = config.replication_database()
+        source_config = config.source_database_config.first_entry
+        repl_mysql_config = {
+            'host': source_config['host'],
+            'port': source_config['port'],
+            'user': source_config['user'],
+            'passwd': source_config['passwd']
+        }
+
         self.stream = BinLogStreamReader(
             connection_settings=repl_mysql_config,
             server_id=1,
             blocking=True,
-            only_events=[RotateEvent, QueryEvent, WriteRowsEvent]
+            only_events=[QueryEvent, WriteRowsEvent]
         )
-        zookeeper_conf = config.zookeeper()
-        self.zookeeper_client = zookeeper_conf
 
     def __iter__(self):
         return self

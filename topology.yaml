@@ -1,0 +1,19 @@
+topology:
+-   cluster: docker_testing_cluster
+    replica: replication_handler_source
+    entries:
+        - charset: utf8
+          use_unicode: true
+          host: dbmaster
+          port: 3306
+          user: yelpdev
+          passwd: "" 
+-   cluster: docker_testing_cluster
+    replica: replication_handler_schema_tracker
+    entries:   
+        - charset: utf8
+          use_unicode: true
+          host: dblocal
+          port: 3306
+          user: yelpdev
+          passwd: ""

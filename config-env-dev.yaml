@@ -1,21 +1,6 @@
-replication_database:
-    -  namespace: replication_database
+module_env_config:
+    -  namespace: cluster_config
        config:
-           host: dbmaster
-           port: 3306
-           user: 'yelpdev'
-           passwd: ''
-
-schema_tracking_database:
-    -  namespace: schema_tracking_database
-       config:
-           host: dblocal
-           port: 3306
-           user: 'yelpdev'
-           passwd: ''
-
-zookeeper:
-    -  namespace: zookeeper
-       config:
-           host: zkhost
-           port: 2181
+           cluster: docker_testing_cluster
+           source_replica:  replication_handler_source
+           schema_tracking_replica: replication_handler_schema_tracker

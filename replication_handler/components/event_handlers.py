@@ -21,11 +21,13 @@ SchemaStoreRegisterResponse = namedtuple(
 
 Table = namedtuple('Table', ('schema', 'table_name'))
 
-FetchAllResult = namedtuple('FetchAllResult', ('result'))
-
 ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 
 log = logging.getLogger(__name__)
+
+
+class QueryTypeNotSupportedException(Exception):
+    pass
 
 
 class EventHandler(object):
@@ -62,7 +64,9 @@ class EventHandler(object):
         )
 
     def _format_register_response(self, raw_resp):
-        """Isolate changes to the schematizer interface to here"""
+        """Isolate changes to the schematizer interface to here.
+           Fix when this changes from the trace_bullet
+        """
         return SchemaStoreRegisterResponse(
             avro_dict=raw_resp['schema'],
             table=raw_resp['kafka_topic'].split('.')[-2],
@@ -78,65 +82,128 @@ class SchemaEventHandler(EventHandler):
         """Store credentials for local tracking database"""
         super(SchemaEventHandler, self).__init__()
         self._conn = None
+        self.mysql_ignore_words = set(('if', 'not', 'exists'))
 
     @property
     def schema_tracking_db_conn(self):
         if self._conn is None or not self._conn.open:
-            config.env_config_facade()
-            schema_tracker_mysql_config = config.schema_tracking_database()
+            tracker_config = config.schema_tracking_database_config.first_entry
             self._conn = pymysql.connect(
-                host=schema_tracker_mysql_config['host'],
-                port=schema_tracker_mysql_config['port'],
-                user=schema_tracker_mysql_config['user'],
-                passwd=schema_tracker_mysql_config['passwd']
+                host=tracker_config['host'],
+                port=tracker_config['port'],
+                user=tracker_config['user'],
+                passwd=tracker_config['passwd'],
+                autocommit=False
             )
         return self._conn
 
     def handle_event(self, event):
-        """Handle queries related to schema change,
-           schema registration.
-        """
-        self.schema_tracking_db_conn.select_db(event.schema)
-        if event.query.lower().startswith('create table'):
-            self._handle_create_table_event(event)
-        elif event.query.lower().startswith('alter table'):
-            self._handle_alter_table_event(event)
+        """Handle queries related to schema change, schema registration."""
+        handle_method = None
+
+        query = self._reformat_query(event.query)
+        if query.startswith('create table'):
+            handle_method = self._handle_create_table_event_logic
+        elif query.startswith('alter table'):
+            handle_method = self._handle_alter_table_event_logic
+
+        if handle_method is not None:
+            query, table = self._parse_query(event)
+            self._transaction_handle_event(event, table, handle_method)
         else:
-            self._execute_query_on_schema_tracking_db(event.query)
+            self._execute_non_schema_store_relevant_query(event)
 
-    def _handle_alter_table_event(self, event):
-        """Handles the interactions necessary for an alter table statement
-           with the schema store.
+    def _reformat_query(self, raw_query):
+        return ' '.join(raw_query.lower().split())
+
+    def _parse_query(self, event):
+        """Returns query and table namedtuple"""
+        try:
+            query = ' '.join(event.query.lower().split())
+            split_query = query.split()
+            table_idx = 2
+            if split_query[1] == 'table':
+                while split_query[table_idx] in self.mysql_ignore_words:
+                    table_idx += 1
+                table_name = ''.join(c for c in split_query[table_idx] if c.isalnum() or c == '_')
+        except:
+            raise Exception("Cannot parse query table from {0}".format(event.query))
+
+        return query, Table(table_name=table_name, schema=event.schema)
+
+    def _execute_non_schema_store_relevant_query(self, event):
+        """ Execute query that is not relevant to replication handler schema.
+            Some queries are comments, or just BEGIN
         """
-        table_state_before = self._get_show_create_statement(event.table)
-        self._execute_query_on_schema_tracking_db(event.query)
-        table_state_after = self._get_show_create_statement(event.table)
-        self._register_alter_table_with_schema_store(
+        # Make sure schema tracker is using the same database as event
+        self.schema_tracking_db_conn.select_db(event.schema)
+        try:
+            cursor = self.schema_tracking_db_conn.cursor()
+            cursor.execute(event.query)
+            self.schema_tracking_db_conn.commit()
+        except Exception as e:
+            self._rollback_with_exception(e)
+
+    def _transaction_handle_event(self, event, table, handle_method):
+        """Creates transaction, calls a handle_method to do logic inside the
+           transaction, and commits to db connection if success. It rolls
+           back otherwise.
+        """
+        # Make sure schema tracker is using the same database as event
+        self.schema_tracking_db_conn.select_db(event.schema)
+        try:
+            cursor = self.schema_tracking_db_conn.cursor()
+            handle_method(cursor, event, table)
+            self.schema_tracking_db_conn.commit()
+        except Exception as e:
+            self._rollback_with_exception(e)
+
+    def _rollback_with_exception(self, e):
+        self.schema_tracking_db_conn.rollback()
+        except_str = 'Schema Tracking DB got error {!r}, errno is {}.'.format(
+            e, e.args[0]
+        )
+        log.exception(except_str)
+        raise Exception(except_str)
+
+
+    def _handle_create_table_event_logic(self, cursor, event, table):
+        cursor.execute(event.query)
+        show_create_result = self._get_show_create_statement(cursor, table.table_name)
+        schema_store_response = self._register_create_table_with_schema_store(
+            show_create_result.query
+        )
+        self._populate_schema_cache(table, schema_store_response)
+
+    def _handle_alter_table_event_logic(self, cursor, event, table):
+        show_create_result_before = self._get_show_create_statement(cursor, table.table_name)
+        cursor.execute(event.query)
+        show_create_result_after = self._get_show_create_statement(cursor, table.table_name)
+        schema_store_response = self._register_alter_table_with_schema_store(
             event,
-            table_state_before,
-            table_state_after
+            show_create_result_before.query,
+            show_create_result_after.query
         )
+        self._populate_schema_cache(table, schema_store_response)
 
-    def _get_show_create_statement(self, table):
-        """Gets SQL that would create a table."""
-        res = ShowCreateResult(
-            *self._execute_query_on_schema_tracking_db(
-                "SHOW CREATE TABLE `{0}`".format(table)
-            ).result
-        )
-        assert table == res.table
-        return res.query
+    def _get_show_create_statement(self, cursor, table_name):
+        query_str = "SHOW CREATE TABLE `{0}`".format(table_name)
+        cursor.execute(query_str)
+        res = cursor.fetchone()
+        create_res = ShowCreateResult(*res)
+        assert create_res.table == table_name
+        return create_res
 
-    def _handle_create_table_event(self, event):
-        """Execute query on schema tracking db and pass show create
-           statement to schema store.
+    def _register_create_table_with_schema_store(self, create_table_sql):
+        """Register create table with schema store and populate cache
+           with response
         """
-        self._execute_query_on_schema_tracking_db(event.query)
-        self._register_create_table_with_schema_store(event)
+        raw_resp = self.schema_store_client.add_schema_from_sql(create_table_sql)
+        resp = self._format_register_response(raw_resp)
+        return resp
 
     def _register_alter_table_with_schema_store(
         self,
-        event,
         table_state_before,
         table_state_after
     ):
@@ -147,30 +214,8 @@ class SchemaEventHandler(EventHandler):
             table_state_before,
             table_state_after
         )
-
         resp = self._format_register_response(raw_resp)
-        table = Table(schema=event.schema, table_name=resp.table)
-        self._populate_schema_cache(table, resp)
-
-    def _register_create_table_with_schema_store(self, event):
-        """Register create table with schema store and populate cache
-           with response
-        """
-        raw_resp = self.schema_store_client.add_schema_from_sql(
-            event.query)
-        resp = self._format_register_response(raw_resp)
-        table = Table(schema=event.schema, table_name=resp.table)
-        self._populate_schema_cache(table, resp)
-
-    def _execute_query_on_schema_tracking_db(self, query_sql):
-        """Execute query sql on schema tracking DB"""
-        try:
-            with self.schema_tracking_db_conn as cursor:
-                cursor.execute(query_sql)
-                return FetchAllResult(cursor.fetchall())
-        except pymysql.MySQLError as e:
-            except_str = 'Schema Tracking DB got error {!r}, errno is {}.'
-            log.exception(except_str.format(e, e.args[0]))
+        return resp
 
 
 class DataEventHandler(EventHandler):
@@ -208,7 +253,8 @@ class DataEventHandler(EventHandler):
     def _publish_to_kafka(self, topic, message):
         """Calls the clientlib for pushing payload to kafka.
            The clientlib will encapsulate this in envelope."""
-        print "Publishing to kafka {0} {1}".format(topic, message)
+        # TODO use the data-pipeline clientlib
+        print "Publishing to kafka on topic {0}".format(topic)
 
     def _get_values(self, row):
         """Gets the new value of the row changed.  If add row occurs,

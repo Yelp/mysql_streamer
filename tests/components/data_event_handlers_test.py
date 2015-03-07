@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-import mock
-import pytest
-import json
 import avro.schema
 import avro.io
+import contextlib
 import io
+import json
+import mock
+import pytest
 
 from replication_handler.components.event_handlers import DataEventHandler
 from replication_handler.components.event_handlers import SchemaCacheEntry
@@ -121,26 +122,21 @@ class TestDataEventHandler(object):
         schema_cache_entry
     ):
 
-        with mock.patch.object(
-            data_event_handler,
-            '_publish_to_kafka'
-        ) as mock_publish_to_kafka:
-            with mock.patch.object(
-                data_event_handler,
-                'get_schema_for_schema_cache',
-                return_value=schema_cache_entry
-            ):
+        with contextlib.nested(
+            mock.patch.object(data_event_handler, '_publish_to_kafka'),
+            mock.patch.object(data_event_handler, 'get_schema_for_schema_cache',  return_value=schema_cache_entry)
+        ) as (mock_publish_to_kafka, _):
 
-                data_event_handler.handle_event(add_data_event)
-                expected_publish_to_kafka_calls = [
-                    (
-                        schema_cache_entry.kafka_topic,
-                        self.avro_encoder(
-                            data_event_handler._get_values(row),
-                            schema_cache_entry.avro_obj
-                        )
+            data_event_handler.handle_event(add_data_event)
+            expected_publish_to_kafka_calls = [
+                (
+                    schema_cache_entry.kafka_topic,
+                    self.avro_encoder(
+                        data_event_handler._get_values(row),
+                        schema_cache_entry.avro_obj
                     )
-                    for row in add_data_event.rows
-                ]
-                unpacked_call_args = [i[0] for i in mock_publish_to_kafka.call_args_list]
-                assert expected_publish_to_kafka_calls == unpacked_call_args
+                )
+                for row in add_data_event.rows
+            ]
+            unpacked_call_args = [i[0] for i in mock_publish_to_kafka.call_args_list]
+            assert expected_publish_to_kafka_calls == unpacked_call_args
