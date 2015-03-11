@@ -42,7 +42,7 @@ class BaseEventHandler(object):
         if table in self.schema_cache:
             return self.schema_cache[table]
 
-        #TODO remove this when deploying live
+        # TODO (ryani|DATAPIPE-77) actually use the schematizer clientlib
         if table == Table(schema='yelp', table_name='business'):
             resp = self._format_register_response(stub_schemas.stub_business_schema())
         else:
