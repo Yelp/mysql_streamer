@@ -4,8 +4,8 @@ from pymysqlreplication.row_event import WriteRowsEvent
 from pymysqlreplication.event import QueryEvent
 
 from yelp_batch import Batch
-from replication_handler.components.event_handlers import DataEventHandler
-from replication_handler.components.event_handlers import SchemaEventHandler
+from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.binlogevent_yielder import BinlogEventYielder
 
 

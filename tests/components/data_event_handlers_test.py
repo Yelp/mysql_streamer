@@ -7,8 +7,8 @@ import json
 import mock
 import pytest
 
-from replication_handler.components.event_handlers import DataEventHandler
-from replication_handler.components.event_handlers import SchemaCacheEntry
+from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.base_event_handler import SchemaCacheEntry
 
 
 class TestDataEventHandler(object):

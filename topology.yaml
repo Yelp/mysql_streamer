@@ -7,10 +7,10 @@ topology:
           host: dbmaster
           port: 3306
           user: yelpdev
-          passwd: "" 
+          passwd: ""
 -   cluster: docker_testing_cluster
     replica: replication_handler_schema_tracker
-    entries:   
+    entries:
         - charset: utf8
           use_unicode: true
           host: dblocal

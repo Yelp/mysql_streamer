@@ -3,11 +3,12 @@ import os
 import staticconf
 
 
-ENV = 'config-env-dev.yaml'
+CONFIG_FILE = 'config.yaml'
 
 
 class BaseConfig(object):
     """Staticconf base object for managing config"""
+
     def __init__(self, config_file):
         self.env_config_path = os.environ.get(
             'SERVICE_CONFIG_PATH',
@@ -25,12 +26,27 @@ class BaseConfig(object):
 
 class EnvConfig(BaseConfig):
     """Loads environment-specific config"""
-    def get_module_env_config(self):
+
+    @property
+    def module_env_config(self):
         return staticconf.get('module_env_config')[0]
+
+    @property
+    def cluster(self):
+        return self.module_env_config.get('config').get('cluster')
+
+    @property
+    def source_replica(self):
+        return self.module_env_config.get('config').get('source_replica')
+
+    @property
+    def schema_tracking_replica(self):
+        return self.module_env_config.get('config').get('schema_tracking_replica')
 
 
 class DatabaseConfig(BaseConfig):
     """Used for reading database config out of topology.yaml in the environment"""
+
     def __init__(self, cluster_name, replica_name):
         super(DatabaseConfig, self).__init__('topology.yaml')
         self.cluster_name = cluster_name
@@ -41,6 +57,7 @@ class DatabaseConfig(BaseConfig):
         """Loads config and returns object to watch the environment config file.
         object.reload_if_changed() will reload the config file if its changed.
         """
+
         self.config_facade_holder.reload_if_changed()
         for topo_item in staticconf.get('topology'):
             if topo_item.get('cluster') == self.cluster_name \
@@ -48,16 +65,17 @@ class DatabaseConfig(BaseConfig):
                 return topo_item
 
     @property
-    def first_entry(self):
-        return self.cluster_config['entries'][0]
+    def entries(self):
+        return self.cluster_config['entries']
 
 
-_env_config = EnvConfig(ENV)
-module_config = _env_config.get_module_env_config()
+_env_config = EnvConfig(CONFIG_FILE)
 
-_cluster = module_config.get('config').get('cluster')
-_source_replica = module_config.get('config').get('source_replica')
-_schema_tracking_replica = module_config.get('config').get('schema_tracking_replica')
+module_config = _env_config.module_env_config
 
-source_database_config = DatabaseConfig(_cluster, _source_replica)
-schema_tracking_database_config = DatabaseConfig(_cluster, _schema_tracking_replica)
+source_database_config = DatabaseConfig(
+    _env_config.cluster, _env_config.source_replica
+)
+schema_tracking_database_config = DatabaseConfig(
+    _env_config.cluster, _env_config.schema_tracking_replica
+)

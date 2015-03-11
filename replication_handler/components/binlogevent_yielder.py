@@ -14,7 +14,7 @@ class BinlogEventYielder(object):
            server_id doesn't seem to matter but must be set.
            blocking=True will keep this iterator infinite.
         """
-        source_config = config.source_database_config.first_entry
+        source_config = config.source_database_config.entries[0]
         repl_mysql_config = {
             'host': source_config['host'],
             'port': source_config['port'],

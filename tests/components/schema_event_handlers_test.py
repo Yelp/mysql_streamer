@@ -4,10 +4,10 @@ import mock
 import pymysql
 import pytest
 
-from replication_handler.components.event_handlers import SchemaEventHandler
-from replication_handler.components.event_handlers import SchemaStoreRegisterResponse
-from replication_handler.components.event_handlers import ShowCreateResult
-from replication_handler.components.event_handlers import Table
+from replication_handler.components.schema_event_handler import SchemaEventHandler
+from replication_handler.components.base_event_handler import SchemaStoreRegisterResponse
+from replication_handler.components.base_event_handler import ShowCreateResult
+from replication_handler.components.base_event_handler import Table
 
 
 class TestSchemaEventHandler(object):
@@ -131,7 +131,7 @@ class TestSchemaEventHandler(object):
     ):
         """Integration test the things that need to be called hence many mocks"""
         with contextlib.nested(
-            mock.patch('replication_handler.components.event_handlers.SchemaEventHandler.schema_tracking_db_conn', new_callable=mock.PropertyMock),
+            mock.patch('replication_handler.components.schema_event_handler.SchemaEventHandler.schema_tracking_db_conn', new_callable=mock.PropertyMock),
             mock.patch.object(schema_event_handler, '_get_show_create_statement', return_value=show_create_result_initial),
             mock.patch.object(schema_event_handler, '_register_create_table_with_schema_store', return_value=create_table_schema_store_response),
             mock.patch.object(schema_event_handler, '_populate_schema_cache')
@@ -165,7 +165,7 @@ class TestSchemaEventHandler(object):
     ):
         """Integration test the things that need to be called hence many mocks"""
         with contextlib.nested(
-            mock.patch('replication_handler.components.event_handlers.SchemaEventHandler.schema_tracking_db_conn', new_callable=mock.PropertyMock),
+            mock.patch('replication_handler.components.schema_event_handler.SchemaEventHandler.schema_tracking_db_conn', new_callable=mock.PropertyMock),
             mock.patch.object(schema_event_handler, '_get_show_create_statement'),
             mock.patch.object(schema_event_handler, '_register_alter_table_with_schema_store', return_value=alter_table_schema_store_response),
             mock.patch.object(schema_event_handler, '_populate_schema_cache')
@@ -199,7 +199,7 @@ class TestSchemaEventHandler(object):
     ):
         """Test that nothing is committed to db connection and rollback is called"""
         with contextlib.nested(
-            mock.patch('replication_handler.components.event_handlers.SchemaEventHandler.schema_tracking_db_conn', new_callable=mock.PropertyMock),
+            mock.patch('replication_handler.components.schema_event_handler.SchemaEventHandler.schema_tracking_db_conn', new_callable=mock.PropertyMock),
             mock.patch.object(schema_event_handler, '_get_show_create_statement')
         ) as (mock_conn, mock_show_create):
             mock_conn.return_value = connection

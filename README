@@ -17,9 +17,8 @@ fig build
 fig up -d
 mysql -h `docker_ip_master` -u yelpdev -D yelp < /scratch/ryani/business_small.sql
 
-vim config-env-dev.yaml
-# replace dbmaster with output of docker_ip_master config-env-dev.yaml
-# and dblocal with output of docker_ip_local
+# replace dbmaster and dblocal with output of docker_ip_master and docker_ip_local respectively
+vim topology.yaml
 
 python replication_handler/batch/parse_replication_stream.py -v --no-notification
 
