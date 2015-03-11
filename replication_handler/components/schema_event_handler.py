@@ -67,7 +67,7 @@ class SchemaEventHandler(BaseEventHandler):
 
     def _parse_query(self, event):
         """Returns query and table namedtuple"""
-        # TODO create/contribute to shared library with schematizer
+        # TODO (ryani|DATAPIPE-58) create/contribute to shared library with schematizer
         try:
             query = ' '.join(event.query.lower().split())
             split_query = query.split()
@@ -101,7 +101,7 @@ class SchemaEventHandler(BaseEventHandler):
            transaction, and commits to db connection if success. It rolls
            back otherwise.
         """
-        # TODO see if sqlalchemy makes this easier for us
+        # TODO (ryani|DATAPIPE-74) see if sqlalchemy makes this easier for us
         # Make sure schema tracker is using the same database as event
         self.schema_tracking_db_conn.select_db(event.schema)
         try:
