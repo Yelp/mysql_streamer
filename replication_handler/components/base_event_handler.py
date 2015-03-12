@@ -23,9 +23,7 @@ Table = namedtuple('Table', ('schema', 'table_name'))
 
 ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 
-log = logging.getLogger(__name__)
-
-
+log = logging.getLogger('replication_handler.parse_replication_stream')
 
 
 class BaseEventHandler(object):
@@ -68,5 +66,3 @@ class BaseEventHandler(object):
             kafka_topic=raw_resp['kafka_topic'],
             version=raw_resp['schema_id']
         )
-
-

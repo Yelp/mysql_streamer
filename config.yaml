@@ -1,4 +1,4 @@
-module_env_config:
+module_config:
     -  namespace: cluster_config
        config:
            cluster: docker_testing_cluster

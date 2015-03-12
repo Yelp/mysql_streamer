@@ -29,7 +29,8 @@ class EnvConfig(BaseConfig):
 
     @property
     def module_env_config(self):
-        return staticconf.get('module_env_config')[0]
+        # TODO (ryani|DATAPIPE-78) add dynamic environment config ('module_env_config)
+        return staticconf.get('module_config')[0]
 
     @property
     def cluster(self):

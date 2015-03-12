@@ -9,26 +9,11 @@ from replication_handler import config
 from replication_handler.util import connections
 from replication_handler.components import stub_schemas
 from replication_handler.components.base_event_handler import BaseEventHandler
-
-SchemaCacheEntry = namedtuple(
-    'SchemaCacheEntry',
-    ('avro_obj', 'kafka_topic', 'version')
-)
-
-SchemaStoreRegisterResponse = namedtuple(
-    'SchemaStoreRegisterResponse',
-    ('avro_dict', 'kafka_topic', 'version', 'table')
-)
-
-Table = namedtuple('Table', ('schema', 'table_name'))
-
-ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
-
-log = logging.getLogger(__name__)
+from replication_handler.components.base_event_handler import ShowCreateResult
+from replication_handler.components.base_event_handler import Table
 
 
-class QueryTypeNotSupportedException(Exception):
-    pass
+log = logging.getLogger('replication_handler.parse_replication_stream')
 
 
 class SchemaEventHandler(BaseEventHandler):
