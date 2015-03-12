@@ -4,7 +4,7 @@ topology:
     entries:
         - charset: utf8
           use_unicode: true
-          host: 169.254.0.3 # ip of dbmaster
+          host: 169.254.0.5 # ip of dbmaster
           db: yelp
           port: 3306
           user: yelpdev
