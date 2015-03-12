@@ -1,0 +1,21 @@
+topology:
+-   cluster: binlog_reader
+    replica: master
+    entries:
+        - charset: utf8
+          use_unicode: true
+          host: 169.254.0.3 # ip of dbmaster
+          db: yelp
+          port: 3306
+          user: yelpdev
+          passwd: ""
+-   cluster: schema_tracker
+    replica: master
+    entries:
+        - charset: utf8
+          use_unicode: true
+          host: 169.254.0.3 # ip of dblocal
+          db: yelp
+          port: 3306
+          user: yelpdev
+          passwd: ""

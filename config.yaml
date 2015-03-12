@@ -1,0 +1,19 @@
+module_config:
+    -   namespace: yelp_conn
+        file: /nail/srv/configs/yelp_conn_generic.yaml
+        initialize: yelp_conn.initialize
+        config:
+            connection_set_file: connection_sets.yaml
+            topology: topology.yaml
+
+            connection_wrappers:
+                - yelp_conn.sqllogger.LoggingConnectionWrapper
+                - yelp_conn.wrappers.AnnotatingConnectionWrapper
+
+            query_logging_listeners:
+                - ['yelp_conn.sqllogger.ClogCursorListener', 'tmp_query_log']
+
+            # Log queries to all listeners in `query_logging_listeners`
+            enable_query_logging: True
+            # Print queries to stdout
+            enable_query_printing: True

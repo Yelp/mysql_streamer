@@ -14,3 +14,5 @@ avro==1.7.6
 kafka-python==0.9.2
 wheel>=0.22
 yelp-batch==0.11.4
+yelp-conn==4.6.1
+yelp_servlib==3.4.2

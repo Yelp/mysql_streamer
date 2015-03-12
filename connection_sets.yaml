@@ -1,0 +1,7 @@
+connection_sets:
+    binlog_reader_ro:
+        connection_configuration:
+            read_only: true
+        binlog_reader: "master"
+    schema_tracker_rw:
+        schema_tracker: "master"

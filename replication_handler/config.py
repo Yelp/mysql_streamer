@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 import os
+import logging
 
 import staticconf
 
+from yelp_servlib import config_util
 
-# TODO setup logging
-# log = logging.getLogger('replication_handler.config')
 
+log = logging.getLogger('replication_handler.config')
+
+config_util.load_default_config('config.yaml')
 
 def replication_database():
     return staticconf.get('replication_database')[0]['config']
