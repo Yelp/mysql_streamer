@@ -1,1 +1,6 @@
 README for the replication handler
+
+Setting up the docs on dev:
+cd docs/build/html
+python -m SimpleHTTPServer 8888
+visit http://<your dev machine>:8888/index.html, you will have mini docs server up, maybe useful.
