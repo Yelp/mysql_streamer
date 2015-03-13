@@ -1,10 +1,7 @@
 .PHONY: test clean
 
 test:
-	python -m pytest tests/
-
-tests:
-	test
+	tox
 
 clean:
 	find . -name '*.pyc' -delete
