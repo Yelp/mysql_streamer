@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 from sqlalchemy import Column
-from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Text
-from sqlalchemy.orm import relationship
 from sqlalchemy import types
 
 from models.database import Base
