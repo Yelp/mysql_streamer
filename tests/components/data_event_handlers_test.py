@@ -11,7 +11,41 @@ from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.base_event_handler import SchemaCacheEntry
 
 
+class RowsEvent(object):
+    """Class made to be for testing RowsEvents from pymysqlreplication
+
+       schema: database of the row event
+       table: table of the row changes
+       rows: list of rows changing in a dictionary
+           For a new row the format for a single row is:
+            {
+                'values': {<column_name1>: <value1>, <column_name2: <value2>}
+            }
+           For an update row the format for a single row update is:
+            {
+                'after_values':
+                    {<column_name1>: <value1_new>, <column_name2: <value2_new'>},
+                'before_values':
+                    {<column_name1>: <value1_old>, <column_name2: <value2_old'>}
+            }
+    """
+    def __init__(self, schema, table, rows):
+        self.schema = schema
+        self.table = table
+        self.rows = rows
+
 class TestDataEventHandler(object):
+
+    def avro_encoder(self, datum, payload_schema):
+        """Tests to make sure avro format is correct
+           Treating this avro encoder as truth in case
+           other faster encoders are tried in the future.
+        """
+        writer = avro.io.DatumWriter(writers_schema=payload_schema)
+        bytes_writer = io.BytesIO()
+        encoder = avro.io.BinaryEncoder(bytes_writer)
+        writer.write(datum, encoder)
+        return bytes_writer.getvalue()
 
     @pytest.fixture
     def data_event_handler(self):
@@ -25,16 +59,6 @@ class TestDataEventHandler(object):
            "fields": [{"name": "a_number", "type": "int"}]
         })
 
-    def avro_encoder(self, datum, payload_schema):
-        """Tests to make sure avro format is correct
-           Treating this avro encoder as truth
-        """
-        writer = avro.io.DatumWriter(writers_schema=payload_schema)
-        bytes_writer = io.BytesIO()
-        encoder = avro.io.BinaryEncoder(bytes_writer)
-        writer.write(datum, encoder)
-        return bytes_writer.getvalue()
-
     @pytest.fixture
     def schema_cache_entry(self, schema_in_json):
         avro_obj = avro.schema.parse(schema_in_json)
@@ -47,30 +71,29 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def add_data_event(self):
-        # Rows event is a mysql/pymysqlreplication term
-        class RowsEvent(object):
-            table = "fake_table"
-            schema = "fake_database"
-            rows = list()
-            rows.append({'values': {'a_number': 100}})
-            rows.append({'values': {'a_number': 200}})
-            rows.append({'values': {'a_number': 300}})
-        return RowsEvent()
+        rows = [
+            {'values': {'a_number': 100}},
+            {'values': {'a_number': 200}},
+            {'values': {'a_number': 300}}
+        ]
+        return RowsEvent(
+            table="fake_table",
+            schema="fake_database",
+            rows=rows
+        )
 
     @pytest.fixture
     def update_data_event(self, add_data_event):
-        # Rows event is a mysql/pymysqlreplication term
-        class RowsEvent(object):
-            table = add_data_event.table
-            schema = add_data_event.schema
-            rows = list()
-            rows.append({'after_values': {'a_number': 100},
-                         'before_values': {'a_number': 110}})
-            rows.append({'after_values': {'a_number': 200},
-                         'before_values': {'a_number': 210}})
-            rows.append({'after_values': {'a_number': 300},
-                         'before_values': {'a_number': 310}})
-        return RowsEvent()
+        rows = [
+            {'after_values': {'a_number': 100}, 'before_values': {'a_number': 110}},
+            {'after_values': {'a_number': 200}, 'before_values': {'a_number': 210}},
+            {'after_values': {'a_number': 300}, 'before_values': {'a_number': 310}}
+        ]
+        return RowsEvent(
+            table=add_data_event.table,
+            schema=add_data_event.schema,
+            rows=rows
+        )
 
     def test_get_values(
         self,
