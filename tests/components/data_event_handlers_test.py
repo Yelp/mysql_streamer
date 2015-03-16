@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import avro.schema
 import avro.io
-import contextlib
 import io
 import json
 import mock
