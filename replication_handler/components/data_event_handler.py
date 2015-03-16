@@ -16,7 +16,7 @@ class DataEventHandler(BaseEventHandler):
     def __init__(self):
         """Initialize clientlib that will handle publishing to kafka,
            which includes the envelope schema management and logging
-           GTID checkpoints to zookeeper.
+           GTID checkpoints in the MySQL schema tracking db.
         """
         super(DataEventHandler, self).__init__()
 
