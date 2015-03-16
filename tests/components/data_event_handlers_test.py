@@ -95,6 +95,22 @@ class TestDataEventHandler(object):
             rows=rows
         )
 
+    @pytest.yield_fixture
+    def patch_get_schema_for_schema_cache(self, data_event_handler, schema_cache_entry):
+        with mock.patch.object(
+            data_event_handler,
+            'get_schema_for_schema_cache',
+            return_value=schema_cache_entry
+        ) as mock_get_schema:
+            yield mock_get_schema
+
+    @pytest.yield_fixture
+    def patch_publish_to_kafka(self, data_event_handler):
+        with mock.patch.object(
+            data_event_handler, '_publish_to_kafka'
+        ) as mock_kafka_publish:
+            yield mock_kafka_publish
+
     def test_get_values(
         self,
         data_event_handler,
@@ -111,19 +127,12 @@ class TestDataEventHandler(object):
         self,
         data_event_handler,
         add_data_event,
-        schema_cache_entry
+        patch_get_schema_for_schema_cache
     ):
-
-        with mock.patch.object(
-            data_event_handler,
-            'get_schema_for_schema_cache',
-            return_value=schema_cache_entry
-        ) as mock_get_schema:
-
-            assert add_data_event.table not in data_event_handler.schema_cache
-            data_event_handler._get_payload_schema(add_data_event.table)
-            mock_get_schema.assert_called_once_with(add_data_event.table)
-            assert add_data_event.table in data_event_handler.schema_cache
+        assert add_data_event.table not in data_event_handler.schema_cache
+        data_event_handler._get_payload_schema(add_data_event.table)
+        patch_get_schema_for_schema_cache.assert_called_once_with(add_data_event.table)
+        assert add_data_event.table in data_event_handler.schema_cache
 
     def test_serialize_payload(
         self,
@@ -142,24 +151,21 @@ class TestDataEventHandler(object):
         self,
         data_event_handler,
         add_data_event,
-        schema_cache_entry
+        schema_cache_entry,
+        patch_get_schema_for_schema_cache,
+        patch_publish_to_kafka
     ):
 
-        with contextlib.nested(
-            mock.patch.object(data_event_handler, '_publish_to_kafka'),
-            mock.patch.object(data_event_handler, 'get_schema_for_schema_cache',  return_value=schema_cache_entry)
-        ) as (mock_publish_to_kafka, _):
-
-            data_event_handler.handle_event(add_data_event)
-            expected_publish_to_kafka_calls = [
-                (
-                    schema_cache_entry.kafka_topic,
-                    self.avro_encoder(
-                        data_event_handler._get_values(row),
-                        schema_cache_entry.avro_obj
-                    )
+        data_event_handler.handle_event(add_data_event)
+        expected_publish_to_kafka_calls = [
+            (
+                schema_cache_entry.kafka_topic,
+                self.avro_encoder(
+                    data_event_handler._get_values(row),
+                    schema_cache_entry.avro_obj
                 )
-                for row in add_data_event.rows
-            ]
-            unpacked_call_args = [i[0] for i in mock_publish_to_kafka.call_args_list]
-            assert expected_publish_to_kafka_calls == unpacked_call_args
+            )
+            for row in add_data_event.rows
+        ]
+        unpacked_call_args = [i[0] for i in patch_publish_to_kafka.call_args_list]
+        assert expected_publish_to_kafka_calls == unpacked_call_args
