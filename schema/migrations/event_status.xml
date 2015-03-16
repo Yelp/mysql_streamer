@@ -5,13 +5,19 @@
       <column autoIncrement="true" name="id" type="INT(11)">
         <constraints primaryKey="true"/>
       </column>
-      <column name="gtid" type="TEXT">
+      <column name="gtid" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true"/>
+      </column>
+      <column name="offset" type="INT(11)">
         <constraints nullable="false"/>
       </column>
       <column name="status" type="VARCHAR(20)" defaultValue="Pending">
         <constraints nullable="false"/>
       </column>
       <column name="query" type="TEXT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="table_name" type="VARCHAR(255)">
         <constraints nullable="false"/>
       </column>
       <column name="create_table_statement" type="TEXT">
