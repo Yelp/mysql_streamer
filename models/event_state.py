@@ -26,9 +26,8 @@ class EventState(Base):
     __tablename__ = 'event_state'
 
     id = Column(Integer, primary_key=True)
-    #: Text type because gtid can be pretty lengthy.
+    # Text type because gtid can be pretty lengthy.
     gtid = Column(Text, nullable=False)
-
     status = Column(
         Enum(
             EventStatus.PENDING,
@@ -38,10 +37,9 @@ class EventState(Base):
         default=EventStatus.PENDING,
         nullable=False
     )
-
-    #: The query that need to be executed and register with Schematizer.
+    # The query that needs to be executed and register with Schematizer.
     query = Column(Text, nullable=False)
-    #: Snapshot before executing the incoming query.
+    # Snapshot before executing the incoming query.
     create_table_statement = Column(Text, nullable=False)
     time_created = Column(UnixTimeStampType, default=default_now)
     time_updated = Column(UnixTimeStampType, default=default_now, onupdate=default_now)
