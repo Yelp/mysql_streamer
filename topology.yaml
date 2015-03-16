@@ -1,10 +1,10 @@
 topology:
--   cluster: binlog_reader
+-   cluster: rbr-main
     replica: master
     entries:
         - charset: utf8
           use_unicode: true
-          host: 169.254.0.5 # ip of dbmaster
+          host: dbmaster
           db: yelp
           port: 3306
           user: yelpdev
@@ -14,7 +14,7 @@ topology:
     entries:
         - charset: utf8
           use_unicode: true
-          host: 169.254.0.3 # ip of dblocal
+          host: dblocal
           db: yelp
           port: 3306
           user: yelpdev

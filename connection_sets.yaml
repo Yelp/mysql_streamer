@@ -2,6 +2,6 @@ connection_sets:
     primary_ro:
         connection_configuration:
             read_only: true
-        binlog_reader: "master"
+        rbr-main: "master"
     primary_rw:
         schema_tracker: "master"
