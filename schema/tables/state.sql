@@ -9,5 +9,5 @@ CREATE TABLE `event_state` (
   `time_created` int(11) NOT NULL,
   `time_updated` int(11) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `gtid` (`gtid`)
+  UNIQUE KEY `gtid` (`gtid`,`offset`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
