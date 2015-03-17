@@ -6,8 +6,9 @@ import json
 import mock
 import pytest
 
-from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.base_event_handler import SchemaCacheEntry
+from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.stub_schemas import stub_business_schema
 
 
 class RowsEvent(object):
@@ -28,10 +29,77 @@ class RowsEvent(object):
                     {<column_name1>: <value1_old>, <column_name2: <value2_old'>}
             }
     """
+
     def __init__(self, schema, table, rows):
         self.schema = schema
         self.table = table
         self.rows = rows
+
+    @classmethod
+    def make_add_rows_event(cls):
+        rows = [
+            {'values': {'a_number': 100}},
+            {'values': {'a_number': 200}},
+            {'values': {'a_number': 300}}
+        ]
+        return cls(
+            table="fake_table",
+            schema="fake_database",
+            rows=rows
+        )
+
+    @classmethod
+    def make_update_rows_event(cls):
+        rows = [
+            {'after_values': {'a_number': 100}, 'before_values': {'a_number': 110}},
+            {'after_values': {'a_number': 200}, 'before_values': {'a_number': 210}},
+            {'after_values': {'a_number': 300}, 'before_values': {'a_number': 310}}
+        ]
+        return cls(
+            table="fake_table",
+            schema="fake_database",
+            rows=rows
+        )
+
+    @classmethod
+    def make_business_add_rows_event(cls):
+        rows = [
+            {'values':
+                {u'accuracy': 9.5,
+                 u'acxiom_id': 1,
+                 u'address1': u'418 N Pleasant St',
+                 u'address2': u'asd',
+                 u'address3': u'',
+                 u'alias': u'union-for-radical-political-economics-inc-amherst',
+                 u'city': u'Amherst',
+                 u'country': u'US',
+                 u'county': u'',
+                 u'data_source_type': None,
+                 u'email': u'',
+                 u'fax': u'',
+                 u'flags': 1,
+                 u'geoquad': 12859703,
+                 u'id': 1,
+                 u'latitude': 42.3562465546791,
+                 u'longitude': -72.5498971939087,
+                 u'name': u'Union For Radical Political Economics Inc',
+                 u'phone': u'+12037774605',
+                 u'photo_id': 5930492,
+                 u'rating': 4.0,
+                 u'review_count': 2,
+                 u'score': 3.13929202357494,
+                 u'state': u'MA',
+                 u'time_created': 0,
+                 u'url': u'http://www.monsieurvuong.de/',
+                 u'zip': u'111'}
+            }
+        ]
+        return cls(
+            table="business",
+            schema="yelp",
+            rows=rows
+        )
+
 
 class TestDataEventHandler(object):
 
@@ -70,29 +138,11 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def add_data_event(self):
-        rows = [
-            {'values': {'a_number': 100}},
-            {'values': {'a_number': 200}},
-            {'values': {'a_number': 300}}
-        ]
-        return RowsEvent(
-            table="fake_table",
-            schema="fake_database",
-            rows=rows
-        )
+        return RowsEvent.make_add_rows_event()
 
     @pytest.fixture
-    def update_data_event(self, add_data_event):
-        rows = [
-            {'after_values': {'a_number': 100}, 'before_values': {'a_number': 110}},
-            {'after_values': {'a_number': 200}, 'before_values': {'a_number': 210}},
-            {'after_values': {'a_number': 300}, 'before_values': {'a_number': 310}}
-        ]
-        return RowsEvent(
-            table=add_data_event.table,
-            schema=add_data_event.schema,
-            rows=rows
-        )
+    def update_data_event(self):
+        return RowsEvent.make_update_rows_event()
 
     @pytest.yield_fixture
     def patch_get_schema_for_schema_cache(self, data_event_handler, schema_cache_entry):
@@ -135,14 +185,11 @@ class TestDataEventHandler(object):
 
     def test_serialize_payload(
         self,
-        data_event_handler,
-        add_data_event,
-        schema_cache_entry
+        data_event_handler
     ):
         """Tests to make sure avro format is correct"""
-
-        payload_schema = schema_cache_entry.avro_obj
-        datum = add_data_event.rows[0]['values']
+        payload_schema = avro.schema.parse(stub_business_schema()['schema'])
+        datum = RowsEvent.make_business_add_rows_event().rows[0]['values']
         assert self.avro_encoder(datum, payload_schema) \
             == data_event_handler._serialize_payload(datum, payload_schema)
 

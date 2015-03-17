@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from collections import namedtuple
 import mock
 import pymysql
 import pytest
@@ -34,6 +35,17 @@ class QueryEvent(object):
     def __init__(self, schema, query):
         self.schema = schema
         self.query = query
+
+
+SchemaHandlerExternalPatches = namedtuple(
+    'SchemaHandlerExternalPatches', (
+        'schema_tracking_db_conn',
+        'get_show_create_statement',
+        'register_create_table_with_schema_store',
+        'register_alter_table_with_schema_store',
+        'populate_schema_cache'
+    )
+)
 
 
 class TestSchemaEventHandler(object):
@@ -178,6 +190,16 @@ class TestSchemaEventHandler(object):
         ) as mock_populate_schema_cache:
             yield mock_populate_schema_cache
 
+    @pytest.fixture
+    def external_patches(self, patch_db_conn, patch_get_show_create_statement, patch_register_create_table, patch_register_alter_table, patch_populate_schema_cache):
+        return SchemaHandlerExternalPatches (
+            schema_tracking_db_conn=patch_db_conn,
+            get_show_create_statement=patch_get_show_create_statement,
+            register_create_table_with_schema_store=patch_register_create_table,
+            register_alter_table_with_schema_store=patch_register_alter_table,
+            populate_schema_cache=patch_populate_schema_cache
+        )
+
     def test_handle_event_create_table(
         self,
         schema_event_handler,
@@ -185,24 +207,20 @@ class TestSchemaEventHandler(object):
         show_create_result_initial,
         table_with_schema_changes,
         connection,
-        patch_db_conn,
-        patch_get_show_create_statement,
-        patch_register_create_table,
-        patch_populate_schema_cache
+        external_patches,
     ):
         """Integration test the things that need to be called during a handle
            create table event hence many mocks
         """
-
-        patch_get_show_create_statement.return_value = show_create_result_initial
+        external_patches.get_show_create_statement.return_value = show_create_result_initial
         schema_event_handler.handle_event(create_table_schema_event)
 
         self.check_external_calls(
             create_table_schema_event,
             connection,
             table_with_schema_changes,
-            patch_register_create_table(),
-            patch_populate_schema_cache
+            external_patches.register_create_table_with_schema_store(),
+            external_patches.populate_schema_cache
         )
 
     def test_handle_event_alter_table(
@@ -213,17 +231,13 @@ class TestSchemaEventHandler(object):
         show_create_result_after_alter,
         connection,
         table_with_schema_changes,
-        patch_db_conn,
-        patch_get_show_create_statement,
-        patch_register_alter_table,
-        patch_populate_schema_cache
-
+        external_patches
     ):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
         """
 
-        patch_get_show_create_statement.side_effect = [
+        external_patches.get_show_create_statement.side_effect = [
             show_create_result_initial,
             show_create_result_after_alter
         ]
@@ -233,8 +247,8 @@ class TestSchemaEventHandler(object):
             alter_table_schema_event,
             connection,
             table_with_schema_changes,
-            patch_register_alter_table(),
-            patch_populate_schema_cache
+            external_patches.register_alter_table_with_schema_store(),
+            external_patches.populate_schema_cache
         )
 
     def test_handle_event_with_exception_and_recovery(
@@ -242,12 +256,10 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         create_table_schema_event,
         connection,
-        patch_db_conn,
-        patch_get_show_create_statement
+        external_patches
     ):
         """Test that recovery is handled properly with journaling"""
-        patch_db_conn.return_value = connection
-        patch_get_show_create_statement.side_effect=pymysql.MySQLError()
+        external_patches.get_show_create_statement.side_effect=pymysql.MySQLError()
         with pytest.raises(Exception):
             schema_event_handler.handle_event(create_table_schema_event)
 
