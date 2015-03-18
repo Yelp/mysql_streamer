@@ -6,7 +6,7 @@ MySQL-python==1.2.5
 PyMySQL==0.6.6
 PyStaticConfiguration==0.8.0
 PyYAML==3.11
-SQLAlchemy==0.9.9
+SQLAlchemy==0.9.8
 avro==1.7.6
 boto==2.36.0
 contextdecorator==0.10.0
@@ -24,10 +24,11 @@ ply==3.4
 py==1.4.26
 pycrypto==2.6.1
 pyflakes==0.8.1
+pyramid-yelp-conn==0.4.1
 pysubnettree==0.23
 python-dateutil==2.4.1
 pytz==2014.10
-requests==2.5.3
+requests==2.5.1
 send-nsca==0.1.4.1
 setproctitle==1.1.8
 simplejson==3.6.5
@@ -41,3 +42,4 @@ yelp-clog==1.1.4
 yelp-conn==4.6.1
 yelp-lib==10.0.5
 yelp-logging==1.1.2
+yelp-servlib==4.3.0
