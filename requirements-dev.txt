@@ -2,7 +2,6 @@
 # Unit testing tools, mocking frameworks, debuggers, proxies, ...
 # These will be used for tox and other testing environments.
 -r requirements.txt
-ipdb
 coverage
 ipdb
 ipython
