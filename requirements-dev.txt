@@ -4,7 +4,9 @@
 -r requirements.txt
 ipdb
 coverage
+ipdb
+ipython
+fig
 flake8
-ipython<2.0.0
 mock
 pytest

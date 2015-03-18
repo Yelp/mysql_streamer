@@ -1,5 +1,30 @@
 README for the replication handler
 
+To make a virtualenv consistent with what will be running the batch and have all testing tools:
+
+virtualenv --python=python2.7 ./virtualenv_run
+source ./virtualenv_run/bin/activate
+./virtualenv_run/bin/pip install -i https://pypi-dev.yelpcorp.com/simple  -r ./requirements-dev.txt
+
+
+Manual testing (TODO remove when acceptance testing works):
+
+alias docker_ip_master="docker ps | grep dbmaster | awk '{print \$1}' | xargs docker inspect | grep IPAddress | awk -F'\"' '{print \$4}'"
+alias docker_ip_local="docker ps | grep dblocal | awk '{print \$1}' | xargs docker inspect | grep IPAddress | awk -F'\"' '{print \$4}'"
+
+
+fig build
+fig up -d
+mysql -h `docker_ip_master` -u yelpdev -D yelp < /scratch/ryani/business_small.sql
+
+# replace dbmaster and dblocal with output of docker_ip_master and docker_ip_local respectively
+vim topology.yaml
+
+python replication_handler/batch/parse_replication_stream.py -v --no-notification
+
+make sure it prints out the topic that would be published to kafka
+
+
 Setting up the docs on dev:
 cd docs/build/html
 python -m SimpleHTTPServer 8888
