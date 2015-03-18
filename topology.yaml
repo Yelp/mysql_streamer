@@ -4,8 +4,8 @@ topology:
     entries:
         - charset: utf8
           use_unicode: true
-          host: dbmaster
-          port: 3306
+          host: 127.0.0.1
+          port: 8001
           user: yelpdev
           passwd: ""
 -   cluster: docker_testing_cluster
@@ -13,7 +13,7 @@ topology:
     entries:
         - charset: utf8
           use_unicode: true
-          host: dblocal
-          port: 3306
+          host: 127.0.0.1
+          port: 8002
           user: yelpdev
           passwd: ""
