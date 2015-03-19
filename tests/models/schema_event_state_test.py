@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import pytest
 
 from models.schema_event_state import SchemaEventState

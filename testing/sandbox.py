@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 import contextlib
 import mock
+from glob import glob
 
 from yelp_conn.testing import sandbox as db_sandbox
 
 from models import database
 
 
-SCHEMAS = (
-    'schema/tables/schema_event_state.sql',
-)
+SCHEMAS = glob('schema/tables/*.sql')
 
 DATABASE_NAME = "yelp"
 
