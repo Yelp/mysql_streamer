@@ -44,8 +44,4 @@ class TestSchemaEventState(object):
             sandbox_session.add(schema_event_state)
             sandbox_session.flush()
             result = sandbox_session.query(SchemaEventState).one()
-            assert result.gtid == gtid
-            assert result.status == status
-            assert result.query == query
-            assert result.create_table_statement == create_table_statement
-            assert result.table_name == table_name
+            assert result == schema_event_state
