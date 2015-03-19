@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
   <changeSet author="cheng" id="1426537558">
-    <createTable tableName="event_status">
+    <createTable tableName="schema_event_state">
       <column autoIncrement="true" name="id" type="INT(11)">
         <constraints primaryKey="true"/>
       </column>
       <column name="gtid" type="VARCHAR(255)">
-        <constraints nullable="false"/>
-      </column>
-      <column name="offset" type="INT(11)">
-        <constraints nullable="false"/>
+        <constraints nullable="false" unique="true"/>
       </column>
       <column name="status" type="VARCHAR(20)" defaultValue="Pending">
         <constraints nullable="false"/>
@@ -23,18 +20,15 @@
       <column name="create_table_statement" type="TEXT">
         <constraints nullable="false"/>
       </column>
-      <column name="created_at" type="INT(11)">
+      <column name="time_created" type="INT(11)">
         <constraints nullable="false"/>
       </column>
-      <column name="updated_at" type="INT(11)">
+      <column name="time_updated" type="INT(11)">
         <constraints nullable="false"/>
       </column>
     </createTable>
     <modifySql dbms="mysql">
       <append value=" ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci"/>
     </modifySql>
-  </changeSet>
-  <changeSet author="cheng" id="1426613873">
-    <addUniqueConstraint columnNames="gtid, offset" tableName="event_status"/>
   </changeSet>
 </databaseChangeLog>

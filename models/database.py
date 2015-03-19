@@ -9,7 +9,7 @@ from yelp_lib import dates
 
 # The common declarative base used by every data model.
 Base = declarative_base()
-Base.__cluster__ = 'schema_tracker'
+Base.__cluster__ = 'docker_testing_cluster'
 
 # The single global session manager used to provide sessions through yelp_conn.
 session = scoped_session(sessionmaker())

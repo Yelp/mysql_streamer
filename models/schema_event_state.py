@@ -10,33 +10,29 @@ from models.database import UnixTimeStampType
 from models.database import default_now
 
 
-class EventStatus(object):
+class SchemaEventStatus(object):
 
     PENDING = 'Pending'
     COMPLETED = 'Completed'
 
 
-class EventState(Base):
+class SchemaEventState(Base):
 
-    __tablename__ = 'event_state'
+    __tablename__ = 'schema_event_state'
 
     id = Column(Integer, primary_key=True)
     gtid = Column(String, nullable=False)
-    # Data event could have multiple rows.
-    offset = Column(Integer, nullable=False)
     status = Column(
         Enum(
-            EventStatus.PENDING,
-            EventStatus.COMPLETED,
+            SchemaEventStatus.PENDING,
+            SchemaEventStatus.COMPLETED,
             name='status'
         ),
-        default=EventStatus.PENDING,
+        default=SchemaEventStatus.PENDING,
         nullable=False
     )
-    # The query that needs to be processed:
-    #   - If this query is a DDL statement, we execute in local schema trackering db and
-    #   register with Schematizer.
-    #   - If this query is a DML statement, we schematize the payload and publish to kafka.
+    # The query that needs to be processed, we execute it in local schema trackering db and
+    # register with Schematizer.
     query = Column(Text, nullable=False)
     # Useful for partition by table_name later.
     table_name = Column(String, nullable=False)
