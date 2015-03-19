@@ -1,13 +1,6 @@
-import avro.io
-import avro.schema
-from collections import namedtuple
-import io
 import logging
-import pymysql
 
-from replication_handler import config
 from replication_handler.util import connections
-from replication_handler.components import stub_schemas
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table

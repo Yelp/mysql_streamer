@@ -69,8 +69,8 @@ class DatabaseConfig(BaseConfig):
 
         self.config_facade_holder.reload_if_changed()
         for topo_item in staticconf.get('topology'):
-            if topo_item.get('cluster') == self.cluster_name \
-                and topo_item.get('replica') == self.replica_name:
+            if topo_item.get('cluster') == self.cluster_name and \
+                topo_item.get('replica') == self.replica_name:
                 return topo_item
 
     @property
