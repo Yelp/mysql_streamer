@@ -1,0 +1,7 @@
+connection_sets:
+    primary_ro:
+        connection_configuration:
+            read_only: true
+        docker_testing_cluster: "replication_handler_source"
+    primary_rw:
+        docker_testing_cluster: "replication_handler_schema_tracker"

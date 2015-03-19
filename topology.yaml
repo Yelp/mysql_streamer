@@ -1,0 +1,21 @@
+topology:
+-   cluster: docker_testing_cluster
+    replica: replication_handler_source
+    entries:
+        - charset: utf8
+          use_unicode: true
+          host: 127.0.0.1
+          db: yelp
+          port: 8001
+          user: yelpdev
+          passwd: ""
+-   cluster: docker_testing_cluster
+    replica: replication_handler_schema_tracker
+    entries:
+        - charset: utf8
+          use_unicode: true
+          host: 127.0.0.1
+          db: yelp
+          port: 8002
+          user: yelpdev
+          passwd: ""

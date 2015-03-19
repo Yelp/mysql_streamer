@@ -1,10 +1,12 @@
 dbmaster:
     build: acceptance/dbmaster/
-    ports: [3306]
+    ports:
+        - "127.0.0.1:8001:3306"
 
 dblocal:
     build: acceptance/dblocal/
-    ports: [3306]
+    ports:
+        - "127.0.0.1:8002:3306"
 
 replicationhandlerconfigs:
     build: acceptance/configs/
