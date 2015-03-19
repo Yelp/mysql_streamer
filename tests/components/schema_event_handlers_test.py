@@ -17,15 +17,19 @@ class Connection(object):
         self.schema = None
         self.commit = mock.Mock()
         self.rollback = mock.Mock()
+
     def cursor(self):
         self.mock_cursor = mock.Mock()
         self.mock_cursor.execute = mock.Mock()
         return self.mock_cursor
+
     def connect(self):
         self.open = True
         return self
+
     def close(self):
         self.open = False
+
     def select_db(self, schema):
         self.schema = schema
 
@@ -90,7 +94,7 @@ class TestSchemaEventHandler(object):
         alter_stmt = alter_table_schema_event.query
         create_str = "{0}, {1}".format(
             create_table_schema_event.query[:-1],
-            alter_stmt[alter_stmt.find('(')+1:]
+            alter_stmt[alter_stmt.find('(') + 1:]
         )
         return ShowCreateResult(
             table=test_table,
@@ -145,7 +149,8 @@ class TestSchemaEventHandler(object):
     def patch_db_conn(self, connection):
         with mock.patch(
             'replication_handler.components.schema_event_handler.SchemaEventHandler.schema_tracking_db_conn',
-            new_callable=mock.PropertyMock) as mock_conn:
+            new_callable=mock.PropertyMock
+        ) as mock_conn:
             mock_conn.return_value = connection
             yield mock_conn
 
@@ -161,8 +166,8 @@ class TestSchemaEventHandler(object):
     def patch_register_create_table(
         self,
         schema_event_handler,
-        create_table_schema_store_response):
-
+        create_table_schema_store_response
+    ):
         with mock.patch.object(
             schema_event_handler,
             '_register_create_table_with_schema_store',
@@ -174,7 +179,8 @@ class TestSchemaEventHandler(object):
     def patch_register_alter_table(
         self,
         schema_event_handler,
-        alter_table_schema_store_response):
+        alter_table_schema_store_response
+    ):
 
         with mock.patch.object(
             schema_event_handler,
@@ -191,8 +197,15 @@ class TestSchemaEventHandler(object):
             yield mock_populate_schema_cache
 
     @pytest.fixture
-    def external_patches(self, patch_db_conn, patch_get_show_create_statement, patch_register_create_table, patch_register_alter_table, patch_populate_schema_cache):
-        return SchemaHandlerExternalPatches (
+    def external_patches(
+        self,
+        patch_db_conn,
+        patch_get_show_create_statement,
+        patch_register_create_table,
+        patch_register_alter_table,
+        patch_populate_schema_cache
+    ):
+        return SchemaHandlerExternalPatches(
             schema_tracking_db_conn=patch_db_conn,
             get_show_create_statement=patch_get_show_create_statement,
             register_create_table_with_schema_store=patch_register_create_table,
@@ -259,7 +272,7 @@ class TestSchemaEventHandler(object):
         external_patches
     ):
         """Test that recovery is handled properly with journaling"""
-        external_patches.get_show_create_statement.side_effect=pymysql.MySQLError()
+        external_patches.get_show_create_statement.side_effect = pymysql.MySQLError()
         with pytest.raises(Exception):
             schema_event_handler.handle_event(create_table_schema_event)
 

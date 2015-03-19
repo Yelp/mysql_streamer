@@ -64,34 +64,37 @@ class RowsEvent(object):
     @classmethod
     def make_business_add_rows_event(cls):
         rows = [
-            {'values':
-                {u'accuracy': 9.5,
-                 u'acxiom_id': 1,
-                 u'address1': u'418 N Pleasant St',
-                 u'address2': u'asd',
-                 u'address3': u'',
-                 u'alias': u'union-for-radical-political-economics-inc-amherst',
-                 u'city': u'Amherst',
-                 u'country': u'US',
-                 u'county': u'',
-                 u'data_source_type': None,
-                 u'email': u'',
-                 u'fax': u'',
-                 u'flags': 1,
-                 u'geoquad': 12859703,
-                 u'id': 1,
-                 u'latitude': 42.3562465546791,
-                 u'longitude': -72.5498971939087,
-                 u'name': u'Union For Radical Political Economics Inc',
-                 u'phone': u'+12037774605',
-                 u'photo_id': 5930492,
-                 u'rating': 4.0,
-                 u'review_count': 2,
-                 u'score': 3.13929202357494,
-                 u'state': u'MA',
-                 u'time_created': 0,
-                 u'url': u'http://www.monsieurvuong.de/',
-                 u'zip': u'111'}
+            {
+                'values':
+                    {
+                        u'accuracy': 9.5,
+                        u'acxiom_id': 1,
+                        u'address1': u'418 N Pleasant St',
+                        u'address2': u'asd',
+                        u'address3': u'',
+                        u'alias': u'union-for-radical-political-economics-inc-amherst',
+                        u'city': u'Amherst',
+                        u'country': u'US',
+                        u'county': u'',
+                        u'data_source_type': None,
+                        u'email': u'',
+                        u'fax': u'',
+                        u'flags': 1,
+                        u'geoquad': 12859703,
+                        u'id': 1,
+                        u'latitude': 42.3562465546791,
+                        u'longitude': -72.5498971939087,
+                        u'name': u'Union For Radical Political Economics Inc',
+                        u'phone': u'+12037774605',
+                        u'photo_id': 5930492,
+                        u'rating': 4.0,
+                        u'review_count': 2,
+                        u'score': 3.13929202357494,
+                        u'state': u'MA',
+                        u'time_created': 0,
+                        u'url': u'http://www.monsieurvuong.de/',
+                        u'zip': u'111'
+                    }
             }
         ]
         return cls(
@@ -120,11 +123,13 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def schema_in_json(self):
-        return json.dumps({
-           "type": "record",
-           "name": "FakeRow",
-           "fields": [{"name": "a_number", "type": "int"}]
-        })
+        return json.dumps(
+            {
+                "type": "record",
+                "name": "FakeRow",
+                "fields": [{"name": "a_number", "type": "int"}]
+            }
+        )
 
     @pytest.fixture
     def schema_cache_entry(self, schema_in_json):
