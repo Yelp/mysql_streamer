@@ -7,9 +7,11 @@ from yelp_conn.session import sessionmaker
 from yelp_lib import dates
 
 
+CLUSTER_NAME = 'docker_testing_cluster'
+
 # The common declarative base used by every data model.
 Base = declarative_base()
-Base.__cluster__ = 'docker_testing_cluster'
+Base.__cluster__ = CLUSTER_NAME
 
 # The single global session manager used to provide sessions through yelp_conn.
 session = scoped_session(sessionmaker())
