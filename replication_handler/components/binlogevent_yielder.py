@@ -1,5 +1,4 @@
 from pymysqlreplication import BinLogStreamReader
-from pymysqlreplication.event import RotateEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 from replication_handler import config
