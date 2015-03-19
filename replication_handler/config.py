@@ -41,25 +41,20 @@ class EnvConfig(BaseConfig):
         return staticconf.get('module_config')[0]
 
     @property
-    def cluster(self):
-        return self.module_env_config.get('config').get('cluster')
+    def rbr_source_cluster(self):
+        return self.module_env_config.get('config').get('rbr_source_cluster')
 
     @property
-    def source_replica(self):
-        return self.module_env_config.get('config').get('source_replica')
-
-    @property
-    def schema_tracking_replica(self):
-        return self.module_env_config.get('config').get('schema_tracking_replica')
+    def schema_tracker_cluster(self):
+        return self.module_env_config.get('config').get('schema_tracker_cluster')
 
 
 class DatabaseConfig(BaseConfig):
     """Used for reading database config out of topology.yaml in the environment"""
 
-    def __init__(self, cluster_name, replica_name):
+    def __init__(self, cluster_name):
         super(DatabaseConfig, self).__init__('topology.yaml')
         self.cluster_name = cluster_name
-        self.replica_name = replica_name
 
     @property
     def cluster_config(self):
@@ -69,8 +64,7 @@ class DatabaseConfig(BaseConfig):
 
         self.config_facade_holder.reload_if_changed()
         for topo_item in staticconf.get('topology'):
-            if topo_item.get('cluster') == self.cluster_name and \
-                topo_item.get('replica') == self.replica_name:
+            if topo_item.get('cluster') == self.cluster_name:
                 return topo_item
 
     @property
@@ -78,13 +72,11 @@ class DatabaseConfig(BaseConfig):
         return self.cluster_config['entries']
 
 
-_env_config = EnvConfig(CONFIG_FILE)
-
-module_config = _env_config.module_env_config
+env_config = EnvConfig(CONFIG_FILE)
 
 source_database_config = DatabaseConfig(
-    _env_config.cluster, _env_config.source_replica
+    env_config.rbr_source_cluster
 )
 schema_tracking_database_config = DatabaseConfig(
-    _env_config.cluster, _env_config.schema_tracking_replica
+    env_config.schema_tracker_cluster
 )

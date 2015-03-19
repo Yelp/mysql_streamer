@@ -1,6 +1,6 @@
 topology:
--   cluster: docker_testing_cluster
-    replica: replication_handler_source
+-   cluster: rbr_main
+    replica: slave
     entries:
         - charset: utf8
           use_unicode: true
@@ -9,8 +9,8 @@ topology:
           port: 8001
           user: yelpdev
           passwd: ""
--   cluster: docker_testing_cluster
-    replica: replication_handler_schema_tracker
+-   cluster: schema_tracker
+    replica: master
     entries:
         - charset: utf8
           use_unicode: true
