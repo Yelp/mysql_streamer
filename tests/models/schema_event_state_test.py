@@ -33,8 +33,7 @@ class TestSchemaEventState(object):
         return "business"
 
     def test_example(self, gtid, status, query, create_table_statement, table_name):
-        with sandbox.database_sandbox_master_connection_set(
-            ) as sandbox_session:
+        with sandbox.database_sandbox_master_connection_set() as sandbox_session:
             schema_event_state = SchemaEventState(
                 gtid=gtid,
                 status=status,

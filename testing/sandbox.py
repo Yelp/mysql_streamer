@@ -30,7 +30,6 @@ def database_sandbox_session():
 @contextlib.contextmanager
 def database_sandbox_master_connection_set():
     """Provide a context under a sandboxed master connection set.
-
     This also mocks the database module's session.
     """
     with database_sandbox_session() as scoped_session:
