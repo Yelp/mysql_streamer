@@ -1,7 +1,7 @@
 module_config:
     -  namespace: cluster_config
        config:
-           rbr_source_cluster: rbr_main
+           rbr_source_cluster: rbr_source
            schema_tracker_cluster: schema_tracker
 
     -   namespace: yelp_conn
