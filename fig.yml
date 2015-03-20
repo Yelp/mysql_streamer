@@ -11,7 +11,7 @@ dblocal:
 dbstate:
     build: devdbs/dbstate/
     ports:
-        - "127.0.0.1:8004:3306"
+        - "127.0.0.1:8003:3306"
 
 replicationhandlerconfigs:
     build: acceptance/configs/
