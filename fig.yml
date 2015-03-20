@@ -24,3 +24,5 @@ replicationhandlerservice:
         - dbmaster
         - dblocal
         - dbstate
+    volumes_from:
+        - replicationhandlerconfigs
