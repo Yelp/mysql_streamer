@@ -15,3 +15,7 @@ Setting up the docs on dev:
 cd docs/build/html
 python -m SimpleHTTPServer 8888
 visit http://<your dev machine>:8888/index.html, you will have mini docs server up, maybe useful.
+
+Why there is a directory devdbs/ instead of using standard dev database(s):
+When we started the development of replication handler, dbas have not upgrade the dbs to MySQL5.6,
+it seemed easier to just use Docker to setup some databases for development and testing.
