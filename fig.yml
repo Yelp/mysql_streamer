@@ -8,6 +8,11 @@ dblocal:
     ports:
         - "127.0.0.1:8002:3306"
 
+dbstate:
+    build: acceptance/dbstate/
+    ports:
+        - "127.0.0.1:8003:3306"
+
 replicationhandlerconfigs:
     build: acceptance/configs/
     volumes:

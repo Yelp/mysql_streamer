@@ -1,7 +1,9 @@
 connection_sets:
-    primary_ro:
+    rbr_source_ro:
         connection_configuration:
             read_only: true
         rbr_main: "slave"
-    primary_rw:
+    schema_tracker_rw:
         schema_tracker: "master"
+    replication_state_rw:
+        replication_state: "master"

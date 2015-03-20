@@ -19,3 +19,13 @@ topology:
           port: 8002
           user: yelpdev
           passwd: ""
+-   cluster: replication_state
+    replica: master
+    entries:
+        - charset: utf8
+          use_unicode: true
+          host: 127.0.0.1
+          db: yelp
+          port: 8003
+          user: yelpdev
+          passwd: ""
