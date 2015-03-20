@@ -1,17 +1,17 @@
 dbmaster:
-    build: acceptance/dbmaster/
+    build: devdbs/dbmaster/
     ports:
         - "127.0.0.1:8001:3306"
 
 dblocal:
-    build: acceptance/dblocal/
+    build: devdbs/dblocal/
     ports:
         - "127.0.0.1:8002:3306"
 
 dbstate:
-    build: acceptance/dbstate/
+    build: devdbs/dbstate/
     ports:
-        - "127.0.0.1:8003:3306"
+        - "127.0.0.1:8004:3306"
 
 replicationhandlerconfigs:
     build: acceptance/configs/
@@ -23,5 +23,4 @@ replicationhandlerservice:
     links:
         - dbmaster
         - dblocal
-    volumes_from:
-        - replicationhandlerconfigs
+        - dbstate
