@@ -10,7 +10,7 @@ from models import database
 
 SCHEMAS = glob('schema/tables/*.sql')
 
-DATABASE_NAME = "yelp"
+DATABASE_NAME = "replication_handler"
 
 
 @contextlib.contextmanager
