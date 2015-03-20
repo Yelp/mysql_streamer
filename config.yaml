@@ -1,9 +1,8 @@
 module_config:
     -  namespace: cluster_config
        config:
-           cluster: docker_testing_cluster
-           source_replica:  replication_handler_source
-           schema_tracking_replica: replication_handler_schema_tracker
+           rbr_source_cluster: rbr_main
+           schema_tracker_cluster: schema_tracker
 
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml

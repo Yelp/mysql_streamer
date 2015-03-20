@@ -2,6 +2,6 @@ connection_sets:
     primary_ro:
         connection_configuration:
             read_only: true
-        docker_testing_cluster: "replication_handler_source"
+        rbr_main: "slave"
     primary_rw:
-        docker_testing_cluster: "replication_handler_schema_tracker"
+        schema_tracker: "master"
