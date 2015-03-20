@@ -1,5 +1,5 @@
 topology:
--   cluster: rbr_main
+-   cluster: rbr_source
     replica: slave
     entries:
         - charset: utf8
@@ -19,7 +19,7 @@ topology:
           port: 8002
           user: yelpdev
           passwd: ""
--   cluster: replication_state
+-   cluster: rbr_state
     replica: master
     entries:
         - charset: utf8

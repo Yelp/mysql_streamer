@@ -1,15 +1,15 @@
-dbmaster:
-    build: devdbs/dbmaster/
+rbrsource:
+    build: devdbs/rbr_source/
     ports:
         - "127.0.0.1:8001:3306"
 
-dblocal:
-    build: devdbs/dblocal/
+schematracker:
+    build: devdbs/schema_tracker/
     ports:
         - "127.0.0.1:8002:3306"
 
-dbstate:
-    build: devdbs/dbstate/
+rbrstate:
+    build: devdbs/rbr_state/
     ports:
         - "127.0.0.1:8003:3306"
 
@@ -21,8 +21,8 @@ replicationhandlerconfigs:
 replicationhandlerservice:
     build: .
     links:
-        - dbmaster
-        - dblocal
-        - dbstate
+        - rbrsource
+        - schematracker
+        - rbrstate
     volumes_from:
         - replicationhandlerconfigs
