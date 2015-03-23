@@ -48,6 +48,10 @@ class EnvConfig(BaseConfig):
     def schema_tracker_cluster(self):
         return self.module_env_config.get('config').get('schema_tracker_cluster')
 
+    @property
+    def rbr_state_cluster(self):
+        return self.module_env_config.get('config').get('rbr_state_cluster')
+
 
 class DatabaseConfig(BaseConfig):
     """Used for reading database config out of topology.yaml in the environment"""
