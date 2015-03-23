@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+  <changeSet author="cheng" id="1427152800">
+    <createTable tableName="data_event_checkpoint">
+      <column autoIncrement="true" name="id" type="INT(11)">
+        <constraints primaryKey="true"/>
+      </column>
+      <column name="gtid" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true"/>
+      </column>
+      <column name="offset" type="INT(11)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="payload_size" type="INT(11)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="time_created" type="INT(11)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="time_updated" type="INT(11)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <modifySql dbms="mysql">
+      <append value=" ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci"/>
+    </modifySql>
+  </changeSet>
+</databaseChangeLog>
