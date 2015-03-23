@@ -1,9 +1,12 @@
+# -*- coding: utf-8 -*-
 import logging
 
-from replication_handler.util import connections
+from yelp_conn.connection_set import ConnectionSet
+
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
+from replication_handler.config import source_database_config
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -15,17 +18,16 @@ class SchemaEventHandler(BaseEventHandler):
     def __init__(self):
         """Store credentials for local tracking database"""
         super(SchemaEventHandler, self).__init__()
-        self._conn = None
 
     @property
     def schema_tracking_db_conn(self):
-        # TODO (ryani|DATAPIPE-75) Improve handling of connection to schema_tracking db
-        if self._conn is None or not self._conn.open:
-            self._conn = connections.get_schema_tracking_db_conn()
-        return self._conn
+        return ConnectionSet.schema_tracker_rw().schema_tracker
 
     def handle_event(self, event):
         """Handle queries related to schema change, schema registration."""
+        # Filter out changes not in this db
+        if event.schema != source_database_config.entries[0]['db']:
+            return
         handle_method = None
 
         query = self._reformat_query(event.query)
@@ -65,14 +67,8 @@ class SchemaEventHandler(BaseEventHandler):
         """ Execute query that is not relevant to replication handler schema.
             Some queries are comments, or just BEGIN
         """
-        # Make sure schema tracker is using the same database as event
-        self.schema_tracking_db_conn.select_db(event.schema)
-        try:
-            cursor = self.schema_tracking_db_conn.cursor()
-            cursor.execute(event.query)
-            self.schema_tracking_db_conn.commit()
-        except Exception as e:
-            self._rollback_with_exception(e)
+        cursor = self.schema_tracking_db_conn.cursor()
+        cursor.execute(event.query)
 
     def _transaction_handle_event(self, event, table, handle_method):
         """Creates transaction, calls a handle_method to do logic inside the
@@ -80,22 +76,8 @@ class SchemaEventHandler(BaseEventHandler):
            back otherwise.
         """
         # TODO (ryani|DATAPIPE-74) see if sqlalchemy makes this easier for us
-        # Make sure schema tracker is using the same database as event
-        self.schema_tracking_db_conn.select_db(event.schema)
-        try:
-            cursor = self.schema_tracking_db_conn.cursor()
-            handle_method(cursor, event, table)
-            self.schema_tracking_db_conn.commit()
-        except Exception as e:
-            self._rollback_with_exception(e)
-
-    def _rollback_with_exception(self, e):
-        self.schema_tracking_db_conn.rollback()
-        except_str = 'Schema Tracking DB got error {!r}, errno is {}.'.format(
-            e, e.args[0]
-        )
-        log.exception(except_str)
-        raise Exception(except_str)
+        cursor = self.schema_tracking_db_conn.cursor()
+        handle_method(cursor, event, table)
 
     def _handle_create_table_event(self, cursor, event, table):
         """This method contains the core logic for handling a *create* event
