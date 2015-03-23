@@ -275,8 +275,8 @@ class TestSchemaEventHandler(object):
             external_patches.populate_schema_cache
         )
 
-    # TODO (ryani|DATAPIPE-83) Model for journaling used for recovery
-    # and adding testing of recovery mechanism here
+    # TODO (cheng|DATAPIPE-91) disabled this test because the rollback steps
+    # of DDL statements have not been implemented yet.
     @pytest.mark.skipif('True')
     def test_handle_event_with_exception_and_recovery(
         self,

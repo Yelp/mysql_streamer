@@ -75,7 +75,8 @@ class SchemaEventHandler(BaseEventHandler):
            transaction, and commits to db connection if success. It rolls
            back otherwise.
         """
-        # TODO (ryani|DATAPIPE-74) see if sqlalchemy makes this easier for us
+        # TODO (cheng|DATAPIPE-91) DDL statements are commited implicitly, and
+        # can't be rollback. so we need to implement journaling around.
         cursor = self.schema_tracking_db_conn.cursor()
         handle_method(cursor, event, table)
 
