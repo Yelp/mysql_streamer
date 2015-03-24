@@ -14,6 +14,9 @@
       <column name="payload_size" type="INT(11)">
         <constraints nullable="false"/>
       </column>
+      <column name="table_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
       <column name="time_created" type="INT(11)">
         <constraints nullable="false"/>
       </column>

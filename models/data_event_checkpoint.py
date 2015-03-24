@@ -16,4 +16,5 @@ class DataEventCheckpoint(Base):
     gtid = Column(String, nullable=False)
     offset = Column(Integer, nullable=False)
     payload_size = Column(Integer, nullable=False)
+    table_name = Column(String, nullable=False)
     time_created = Column(UnixTimeStampType, default=default_now)
