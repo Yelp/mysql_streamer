@@ -14,7 +14,6 @@ class DataEventCheckpoint(Base):
 
     id = Column(Integer, primary_key=True)
     gtid = Column(String, nullable=False)
-    offset = Column(Integer)
-    payload_size = Column(Integer)
+    offset = Column(Integer, nullable=False)
+    payload_size = Column(Integer, nullable=False)
     time_created = Column(UnixTimeStampType, default=default_now)
-    time_updated = Column(UnixTimeStampType, default=default_now, onupdate=default_now)
