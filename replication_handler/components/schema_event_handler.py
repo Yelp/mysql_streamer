@@ -29,6 +29,15 @@ class SchemaEventHandler(BaseEventHandler):
         """Handle queries related to schema change, schema registration."""
         # Filter out changes not in this db
         if event.schema != source_database_config.entries[0]['db']:
+            log.info(
+                "Skipping %s of gtid: %s, reason: schema mismatch. \
+                Current schema: %s, incoming event schema: %s " % (
+                    type(event),
+                    gtid,
+                    source_database_config.entries[0]['db'],
+                    event.schema
+                )
+            )
             return
         handle_method = None
 
