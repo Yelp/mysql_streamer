@@ -9,7 +9,7 @@ from yelp_lib import dates
 from replication_handler.config import env_config
 
 
-CLUSTER_NAME = env_config.schema_tracker_cluster
+CLUSTER_NAME = env_config.rbr_state_cluster
 
 # The common declarative base used by every data model.
 Base = declarative_base()

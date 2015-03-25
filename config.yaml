@@ -3,6 +3,7 @@ module_config:
        config:
            rbr_source_cluster: rbr_source
            schema_tracker_cluster: schema_tracker
+           rbr_state_cluster: rbr_state
 
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml
