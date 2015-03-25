@@ -21,7 +21,7 @@ def database_sandbox_session():
             cluster=database.CLUSTER_NAME,
             fixtures=SCHEMAS,
     ) as (scoped_session, conn_set):
-        with mock.patch.object(database, 'session', scoped_session):
+        with mock.patch.object(database, 'rbr_state_session', scoped_session):
             scoped_session.enforce_read_only = False
             yield scoped_session
 

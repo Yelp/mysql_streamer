@@ -1,4 +1,5 @@
 from pymysqlreplication import BinLogStreamReader
+from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 from replication_handler import config
@@ -24,7 +25,7 @@ class BinlogEventYielder(object):
             connection_settings=repl_mysql_config,
             server_id=1,
             blocking=True,
-            only_events=[QueryEvent, WriteRowsEvent]
+            only_events=[GtidEvent, QueryEvent, WriteRowsEvent]
         )
 
     def __iter__(self):

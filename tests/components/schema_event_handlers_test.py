@@ -46,7 +46,9 @@ SchemaHandlerExternalPatches = namedtuple(
         'get_show_create_statement',
         'register_create_table_with_schema_store',
         'register_alter_table_with_schema_store',
-        'populate_schema_cache'
+        'populate_schema_cache',
+        'create_journaling_record',
+        'update_journaling_record'
     )
 )
 
@@ -66,6 +68,10 @@ class TestSchemaEventHandler(object):
         return "fake_schema"
 
     @pytest.fixture
+    def test_gtid(self):
+        return "fake_gtid"
+
+    @pytest.fixture
     def create_table_schema_event(self, test_schema, test_table):
         query = "CREATE TABLE `{0}` (`a_number` int)".format(test_table)
         return QueryEvent(schema=test_schema, query=query)
@@ -73,6 +79,11 @@ class TestSchemaEventHandler(object):
     @pytest.fixture
     def alter_table_schema_event(self, test_schema, test_table):
         query = "ALTER TABLE `{0}` ADD (`another_number` int)".format(test_table)
+        return QueryEvent(schema=test_schema, query=query)
+
+    @pytest.fixture
+    def bad_query_event(self, test_schema):
+        query = "CREATE TABLEthisisabadquery"
         return QueryEvent(schema=test_schema, query=query)
 
     @pytest.fixture
@@ -205,6 +216,20 @@ class TestSchemaEventHandler(object):
         ) as mock_populate_schema_cache:
             yield mock_populate_schema_cache
 
+    @pytest.yield_fixture
+    def patch_create_journaling_record(self, schema_event_handler):
+        with mock.patch.object(
+            schema_event_handler, '_create_journaling_record'
+        ) as mock_create_journaling_record:
+            yield mock_create_journaling_record
+
+    @pytest.yield_fixture
+    def patch_update_journaling_record(self, schema_event_handler):
+        with mock.patch.object(
+            schema_event_handler, '_update_journaling_record'
+        ) as mock_update_journaling_record:
+            yield mock_update_journaling_record
+
     @pytest.fixture
     def external_patches(
         self,
@@ -213,7 +238,9 @@ class TestSchemaEventHandler(object):
         patch_get_show_create_statement,
         patch_register_create_table,
         patch_register_alter_table,
-        patch_populate_schema_cache
+        patch_populate_schema_cache,
+        patch_create_journaling_record,
+        patch_update_journaling_record,
     ):
         return SchemaHandlerExternalPatches(
             schema_tracking_db_conn=patch_db_conn,
@@ -221,11 +248,14 @@ class TestSchemaEventHandler(object):
             get_show_create_statement=patch_get_show_create_statement,
             register_create_table_with_schema_store=patch_register_create_table,
             register_alter_table_with_schema_store=patch_register_alter_table,
-            populate_schema_cache=patch_populate_schema_cache
+            populate_schema_cache=patch_populate_schema_cache,
+            create_journaling_record=patch_create_journaling_record,
+            update_journaling_record=patch_update_journaling_record
         )
 
     def test_handle_event_create_table(
         self,
+        test_gtid,
         schema_event_handler,
         create_table_schema_event,
         show_create_result_initial,
@@ -237,18 +267,21 @@ class TestSchemaEventHandler(object):
            create table event hence many mocks
         """
         external_patches.get_show_create_statement.return_value = show_create_result_initial
-        schema_event_handler.handle_event(create_table_schema_event)
+        schema_event_handler.handle_event(create_table_schema_event, test_gtid)
 
         self.check_external_calls(
             create_table_schema_event,
             connection,
             table_with_schema_changes,
             external_patches.register_create_table_with_schema_store(),
-            external_patches.populate_schema_cache
+            external_patches.populate_schema_cache,
+            external_patches.create_journaling_record,
+            external_patches.update_journaling_record
         )
 
     def test_handle_event_alter_table(
         self,
+        test_gtid,
         schema_event_handler,
         alter_table_schema_event,
         show_create_result_initial,
@@ -266,14 +299,40 @@ class TestSchemaEventHandler(object):
             show_create_result_after_alter
         ]
 
-        schema_event_handler.handle_event(alter_table_schema_event)
+        schema_event_handler.handle_event(alter_table_schema_event, test_gtid)
         self.check_external_calls(
             alter_table_schema_event,
             connection,
             table_with_schema_changes,
             external_patches.register_alter_table_with_schema_store(),
-            external_patches.populate_schema_cache
+            external_patches.populate_schema_cache,
+            external_patches.create_journaling_record,
+            external_patches.update_journaling_record
         )
+
+    def test_filter_out_wrong_schema(
+        self,
+        test_gtid,
+        schema_event_handler,
+        create_table_schema_event,
+        connection,
+        external_patches,
+    ):
+        external_patches.database_config.return_value = [{'db': 'different_schema'}]
+        schema_event_handler.handle_event(create_table_schema_event, test_gtid)
+        assert external_patches.populate_schema_cache.call_count == 0
+        assert external_patches.create_journaling_record.call_count == 0
+        assert external_patches.update_journaling_record.call_count == 0
+
+    def test_bad_query(
+        self,
+        test_gtid,
+        schema_event_handler,
+        bad_query_event,
+        external_patches
+    ):
+        with pytest.raises(Exception):
+            schema_event_handler.handle_event(bad_query_event, test_gtid)
 
     # TODO (cheng|DATAPIPE-91) disabled this test because the rollback steps
     # of DDL statements have not been implemented yet.
@@ -299,7 +358,9 @@ class TestSchemaEventHandler(object):
         connection,
         table,
         schema_store_response,
-        patch_populate_schema_cache
+        patch_populate_schema_cache,
+        patch_create_journaling_record,
+        patch_update_journaling_record
     ):
         """Test helper method that checks various things in a successful scenario
            of event handling
@@ -311,3 +372,5 @@ class TestSchemaEventHandler(object):
 
         assert patch_populate_schema_cache.call_args_list == \
             [mock.call(table, schema_store_response)]
+        assert patch_create_journaling_record.call_count == 1
+        assert patch_update_journaling_record.call_count == 1

@@ -3,6 +3,8 @@ import logging
 
 from yelp_conn.connection_set import ConnectionSet
 
+from models.database import rbr_state_session
+from models.schema_event_state import SchemaEventState
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
@@ -23,7 +25,7 @@ class SchemaEventHandler(BaseEventHandler):
     def schema_tracking_db_conn(self):
         return ConnectionSet.schema_tracker_rw().schema_tracker
 
-    def handle_event(self, event):
+    def handle_event(self, event, gtid):
         """Handle queries related to schema change, schema registration."""
         # Filter out changes not in this db
         if event.schema != source_database_config.entries[0]['db']:
@@ -38,9 +40,32 @@ class SchemaEventHandler(BaseEventHandler):
 
         if handle_method is not None:
             query, table = self._parse_query(event)
+            self._create_journaling_record(table, event, gtid)
             self._transaction_handle_event(event, table, handle_method)
+            self._update_journaling_record(gtid)
         else:
             self._execute_non_schema_store_relevant_query(event)
+
+    def _create_journaling_record(self, table, event, gtid):
+        with rbr_state_session.connect_begin(ro=False) as session:
+            create_table_statement = self._get_show_create_statement(
+                ConnectionSet.rbr_source_ro().rbr_source.cursor(),
+                table.table_name
+            )
+            schema_event_state = SchemaEventState(
+                gtid=gtid,
+                status='Pending',
+                query=event.query,
+                table_name=table.table_name,
+                create_table_statement=create_table_statement.query,
+            )
+            session.add(schema_event_state)
+
+    def _update_journaling_record(self, gtid):
+        with rbr_state_session.connect_begin(ro=False) as session:
+            schema_event_state = session.query(SchemaEventState).filter(SchemaEventState.gtid == gtid).one()
+            schema_event_state.status = 'Completed'
+            session.add(schema_event_state)
 
     def _reformat_query(self, raw_query):
         return ' '.join(raw_query.lower().split())

@@ -15,8 +15,12 @@ CLUSTER_NAME = env_config.rbr_state_cluster
 Base = declarative_base()
 Base.__cluster__ = CLUSTER_NAME
 
-# The single global session manager used to provide sessions through yelp_conn.
-session = scoped_session(sessionmaker())
+schema_tracker_session = scoped_session(
+    sessionmaker(master_connection_set_name="schema_tracker_rw")
+)
+rbr_state_session = scoped_session(
+    sessionmaker(master_connection_set_name="rbr_state_rw")
+)
 
 
 class UnixTimeStampType(types.TypeDecorator):

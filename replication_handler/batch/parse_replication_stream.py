@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
-from pymysqlreplication.row_event import WriteRowsEvent
+from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
+from pymysqlreplication.row_event import WriteRowsEvent
 
 from yelp_batch import Batch
 from replication_handler.components.data_event_handler import DataEventHandler
@@ -31,9 +32,13 @@ class ParseReplicationStream(Batch):
         handler_map[WriteRowsEvent] = data_event_handler
         handler_map[QueryEvent] = schema_event_handler
 
-        # infinite loop
+        # GtidEvent always appear before QueryEvent or WriteRowsEvent
+        current_gtid = None
         for event in binlog_event_yielder:
-            handler_map[event.__class__].handle_event(event)
+            if type(event) is GtidEvent:
+                current_gtid = event.gtid
+            else:
+                handler_map[event.__class__].handle_event(event, current_gtid)
 
 
 if __name__ == '__main__':
