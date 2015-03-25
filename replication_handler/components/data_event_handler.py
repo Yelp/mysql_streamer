@@ -20,9 +20,11 @@ class DataEventHandler(BaseEventHandler):
         """
         super(DataEventHandler, self).__init__()
 
-    def handle_event(self, event):
+    def handle_event(self, event, gtid):
         """Make sure that the schema cache has the table, serialize the data,
            publish to Kafka.
+           TODO(cheng|DATAPIPE-98): gtid will be used in the logic for journaling
+           of data events
         """
         schema_cache_entry = self._get_payload_schema(
             Table(schema=event.schema, table_name=event.table)

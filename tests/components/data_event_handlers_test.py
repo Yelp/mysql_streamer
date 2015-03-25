@@ -118,6 +118,10 @@ class TestDataEventHandler(object):
         return bytes_writer.getvalue()
 
     @pytest.fixture
+    def test_gtid(self):
+        return "fake_gtid"
+
+    @pytest.fixture
     def data_event_handler(self):
         return DataEventHandler()
 
@@ -200,6 +204,7 @@ class TestDataEventHandler(object):
 
     def test_handle_event_to_publish_call(
         self,
+        test_gtid,
         data_event_handler,
         add_data_event,
         schema_cache_entry,
@@ -207,7 +212,7 @@ class TestDataEventHandler(object):
         patch_publish_to_kafka
     ):
 
-        data_event_handler.handle_event(add_data_event)
+        data_event_handler.handle_event(add_data_event, test_gtid)
         expected_publish_to_kafka_calls = [
             (
                 schema_cache_entry.kafka_topic,
