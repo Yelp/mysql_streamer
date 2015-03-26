@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import avro.io
 import avro.schema
 from collections import namedtuple

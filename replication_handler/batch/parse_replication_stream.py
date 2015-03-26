@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
-from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import RowsEvent
 
@@ -32,13 +31,11 @@ class ParseReplicationStream(Batch):
         handler_map[RowsEvent] = data_event_handler
         handler_map[QueryEvent] = schema_event_handler
 
-        # GtidEvent always appear before QueryEvent or WriteRowsEvent
-        current_gtid = None
-        for event in binlog_event_yielder:
-            if isinstance(event, GtidEvent):
-                current_gtid = event.gtid
-            else:
-                handler_map[event.__class__].handle_event(event, current_gtid)
+        for event_with_gtid in binlog_event_yielder:
+            handler_map[event_with_gtid.event.__class__].handle_event(
+                event_with_gtid.event,
+                event_with_gtid.gtid_event.gtid
+            )
 
 
 if __name__ == '__main__':

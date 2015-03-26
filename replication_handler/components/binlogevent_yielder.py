@@ -1,8 +1,17 @@
+# -*- coding: utf-8 -*-
+from collections import namedtuple
+
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 from replication_handler import config
+
+
+EventWithGtid = namedtuple(
+    'EventWithGtid',
+    ('event', 'gtid_event')
+)
 
 
 class BinlogEventYielder(object):
@@ -32,4 +41,10 @@ class BinlogEventYielder(object):
         return self
 
     def next(self):
-        return self.stream.fetchone()
+        # GtidEvent always appear before QueryEvent or WriteRowsEvent
+        gtid_event = self.stream.fetchone()
+        event = self.stream.fetchone()
+        return EventWithGtid(
+            gtid_event=gtid_event,
+            event=event
+        )

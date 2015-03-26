@@ -8,6 +8,7 @@ from pymysqlreplication.row_event import RowsEvent
 
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.binlogevent_yielder import BinlogEventYielder
+from replication_handler.components.binlogevent_yielder import EventWithGtid
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 
@@ -46,11 +47,17 @@ class TestParseReplicationStream(object):
             BinlogEventYielder,
             'next'
         ) as mock_yielder_next:
+            schema_event_with_gtid = EventWithGtid(
+                gtid_event=schema_change_gtid_event,
+                event=schema_event
+            )
+            data_event_with_gtid = EventWithGtid(
+                gtid_event=data_change_gtid_event,
+                event=data_event
+            )
             mock_yielder_next.side_effect = [
-                schema_change_gtid_event,
-                schema_event,
-                data_change_gtid_event,
-                data_event,
+                schema_event_with_gtid,
+                data_event_with_gtid
             ]
             yield mock_yielder_next
 
