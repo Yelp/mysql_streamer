@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import mock
-from pymysqlreplication.event import GtidEvent as PyGtEvent
 
 
 class GtidEvent(object):
