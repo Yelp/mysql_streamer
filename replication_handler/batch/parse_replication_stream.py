@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
 from pymysqlreplication.event import QueryEvent
-from pymysqlreplication.row_event import RowsEvent
+from pymysqlreplication.row_event import UpdateRowsEvent
+from pymysqlreplication.row_event import WriteRowsEvent
 
 from yelp_batch import Batch
 from replication_handler.components.data_event_handler import DataEventHandler
@@ -28,7 +29,8 @@ class ParseReplicationStream(Batch):
         binlog_event_yielder = BinlogEventYielder()
 
         handler_map = defaultdict()
-        handler_map[RowsEvent] = data_event_handler
+        handler_map[WriteRowsEvent] = data_event_handler
+        handler_map[UpdateRowsEvent] = data_event_handler
         handler_map[QueryEvent] = schema_event_handler
 
         for replication_handler_event in binlog_event_yielder:

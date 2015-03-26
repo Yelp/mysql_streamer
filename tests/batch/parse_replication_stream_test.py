@@ -3,7 +3,7 @@ import mock
 import pytest
 
 from pymysqlreplication.event import QueryEvent
-from pymysqlreplication.row_event import RowsEvent
+from pymysqlreplication.row_event import WriteRowsEvent
 
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.binlogevent_yielder import BinlogEventYielder
@@ -20,7 +20,7 @@ class TestParseReplicationStream(object):
 
     @pytest.fixture
     def data_event(self):
-        return mock.Mock(spec=RowsEvent)
+        return mock.Mock(spec=WriteRowsEvent)
 
     @pytest.yield_fixture
     def patch_binlog_yielder(
