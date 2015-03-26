@@ -309,7 +309,6 @@ class TestSchemaEventHandler(object):
         test_gtid,
         schema_event_handler,
         create_table_schema_event,
-        connection,
         external_patches,
     ):
         external_patches.database_config.return_value = [{'db': 'different_schema'}]
@@ -327,6 +326,19 @@ class TestSchemaEventHandler(object):
     ):
         with pytest.raises(Exception):
             schema_event_handler.handle_event(bad_query_event, test_gtid)
+
+    def test_incomplete_transaction(
+        self,
+        test_gtid,
+        schema_event_handler,
+        create_table_schema_event,
+        external_patches,
+    ):
+        external_patches.get_show_create_statement.side_effect = Exception
+        with pytest.raises(Exception):
+            schema_event_handler.handle_event(create_table_schema_event, test_gtid)
+        assert external_patches.create_journaling_record.call_count == 1
+        assert external_patches.update_journaling_record.call_count == 0
 
     # TODO (cheng|DATAPIPE-91) disabled this test because the rollback steps
     # of DDL statements have not been implemented yet.
