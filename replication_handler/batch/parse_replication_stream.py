@@ -31,10 +31,10 @@ class ParseReplicationStream(Batch):
         handler_map[RowsEvent] = data_event_handler
         handler_map[QueryEvent] = schema_event_handler
 
-        for event_with_gtid in binlog_event_yielder:
-            handler_map[event_with_gtid.event.__class__].handle_event(
-                event_with_gtid.event,
-                event_with_gtid.gtid_event.gtid
+        for replication_handler_event in binlog_event_yielder:
+            handler_map[replication_handler_event.event.__class__].handle_event(
+                replication_handler_event.event,
+                replication_handler_event.gtid
             )
 
 

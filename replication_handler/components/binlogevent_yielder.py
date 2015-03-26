@@ -8,9 +8,9 @@ from pymysqlreplication.row_event import WriteRowsEvent
 from replication_handler import config
 
 
-EventWithGtid = namedtuple(
-    'EventWithGtid',
-    ('event', 'gtid_event')
+ReplicationHandlerEvent = namedtuple(
+    'ReplicationHandlerEvent',
+    ('event', 'gtid')
 )
 
 
@@ -44,7 +44,7 @@ class BinlogEventYielder(object):
         # GtidEvent always appear before QueryEvent or WriteRowsEvent
         gtid_event = self.stream.fetchone()
         event = self.stream.fetchone()
-        return EventWithGtid(
-            gtid_event=gtid_event,
+        return ReplicationHandlerEvent(
+            gtid=gtid_event.gtid,
             event=event
         )

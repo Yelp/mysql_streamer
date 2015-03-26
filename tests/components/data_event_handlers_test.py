@@ -27,7 +27,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def test_gtid(self):
-        return "fake_gtid"
+        return "93fd11e6-cf7c-11e4-912d-0242a9fe01db:12"
 
     @pytest.fixture
     def data_event_handler(self):

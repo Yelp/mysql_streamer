@@ -2,30 +2,17 @@
 import mock
 import pytest
 
-from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import RowsEvent
 
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.binlogevent_yielder import BinlogEventYielder
-from replication_handler.components.binlogevent_yielder import EventWithGtid
+from replication_handler.components.binlogevent_yielder import ReplicationHandlerEvent
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 
 
 class TestParseReplicationStream(object):
-
-    @pytest.fixture
-    def schema_change_gtid_event(self):
-        gtid_event = mock.Mock(spec=GtidEvent)
-        gtid_event.gtid = "fake_gtid_1"
-        return gtid_event
-
-    @pytest.fixture
-    def data_change_gtid_event(self):
-        gtid_event = mock.Mock(spec=GtidEvent)
-        gtid_event.gtid = "fake_gtid_2"
-        return gtid_event
 
     @pytest.fixture
     def schema_event(self):
@@ -38,21 +25,19 @@ class TestParseReplicationStream(object):
     @pytest.yield_fixture
     def patch_binlog_yielder(
         self,
-        schema_change_gtid_event,
         schema_event,
-        data_change_gtid_event,
         data_event,
     ):
         with mock.patch.object(
             BinlogEventYielder,
             'next'
         ) as mock_yielder_next:
-            schema_event_with_gtid = EventWithGtid(
-                gtid_event=schema_change_gtid_event,
+            schema_event_with_gtid = ReplicationHandlerEvent(
+                gtid="fake_gtid_1",
                 event=schema_event
             )
-            data_event_with_gtid = EventWithGtid(
-                gtid_event=data_change_gtid_event,
+            data_event_with_gtid = ReplicationHandlerEvent(
+                gtid="fake_gtid_2",
                 event=data_event
             )
             mock_yielder_next.side_effect = [

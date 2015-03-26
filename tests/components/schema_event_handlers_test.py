@@ -63,7 +63,7 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture
     def test_gtid(self):
-        return "fake_gtid"
+        return "3E11FA47-71CA-11E1-9E33-C80AA9429562:23"
 
     @pytest.fixture
     def create_table_schema_event(self, test_schema, test_table):
