@@ -80,5 +80,9 @@ class TestParseReplicationStream(object):
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.run()
-        patch_schema_handle_event.call_args_list = [schema_event, 'fake_gtid_1']
-        patch_data_handle_event.call_args_list = [data_event, 'fake_gtid_2']
+        assert patch_schema_handle_event.call_args_list == \
+            [mock.call(schema_event, 'fake_gtid_1')]
+        assert patch_data_handle_event.call_args_list == \
+            [mock.call(data_event, 'fake_gtid_2')]
+        assert patch_schema_handle_event.call_count == 1
+        assert patch_data_handle_event.call_count == 1
