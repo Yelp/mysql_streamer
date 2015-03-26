@@ -9,6 +9,7 @@ from replication_handler.components.schema_event_handler import SchemaEventHandl
 from replication_handler.components.base_event_handler import SchemaStoreRegisterResponse
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
+from testing.events import QueryEvent
 
 
 class Connection(object):
@@ -30,13 +31,6 @@ class Connection(object):
 
     def close(self):
         self.open = False
-
-
-class QueryEvent(object):
-    """ Mock query event is a mysql/pymysqlreplication term """
-    def __init__(self, schema, query):
-        self.schema = schema
-        self.query = query
 
 
 SchemaHandlerExternalPatches = namedtuple(
