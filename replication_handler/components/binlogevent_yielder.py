@@ -4,8 +4,11 @@ from collections import namedtuple
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
+from pymysqlreplication.row_event import UpdateRowsEvent
 from pymysqlreplication.row_event import WriteRowsEvent
+
 from replication_handler import config
+from replication_handler.components.auto_position_gtid_finder import AutoPositionGtidFinder
 
 
 ReplicationHandlerEvent = namedtuple(
@@ -30,20 +33,27 @@ class BinlogEventYielder(object):
             'passwd': source_config['passwd']
         }
 
+        gtid = AutoPositionGtidFinder().get_gtid()
+
         self.stream = BinLogStreamReader(
             connection_settings=repl_mysql_config,
             server_id=1,
             blocking=True,
-            only_events=[GtidEvent, QueryEvent, WriteRowsEvent]
+            only_events=[GtidEvent, QueryEvent, WriteRowsEvent, UpdateRowsEvent],
+            auto_position=gtid
         )
 
     def __iter__(self):
         return self
 
     def next(self):
-        # GtidEvent always appear before QueryEvent or WriteRowsEvent
+        # It seems GtidEvent always appear before QueryEvent or RowsEvent.
+        # Note that for RowsEvent, it will have one QueryEvent with query
+        # "BEGIN" before the actual event to signal trasaction has begun.
         gtid_event = self.stream.fetchone()
         event = self.stream.fetchone()
+        if event.query == "BEGIN":
+            event = self.stream.fetchone()
         return ReplicationHandlerEvent(
             gtid=gtid_event.gtid,
             event=event
