@@ -73,8 +73,7 @@ class TestAutoPositionGtidFinder(object):
         gtid = finder.get_gtid()
         assert gtid == "sid:1-13"
         assert mock_cursor.execute.call_count == 2
-        assert mock_session.delete.call_count == 1
-        assert mock_session.query.call_count == 2
+        assert mock_session.query.call_count == 3
         assert mock_cursor.execute.call_args_list == [
             mock.call("DROP TABLE `Business`"),
             mock.call("CREATE TABLE STATEMENT")

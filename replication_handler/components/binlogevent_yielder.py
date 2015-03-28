@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
+import logging
 
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
+from pymysqlreplication.row_event import RowsEvent
 from pymysqlreplication.row_event import UpdateRowsEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 
 from replication_handler import config
 from replication_handler.components.auto_position_gtid_finder import AutoPositionGtidFinder
 
+
+log = logging.getLogger('replication_handler.components.binlogevent_yielder')
 
 ReplicationHandlerEvent = namedtuple(
     'ReplicationHandlerEvent',
@@ -33,15 +37,15 @@ class BinlogEventYielder(object):
             'passwd': source_config['passwd']
         }
 
-        gtid = AutoPositionGtidFinder().get_gtid()
-
         self.stream = BinLogStreamReader(
             connection_settings=repl_mysql_config,
             server_id=1,
             blocking=True,
             only_events=[GtidEvent, QueryEvent, WriteRowsEvent, UpdateRowsEvent],
-            auto_position=gtid
+            auto_position=AutoPositionGtidFinder().get_gtid()
         )
+
+        self.current_gtid = None
 
     def __iter__(self):
         return self
@@ -50,11 +54,25 @@ class BinlogEventYielder(object):
         # It seems GtidEvent always appear before QueryEvent or RowsEvent.
         # Note that for RowsEvent, it will have one QueryEvent with query
         # "BEGIN" before the actual event to signal trasaction has begun.
-        gtid_event = self.stream.fetchone()
+        # have to use isinstance
         event = self.stream.fetchone()
-        if event.query == "BEGIN":
-            event = self.stream.fetchone()
-        return ReplicationHandlerEvent(
-            gtid=gtid_event.gtid,
-            event=event
-        )
+        if isinstance(event, GtidEvent):
+            self.current_gtid = event.gtid
+            return self.next()
+        elif isinstance(event, QueryEvent):
+            if event.query == "BEGIN":
+                return self.next()
+            else:
+                return ReplicationHandlerEvent(
+                    gtid=self.current_gtid,
+                    event=event
+                )
+        elif isinstance(event, RowsEvent):
+            return ReplicationHandlerEvent(
+                gtid=self.current_gtid,
+                event=event
+            )
+        else:
+            log.error("Encountered ignored event, event_type: {0}".format(
+                event.event_type
+            ))

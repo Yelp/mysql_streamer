@@ -43,12 +43,14 @@ class AutoPositionGtidFinder(object):
                 event_state.create_table_statement,
             )
             with rbr_state_session.connect_begin(ro=False) as session:
-                session.delete(event_state)
+                session.query(SchemaEventState).filter(
+                    SchemaEventState.id == event_state.id
+                ).delete()
             return self._get_last_completed_gtid()
         else:
-            log.error("schema_event_state has bad state, id: {0}").format(
+            log.error("schema_event_state has bad state, id: {0}".format(
                 event_state.id
-            )
+            ))
 
     def _get_latest_schema_event_state(self):
         with rbr_state_session.connect_begin(ro=True) as session:
