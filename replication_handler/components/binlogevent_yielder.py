@@ -51,10 +51,10 @@ class BinlogEventYielder(object):
         return self
 
     def next(self):
-        # It seems GtidEvent always appear before QueryEvent or RowsEvent.
-        # Note that for RowsEvent, it will have one QueryEvent with query
-        # "BEGIN" before the actual event to signal trasaction has begun.
-        # have to use isinstance
+        # RowsEvent can appear consecutively, which means we cant make assumption
+        # about the incoming event type, isinstance is used here for clearity, but
+        # to avoid this review becoming a scope creep, we will see what kind of improvments
+        # are needed after the perfomance analysis(DATAPIPE-96).
         event = self.stream.fetchone()
         if isinstance(event, GtidEvent):
             self.current_gtid = event.gtid
