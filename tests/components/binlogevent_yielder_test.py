@@ -24,15 +24,15 @@ class TestBinlogEventYielder(object):
             yield mock_fetchone
 
     @pytest.yield_fixture
-    def patch_get_gtid(self):
+    def patch_get_committed_gtid_set(self):
         with mock.patch.object(
             AutoPositionGtidFinder,
-            'get_gtid',
-        ) as mock_get_gtid:
-            mock_get_gtid.return_value = None
-            yield mock_get_gtid
+            'get_committed_gtid_set',
+        ) as mock_get_committed_gtid_set:
+            mock_get_committed_gtid_set.return_value = None
+            yield mock_get_committed_gtid_set
 
-    def test_schema_event_next(self, patch_fetchone, patch_get_gtid):
+    def test_schema_event_next(self, patch_fetchone, patch_get_committed_gtid_set):
         gtid_event = mock.Mock(spec=GtidEvent)
         schema_event = mock.Mock(spec=QueryEvent)
         schema_event.query = "ALTER TABLE STATEMENT"
@@ -49,7 +49,7 @@ class TestBinlogEventYielder(object):
         assert result == replication_handler_event
         assert patch_fetchone.call_count == 2
 
-    def test_data_event_next(self, patch_fetchone, patch_get_gtid):
+    def test_data_event_next(self, patch_fetchone, patch_get_committed_gtid_set):
         gtid_event = mock.Mock(spec=GtidEvent)
         query_event = mock.Mock(spec=QueryEvent)
         query_event.query = "BEGIN"
@@ -76,7 +76,7 @@ class TestBinlogEventYielder(object):
         assert result_2 == replication_handler_event_2
         assert patch_fetchone.call_count == 4
 
-    def test_ignored_event_type(self, patch_fetchone, patch_get_gtid):
+    def test_ignored_event_type(self, patch_fetchone, patch_get_committed_gtid_set):
         ignored_event = mock.Mock()
         patch_fetchone.return_value = ignored_event
         with pytest.raises(IgnoredEventException):

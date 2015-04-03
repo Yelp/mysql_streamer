@@ -82,7 +82,7 @@ class TestAutoPositionGtidFinder(object):
             mock_connection.return_value.schema_tracker.cursor.return_value = mock_cursor
             yield mock_connection
 
-    def test_get_gtid(
+    def test_get_committed_gtid_set(
         self,
         patch_get_latest_schema_event_state,
         pending_schema_event_state,
@@ -97,7 +97,7 @@ class TestAutoPositionGtidFinder(object):
             completed_schema_event_state,
         ]
         finder = AutoPositionGtidFinder()
-        gtid = finder.get_gtid()
+        gtid = finder.get_committed_gtid_set()
         assert gtid == "sid:1-13"
         assert mock_cursor.execute.call_count == 2
         assert patch_get_latest_schema_event_state.call_count == 2
@@ -113,7 +113,7 @@ class TestAutoPositionGtidFinder(object):
     ):
         patch_get_latest_schema_event_state.return_value = None
         finder = AutoPositionGtidFinder()
-        gtid = finder.get_gtid()
+        gtid = finder.get_committed_gtid_set()
         assert gtid is None
 
     def test_bad_schema_event_state(
@@ -125,4 +125,4 @@ class TestAutoPositionGtidFinder(object):
         patch_get_latest_schema_event_state.return_value = bad_state_schema_event
         with pytest.raises(BadSchemaEventStateException):
             finder = AutoPositionGtidFinder()
-            finder.get_gtid()
+            finder.get_committed_gtid_set()

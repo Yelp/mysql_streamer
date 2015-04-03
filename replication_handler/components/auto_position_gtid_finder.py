@@ -18,16 +18,17 @@ class BadSchemaEventStateException(Exception):
 
 class AutoPositionGtidFinder(object):
 
-    def get_gtid(self):
+    def get_committed_gtid_set(self):
+        '''The first component of the GTID is the source identifier, sid.
+        The next component identifies the transactions that have been committed, exclusive.
+        The transaction identifiers 1-100, would correspond to the interval [1,100),
+        indicating that the first 99 transactions have been committed.
+        Replication would resume at transaction 100.  Our systems save the last transaction
+        they successfully completed, so we add one to start from the next transaction.
+        '''
         gtid = self._get_last_completed_gtid()
         if gtid:
             sid, transaction_id = gtid.split(":")
-            # Now that we get the latest completed gtid, we need to tell
-            # master that we have already commited gtid from 1 to this point.
-            # And we want to next gtid. Only considering the schema event gtid
-            # now, will incorporate data event gtid after that's completed.
-            # TODO(cheng|DATAPIPE-105): add journaling and recovering logic for
-            # data events.
             return "{sid}:1-{next_transaction_id}".format(
                 sid=sid,
                 next_transaction_id=int(transaction_id) + 1

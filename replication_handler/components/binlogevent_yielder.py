@@ -52,7 +52,7 @@ class BinlogEventYielder(object):
             server_id=1,
             blocking=True,
             only_events=self.allowed_event_types,
-            auto_position=AutoPositionGtidFinder().get_gtid()
+            auto_position=AutoPositionGtidFinder().get_committed_gtid_set()
         )
 
         self.current_gtid = None
@@ -61,10 +61,12 @@ class BinlogEventYielder(object):
         return self
 
     def next(self):
-        # RowsEvent can appear consecutively, which means we cant make assumption
-        # about the incoming event type, isinstance is used here for clearity, but
-        # to avoid this review becoming a scope creep, we will see what kind of improvments
-        # are needed after the perfomance analysis(DATAPIPE-96).
+        '''RowsEvent can appear consecutively, which means we cant make assumption
+         about the incoming event type, isinstance is used here for clearity, also
+         our performance is good enough so that we don't have to worry about the little
+         slowness that isinstance introduced. see DATAPIPE-96 for detailed performance
+         analysis results.
+        '''
         event = self.stream.fetchone()
         if isinstance(event, GtidEvent):
             self.current_gtid = event.gtid
