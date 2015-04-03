@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
 import mock
-import pymysql
 import pytest
+
+from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
 from replication_handler.components.schema_event_handler import SchemaEventHandler
@@ -10,27 +11,6 @@ from replication_handler.components.base_event_handler import SchemaStoreRegiste
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
 from testing.events import QueryEvent
-
-
-class Connection(object):
-    """ Mock pymysql connection object used for seeing how the connection is used """
-    def __init__(self):
-        self.open = True
-        self.schema = None
-        self.commit = mock.Mock()
-        self.rollback = mock.Mock()
-
-    def cursor(self):
-        self.mock_cursor = mock.Mock()
-        self.mock_cursor.execute = mock.Mock()
-        return self.mock_cursor
-
-    def connect(self):
-        self.open = True
-        return self
-
-    def close(self):
-        self.open = False
 
 
 SchemaHandlerExternalPatches = namedtuple(
@@ -78,6 +58,11 @@ class TestSchemaEventHandler(object):
     @pytest.fixture
     def bad_query_event(self, test_schema):
         query = "CREATE TABLEthisisabadquery"
+        return QueryEvent(schema=test_schema, query=query)
+
+    @pytest.fixture
+    def non_schema_relevant_query_event(self, test_schema):
+        query = "BEGIN"
         return QueryEvent(schema=test_schema, query=query)
 
     @pytest.fixture
@@ -146,17 +131,17 @@ class TestSchemaEventHandler(object):
         )
 
     @pytest.fixture
-    def connection(self):
-        return Connection()
+    def mock_cursor(self):
+        return mock.Mock()
 
     @pytest.yield_fixture
-    def patch_db_conn(self, connection):
-        with mock.patch(
-            'replication_handler.components.schema_event_handler.SchemaEventHandler.schema_tracking_db_conn',
-            new_callable=mock.PropertyMock
-        ) as mock_conn:
-            mock_conn.return_value = connection
-            yield mock_conn
+    def patch_db_conn(self, mock_cursor):
+        with mock.patch.object(
+            ConnectionSet,
+            'schema_tracker_rw'
+        ) as mock_connection:
+            mock_connection.return_value.schema_tracker.cursor.return_value = mock_cursor
+            yield mock_connection
 
     @pytest.yield_fixture
     def patch_config_db(self, test_schema):
@@ -254,7 +239,7 @@ class TestSchemaEventHandler(object):
         create_table_schema_event,
         show_create_result_initial,
         table_with_schema_changes,
-        connection,
+        mock_cursor,
         external_patches,
     ):
         """Integration test the things that need to be called during a handle
@@ -265,7 +250,7 @@ class TestSchemaEventHandler(object):
 
         self.check_external_calls(
             create_table_schema_event,
-            connection,
+            mock_cursor,
             table_with_schema_changes,
             external_patches.register_create_table_with_schema_store(),
             external_patches.populate_schema_cache,
@@ -280,7 +265,7 @@ class TestSchemaEventHandler(object):
         alter_table_schema_event,
         show_create_result_initial,
         show_create_result_after_alter,
-        connection,
+        mock_cursor,
         table_with_schema_changes,
         external_patches
     ):
@@ -296,7 +281,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler.handle_event(alter_table_schema_event, test_gtid)
         self.check_external_calls(
             alter_table_schema_event,
-            connection,
+            mock_cursor,
             table_with_schema_changes,
             external_patches.register_alter_table_with_schema_store(),
             external_patches.populate_schema_cache,
@@ -327,6 +312,20 @@ class TestSchemaEventHandler(object):
         with pytest.raises(Exception):
             schema_event_handler.handle_event(bad_query_event, test_gtid)
 
+    def test_non_schema_relevant_query(
+        self,
+        test_gtid,
+        schema_event_handler,
+        mock_cursor,
+        non_schema_relevant_query_event,
+        external_patches
+    ):
+        schema_event_handler.handle_event(non_schema_relevant_query_event, test_gtid)
+        assert mock_cursor.execute.call_count == 1
+        assert mock_cursor.execute.call_args_list == [
+            mock.call(non_schema_relevant_query_event.query)
+        ]
+
     def test_incomplete_transaction(
         self,
         test_gtid,
@@ -340,28 +339,10 @@ class TestSchemaEventHandler(object):
         assert external_patches.create_journaling_record.call_count == 1
         assert external_patches.update_journaling_record.call_count == 0
 
-    # TODO (cheng|DATAPIPE-91) disabled this test because the rollback steps
-    # of DDL statements have not been implemented yet.
-    @pytest.mark.skipif('True')
-    def test_handle_event_with_exception_and_recovery(
-        self,
-        schema_event_handler,
-        create_table_schema_event,
-        connection,
-        external_patches
-    ):
-        """Test that recovery is handled properly with journaling"""
-        external_patches.get_show_create_statement.side_effect = pymysql.MySQLError()
-        with pytest.raises(Exception):
-            schema_event_handler.handle_event(create_table_schema_event)
-
-        assert connection.commit.call_count == 0
-        assert connection.rollback.call_count == 1
-
     def check_external_calls(
         self,
         event,
-        connection,
+        mock_cursor,
         table,
         schema_store_response,
         patch_populate_schema_cache,
@@ -374,9 +355,23 @@ class TestSchemaEventHandler(object):
 
         # Make sure query was executed on tracking db
         # execute of show create is mocked out above
-        assert connection.mock_cursor.execute.call_args_list == [mock.call(event.query)]
+        assert mock_cursor.execute.call_count == 1
+        assert mock_cursor.execute.call_args_list == [mock.call(event.query)]
 
         assert patch_populate_schema_cache.call_args_list == \
             [mock.call(table, schema_store_response)]
         assert patch_create_journaling_record.call_count == 1
         assert patch_update_journaling_record.call_count == 1
+
+    def test_get_show_create_table_statement(
+        self,
+        mock_cursor,
+        schema_event_handler,
+        show_create_query,
+        test_table
+    ):
+        mock_cursor.fetchone.return_value = [test_table, show_create_query]
+        schema_event_handler._get_show_create_statement(mock_cursor, test_table)
+        assert mock_cursor.execute.call_count == 1
+        assert mock_cursor.execute.call_args_list == [mock.call(show_create_query)]
+        assert mock_cursor.fetchone.call_count == 1
