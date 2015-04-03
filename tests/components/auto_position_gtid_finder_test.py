@@ -7,6 +7,7 @@ from yelp_conn.connection_set import ConnectionSet
 from models.database import rbr_state_session
 from models.schema_event_state import SchemaEventState
 from replication_handler.components.auto_position_gtid_finder import AutoPositionGtidFinder
+from replication_handler.components.auto_position_gtid_finder import BadSchemaEventStateException
 
 
 class TestAutoPositionGtidFinder(object):
@@ -32,7 +33,21 @@ class TestAutoPositionGtidFinder(object):
         )
 
     @pytest.fixture
-    def mock_session(self, completed_schema_event_state, pending_schema_event_state):
+    def bad_state_schema_event(self):
+        return SchemaEventState(
+            gtid="sid:13",
+            status='BadState',
+            query="ALTER TABLE STATEMENT",
+            table_name="Business",
+            create_table_statement="CREATE TABLE STATEMENT",
+        )
+
+    @pytest.fixture
+    def mock_session(
+        self,
+        completed_schema_event_state,
+        pending_schema_event_state,
+    ):
         mock_session = mock.Mock()
         mock_session.query.return_value.order_by.return_value.first.side_effect = [
             pending_schema_event_state,
@@ -95,3 +110,20 @@ class TestAutoPositionGtidFinder(object):
         finder = AutoPositionGtidFinder()
         gtid = finder.get_gtid()
         assert gtid is None
+
+    @pytest.yield_fixture
+    def patch_get_bad_schema_event_state(self, bad_state_schema_event):
+        with mock.patch.object(
+            AutoPositionGtidFinder,
+            '_get_latest_schema_event_state'
+        ) as mock_get_latest_schema_event_state:
+            mock_get_latest_schema_event_state.return_value = bad_state_schema_event
+            yield mock_get_latest_schema_event_state
+
+    def test_bad_schema_event_state(
+        self,
+        patch_get_bad_schema_event_state
+    ):
+        with pytest.raises(BadSchemaEventStateException):
+            finder = AutoPositionGtidFinder()
+            finder.get_gtid()

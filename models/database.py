@@ -21,8 +21,7 @@ schema_tracker_session = scoped_session(
 rbr_state_session = scoped_session(
     sessionmaker(
         master_connection_set_name="rbr_state_rw",
-        slave_connection_set_name="rbr_state_ro",
-        expire_on_commit=False
+        slave_connection_set_name="rbr_state_ro"
     )
 )
 

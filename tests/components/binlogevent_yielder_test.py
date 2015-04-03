@@ -9,6 +9,7 @@ from pymysqlreplication.row_event import WriteRowsEvent
 
 from replication_handler.components.auto_position_gtid_finder import AutoPositionGtidFinder
 from replication_handler.components.binlogevent_yielder import BinlogEventYielder
+from replication_handler.components.binlogevent_yielder import IgnoredEventException
 from replication_handler.components.binlogevent_yielder import ReplicationHandlerEvent
 
 
@@ -74,3 +75,10 @@ class TestBinlogEventYielder(object):
         assert result_1 == replication_handler_event
         assert result_2 == replication_handler_event_2
         assert patch_fetchone.call_count == 4
+
+    def test_ignored_event_type(self, patch_fetchone, patch_get_gtid):
+        ignored_event = mock.Mock()
+        patch_fetchone.return_value = ignored_event
+        with pytest.raises(IgnoredEventException):
+            binlog_event_yielder = BinlogEventYielder()
+            binlog_event_yielder.next()

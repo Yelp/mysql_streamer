@@ -14,6 +14,10 @@ from models.schema_event_state import SchemaEventStatus
 log = logging.getLogger('replication_handler.components.auto_position_gtid_finder')
 
 
+class BadSchemaEventStateException(Exception):
+    pass
+
+
 class AutoPositionGtidFinder(object):
 
     def get_gtid(self):
@@ -48,9 +52,13 @@ class AutoPositionGtidFinder(object):
                 ).delete()
             return self._get_last_completed_gtid()
         else:
-            log.error("schema_event_state has bad state, id: {0}".format(
-                event_state.id
+            log.error("schema_event_state has bad state, \
+                    id: {0}, status: {1}, table_name: {2}".format(
+                event_state.id,
+                event_state.status,
+                event_state.table_name
             ))
+            raise BadSchemaEventStateException
 
     def _get_latest_schema_event_state(self):
         with rbr_state_session.connect_begin(ro=True) as session:
@@ -64,6 +72,11 @@ class AutoPositionGtidFinder(object):
             return copy.copy(state)
 
     def _recreate_table(self, table_name, create_table_statement):
+        ''' Restore the table with its previous create table statement,
+        because MySQL implicitly commits DDL changes, so there's no transactional
+        DDL. see http://dev.mysql.com/doc/refman/5.5/en/implicit-commit.html for more
+        background.
+        '''
         cursor = ConnectionSet.schema_tracker_rw().schema_tracker.cursor()
         drop_table_query = "DROP TABLE `{0}`".format(
             table_name

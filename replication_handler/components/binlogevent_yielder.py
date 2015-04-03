@@ -21,6 +21,10 @@ ReplicationHandlerEvent = namedtuple(
 )
 
 
+class IgnoredEventException(Exception):
+    pass
+
+
 class BinlogEventYielder(object):
 
     def __init__(self):
@@ -36,12 +40,18 @@ class BinlogEventYielder(object):
             'user': source_config['user'],
             'passwd': source_config['passwd']
         }
+        self.allowed_event_types = [
+            GtidEvent,
+            QueryEvent,
+            WriteRowsEvent,
+            UpdateRowsEvent
+        ]
 
         self.stream = BinLogStreamReader(
             connection_settings=repl_mysql_config,
             server_id=1,
             blocking=True,
-            only_events=[GtidEvent, QueryEvent, WriteRowsEvent, UpdateRowsEvent],
+            only_events=self.allowed_event_types,
             auto_position=AutoPositionGtidFinder().get_gtid()
         )
 
@@ -73,6 +83,9 @@ class BinlogEventYielder(object):
                 event=event
             )
         else:
-            log.error("Encountered ignored event, event_type: {0}".format(
-                event.event_type
+            log.error("Encountered ignored event: {0}, \
+            It is not in the allowed event types: {1}".format(
+                event.dump(),
+                self.allowed_event_types
             ))
+            raise IgnoredEventException
