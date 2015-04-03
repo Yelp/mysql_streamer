@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from models.schema_event_state import SchemaEventState
+from replication_handler.models.schema_event_state import SchemaEventState
 from testing import sandbox
 
 
@@ -33,16 +33,46 @@ class TestSchemaEventState(object):
     def table_name(self):
         return "business"
 
-    def test_example(self, gtid, status, query, create_table_statement, table_name):
+    @pytest.yield_fixture
+    def sandbox_session(self):
         with sandbox.database_sandbox_master_connection_set() as sandbox_session:
-            schema_event_state = SchemaEventState(
-                gtid=gtid,
-                status=status,
-                query=query,
-                create_table_statement=create_table_statement,
-                table_name=table_name
-            )
-            sandbox_session.add(schema_event_state)
-            sandbox_session.flush()
-            result = sandbox_session.query(SchemaEventState).one()
-            assert result == schema_event_state
+            yield sandbox_session
+
+    @pytest.yield_fixture
+    def schema_event_state_obj(
+        self,
+        gtid,
+        status,
+        query,
+        create_table_statement,
+        table_name,
+        sandbox_session
+    ):
+        schema_event_state = SchemaEventState(
+            gtid=gtid,
+            status=status,
+            query=query,
+            create_table_statement=create_table_statement,
+            table_name=table_name
+        )
+        sandbox_session.add(schema_event_state)
+        sandbox_session.flush()
+        yield schema_event_state
+
+    def test_get_latest_schema_event_state(self, schema_event_state_obj, sandbox_session):
+        result = SchemaEventState.get_latest_schema_event_state(sandbox_session)
+        # Since result is a copy of original obj, they are not the same object, we will
+        # be comparing their attributes..
+        assert result.id == schema_event_state_obj.id
+        assert result.gtid == schema_event_state_obj.gtid
+        assert result.table_name == schema_event_state_obj.table_name
+        assert result.query == schema_event_state_obj.query
+        assert result.status == schema_event_state_obj.status
+
+    def test_delete_schema_event_state_by_id(self, schema_event_state_obj, sandbox_session):
+        result = SchemaEventState.delete_schema_event_state_by_id(
+            sandbox_session,
+            schema_event_state_obj.id
+        )
+        result = sandbox_session.query(SchemaEventState).all()
+        assert result == []

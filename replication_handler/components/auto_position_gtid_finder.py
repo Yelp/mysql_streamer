@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-import copy
 import logging
 
-from sqlalchemy import desc
 
 from yelp_conn.connection_set import ConnectionSet
 
-from models.database import rbr_state_session
-from models.schema_event_state import SchemaEventState
-from models.schema_event_state import SchemaEventStatus
+from replication_handler.models.database import rbr_state_session
+from replication_handler.models.schema_event_state import SchemaEventState
+from replication_handler.models.schema_event_state import SchemaEventStatus
 
 
 log = logging.getLogger('replication_handler.components.auto_position_gtid_finder')
@@ -28,6 +26,8 @@ class AutoPositionGtidFinder(object):
             # master that we have already commited gtid from 1 to this point.
             # And we want to next gtid. Only considering the schema event gtid
             # now, will incorporate data event gtid after that's completed.
+            # TODO(cheng|DATAPIPE-105): add journaling and recovering logic for
+            # data events.
             return "{sid}:1-{next_transaction_id}".format(
                 sid=sid,
                 next_transaction_id=int(transaction_id) + 1
@@ -36,7 +36,8 @@ class AutoPositionGtidFinder(object):
             return None
 
     def _get_last_completed_gtid(self):
-        event_state = self._get_latest_schema_event_state()
+        with rbr_state_session.connect_begin(ro=True) as session:
+            event_state = SchemaEventState.get_latest_schema_event_state(session)
         if not event_state:
             return None
         if event_state.status == SchemaEventStatus.COMPLETED:
@@ -47,9 +48,7 @@ class AutoPositionGtidFinder(object):
                 event_state.create_table_statement,
             )
             with rbr_state_session.connect_begin(ro=False) as session:
-                session.query(SchemaEventState).filter(
-                    SchemaEventState.id == event_state.id
-                ).delete()
+                SchemaEventState.delete_schema_event_state_by_id(session, event_state.id)
             return self._get_last_completed_gtid()
         else:
             log.error("schema_event_state has bad state, \
@@ -59,17 +58,6 @@ class AutoPositionGtidFinder(object):
                 event_state.table_name
             ))
             raise BadSchemaEventStateException
-
-    def _get_latest_schema_event_state(self):
-        with rbr_state_session.connect_begin(ro=True) as session:
-            state = session.query(
-                SchemaEventState
-            ).order_by(desc(SchemaEventState.time_created)).first()
-            # Because in services we cant do expire_on_commit=False, so
-            # if we want to use the object after the session commits, we
-            # need to figure out a way to hold it. for more context:
-            # https://trac.yelpcorp.com/wiki/JulianKPage/WhyNoExpireOnCommitFalse
-            return copy.copy(state)
 
     def _recreate_table(self, table_name, create_table_statement):
         ''' Restore the table with its previous create table statement,

@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
+import copy
+
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Text
+from sqlalchemy import desc
 from sqlalchemy.types import Enum
 
-from models.database import Base
-from models.database import UnixTimeStampType
-from models.database import default_now
+from replication_handler.models.database import Base
+from replication_handler.models.database import UnixTimeStampType
+from replication_handler.models.database import default_now
 
 
 class SchemaEventStatus(object):
@@ -40,3 +43,20 @@ class SchemaEventState(Base):
     create_table_statement = Column(Text, nullable=False)
     time_created = Column(UnixTimeStampType, default=default_now)
     time_updated = Column(UnixTimeStampType, default=default_now, onupdate=default_now)
+
+    @classmethod
+    def get_latest_schema_event_state(cls, session):
+        state = session.query(
+            SchemaEventState
+        ).order_by(desc(SchemaEventState.time_created)).first()
+        # Because in services we cant do expire_on_commit=False, so
+        # if we want to use the object after the session commits, we
+        # need to figure out a way to hold it. for more context:
+        # https://trac.yelpcorp.com/wiki/JulianKPage/WhyNoExpireOnCommitFalse
+        return copy.copy(state)
+
+    @classmethod
+    def delete_schema_event_state_by_id(cls, session, schema_event_state_id):
+        session.query(SchemaEventState).filter(
+            SchemaEventState.id == schema_event_state_id
+        ).delete()

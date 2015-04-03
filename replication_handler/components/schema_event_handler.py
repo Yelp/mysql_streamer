@@ -3,8 +3,8 @@ import logging
 
 from yelp_conn.connection_set import ConnectionSet
 
-from models.database import rbr_state_session
-from models.schema_event_state import SchemaEventState
+from replication_handler.models.database import rbr_state_session
+from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table

@@ -5,7 +5,7 @@ from glob import glob
 
 from yelp_conn.testing import sandbox as db_sandbox
 
-from models import database
+from replication_handler.models import database
 
 
 SCHEMAS = glob('schema/tables/*.sql')
