@@ -71,15 +71,7 @@ class BinlogEventYielder(object):
         if isinstance(event, GtidEvent):
             self.current_gtid = event.gtid
             return self.next()
-        elif isinstance(event, QueryEvent):
-            if event.query == "BEGIN":
-                return self.next()
-            else:
-                return ReplicationHandlerEvent(
-                    gtid=self.current_gtid,
-                    event=event
-                )
-        elif isinstance(event, RowsEvent):
+        elif isinstance(event, QueryEvent) or isinstance(event, RowsEvent):
             return ReplicationHandlerEvent(
                 gtid=self.current_gtid,
                 event=event

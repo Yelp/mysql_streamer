@@ -56,10 +56,14 @@ class TestBinlogEventYielder(object):
         data_event_1 = mock.Mock(spec=WriteRowsEvent)
         data_event_2 = mock.Mock(spec=WriteRowsEvent)
         replication_handler_event = ReplicationHandlerEvent(
-            event=data_event_1,
+            event=query_event,
             gtid=gtid_event.gtid
         )
         replication_handler_event_2 = ReplicationHandlerEvent(
+            event=data_event_1,
+            gtid=gtid_event.gtid
+        )
+        replication_handler_event_3 = ReplicationHandlerEvent(
             event=data_event_2,
             gtid=gtid_event.gtid
         )
@@ -72,8 +76,10 @@ class TestBinlogEventYielder(object):
         binlog_event_yielder = BinlogEventYielder()
         result_1 = binlog_event_yielder.next()
         result_2 = binlog_event_yielder.next()
+        result_3 = binlog_event_yielder.next()
         assert result_1 == replication_handler_event
         assert result_2 == replication_handler_event_2
+        assert result_3 == replication_handler_event_3
         assert patch_fetchone.call_count == 4
 
     def test_ignored_event_type(self, patch_fetchone, patch_get_committed_gtid_set):
