@@ -56,25 +56,26 @@ class SchemaEventHandler(BaseEventHandler):
             self._execute_non_schema_store_relevant_query(event)
 
     def _create_journaling_record(self, table, event, gtid):
+        create_table_statement = self._get_show_create_statement(
+            ConnectionSet.rbr_source_ro().rbr_source.cursor(),
+            table.table_name
+        )
         with rbr_state_session.connect_begin(ro=False) as session:
-            create_table_statement = self._get_show_create_statement(
-                ConnectionSet.rbr_source_ro().rbr_source.cursor(),
-                table.table_name
-            )
-            schema_event_state = SchemaEventState(
+            SchemaEventState.create_schema_event_state(
+                session=session,
                 gtid=gtid,
                 status='Pending',
                 query=event.query,
                 table_name=table.table_name,
                 create_table_statement=create_table_statement.query,
             )
-            session.add(schema_event_state)
 
     def _update_journaling_record(self, gtid):
         with rbr_state_session.connect_begin(ro=False) as session:
-            schema_event_state = session.query(SchemaEventState).filter(SchemaEventState.gtid == gtid).one()
-            schema_event_state.status = 'Completed'
-            session.add(schema_event_state)
+            SchemaEventState.update_schema_event_state_to_complete_by_gtid(
+                session,
+                gtid
+            )
 
     def _reformat_query(self, raw_query):
         return ' '.join(raw_query.lower().split())

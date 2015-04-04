@@ -73,3 +73,34 @@ class SchemaEventState(Base):
         session.query(SchemaEventState).filter(
             SchemaEventState.id == schema_event_state_id
         ).delete()
+
+    @classmethod
+    def create_schema_event_state(
+        cls,
+        session,
+        gtid,
+        status,
+        query,
+        table_name,
+        create_table_statement
+    ):
+        schema_event_state = SchemaEventState(
+            gtid=gtid,
+            status='Pending',
+            query=query,
+            table_name=table_name,
+            create_table_statement=create_table_statement,
+        )
+        session.add(schema_event_state)
+        session.flush()
+        return schema_event_state
+
+    @classmethod
+    def update_schema_event_state_to_complete_by_gtid(cls, session, gtid):
+        schema_event_state = session.query(
+            SchemaEventState
+        ).filter(SchemaEventState.gtid == gtid).one()
+        schema_event_state.status = 'Completed'
+        session.add(schema_event_state)
+        session.flush()
+        return schema_event_state

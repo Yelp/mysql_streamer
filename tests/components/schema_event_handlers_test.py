@@ -10,6 +10,8 @@ from replication_handler.components.schema_event_handler import SchemaEventHandl
 from replication_handler.components.base_event_handler import SchemaStoreRegisterResponse
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
+from replication_handler.models.schema_event_state import SchemaEventState
+
 from testing.events import QueryEvent
 
 
@@ -21,8 +23,8 @@ SchemaHandlerExternalPatches = namedtuple(
         'register_create_table_with_schema_store',
         'register_alter_table_with_schema_store',
         'populate_schema_cache',
-        'create_journaling_record',
-        'update_journaling_record'
+        'create_schema_event_state',
+        'update_schema_event_state'
     )
 )
 
@@ -196,18 +198,18 @@ class TestSchemaEventHandler(object):
             yield mock_populate_schema_cache
 
     @pytest.yield_fixture
-    def patch_create_journaling_record(self, schema_event_handler):
+    def patch_create_schema_event_state(self):
         with mock.patch.object(
-            schema_event_handler, '_create_journaling_record'
-        ) as mock_create_journaling_record:
-            yield mock_create_journaling_record
+            SchemaEventState, 'create_schema_event_state'
+        ) as mock_create_schema_event_state:
+            yield mock_create_schema_event_state
 
     @pytest.yield_fixture
-    def patch_update_journaling_record(self, schema_event_handler):
+    def patch_update_schema_event_state(self):
         with mock.patch.object(
-            schema_event_handler, '_update_journaling_record'
-        ) as mock_update_journaling_record:
-            yield mock_update_journaling_record
+            SchemaEventState, 'update_schema_event_state_to_complete_by_gtid'
+        ) as mock_update_schema_event_state:
+            yield mock_update_schema_event_state
 
     @pytest.fixture
     def external_patches(
@@ -218,8 +220,8 @@ class TestSchemaEventHandler(object):
         patch_register_create_table,
         patch_register_alter_table,
         patch_populate_schema_cache,
-        patch_create_journaling_record,
-        patch_update_journaling_record,
+        patch_create_schema_event_state,
+        patch_update_schema_event_state,
     ):
         return SchemaHandlerExternalPatches(
             schema_tracking_db_conn=patch_db_conn,
@@ -228,8 +230,8 @@ class TestSchemaEventHandler(object):
             register_create_table_with_schema_store=patch_register_create_table,
             register_alter_table_with_schema_store=patch_register_alter_table,
             populate_schema_cache=patch_populate_schema_cache,
-            create_journaling_record=patch_create_journaling_record,
-            update_journaling_record=patch_update_journaling_record
+            create_schema_event_state=patch_create_schema_event_state,
+            update_schema_event_state=patch_update_schema_event_state
         )
 
     def test_handle_event_create_table(
@@ -254,8 +256,8 @@ class TestSchemaEventHandler(object):
             table_with_schema_changes,
             external_patches.register_create_table_with_schema_store(),
             external_patches.populate_schema_cache,
-            external_patches.create_journaling_record,
-            external_patches.update_journaling_record
+            external_patches.create_schema_event_state,
+            external_patches.update_schema_event_state
         )
 
     def test_handle_event_alter_table(
@@ -275,6 +277,7 @@ class TestSchemaEventHandler(object):
 
         external_patches.get_show_create_statement.side_effect = [
             show_create_result_initial,
+            show_create_result_initial,
             show_create_result_after_alter
         ]
 
@@ -285,8 +288,8 @@ class TestSchemaEventHandler(object):
             table_with_schema_changes,
             external_patches.register_alter_table_with_schema_store(),
             external_patches.populate_schema_cache,
-            external_patches.create_journaling_record,
-            external_patches.update_journaling_record
+            external_patches.create_schema_event_state,
+            external_patches.update_schema_event_state
         )
 
     def test_filter_out_wrong_schema(
@@ -299,8 +302,8 @@ class TestSchemaEventHandler(object):
         external_patches.database_config.return_value = [{'db': 'different_schema'}]
         schema_event_handler.handle_event(create_table_schema_event, test_gtid)
         assert external_patches.populate_schema_cache.call_count == 0
-        assert external_patches.create_journaling_record.call_count == 0
-        assert external_patches.update_journaling_record.call_count == 0
+        assert external_patches.create_schema_event_state.call_count == 0
+        assert external_patches.update_schema_event_state.call_count == 0
 
     def test_bad_query(
         self,
@@ -331,13 +334,17 @@ class TestSchemaEventHandler(object):
         test_gtid,
         schema_event_handler,
         create_table_schema_event,
+        show_create_result_initial,
         external_patches,
     ):
-        external_patches.get_show_create_statement.side_effect = Exception
+        external_patches.get_show_create_statement.side_effect = [
+            show_create_result_initial,
+            Exception
+        ]
         with pytest.raises(Exception):
             schema_event_handler.handle_event(create_table_schema_event, test_gtid)
-        assert external_patches.create_journaling_record.call_count == 1
-        assert external_patches.update_journaling_record.call_count == 0
+        assert external_patches.create_schema_event_state.call_count == 1
+        assert external_patches.update_schema_event_state.call_count == 0
 
     def check_external_calls(
         self,
@@ -346,8 +353,8 @@ class TestSchemaEventHandler(object):
         table,
         schema_store_response,
         patch_populate_schema_cache,
-        patch_create_journaling_record,
-        patch_update_journaling_record
+        patch_create_schema_event_state,
+        patch_update_schema_event_state
     ):
         """Test helper method that checks various things in a successful scenario
            of event handling
@@ -360,8 +367,8 @@ class TestSchemaEventHandler(object):
 
         assert patch_populate_schema_cache.call_args_list == \
             [mock.call(table, schema_store_response)]
-        assert patch_create_journaling_record.call_count == 1
-        assert patch_update_journaling_record.call_count == 1
+        assert patch_create_schema_event_state.call_count == 1
+        assert patch_update_schema_event_state.call_count == 1
 
     def test_get_show_create_table_statement(
         self,
