@@ -8,14 +8,6 @@ from testing import sandbox
 class TestSchemaEventState(object):
 
     @pytest.fixture
-    def gtid(self):
-        return "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-5"
-
-    @pytest.fixture
-    def query(self):
-        return "alter table business add column category varchar(255)"
-
-    @pytest.fixture
     def create_table_statement(self):
         return "CREATE TABLE `business` (\
                    `id` int(11) NOT NULL AUTO_INCREMENT,\
@@ -37,7 +29,6 @@ class TestSchemaEventState(object):
     @pytest.yield_fixture
     def pending_schema_event_state_obj(
         self,
-        query,
         create_table_statement,
         table_name,
         sandbox_session
@@ -56,7 +47,6 @@ class TestSchemaEventState(object):
     @pytest.yield_fixture
     def completed_schema_event_state_obj(
         self,
-        query,
         create_table_statement,
         table_name,
         sandbox_session
