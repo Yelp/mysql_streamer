@@ -38,27 +38,38 @@ class AutoPositionGtidFinder(object):
 
     def _get_last_completed_gtid(self):
         with rbr_state_session.connect_begin(ro=True) as session:
-            event_state = SchemaEventState.get_latest_schema_event_state(session)
-        if not event_state:
-            return None
-        if event_state.status == SchemaEventStatus.COMPLETED:
-            return event_state.gtid
-        elif event_state.status == SchemaEventStatus.PENDING:
-            self._recreate_table(
-                event_state.table_name,
-                event_state.create_table_statement,
-            )
-            with rbr_state_session.connect_begin(ro=False) as session:
-                SchemaEventState.delete_schema_event_state_by_id(session, event_state.id)
-            return self._get_last_completed_gtid()
-        else:
+            event_state = SchemaEventState.get_pending_schema_event_state(session)
+        if event_state:
+            self._check_event_state_status(event_state, SchemaEventStatus.PENDING)
+            self._rollback_pending_event(event_state)
+        with rbr_state_session.connect_begin(ro=True) as session:
+            latest_schema_event_state = SchemaEventState.get_latest_schema_event_state(session)
+            if latest_schema_event_state:
+                self._check_event_state_status(
+                    latest_schema_event_state,
+                    SchemaEventStatus.COMPLETED
+                )
+                return latest_schema_event_state.gtid
+            else:
+                return None
+
+    def _check_event_state_status(self, event_state, status):
+        if event_state.status != status:
             log.error("schema_event_state has bad state, \
-                    id: {0}, status: {1}, table_name: {2}".format(
+                id: {0}, status: {1}, table_name: {2}".format(
                 event_state.id,
                 event_state.status,
                 event_state.table_name
             ))
             raise BadSchemaEventStateException
+
+    def _rollback_pending_event(self, pending_event_state):
+        self._recreate_table(
+            pending_event_state.table_name,
+            pending_event_state.create_table_statement,
+        )
+        with rbr_state_session.connect_begin(ro=False) as session:
+            SchemaEventState.delete_schema_event_state_by_id(session, pending_event_state.id)
 
     def _recreate_table(self, table_name, create_table_statement):
         ''' Restore the table with its previous create table statement,

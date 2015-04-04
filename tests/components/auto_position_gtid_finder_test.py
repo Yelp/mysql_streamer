@@ -53,6 +53,16 @@ class TestAutoPositionGtidFinder(object):
             yield mock_get_latest_schema_event_state
 
     @pytest.yield_fixture
+    def patch_get_pending_schema_event_state(
+        self,
+    ):
+        with mock.patch.object(
+            SchemaEventState,
+            'get_pending_schema_event_state'
+        ) as mock_get_pending_schema_event_state:
+            yield mock_get_pending_schema_event_state
+
+    @pytest.yield_fixture
     def patch_delete(self):
         with mock.patch.object(
             SchemaEventState,
@@ -85,6 +95,7 @@ class TestAutoPositionGtidFinder(object):
     def test_get_committed_gtid_set(
         self,
         patch_get_latest_schema_event_state,
+        patch_get_pending_schema_event_state,
         pending_schema_event_state,
         completed_schema_event_state,
         patch_delete,
@@ -92,15 +103,14 @@ class TestAutoPositionGtidFinder(object):
         patch_schema_tracker_connection,
         mock_cursor
     ):
-        patch_get_latest_schema_event_state.side_effect = [
-            pending_schema_event_state,
-            completed_schema_event_state,
-        ]
+        patch_get_pending_schema_event_state.return_value = pending_schema_event_state
+        patch_get_latest_schema_event_state.return_value = completed_schema_event_state
         finder = AutoPositionGtidFinder()
         gtid = finder.get_committed_gtid_set()
         assert gtid == "sid:1-13"
         assert mock_cursor.execute.call_count == 2
-        assert patch_get_latest_schema_event_state.call_count == 2
+        assert patch_get_pending_schema_event_state.call_count == 1
+        assert patch_get_latest_schema_event_state.call_count == 1
         assert mock_cursor.execute.call_args_list == [
             mock.call("DROP TABLE `Business`"),
             mock.call("CREATE TABLE STATEMENT")
@@ -108,9 +118,11 @@ class TestAutoPositionGtidFinder(object):
 
     def test_none_gtid(
         self,
+        patch_get_pending_schema_event_state,
         patch_get_latest_schema_event_state,
         patch_delete,
     ):
+        patch_get_pending_schema_event_state.return_value = None
         patch_get_latest_schema_event_state.return_value = None
         finder = AutoPositionGtidFinder()
         gtid = finder.get_committed_gtid_set()
@@ -118,10 +130,12 @@ class TestAutoPositionGtidFinder(object):
 
     def test_bad_schema_event_state(
         self,
+        patch_get_pending_schema_event_state,
         patch_get_latest_schema_event_state,
         patch_delete,
         bad_state_schema_event
     ):
+        patch_get_pending_schema_event_state.return_value = None
         patch_get_latest_schema_event_state.return_value = bad_state_schema_event
         with pytest.raises(BadSchemaEventStateException):
             finder = AutoPositionGtidFinder()

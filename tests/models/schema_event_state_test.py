@@ -12,10 +12,6 @@ class TestSchemaEventState(object):
         return "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-5"
 
     @pytest.fixture
-    def status(self):
-        return "Pending"
-
-    @pytest.fixture
     def query(self):
         return "alter table business add column category varchar(255)"
 
@@ -39,19 +35,17 @@ class TestSchemaEventState(object):
             yield sandbox_session
 
     @pytest.yield_fixture
-    def schema_event_state_obj(
+    def pending_schema_event_state_obj(
         self,
-        gtid,
-        status,
         query,
         create_table_statement,
         table_name,
         sandbox_session
     ):
         schema_event_state = SchemaEventState(
-            gtid=gtid,
-            status=status,
-            query=query,
+            gtid="3E11FA47-71CA-11E1-9E33-C80AA9429562:5",
+            status='Pending',
+            query="alter table business add column category varchar(255)",
             create_table_statement=create_table_statement,
             table_name=table_name
         )
@@ -59,20 +53,59 @@ class TestSchemaEventState(object):
         sandbox_session.flush()
         yield schema_event_state
 
-    def test_get_latest_schema_event_state(self, schema_event_state_obj, sandbox_session):
-        result = SchemaEventState.get_latest_schema_event_state(sandbox_session)
+    @pytest.yield_fixture
+    def completed_schema_event_state_obj(
+        self,
+        query,
+        create_table_statement,
+        table_name,
+        sandbox_session
+    ):
+        schema_event_state = SchemaEventState(
+            gtid="3E11FA47-71CA-11E1-9E33-C80AA9429562:6",
+            status="Completed",
+            query="alter table business add column name varchar(255)",
+            create_table_statement=create_table_statement,
+            table_name=table_name
+        )
+        sandbox_session.add(schema_event_state)
+        sandbox_session.flush()
+        yield schema_event_state
+
+    def test_get_pending_schema_event_state(
+        self,
+        pending_schema_event_state_obj,
+        sandbox_session
+    ):
+        result = SchemaEventState.get_pending_schema_event_state(sandbox_session)
         # Since result is a copy of original obj, they are not the same object, we will
         # be comparing their attributes..
-        assert result.id == schema_event_state_obj.id
-        assert result.gtid == schema_event_state_obj.gtid
-        assert result.table_name == schema_event_state_obj.table_name
-        assert result.query == schema_event_state_obj.query
-        assert result.status == schema_event_state_obj.status
+        assert result.id == pending_schema_event_state_obj.id
+        assert result.gtid == pending_schema_event_state_obj.gtid
+        assert result.table_name == pending_schema_event_state_obj.table_name
+        assert result.query == pending_schema_event_state_obj.query
+        assert result.status == pending_schema_event_state_obj.status
 
-    def test_delete_schema_event_state_by_id(self, schema_event_state_obj, sandbox_session):
+    def test_delete_schema_event_state_by_id(
+        self,
+        pending_schema_event_state_obj,
+        sandbox_session
+    ):
         result = SchemaEventState.delete_schema_event_state_by_id(
             sandbox_session,
-            schema_event_state_obj.id
+            pending_schema_event_state_obj.id
         )
-        result = sandbox_session.query(SchemaEventState).all()
-        assert result == []
+        result = SchemaEventState.get_pending_schema_event_state(sandbox_session)
+        assert result is None
+
+    def test_get_lastest_schema_event_state(
+        self,
+        completed_schema_event_state_obj,
+        sandbox_session
+    ):
+        result = SchemaEventState.get_latest_schema_event_state(sandbox_session)
+        assert result.id == completed_schema_event_state_obj.id
+        assert result.gtid == completed_schema_event_state_obj.gtid
+        assert result.table_name == completed_schema_event_state_obj.table_name
+        assert result.query == completed_schema_event_state_obj.query
+        assert result.status == completed_schema_event_state_obj.status

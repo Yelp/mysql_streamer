@@ -8,6 +8,8 @@ from sqlalchemy import Text
 from sqlalchemy import desc
 from sqlalchemy.types import Enum
 
+from yelp_lib.containers.lists import unlist
+
 from replication_handler.models.database import Base
 from replication_handler.models.database import UnixTimeStampType
 from replication_handler.models.database import default_now
@@ -45,15 +47,26 @@ class SchemaEventState(Base):
     time_updated = Column(UnixTimeStampType, default=default_now, onupdate=default_now)
 
     @classmethod
-    def get_latest_schema_event_state(cls, session):
-        state = session.query(
+    def get_pending_schema_event_state(cls, session):
+        result = session.query(
             SchemaEventState
-        ).order_by(desc(SchemaEventState.time_created)).first()
-        # Because in services we cant do expire_on_commit=False, so
+        ).filter(
+            SchemaEventState.status == SchemaEventStatus.PENDING
+        ).all()
+        # There should be at most one event with Pending status, so we are using
+        # unlist to verify
+        # Also in services we cant do expire_on_commit=False, so
         # if we want to use the object after the session commits, we
         # need to figure out a way to hold it. for more context:
         # https://trac.yelpcorp.com/wiki/JulianKPage/WhyNoExpireOnCommitFalse
-        return copy.copy(state)
+        return copy.copy(unlist(result))
+
+    @classmethod
+    def get_latest_schema_event_state(cls, session):
+        result = session.query(
+            SchemaEventState
+        ).order_by(desc(SchemaEventState.time_created)).first()
+        return copy.copy(result)
 
     @classmethod
     def delete_schema_event_state_by_id(cls, session, schema_event_state_id):
