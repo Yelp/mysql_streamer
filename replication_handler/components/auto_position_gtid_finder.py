@@ -42,13 +42,13 @@ class AutoPositionGtidFinder(object):
         data event is completed.
         '''
         with rbr_state_session.connect_begin(ro=True) as session:
-            # There should be at most one event with Pending status, so we are using
-            # unlist to verify
-            # Also in services we cant do expire_on_commit=False, so
+            # In services we cant do expire_on_commit=False, so
             # if we want to use the object after the session commits, we
             # need to figure out a way to hold it. for more context:
             # https://trac.yelpcorp.com/wiki/JulianKPage/WhyNoExpireOnCommitFalse
-            event_state = copy.copy(SchemaEventState.get_pending_schema_event_state(session))
+            event_state = copy.copy(
+                SchemaEventState.get_pending_schema_event_state(session)
+            )
         if event_state is not None:
             self._assert_event_stats_status(event_state, SchemaEventStatus.PENDING)
             self._rollback_pending_event(event_state)

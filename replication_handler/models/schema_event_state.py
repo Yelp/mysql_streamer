@@ -51,6 +51,8 @@ class SchemaEventState(Base):
         ).filter(
             SchemaEventState.status == SchemaEventStatus.PENDING
         ).all()
+        # There should be at most one event with Pending status, so we are using
+        # unlist to verify
         return unlist(result)
 
     @classmethod
