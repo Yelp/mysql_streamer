@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import copy
 import pytest
 
 from replication_handler.models.schema_event_state import SchemaEventState
@@ -42,7 +43,8 @@ class TestSchemaEventState(object):
             create_table_statement=create_table_statement,
             table_name=table_name
         )
-        yield schema_event_state
+        sandbox_session.flush()
+        yield copy.copy(schema_event_state)
 
     @pytest.yield_fixture
     def completed_schema_event_state_obj(
@@ -59,7 +61,8 @@ class TestSchemaEventState(object):
             create_table_statement=create_table_statement,
             table_name=table_name
         )
-        yield schema_event_state
+        sandbox_session.flush()
+        yield copy.copy(schema_event_state)
 
     def test_get_pending_schema_event_state(
         self,
@@ -78,6 +81,7 @@ class TestSchemaEventState(object):
             sandbox_session,
             pending_schema_event_state_obj.id
         )
+        sandbox_session.commit()
         result = SchemaEventState.get_pending_schema_event_state(sandbox_session)
         assert result is None
 

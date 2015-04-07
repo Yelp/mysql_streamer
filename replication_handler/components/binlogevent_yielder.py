@@ -52,7 +52,7 @@ class BinlogEventYielder(object):
             server_id=1,
             blocking=True,
             only_events=self.allowed_event_types,
-            auto_position=AutoPositionGtidFinder().get_committed_gtid_set()
+            auto_position=AutoPositionGtidFinder().get_gtid_to_resume_tailing_from()
         )
 
         self.current_gtid = None

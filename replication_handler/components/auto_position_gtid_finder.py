@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import copy
 import logging
 
 
@@ -18,7 +19,7 @@ class BadSchemaEventStateException(Exception):
 
 class AutoPositionGtidFinder(object):
 
-    def get_committed_gtid_set(self):
+    def get_gtid_to_resume_tailing_from(self):
         '''The first component of the GTID is the source identifier, sid.
         The next component identifies the transactions that have been committed, exclusive.
         The transaction identifiers 1-100, would correspond to the interval [1,100),
@@ -37,15 +38,26 @@ class AutoPositionGtidFinder(object):
             return None
 
     def _get_last_completed_gtid(self):
+        '''TODO(cheng|DATAPIPE-98): this function will be updated when auto-recovery for
+        data event is completed.
+        '''
         with rbr_state_session.connect_begin(ro=True) as session:
-            event_state = SchemaEventState.get_pending_schema_event_state(session)
-        if event_state:
-            self._check_event_state_status(event_state, SchemaEventStatus.PENDING)
+            # There should be at most one event with Pending status, so we are using
+            # unlist to verify
+            # Also in services we cant do expire_on_commit=False, so
+            # if we want to use the object after the session commits, we
+            # need to figure out a way to hold it. for more context:
+            # https://trac.yelpcorp.com/wiki/JulianKPage/WhyNoExpireOnCommitFalse
+            event_state = copy.copy(SchemaEventState.get_pending_schema_event_state(session))
+        if event_state is not None:
+            self._assert_event_stats_status(event_state, SchemaEventStatus.PENDING)
             self._rollback_pending_event(event_state)
         with rbr_state_session.connect_begin(ro=True) as session:
-            latest_schema_event_state = SchemaEventState.get_latest_schema_event_state(session)
+            latest_schema_event_state = copy.copy(
+                SchemaEventState.get_latest_schema_event_state(session)
+            )
             if latest_schema_event_state:
-                self._check_event_state_status(
+                self._assert_event_stats_status(
                     latest_schema_event_state,
                     SchemaEventStatus.COMPLETED
                 )
@@ -53,7 +65,7 @@ class AutoPositionGtidFinder(object):
             else:
                 return None
 
-    def _check_event_state_status(self, event_state, status):
+    def _assert_event_stats_status(self, event_state, status):
         if event_state.status != status:
             log.error("schema_event_state has bad state, \
                 id: {0}, status: {1}, table_name: {2}".format(
@@ -70,6 +82,7 @@ class AutoPositionGtidFinder(object):
         )
         with rbr_state_session.connect_begin(ro=False) as session:
             SchemaEventState.delete_schema_event_state_by_id(session, pending_event_state.id)
+            session.commit()
 
     def _recreate_table(self, table_name, create_table_statement):
         ''' Restore the table with its previous create table statement,

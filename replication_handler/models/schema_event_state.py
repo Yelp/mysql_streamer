@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import copy
-
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -53,20 +51,14 @@ class SchemaEventState(Base):
         ).filter(
             SchemaEventState.status == SchemaEventStatus.PENDING
         ).all()
-        # There should be at most one event with Pending status, so we are using
-        # unlist to verify
-        # Also in services we cant do expire_on_commit=False, so
-        # if we want to use the object after the session commits, we
-        # need to figure out a way to hold it. for more context:
-        # https://trac.yelpcorp.com/wiki/JulianKPage/WhyNoExpireOnCommitFalse
-        return copy.copy(unlist(result))
+        return unlist(result)
 
     @classmethod
     def get_latest_schema_event_state(cls, session):
         result = session.query(
             SchemaEventState
         ).order_by(desc(SchemaEventState.time_created)).first()
-        return copy.copy(result)
+        return result
 
     @classmethod
     def delete_schema_event_state_by_id(cls, session, schema_event_state_id):
@@ -86,13 +78,12 @@ class SchemaEventState(Base):
     ):
         schema_event_state = SchemaEventState(
             gtid=gtid,
-            status='Pending',
+            status=status,
             query=query,
             table_name=table_name,
             create_table_statement=create_table_statement,
         )
         session.add(schema_event_state)
-        session.flush()
         return schema_event_state
 
     @classmethod
@@ -100,7 +91,6 @@ class SchemaEventState(Base):
         schema_event_state = session.query(
             SchemaEventState
         ).filter(SchemaEventState.gtid == gtid).one()
-        schema_event_state.status = 'Completed'
+        schema_event_state.status = SchemaEventStatus.COMPLETED
         session.add(schema_event_state)
-        session.flush()
         return schema_event_state
