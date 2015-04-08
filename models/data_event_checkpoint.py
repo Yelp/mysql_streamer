@@ -15,6 +15,6 @@ class DataEventCheckpoint(Base):
     id = Column(Integer, primary_key=True)
     gtid = Column(String, nullable=False)
     offset = Column(Integer, nullable=False)
-    payload_size = Column(Integer, nullable=False)
+    kafka_offset = Column(Integer, nullable=False)
     table_name = Column(String, nullable=False)
     time_created = Column(UnixTimeStampType, default=default_now)

@@ -11,7 +11,7 @@
       <column name="offset" type="INT(11)">
         <constraints nullable="false"/>
       </column>
-      <column name="payload_size" type="INT(11)">
+      <column name="kafka_offset" type="INT(11)">
         <constraints nullable="false"/>
       </column>
       <column name="table_name" type="VARCHAR(255)">
