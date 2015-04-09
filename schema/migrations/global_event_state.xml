@@ -8,6 +8,9 @@
       <column name="is_clean_shutdown" type="TINYINT(1)" defaultValue="0">
         <constraints nullable="false"/>
       </column>
+      <column name="time_updated" type="INT(11)">
+        <constraints nullable="false"/>
+      </column>
     </createTable>
     <modifySql dbms="mysql">
       <append value=" ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci"/>
