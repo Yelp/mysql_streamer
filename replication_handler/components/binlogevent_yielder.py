@@ -67,6 +67,7 @@ class BinlogEventYielder(object):
          our performance is good enough so that we don't have to worry about the little
          slowness that isinstance introduced. see DATAPIPE-96 for detailed performance
          analysis results.
+         Also GtidEvent should not show up consecutively, if so we should raise exception.
         """
         event = self.stream.fetchone()
         if isinstance(event, GtidEvent):
