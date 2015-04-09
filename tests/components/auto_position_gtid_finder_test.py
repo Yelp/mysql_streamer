@@ -6,6 +6,7 @@ from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
+from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.components.auto_position_gtid_finder import AutoPositionGtidFinder
 from replication_handler.components.auto_position_gtid_finder import BadSchemaEventStateException
 
@@ -16,7 +17,7 @@ class TestAutoPositionGtidFinder(object):
     def completed_schema_event_state(self):
         return SchemaEventState(
             gtid="sid:12",
-            status='Completed',
+            status=SchemaEventStatus.COMPLETED,
             query="CREATE TABLE STATEMENT",
             table_name="Business",
             create_table_statement="CREATE TABLE STATEMENT",
@@ -26,7 +27,7 @@ class TestAutoPositionGtidFinder(object):
     def pending_schema_event_state(self):
         return SchemaEventState(
             gtid="sid:13",
-            status='Pending',
+            status=SchemaEventStatus.PENDING,
             query="ALTER TABLE STATEMENT",
             table_name="Business",
             create_table_statement="CREATE TABLE STATEMENT",

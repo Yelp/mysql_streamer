@@ -71,6 +71,7 @@ class BinlogEventYielder(object):
         if isinstance(event, GtidEvent):
             self.current_gtid = event.gtid
             event = self.stream.fetchone()
+
         if isinstance(event, QueryEvent) or isinstance(event, RowsEvent):
             return ReplicationHandlerEvent(
                 gtid=self.current_gtid,

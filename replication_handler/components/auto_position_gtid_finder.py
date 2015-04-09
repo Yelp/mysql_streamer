@@ -2,7 +2,6 @@
 import copy
 import logging
 
-
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.models.database import rbr_state_session
@@ -50,14 +49,15 @@ class AutoPositionGtidFinder(object):
                 SchemaEventState.get_pending_schema_event_state(session)
             )
         if event_state is not None:
-            self._assert_event_stats_status(event_state, SchemaEventStatus.PENDING)
+            self._assert_event_state_status(event_state, SchemaEventStatus.PENDING)
             self._rollback_pending_event(event_state)
+
         with rbr_state_session.connect_begin(ro=True) as session:
             latest_schema_event_state = copy.copy(
                 SchemaEventState.get_latest_schema_event_state(session)
             )
             if latest_schema_event_state:
-                self._assert_event_stats_status(
+                self._assert_event_state_status(
                     latest_schema_event_state,
                     SchemaEventStatus.COMPLETED
                 )
@@ -65,7 +65,7 @@ class AutoPositionGtidFinder(object):
             else:
                 return None
 
-    def _assert_event_stats_status(self, event_state, status):
+    def _assert_event_state_status(self, event_state, status):
         if event_state.status != status:
             log.error("schema_event_state has bad state, \
                 id: {0}, status: {1}, table_name: {2}".format(
