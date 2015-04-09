@@ -16,6 +16,11 @@ class EventType(object):
 
 
 class GlobalEventState(Base):
+    """GlobalEventState is used to save information about latest event for recovery.
+    For clean shutdowns, we will just resume from the recorded gtid, otherwise,
+    we will perform recovery procedures for schema event or data event
+    according to the event type.
+    """
 
     __tablename__ = 'global_event_state'
 
