@@ -71,7 +71,7 @@ class SchemaEventHandler(BaseEventHandler):
             )
 
     def _update_journaling_record(self, gtid):
-        '''TODO(cheng): Update the global gtid as well.'''
+        """TODO(cheng|DATAPIPE-116): Update the global gtid as well."""
         with rbr_state_session.connect_begin(ro=False) as session:
             SchemaEventState.update_schema_event_state_to_complete_by_gtid(
                 session,

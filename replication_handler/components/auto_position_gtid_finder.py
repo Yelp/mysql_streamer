@@ -20,13 +20,13 @@ class BadSchemaEventStateException(Exception):
 class AutoPositionGtidFinder(object):
 
     def get_gtid_to_resume_tailing_from(self):
-        '''The first component of the GTID is the source identifier, sid.
+        """The first component of the GTID is the source identifier, sid.
         The next component identifies the transactions that have been committed, exclusive.
         The transaction identifiers 1-100, would correspond to the interval [1,100),
         indicating that the first 99 transactions have been committed.
-        Replication would resume at transaction 100.  Our systems save the last transaction
+        Replication would resume at transaction 100. Our systems save the last transaction
         they successfully completed, so we add one to start from the next transaction.
-        '''
+        """
         gtid = self._get_last_completed_gtid()
         if gtid:
             sid, transaction_id = gtid.split(":")
@@ -38,9 +38,9 @@ class AutoPositionGtidFinder(object):
             return None
 
     def _get_last_completed_gtid(self):
-        '''TODO(cheng|DATAPIPE-98): this function will be updated when auto-recovery for
+        """TODO(cheng|DATAPIPE-98): this function will be updated when auto-recovery for
         data event is completed.
-        '''
+        """
         with rbr_state_session.connect_begin(ro=True) as session:
             # In services we cant do expire_on_commit=False, so
             # if we want to use the object after the session commits, we
@@ -85,11 +85,11 @@ class AutoPositionGtidFinder(object):
             session.commit()
 
     def _recreate_table(self, table_name, create_table_statement):
-        ''' Restore the table with its previous create table statement,
+        """Restore the table with its previous create table statement,
         because MySQL implicitly commits DDL changes, so there's no transactional
         DDL. see http://dev.mysql.com/doc/refman/5.5/en/implicit-commit.html for more
         background.
-        '''
+        """
         cursor = ConnectionSet.schema_tracker_rw().schema_tracker.cursor()
         drop_table_query = "DROP TABLE `{0}`".format(
             table_name

@@ -61,17 +61,17 @@ class BinlogEventYielder(object):
         return self
 
     def next(self):
-        '''RowsEvent can appear consecutively, which means we cant make assumption
-         about the incoming event type, isinstance is used here for clearity, also
+        """RowsEvent can appear consecutively, which means we cant make assumption
+         about the incoming event type, isinstance is used here for clarity, also
          our performance is good enough so that we don't have to worry about the little
          slowness that isinstance introduced. see DATAPIPE-96 for detailed performance
          analysis results.
-        '''
+        """
         event = self.stream.fetchone()
         if isinstance(event, GtidEvent):
             self.current_gtid = event.gtid
-            return self.next()
-        elif isinstance(event, QueryEvent) or isinstance(event, RowsEvent):
+            event = self.stream.fetchone()
+        if isinstance(event, QueryEvent) or isinstance(event, RowsEvent):
             return ReplicationHandlerEvent(
                 gtid=self.current_gtid,
                 event=event
