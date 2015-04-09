@@ -19,12 +19,14 @@ class BadSchemaEventStateException(Exception):
 class AutoPositionGtidFinder(object):
 
     def get_gtid_to_resume_tailing_from(self):
-        """The first component of the GTID is the source identifier, sid.
+        """This method returns the GTID (as a set) to resume replication handler tailing
+        The first component of the GTID is the source identifier, sid.
         The next component identifies the transactions that have been committed, exclusive.
         The transaction identifiers 1-100, would correspond to the interval [1,100),
         indicating that the first 99 transactions have been committed.
         Replication would resume at transaction 100. Our systems save the last transaction
         they successfully completed, so we add one to start from the next transaction.
+        For more info: https://dev.mysql.com/doc/refman/5.6/en/replication-gtids-concepts.html
         """
         gtid = self._get_last_completed_gtid()
         if gtid:
@@ -40,18 +42,24 @@ class AutoPositionGtidFinder(object):
         """TODO(cheng|DATAPIPE-98): this function will be updated when auto-recovery for
         data event is completed.
         """
+        event_state = self._get_pending_schema_event_state()
+        if event_state is not None:
+            self._assert_event_state_status(event_state, SchemaEventStatus.PENDING)
+            self._rollback_pending_event(event_state)
+
+        return self._get_last_schema_event_state()
+
+    def _get_pending_schema_event_state(self):
         with rbr_state_session.connect_begin(ro=True) as session:
             # In services we cant do expire_on_commit=False, so
             # if we want to use the object after the session commits, we
             # need to figure out a way to hold it. for more context:
             # https://trac.yelpcorp.com/wiki/JulianKPage/WhyNoExpireOnCommitFalse
-            event_state = copy.copy(
+            return copy.copy(
                 SchemaEventState.get_pending_schema_event_state(session)
             )
-        if event_state is not None:
-            self._assert_event_state_status(event_state, SchemaEventStatus.PENDING)
-            self._rollback_pending_event(event_state)
 
+    def _get_last_schema_event_state(self):
         with rbr_state_session.connect_begin(ro=True) as session:
             latest_schema_event_state = copy.copy(
                 SchemaEventState.get_latest_schema_event_state(session)
@@ -85,7 +93,7 @@ class AutoPositionGtidFinder(object):
             session.commit()
 
     def _recreate_table(self, table_name, create_table_statement):
-        """Restore the table with its previous create table statement,
+        """Restores the table with its previous create table statement,
         because MySQL implicitly commits DDL changes, so there's no transactional
         DDL. see http://dev.mysql.com/doc/refman/5.5/en/implicit-commit.html for more
         background.

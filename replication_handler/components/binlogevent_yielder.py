@@ -61,7 +61,8 @@ class BinlogEventYielder(object):
         return self
 
     def next(self):
-        """RowsEvent can appear consecutively, which means we cant make assumption
+        """This method implements the binlogyielder's iteration functionality.
+         RowsEvent can appear consecutively, which means we cant make assumption
          about the incoming event type, isinstance is used here for clarity, also
          our performance is good enough so that we don't have to worry about the little
          slowness that isinstance introduced. see DATAPIPE-96 for detailed performance

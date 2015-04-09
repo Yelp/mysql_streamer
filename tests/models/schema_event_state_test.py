@@ -70,7 +70,7 @@ class TestSchemaEventState(object):
         sandbox_session
     ):
         result = SchemaEventState.get_pending_schema_event_state(sandbox_session)
-        self.check_result_against_expected(result, pending_schema_event_state_obj)
+        self.assert_equivalent_schema_events(result, pending_schema_event_state_obj)
 
     def test_delete_schema_event_state_by_id(
         self,
@@ -91,7 +91,7 @@ class TestSchemaEventState(object):
         sandbox_session
     ):
         result = SchemaEventState.get_latest_schema_event_state(sandbox_session)
-        self.check_result_against_expected(result, completed_schema_event_state_obj)
+        self.assert_equivalent_schema_events(result, completed_schema_event_state_obj)
 
     def test_update_schema_event_state_to_complete_by_gtid(
         self,
@@ -104,7 +104,7 @@ class TestSchemaEventState(object):
         )
         assert result.status == SchemaEventStatus.COMPLETED
 
-    def check_result_against_expected(self, result, expected):
+    def assert_equivalent_schema_events(self, result, expected):
         # Since result is a copy of original obj, they are not the same object, we will
         # be comparing their attributes.
         assert result.id == expected.id
