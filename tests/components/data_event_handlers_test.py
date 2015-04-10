@@ -8,6 +8,7 @@ import pytest
 
 from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.stubs.stub_dw_clientlib import DWClientlib
 from replication_handler.components.stubs.stub_schemas import stub_business_schema
 from testing.events import RowsEvent
 
@@ -73,7 +74,7 @@ class TestDataEventHandler(object):
     @pytest.yield_fixture
     def patch_publish_to_kafka(self, data_event_handler):
         with mock.patch.object(
-            data_event_handler, '_publish_to_kafka'
+            DWClientlib, 'publish'
         ) as mock_kafka_publish:
             yield mock_kafka_publish
 
@@ -121,7 +122,7 @@ class TestDataEventHandler(object):
     ):
 
         data_event_handler.handle_event(add_data_event, test_gtid)
-        expected_publish_to_kafka_calls = [
+        expected_call_args = [
             (
                 schema_cache_entry.kafka_topic,
                 self.avro_encoder(
@@ -131,5 +132,6 @@ class TestDataEventHandler(object):
             )
             for row in add_data_event.rows
         ]
-        unpacked_call_args = [i[0] for i in patch_publish_to_kafka.call_args_list]
-        assert expected_publish_to_kafka_calls == unpacked_call_args
+        actual_call_args = [i[0] for i in patch_publish_to_kafka.call_args_list]
+        assert expected_call_args == actual_call_args
+        assert patch_publish_to_kafka.call_count == 3

@@ -7,9 +7,9 @@ from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
 from replication_handler.components.schema_event_handler import SchemaEventHandler
-from replication_handler.components.base_event_handler import SchemaStoreRegisterResponse
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
+from replication_handler.components.stubs.stub_schemas import StubSchemaClient
 from replication_handler.models.schema_event_state import SchemaEventState
 
 from testing.events import QueryEvent
@@ -98,32 +98,23 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture
     def create_table_schema_store_response(self, test_table):
-        return SchemaStoreRegisterResponse(
-            avro_dict={
-                "type": "record",
-                "name": "FakeRow",
-                "fields": [{"name": "a_number", "type": "int"}]
-            },
-            table=test_table,
-            kafka_topic=test_table + ".0",
-            version=0
-        )
+        avro_schema = '{"type": "record", "namespace": "yelp", "name": "FakeRow",\
+            "fields": [{"type": "int", "name": "a_number"}]}'
+        return {
+            "schema": avro_schema,
+            "kafka_topic": test_table + ".0",
+            "schema_id": 0
+        }
 
     @pytest.fixture
     def alter_table_schema_store_response(self, test_table):
-        return SchemaStoreRegisterResponse(
-            avro_dict={
-                "type": "record",
-                "name": "FakeRow",
-                "fields": [
-                    {"name": "a_number", "type": "int"},
-                    {"name": "another_number", "type": "int"}
-                ]
-            },
-            kafka_topic=test_table + ".0",
-            version=1,
-            table=test_table
-        )
+        avro_schema = '{"type": "record", "namespace": "yelp", "name": "FakeRow", "fields": [\
+                {"type": "int", "name": "a_number"},{"type": "int", "name": "another_number"}]}'
+        return {
+            "schema": avro_schema,
+            "kafka_topic": test_table + ".0",
+            "schema_id": 1
+        }
 
     @pytest.fixture
     def table_with_schema_changes(self, test_schema, test_table):
@@ -170,8 +161,8 @@ class TestSchemaEventHandler(object):
         create_table_schema_store_response
     ):
         with mock.patch.object(
-            schema_event_handler,
-            '_register_create_table_with_schema_store',
+            StubSchemaClient,
+            'add_schema_from_sql',
             return_value=create_table_schema_store_response
         ) as mock_register_create:
             yield mock_register_create
@@ -184,8 +175,8 @@ class TestSchemaEventHandler(object):
     ):
 
         with mock.patch.object(
-            schema_event_handler,
-            '_register_alter_table_with_schema_store',
+            StubSchemaClient,
+            'alter_schema',
             return_value=alter_table_schema_store_response
         ) as mock_register_alter:
             yield mock_register_alter
@@ -254,6 +245,7 @@ class TestSchemaEventHandler(object):
             create_table_schema_event,
             mock_cursor,
             table_with_schema_changes,
+            schema_event_handler,
             external_patches.register_create_table_with_schema_store(),
             external_patches.populate_schema_cache,
             external_patches.create_schema_event_state,
@@ -286,6 +278,7 @@ class TestSchemaEventHandler(object):
             alter_table_schema_event,
             mock_cursor,
             table_with_schema_changes,
+            schema_event_handler,
             external_patches.register_alter_table_with_schema_store(),
             external_patches.populate_schema_cache,
             external_patches.create_schema_event_state,
@@ -351,6 +344,7 @@ class TestSchemaEventHandler(object):
         event,
         mock_cursor,
         table,
+        schema_event_handler,
         schema_store_response,
         patch_populate_schema_cache,
         patch_create_schema_event_state,
@@ -366,7 +360,11 @@ class TestSchemaEventHandler(object):
         assert mock_cursor.execute.call_args_list == [mock.call(event.query)]
 
         assert patch_populate_schema_cache.call_args_list == \
-            [mock.call(table, schema_store_response)]
+            [mock.call(
+                table,
+                schema_event_handler._format_register_response(schema_store_response)
+            )]
+
         assert patch_create_schema_event_state.call_count == 1
         assert patch_update_schema_event_state.call_count == 1
 

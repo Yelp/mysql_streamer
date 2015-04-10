@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import avro.io
 import avro.schema
 import io
@@ -5,6 +6,7 @@ import logging
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
+from replication_handler.components.stubs.stub_dw_clientlib import DWClientlib
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -19,6 +21,7 @@ class DataEventHandler(BaseEventHandler):
            GTID checkpoints in the MySQL schema tracking db.
         """
         super(DataEventHandler, self).__init__()
+        self.dw_client = DWClientlib()
 
     def handle_event(self, event, gtid):
         """Make sure that the schema cache has the table, serialize the data,
@@ -47,9 +50,7 @@ class DataEventHandler(BaseEventHandler):
     def _publish_to_kafka(self, topic, message):
         """Calls the clientlib for pushing payload to kafka.
            The clientlib will encapsulate this in envelope."""
-        # TODO (ryani|DATAPIPE-71) use the data-pipeline clientlib
-        # for publishing to kafka
-        print "Publishing to kafka on topic {0}".format(topic)
+        self.dw_client.publish(topic, message)
 
     def _get_values(self, row):
         """Gets the new value of the row changed.  If add row occurs,
