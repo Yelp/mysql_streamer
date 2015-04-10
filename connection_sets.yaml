@@ -7,3 +7,7 @@ connection_sets:
         schema_tracker: "master"
     rbr_state_rw:
         rbr_state: "master"
+    rbr_state_ro:
+        connection_configuration:
+            read_only: true
+        rbr_state: "master"

@@ -19,7 +19,10 @@ schema_tracker_session = scoped_session(
     sessionmaker(master_connection_set_name="schema_tracker_rw")
 )
 rbr_state_session = scoped_session(
-    sessionmaker(master_connection_set_name="rbr_state_rw")
+    sessionmaker(
+        master_connection_set_name="rbr_state_rw",
+        slave_connection_set_name="rbr_state_ro"
+    )
 )
 
 
