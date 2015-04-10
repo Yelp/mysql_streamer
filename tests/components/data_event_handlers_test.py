@@ -8,7 +8,7 @@ import pytest
 
 from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.components.stub_schemas import stub_business_schema
+from replication_handler.components.stubs.stub_schemas import stub_business_schema
 from testing.events import RowsEvent
 
 

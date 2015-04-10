@@ -5,7 +5,7 @@ import avro.schema
 from collections import namedtuple
 import logging
 
-from replication_handler.components import stub_schemas
+from replication_handler.components.stubs import stub_schemas
 
 
 SchemaCacheEntry = namedtuple(
