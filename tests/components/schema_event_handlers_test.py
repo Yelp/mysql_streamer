@@ -18,6 +18,7 @@ from testing.events import QueryEvent
 SchemaHandlerExternalPatches = namedtuple(
     'SchemaHandlerExternalPatches', (
         'schema_tracking_db_conn',
+        'rbr_source_ro_db_conn',
         'database_config',
         'get_show_create_statement',
         'register_with_schema_store',
@@ -136,6 +137,14 @@ class TestSchemaEventHandler(object):
             yield mock_connection
 
     @pytest.yield_fixture
+    def patch_rbr_source_ro(self):
+        with mock.patch.object(
+            ConnectionSet,
+            'rbr_source_ro'
+        ) as mock_rbr_source_ro:
+            yield mock_rbr_source_ro
+
+    @pytest.yield_fixture
     def patch_config_db(self, test_schema):
         with mock.patch.object(
             config.DatabaseConfig,
@@ -192,6 +201,7 @@ class TestSchemaEventHandler(object):
     def external_patches(
         self,
         patch_db_conn,
+        patch_rbr_source_ro,
         patch_config_db,
         patch_get_show_create_statement,
         patch_register,
@@ -201,6 +211,7 @@ class TestSchemaEventHandler(object):
     ):
         return SchemaHandlerExternalPatches(
             schema_tracking_db_conn=patch_db_conn,
+            rbr_source_ro_db_conn=patch_rbr_source_ro,
             database_config=patch_config_db,
             get_show_create_statement=patch_get_show_create_statement,
             register_with_schema_store=patch_register,
