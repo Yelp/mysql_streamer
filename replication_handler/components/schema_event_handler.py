@@ -153,7 +153,9 @@ class SchemaEventHandler(BaseEventHandler):
         """Register create table with schema store and populate cache
            with response
         """
-        raw_resp = self.schema_store_client.add_schema_from_sql(create_table_sql)
+        raw_resp = self.schema_store_client.register_avro_schema_from_mysql_statements(
+            create_table_sql
+        )
         resp = self._format_register_response(raw_resp)
         return resp
 
@@ -166,7 +168,7 @@ class SchemaEventHandler(BaseEventHandler):
         """Register alter table with schema store and populate cache with
            response
         """
-        raw_resp = self.schema_store_client.alter_schema(
+        raw_resp = self.schema_store_client.register_avro_schema_from_mysql_statements(
             alter_sql,
             table_state_before,
             table_state_after,

@@ -20,8 +20,7 @@ SchemaHandlerExternalPatches = namedtuple(
         'schema_tracking_db_conn',
         'database_config',
         'get_show_create_statement',
-        'register_create_table_with_schema_store',
-        'register_alter_table_with_schema_store',
+        'register_with_schema_store',
         'populate_schema_cache',
         'create_schema_event_state',
         'update_schema_event_state'
@@ -155,31 +154,18 @@ class TestSchemaEventHandler(object):
             yield mock_show_create
 
     @pytest.yield_fixture
-    def patch_register_create_table(
+    def patch_register(
         self,
         schema_event_handler,
-        create_table_schema_store_response
-    ):
-        with mock.patch.object(
-            StubSchemaClient,
-            'add_schema_from_sql',
-            return_value=create_table_schema_store_response
-        ) as mock_register_create:
-            yield mock_register_create
-
-    @pytest.yield_fixture
-    def patch_register_alter_table(
-        self,
-        schema_event_handler,
+        create_table_schema_store_response,
         alter_table_schema_store_response
     ):
-
         with mock.patch.object(
             StubSchemaClient,
-            'alter_schema',
-            return_value=alter_table_schema_store_response
-        ) as mock_register_alter:
-            yield mock_register_alter
+            'register_avro_schema_from_mysql_statements',
+            return_value=create_table_schema_store_response
+        ) as mock_register:
+            yield mock_register
 
     @pytest.yield_fixture
     def patch_populate_schema_cache(self, schema_event_handler):
@@ -208,8 +194,7 @@ class TestSchemaEventHandler(object):
         patch_db_conn,
         patch_config_db,
         patch_get_show_create_statement,
-        patch_register_create_table,
-        patch_register_alter_table,
+        patch_register,
         patch_populate_schema_cache,
         patch_create_schema_event_state,
         patch_update_schema_event_state,
@@ -218,8 +203,7 @@ class TestSchemaEventHandler(object):
             schema_tracking_db_conn=patch_db_conn,
             database_config=patch_config_db,
             get_show_create_statement=patch_get_show_create_statement,
-            register_create_table_with_schema_store=patch_register_create_table,
-            register_alter_table_with_schema_store=patch_register_alter_table,
+            register_with_schema_store=patch_register,
             populate_schema_cache=patch_populate_schema_cache,
             create_schema_event_state=patch_create_schema_event_state,
             update_schema_event_state=patch_update_schema_event_state
@@ -233,11 +217,14 @@ class TestSchemaEventHandler(object):
         show_create_result_initial,
         table_with_schema_changes,
         mock_cursor,
+        create_table_schema_store_response,
         external_patches,
     ):
         """Integration test the things that need to be called during a handle
            create table event hence many mocks
         """
+        external_patches.register_with_schema_store.return_value = \
+            create_table_schema_store_response
         external_patches.get_show_create_statement.return_value = show_create_result_initial
         schema_event_handler.handle_event(create_table_schema_event, test_gtid)
 
@@ -246,7 +233,7 @@ class TestSchemaEventHandler(object):
             mock_cursor,
             table_with_schema_changes,
             schema_event_handler,
-            external_patches.register_create_table_with_schema_store(),
+            external_patches.register_with_schema_store(),
             external_patches.populate_schema_cache,
             external_patches.create_schema_event_state,
             external_patches.update_schema_event_state
@@ -261,12 +248,15 @@ class TestSchemaEventHandler(object):
         show_create_result_after_alter,
         mock_cursor,
         table_with_schema_changes,
+        alter_table_schema_store_response,
         external_patches
     ):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
         """
 
+        external_patches.register_with_schema_store.return_value = \
+            alter_table_schema_store_response
         external_patches.get_show_create_statement.side_effect = [
             show_create_result_initial,
             show_create_result_initial,
@@ -279,7 +269,7 @@ class TestSchemaEventHandler(object):
             mock_cursor,
             table_with_schema_changes,
             schema_event_handler,
-            external_patches.register_alter_table_with_schema_store(),
+            external_patches.register_with_schema_store(),
             external_patches.populate_schema_cache,
             external_patches.create_schema_event_state,
             external_patches.update_schema_event_state

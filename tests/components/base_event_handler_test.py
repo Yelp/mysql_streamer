@@ -54,11 +54,11 @@ class TestBaseEventHandler(object):
         assert resp == base_event_handler.schema_cache[table]
         self._assert_expected_result(resp, kafka_topic)
 
-    def test_schema_already_in_caceh(self, base_event_handler, table, kafka_topic):
+    def test_schema_already_in_cache(self, base_event_handler, table, kafka_topic):
         resp = base_event_handler.get_schema_for_schema_cache(table)
         self._assert_expected_result(resp, kafka_topic)
 
-    def test_non_exixtent_table(self, base_event_handler, bogus_table):
+    def test_non_existent_table_has_none_response(self, base_event_handler, bogus_table):
         resp = base_event_handler.get_schema_for_schema_cache(bogus_table)
         assert resp is None
 
