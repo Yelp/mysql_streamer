@@ -8,7 +8,7 @@ import pytest
 
 from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.components.stubs.stub_dw_clientlib import DWClientlib
+from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.components.stubs.stub_schemas import stub_business_schema
 from testing.events import RowsEvent
 
@@ -74,7 +74,7 @@ class TestDataEventHandler(object):
     @pytest.yield_fixture
     def patch_publish_to_kafka(self, data_event_handler):
         with mock.patch.object(
-            DWClientlib, 'publish'
+            DPClientlib, 'publish'
         ) as mock_kafka_publish:
             yield mock_kafka_publish
 

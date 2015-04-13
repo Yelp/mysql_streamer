@@ -5,13 +5,13 @@ from collections import namedtuple
 OffsetInfo = namedtuple('OffsetInfo', ('gtid', 'offset'))
 
 
-class DWClientlib(object):
+class DPClientlib(object):
 
     def publish(self, topic, message):
         print "Publishing to kafka on topic {0}".format(topic)
 
     def flush(self):
-        """Calling this function will BLOCK caller untill dw_client has
+        """Calling this function will BLOCK caller untill dp_client has
         published all the messages in its queue.
         """
         print "flushing all the messages..."
