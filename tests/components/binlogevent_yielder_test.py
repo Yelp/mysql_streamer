@@ -62,6 +62,27 @@ class TestBinlogEventYielder(object):
         query_event.query = "BEGIN"
         data_event_1 = mock.Mock(spec=WriteRowsEvent)
         data_event_2 = mock.Mock(spec=WriteRowsEvent)
+        patch_fetchone.side_effect = [
+            gtid_event,
+            query_event,
+            data_event_1,
+            data_event_2
+        ]
+        expected_event_info = self._build_expected_event_info(
+            gtid_event,
+            query_event,
+            data_event_1,
+            data_event_2
+        )
+        binlog_event_yielder = BinlogEventYielder()
+        for event, expected_event_info in izip(
+            binlog_event_yielder,
+            expected_event_info
+        ):
+            assert event == expected_event_info.event
+            assert patch_fetchone.call_count == expected_event_info.call_count
+
+    def _build_expected_event_info(self, gtid_event, query_event, data_event_1, data_event_2):
         replication_handler_event_1 = ReplicationHandlerEvent(
             event=query_event,
             gtid=gtid_event.gtid
@@ -74,24 +95,12 @@ class TestBinlogEventYielder(object):
             event=data_event_2,
             gtid=gtid_event.gtid
         )
-        expected_events_info = [
+        expected_event_info = [
             EventInfo(replication_handler_event_1, 2),
             EventInfo(replication_handler_event_2, 3),
             EventInfo(replication_handler_event_3, 4)
         ]
-        patch_fetchone.side_effect = [
-            gtid_event,
-            query_event,
-            data_event_1,
-            data_event_2
-        ]
-        binlog_event_yielder = BinlogEventYielder()
-        for event, expected_event_info in izip(
-            binlog_event_yielder,
-            expected_events_info
-        ):
-            assert event == expected_event_info.event
-            assert patch_fetchone.call_count == expected_event_info.call_count
+        return expected_event_info
 
     def test_ignored_event_type(self, patch_fetchone, patch_get_gtid_to_resume_tailing_from):
         ignored_event = mock.Mock()
