@@ -109,8 +109,9 @@ class TestParseReplicationStream(object):
         ]
         replication_stream = ParseReplicationStream()
         replication_stream.run()
-        assert patch_data_handle_event.call_args_list == \
-            [mock.call(data_event, 'fake_gtid_1'),
-            mock.call(data_event, 'fake_gtid_2')]
+        assert patch_data_handle_event.call_args_list == [
+            mock.call(data_event, 'fake_gtid_1'),
+            mock.call(data_event, 'fake_gtid_2')
+        ]
         assert patch_data_handle_event.call_count == 2
         assert patch_flush.call_count == 0
