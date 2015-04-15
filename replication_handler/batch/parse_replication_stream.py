@@ -8,6 +8,7 @@ from yelp_batch import Batch
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.binlogevent_yielder import BinlogEventYielder
+from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 
 
 class ParseReplicationStream(Batch):
@@ -21,6 +22,11 @@ class ParseReplicationStream(Batch):
            that will encapsulate payloads.
     """
     notify_emails = ['bam+batch@yelp.com']
+    current_event_type = None
+
+    def __init__(self):
+        super(ParseReplicationStream, self).__init__()
+        self.dp_client = DPClientlib()
 
     def run(self):
 
@@ -34,7 +40,15 @@ class ParseReplicationStream(Batch):
         handler_map[QueryEvent] = schema_event_handler
 
         for replication_handler_event in binlog_event_yielder:
-            handler_map[replication_handler_event.event.__class__].handle_event(
+            event_type = replication_handler_event.event.__class__
+            if self.current_event_type is None:
+                self.current_event_type = event_type
+
+            if event_type != self.current_event_type:
+                self.dp_client.flush()
+                self.current_event_type = event_type
+
+            handler_map[event_type].handle_event(
                 replication_handler_event.event,
                 replication_handler_event.gtid
             )
