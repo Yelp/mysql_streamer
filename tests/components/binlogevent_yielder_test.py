@@ -51,10 +51,12 @@ class TestBinlogEventYielder(object):
             gtid_event,
             schema_event
         ]
-        binlog_event_yielder = BinlogEventYielder()
-        for event in binlog_event_yielder:
-            assert event == replication_handler_event
-            assert patch_fetchone.call_count == 2
+        replication_handler_event = ReplicationHandlerEvent(
+            event=schema_event,
+            gtid=gtid_event.gtid
+        )
+        expected_events_info = [EventInfo(event=replication_handler_event, call_count=2)]
+        self._assert_result(expected_events_info, patch_fetchone)
 
     def test_data_event_next(self, patch_fetchone, patch_get_gtid_to_resume_tailing_from):
         gtid_event = mock.Mock(spec=GtidEvent)
@@ -68,39 +70,42 @@ class TestBinlogEventYielder(object):
             data_event_1,
             data_event_2
         ]
-        expected_event_info = self._build_expected_event_info(
-            gtid_event,
+        expected_events_info = self._build_expected_event_info(
+            gtid_event.gtid,
             query_event,
             data_event_1,
             data_event_2
         )
-        binlog_event_yielder = BinlogEventYielder()
-        for event, expected_event_info in izip(
-            binlog_event_yielder,
-            expected_event_info
-        ):
-            assert event == expected_event_info.event
-            assert patch_fetchone.call_count == expected_event_info.call_count
+        self._assert_result(expected_events_info, patch_fetchone)
 
-    def _build_expected_event_info(self, gtid_event, query_event, data_event_1, data_event_2):
+    def _build_expected_event_info(self, gtid, query_event, data_event_1, data_event_2):
         replication_handler_event_1 = ReplicationHandlerEvent(
             event=query_event,
-            gtid=gtid_event.gtid
+            gtid=gtid
         )
         replication_handler_event_2 = ReplicationHandlerEvent(
             event=data_event_1,
-            gtid=gtid_event.gtid
+            gtid=gtid
         )
         replication_handler_event_3 = ReplicationHandlerEvent(
             event=data_event_2,
-            gtid=gtid_event.gtid
+            gtid=gtid
         )
         expected_event_info = [
-            EventInfo(replication_handler_event_1, 2),
-            EventInfo(replication_handler_event_2, 3),
-            EventInfo(replication_handler_event_3, 4)
+            EventInfo(event=replication_handler_event_1, call_count=2),
+            EventInfo(event=replication_handler_event_2, call_count=3),
+            EventInfo(event=replication_handler_event_3, call_count=4)
         ]
         return expected_event_info
+
+    def _assert_result(self, expected_events_info, patch_fetchone):
+        binlog_event_yielder = BinlogEventYielder()
+        for event, expected_event_info in izip(
+            binlog_event_yielder,
+            expected_events_info
+        ):
+            assert event == expected_event_info.event
+            assert patch_fetchone.call_count == expected_event_info.call_count
 
     def test_ignored_event_type(self, patch_fetchone, patch_get_gtid_to_resume_tailing_from):
         ignored_event = mock.Mock()
