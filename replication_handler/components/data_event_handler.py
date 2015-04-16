@@ -4,9 +4,13 @@ import avro.schema
 import io
 import logging
 
+from yelp_lib import iteration
+
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
+from replication_handler.models.database import rbr_state_session
+from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -14,6 +18,9 @@ log = logging.getLogger('replication_handler.parse_replication_stream')
 
 class DataEventHandler(BaseEventHandler):
     """Handles data change events: add and update"""
+
+    # Checkpoint everytime when we process 5000 items.
+    checkpoint_size = 5000
 
     def __init__(self):
         """Initialize clientlib that will handle publishing to kafka,
@@ -33,7 +40,11 @@ class DataEventHandler(BaseEventHandler):
             Table(schema=event.schema, table_name=event.table)
         )
         # event.rows, lazily loads all rows
-        self._handle_rows(schema_cache_entry, event.rows)
+        with iteration.SegmentProcessor(
+            self.checkpoint_size,
+            self.checkpoint_latest_published_offset
+        ) as self.processor:
+            self._handle_rows(schema_cache_entry, event.rows)
 
     def _handle_rows(self, schema_cache_entry, rows):
         for row in rows:
@@ -46,6 +57,7 @@ class DataEventHandler(BaseEventHandler):
             schema_cache_entry.avro_obj
         )
         self._publish_to_kafka(schema_cache_entry.kafka_topic, payload)
+        self.processor.push(datum)
 
     def _publish_to_kafka(self, topic, message):
         """Calls the clientlib for pushing payload to kafka.
@@ -77,3 +89,14 @@ class DataEventHandler(BaseEventHandler):
         if table not in self.schema_cache:
             self.schema_cache[table] = self.get_schema_for_schema_cache(table)
         return self.schema_cache[table]
+
+    def checkpoint_latest_published_offset(self, rows):
+        latest_offset_info = self.dp_client.get_latest_published_offset()
+        import ipdb; ipdb.set_trace()
+        with rbr_state_session.connect_begin(ro=False) as session:
+            DataEventCheckpoint.create_data_event_checkpoint(
+                session=session,
+                gtid=latest_offset_info.gtid,
+                offset=latest_offset_info.offset,
+                table_name=latest_offset_info.table_name
+            )

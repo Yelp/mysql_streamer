@@ -4,6 +4,5 @@ CREATE TABLE `data_event_checkpoint` (
   `offset` int(11) NOT NULL,
   `table_name` varchar(255) NOT NULL,
   `time_created` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `gtid` (`gtid`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;

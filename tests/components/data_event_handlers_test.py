@@ -6,10 +6,15 @@ import json
 import mock
 import pytest
 
+from yelp_conn.connection_set import ConnectionSet
+
 from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
+from replication_handler.components.stubs.stub_dp_clientlib import OffsetInfo
 from replication_handler.components.stubs.stub_schemas import stub_business_schema
+from replication_handler.models.database import rbr_state_session
+from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from testing.events import RowsEvent
 
 
@@ -62,6 +67,22 @@ class TestDataEventHandler(object):
     def update_data_event(self):
         return RowsEvent.make_update_rows_event()
 
+    @pytest.fixture
+    def first_offset_info(self, test_gtid):
+        return OffsetInfo(
+            test_gtid,
+            1,
+            "business"
+        )
+
+    @pytest.fixture
+    def second_offset_info(self, test_gtid):
+        return OffsetInfo(
+            test_gtid,
+            3,
+            "business"
+        )
+
     @pytest.yield_fixture
     def patch_get_schema_for_schema_cache(self, data_event_handler, schema_cache_entry):
         with mock.patch.object(
@@ -72,11 +93,59 @@ class TestDataEventHandler(object):
             yield mock_get_schema
 
     @pytest.yield_fixture
-    def patch_publish_to_kafka(self, data_event_handler):
+    def patch_publish_to_kafka(self):
         with mock.patch.object(
             DPClientlib, 'publish'
         ) as mock_kafka_publish:
             yield mock_kafka_publish
+
+    @pytest.yield_fixture
+    def patch_get_latest_published_offset(
+        self,
+        test_gtid,
+        first_offset_info,
+        second_offset_info
+    ):
+        with mock.patch.object(
+            DPClientlib, 'get_latest_published_offset'
+        ) as mock_get_latest_published_offset:
+            mock_get_latest_published_offset.side_effect = [
+                first_offset_info,
+                second_offset_info
+            ]
+            yield mock_get_latest_published_offset
+
+    @pytest.yield_fixture
+    def patch_create_data_event_checkpoint(self):
+        with mock.patch.object(
+            DataEventCheckpoint,
+            'create_data_event_checkpoint'
+        ) as mock_create_data_event_checkpoint:
+            yield mock_create_data_event_checkpoint
+
+    @pytest.yield_fixture
+    def patch_checkpoint_size(self):
+        with mock.patch.object(
+            DataEventHandler,
+            "checkpoint_size",
+            new_callable=mock.PropertyMock
+        ) as mock_checkpoint_size:
+            mock_checkpoint_size.return_value = 2
+            yield mock_checkpoint_size
+
+    @pytest.yield_fixture
+    def patch_rbr_state_rw(self, mock_rbr_state_session):
+        with mock.patch.object(
+            rbr_state_session,
+            'connect_begin'
+        ) as mock_session_connect_begin:
+            mock_session_connect_begin.return_value.__enter__.return_value = \
+                mock_rbr_state_session
+            yield mock_session_connect_begin
+
+    @pytest.fixture
+    def mock_rbr_state_session(self):
+        return mock.Mock()
 
     def test_get_values(
         self,
@@ -84,7 +153,6 @@ class TestDataEventHandler(object):
         add_data_event,
         update_data_event
     ):
-
         assert data_event_handler._get_values(add_data_event.rows[0]) \
             == add_data_event.rows[0]['values']
         assert data_event_handler._get_values(update_data_event.rows[0]) \
@@ -118,7 +186,12 @@ class TestDataEventHandler(object):
         add_data_event,
         schema_cache_entry,
         patch_get_schema_for_schema_cache,
-        patch_publish_to_kafka
+        patch_rbr_state_rw,
+        mock_rbr_state_session,
+        patch_publish_to_kafka,
+        patch_get_latest_published_offset,
+        patch_create_data_event_checkpoint,
+        patch_checkpoint_size,
     ):
 
         data_event_handler.handle_event(add_data_event, test_gtid)
@@ -135,3 +208,20 @@ class TestDataEventHandler(object):
         actual_call_args = [i[0] for i in patch_publish_to_kafka.call_args_list]
         assert expected_call_args == actual_call_args
         assert patch_publish_to_kafka.call_count == 3
+        # We set the checkpoint size to 2, so 3 rows will checkpoint twice
+        assert patch_get_latest_published_offset.call_count == 2
+        assert patch_create_data_event_checkpoint.call_count == 2
+        assert patch_create_data_event_checkpoint.call_args_list == [
+            mock.call(
+                session=mock_rbr_state_session,
+                table_name="business",
+                gtid=test_gtid,
+                offset=1
+            ),
+            mock.call(
+                session=mock_rbr_state_session,
+                table_name="business",
+                gtid=test_gtid,
+                offset=3
+            ),
+        ]

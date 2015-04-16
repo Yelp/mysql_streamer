@@ -2,7 +2,7 @@
 from collections import namedtuple
 
 
-OffsetInfo = namedtuple('OffsetInfo', ('gtid', 'offset'))
+OffsetInfo = namedtuple('OffsetInfo', ('gtid', 'offset', 'table_name'))
 
 
 class DPClientlib(object):
@@ -21,11 +21,13 @@ class DPClientlib(object):
         our last checkpoint in case of a failure.
         """
         published_gtid = "1765f92f-d800-11e4-88b2-0242a9fe0285:13"
-        published_offset = 20
-        return OffsetInfo(published_gtid, published_offset)
+        published_offset = 1
+        table_name = "business"
+        return OffsetInfo(published_gtid, published_offset, table_name)
 
     def get_latest_published_offset(self):
         """This function is called periodically to checkpoint progress."""
         published_gtid = "1765f92f-d800-11e4-88b2-0242a9fe0285:13"
-        published_offset = 30
-        return OffsetInfo(published_gtid, published_offset)
+        published_offset = 1
+        table_name = "business"
+        return OffsetInfo(published_gtid, published_offset, table_name)
