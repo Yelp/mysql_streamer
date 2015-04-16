@@ -18,6 +18,8 @@ log = logging.getLogger('replication_handler.parse_replication_stream')
 class SchemaEventHandler(BaseEventHandler):
     """Handles schema change events: create table and alter table"""
 
+    notify_email = "bam+replication+handler@yelp.com"
+
     def __init__(self):
         """Store credentials for local tracking database"""
         super(SchemaEventHandler, self).__init__()
@@ -117,8 +119,9 @@ class SchemaEventHandler(BaseEventHandler):
         show_create_result = self._exec_query_and_get_show_create_statement(
             cursor, event, table
         )
-        schema_store_response = self._register_create_table_with_schema_store(
-            show_create_result.query
+        schema_store_response = self._register_with_schema_store(
+            table,
+            [show_create_result.query]
         )
         self._populate_schema_cache(table, schema_store_response)
 
@@ -130,10 +133,14 @@ class SchemaEventHandler(BaseEventHandler):
         show_create_result_after = self._exec_query_and_get_show_create_statement(
             cursor, event, table
         )
-        schema_store_response = self._register_alter_table_with_schema_store(
+        mysql_statements = [
             event.query,
             show_create_result_before.query,
             show_create_result_after.query
+        ]
+        schema_store_response = self._register_with_schema_store(
+            table,
+            mysql_statements
         )
         self._populate_schema_cache(table, schema_store_response)
 
@@ -149,29 +156,20 @@ class SchemaEventHandler(BaseEventHandler):
         assert create_res.table == table_name
         return create_res
 
-    def _register_create_table_with_schema_store(self, create_table_sql):
-        """Register create table with schema store and populate cache
-           with response
-        """
-        raw_resp = self.schema_store_client.register_avro_schema_from_mysql_statements(
-            create_table_sql
-        )
-        resp = self._format_register_response(raw_resp)
-        return resp
-
-    def _register_alter_table_with_schema_store(
+    def _register_with_schema_store(
         self,
-        alter_sql,
-        table_state_before,
-        table_state_after
+        table,
+        mysql_statements
     ):
-        """Register alter table with schema store and populate cache with
-           response
+        """Register with schema store and populate cache
+           with response, one interface for both create and alter
+           statements.
         """
         raw_resp = self.schema_store_client.register_avro_schema_from_mysql_statements(
-            alter_sql,
-            table_state_before,
-            table_state_after,
+            namespace=table.schema,
+            source=table.table_name,
+            source_owner_email=self.notify_email,
+            mysql_statements=mysql_statements
         )
         resp = self._format_register_response(raw_resp)
         return resp

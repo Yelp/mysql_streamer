@@ -9,11 +9,17 @@ def stub_altered_business_schema():
 
 class StubSchemaClient(object):
 
-    def register_avro_schema_from_mysql_statements(self, *args):
+    def register_avro_schema_from_mysql_statements(
+        self,
+        namespace,
+        source,
+        source_owner_email,
+        mysql_statements
+    ):
         """TODO(cheng|DATAPIPE-118): We should use the correct parameters specified
         the ticket.
         """
-        if len(args) == 1:
+        if len(mysql_statements) == 1:
             return stub_business_schema()
         else:
             return stub_altered_business_schema()

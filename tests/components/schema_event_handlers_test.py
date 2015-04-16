@@ -237,6 +237,7 @@ class TestSchemaEventHandler(object):
         external_patches.register_with_schema_store.return_value = \
             create_table_schema_store_response
         external_patches.get_show_create_statement.return_value = show_create_result_initial
+        mysql_statements = [show_create_result_initial]
         schema_event_handler.handle_event(create_table_schema_event, test_gtid)
 
         self.check_external_calls(
@@ -244,10 +245,9 @@ class TestSchemaEventHandler(object):
             mock_cursor,
             table_with_schema_changes,
             schema_event_handler,
-            external_patches.register_with_schema_store(),
-            external_patches.populate_schema_cache,
-            external_patches.create_schema_event_state,
-            external_patches.update_schema_event_state
+            mysql_statements,
+            create_table_schema_store_response,
+            external_patches
         )
 
     def test_handle_event_alter_table(
@@ -268,6 +268,12 @@ class TestSchemaEventHandler(object):
 
         external_patches.register_with_schema_store.return_value = \
             alter_table_schema_store_response
+
+        mysql_statements = [
+            alter_table_schema_event,
+            show_create_result_initial,
+            show_create_result_after_alter
+        ]
         external_patches.get_show_create_statement.side_effect = [
             show_create_result_initial,
             show_create_result_initial,
@@ -280,10 +286,9 @@ class TestSchemaEventHandler(object):
             mock_cursor,
             table_with_schema_changes,
             schema_event_handler,
-            external_patches.register_with_schema_store(),
-            external_patches.populate_schema_cache,
-            external_patches.create_schema_event_state,
-            external_patches.update_schema_event_state
+            mysql_statements,
+            alter_table_schema_store_response,
+            external_patches
         )
 
     def test_filter_out_wrong_schema(
@@ -346,10 +351,9 @@ class TestSchemaEventHandler(object):
         mock_cursor,
         table,
         schema_event_handler,
+        mysql_statements,
         schema_store_response,
-        patch_populate_schema_cache,
-        patch_create_schema_event_state,
-        patch_update_schema_event_state
+        external_patches,
     ):
         """Test helper method that checks various things in a successful scenario
            of event handling
@@ -360,14 +364,25 @@ class TestSchemaEventHandler(object):
         assert mock_cursor.execute.call_count == 1
         assert mock_cursor.execute.call_args_list == [mock.call(event.query)]
 
-        assert patch_populate_schema_cache.call_args_list == \
+        assert external_patches.register_with_schema_store.call_count == 1
+        mysql_statements = [statement.query for statement in mysql_statements]
+        assert external_patches.register_with_schema_store.call_args_list == [
+            mock.call(
+                namespace=table.schema,
+                source=table.table_name,
+                source_owner_email='bam+replication+handler@yelp.com',
+                mysql_statements=mysql_statements
+            )
+        ]
+
+        assert external_patches.populate_schema_cache.call_args_list == \
             [mock.call(
                 table,
                 schema_event_handler._format_register_response(schema_store_response)
             )]
 
-        assert patch_create_schema_event_state.call_count == 1
-        assert patch_update_schema_event_state.call_count == 1
+        assert external_patches.create_schema_event_state.call_count == 1
+        assert external_patches.update_schema_event_state.call_count == 1
 
     def test_get_show_create_table_statement(
         self,
