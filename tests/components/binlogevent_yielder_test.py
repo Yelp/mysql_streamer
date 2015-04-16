@@ -34,7 +34,7 @@ class TestBinlogEventYielder(object):
     def patch_get_gtid_to_resume_tailing_from(self):
         with mock.patch.object(
             AutoPositionGtidFinder,
-            'get_gtid_to_resume_tailing_from',
+            'get_gtid_set_to_resume_tailing_from',
         ) as mock_get_gtid_to_resume_tailing_from:
             mock_get_gtid_to_resume_tailing_from.return_value = None
             yield mock_get_gtid_to_resume_tailing_from

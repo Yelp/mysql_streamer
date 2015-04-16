@@ -18,27 +18,26 @@ class BadSchemaEventStateException(Exception):
 
 class AutoPositionGtidFinder(object):
 
-    def get_gtid_to_resume_tailing_from(self):
+    def get_gtid_set_to_resume_tailing_from(self):
         """This method returns the GTID (as a set) to resume replication handler tailing
         The first component of the GTID is the source identifier, sid.
         The next component identifies the transactions that have been committed, exclusive.
         The transaction identifiers 1-100, would correspond to the interval [1,100),
         indicating that the first 99 transactions have been committed.
-        Replication would resume at transaction 100. Our systems save the last transaction
-        they successfully completed, so we add one to start from the next transaction.
+        Replication would resume at transaction 100.
         For more info: https://dev.mysql.com/doc/refman/5.6/en/replication-gtids-concepts.html
         """
-        gtid = self._get_last_completed_gtid()
-        if gtid:
-            sid, transaction_id = gtid.split(":")
+        next_gtid = self._get_next_gtid()
+        if next_gtid:
+            sid, transaction_id = next_gtid.split(":")
             return "{sid}:1-{next_transaction_id}".format(
                 sid=sid,
-                next_transaction_id=int(transaction_id) + 1
+                next_transaction_id=int(transaction_id)
             )
         else:
             return None
 
-    def _get_last_completed_gtid(self):
+    def _get_next_gtid(self):
         """TODO(cheng|DATAPIPE-98): this function will be updated when auto-recovery for
         data event is completed.
         """
@@ -46,8 +45,12 @@ class AutoPositionGtidFinder(object):
         if event_state is not None:
             self._assert_event_state_status(event_state, SchemaEventStatus.PENDING)
             self._rollback_pending_event(event_state)
+            # Now that rollback the table state and deleted the PENDING state, we
+            # should just return this gtid since this is the next one we should
+            # process.
+            return event_state.gtid
 
-        return self._get_last_schema_event_state()
+        return self._get_next_gtid_from_latest_completed_schema_event_state()
 
     def _get_pending_schema_event_state(self):
         with rbr_state_session.connect_begin(ro=True) as session:
@@ -59,7 +62,7 @@ class AutoPositionGtidFinder(object):
                 SchemaEventState.get_pending_schema_event_state(session)
             )
 
-    def _get_last_schema_event_state(self):
+    def _get_next_gtid_from_latest_completed_schema_event_state(self):
         with rbr_state_session.connect_begin(ro=True) as session:
             latest_schema_event_state = copy.copy(
                 SchemaEventState.get_latest_schema_event_state(session)
@@ -69,9 +72,21 @@ class AutoPositionGtidFinder(object):
                     latest_schema_event_state,
                     SchemaEventStatus.COMPLETED
                 )
-                return latest_schema_event_state.gtid
+                # Since the latest schema event is COMPLETED, so we need to
+                # return the next gtid to tail from
+                return self._format_next_gtid(latest_schema_event_state.gtid)
             else:
                 return None
+
+    def _format_next_gtid(self, gtid):
+        """Our systems save the last transaction it successfully completed,
+        so we add one to start from the next transaction.
+        """
+        sid, transaction_id = gtid.split(":")
+        return "{sid}:{next_transaction_id}".format(
+            sid=sid,
+            next_transaction_id=int(transaction_id) + 1
+        )
 
     def _assert_event_state_status(self, event_state, status):
         if event_state.status != status:
