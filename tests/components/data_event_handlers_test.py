@@ -68,17 +68,17 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def first_offset_info(self, test_gtid):
         return OffsetInfo(
-            test_gtid,
-            1,
-            "business"
+            gtid=test_gtid,
+            offset=1,
+            table_name="business"
         )
 
     @pytest.fixture
     def second_offset_info(self, test_gtid):
         return OffsetInfo(
-            test_gtid,
-            3,
-            "business"
+            gtid=test_gtid,
+            offset=3,
+            table_name="business"
         )
 
     @pytest.yield_fixture

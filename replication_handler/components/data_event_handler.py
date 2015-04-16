@@ -19,7 +19,7 @@ log = logging.getLogger('replication_handler.parse_replication_stream')
 class DataEventHandler(BaseEventHandler):
     """Handles data change events: add and update"""
 
-    # Checkpoint everytime when we process 5000 items.
+    # Checkpoint everytime when we process 5000 rows.
     checkpoint_size = 5000
 
     def __init__(self):
@@ -32,11 +32,14 @@ class DataEventHandler(BaseEventHandler):
 
     def handle_event(self, event, gtid):
         """Make sure that the schema cache has the table, serialize the data,
-           publish to Kafka.
+           publish to Kafka. For More info on SegmentProcessor,
+           Refer to https://opengrok.yelpcorp.com/xref/submodules/yelp_lib/yelp_lib/iteration.py#207
         """
         schema_cache_entry = self._get_payload_schema(
             Table(schema=event.schema, table_name=event.table)
         )
+        # self._checkpoint_latest_published_offset will be invoked every time
+        # we process self.checkpoint_size number of rows.
         with iteration.SegmentProcessor(
             self.checkpoint_size,
             self._checkpoint_latest_published_offset
@@ -88,9 +91,6 @@ class DataEventHandler(BaseEventHandler):
         return self.schema_cache[table]
 
     def _checkpoint_latest_published_offset(self, rows):
-        """This function will be invoked every time we process self.checkpoint_size
-        number of rows.
-        """
         latest_offset_info = self.dp_client.get_latest_published_offset()
         with rbr_state_session.connect_begin(ro=False) as session:
             DataEventCheckpoint.create_data_event_checkpoint(

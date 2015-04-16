@@ -2,6 +2,7 @@
 from collections import namedtuple
 
 
+# The response format we get from data pipeline clientlib
 OffsetInfo = namedtuple('OffsetInfo', ('gtid', 'offset', 'table_name'))
 
 
