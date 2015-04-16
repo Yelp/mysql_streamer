@@ -33,16 +33,13 @@ class DataEventHandler(BaseEventHandler):
     def handle_event(self, event, gtid):
         """Make sure that the schema cache has the table, serialize the data,
            publish to Kafka.
-           TODO(cheng|DATAPIPE-98): gtid will be used in the logic for journaling
-           of data events
         """
         schema_cache_entry = self._get_payload_schema(
             Table(schema=event.schema, table_name=event.table)
         )
-        # event.rows, lazily loads all rows
         with iteration.SegmentProcessor(
             self.checkpoint_size,
-            self.checkpoint_latest_published_offset
+            self._checkpoint_latest_published_offset
         ) as self.processor:
             self._handle_rows(schema_cache_entry, event.rows)
 
@@ -90,7 +87,10 @@ class DataEventHandler(BaseEventHandler):
             self.schema_cache[table] = self.get_schema_for_schema_cache(table)
         return self.schema_cache[table]
 
-    def checkpoint_latest_published_offset(self, rows):
+    def _checkpoint_latest_published_offset(self, rows):
+        """This function will be invoked every time we process self.checkpoint_size
+        number of rows.
+        """
         latest_offset_info = self.dp_client.get_latest_published_offset()
         with rbr_state_session.connect_begin(ro=False) as session:
             DataEventCheckpoint.create_data_event_checkpoint(
