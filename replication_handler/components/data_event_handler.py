@@ -92,7 +92,6 @@ class DataEventHandler(BaseEventHandler):
 
     def checkpoint_latest_published_offset(self, rows):
         latest_offset_info = self.dp_client.get_latest_published_offset()
-        import ipdb; ipdb.set_trace()
         with rbr_state_session.connect_begin(ro=False) as session:
             DataEventCheckpoint.create_data_event_checkpoint(
                 session=session,

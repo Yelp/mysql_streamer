@@ -6,8 +6,6 @@ import json
 import mock
 import pytest
 
-from yelp_conn.connection_set import ConnectionSet
-
 from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
