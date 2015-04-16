@@ -105,7 +105,8 @@ class TestDataEventHandler(object):
         second_offset_info
     ):
         with mock.patch.object(
-            DPClientlib, 'get_latest_published_offset'
+            DPClientlib,
+            'get_latest_published_offset'
         ) as mock_get_latest_published_offset:
             mock_get_latest_published_offset.side_effect = [
                 first_offset_info,
