@@ -44,14 +44,7 @@ class SchemaEventHandler(BaseEventHandler):
                 )
             )
             return
-        handle_method = None
-
-        query = self._reformat_query(event.query)
-        if query.startswith('create table'):
-            handle_method = self._handle_create_table_event
-        elif query.startswith('alter table'):
-            handle_method = self._handle_alter_table_event
-
+        handle_method = self._get_handle_method(self._reformat_query(event.query))
         if handle_method is not None:
             # Flush before executing a schema event to make sure
             # all current data events in buffer are published, but not flush
@@ -59,6 +52,7 @@ class SchemaEventHandler(BaseEventHandler):
             # We might flush multiple times consecutively if schema events
             # show up in a row, but it will be fast.
             self.dp_client.flush()
+
             query, table = self._parse_query(event)
             cursor = self.schema_tracking_db_conn.cursor()
             # DDL statements are commited implicitly, and can't be rollback.
@@ -68,6 +62,14 @@ class SchemaEventHandler(BaseEventHandler):
             self._update_journaling_record(gtid)
         else:
             self._execute_non_schema_store_relevant_query(event)
+
+    def _get_handle_method(self, query):
+        handle_method = None
+        if query.startswith('create table'):
+            handle_method = self._handle_create_table_event
+        elif query.startswith('alter table'):
+            handle_method = self._handle_alter_table_event
+        return handle_method
 
     def _create_journaling_record(self, table, event, gtid):
         create_table_statement = self._get_show_create_statement(
