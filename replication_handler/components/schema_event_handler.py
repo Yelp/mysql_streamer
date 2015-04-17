@@ -10,6 +10,7 @@ from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
+from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -23,6 +24,7 @@ class SchemaEventHandler(BaseEventHandler):
     def __init__(self):
         """Store credentials for local tracking database"""
         super(SchemaEventHandler, self).__init__()
+        self.dp_client = DPClientlib()
 
     @property
     def schema_tracking_db_conn(self):
@@ -51,6 +53,12 @@ class SchemaEventHandler(BaseEventHandler):
             handle_method = self._handle_alter_table_event
 
         if handle_method is not None:
+            # Flush before executing a schema event to make sure
+            # all current data events in buffer are published, but not flush
+            # we will encounter 'BEGIN' or 'END'.
+            # We might flush multiple times consecutively if schema events
+            # show up in a row, but it will be fast.
+            self.dp_client.flush()
             query, table = self._parse_query(event)
             cursor = self.schema_tracking_db_conn.cursor()
             # DDL statements are commited implicitly, and can't be rollback.
