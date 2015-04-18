@@ -11,6 +11,8 @@ from replication_handler.components.base_event_handler import Table
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
+from replication_handler.models.global_event_state import GlobalEventState
+from replication_handler.models.global_event_state import EventType
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -98,4 +100,9 @@ class DataEventHandler(BaseEventHandler):
                 gtid=latest_offset_info.gtid,
                 offset=latest_offset_info.offset,
                 table_name=latest_offset_info.table_name
+            )
+            GlobalEventState.upsert(
+                session=session,
+                gtid=latest_offset_info.gtid,
+                event_type=EventType.DATA_EVENT
             )

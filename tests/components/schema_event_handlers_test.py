@@ -11,6 +11,7 @@ from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.components.stubs.stub_schemas import StubSchemaClient
+from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 
 from testing.events import QueryEvent
@@ -26,6 +27,7 @@ SchemaHandlerExternalPatches = namedtuple(
         'populate_schema_cache',
         'create_schema_event_state',
         'update_schema_event_state',
+        'upsert_global_event_state',
         'flush'
     )
 )
@@ -207,6 +209,13 @@ class TestSchemaEventHandler(object):
         ) as mock_update_schema_event_state:
             yield mock_update_schema_event_state
 
+    @pytest.yield_fixture
+    def patch_upsert_global_event_state(self):
+        with mock.patch.object(
+            GlobalEventState, 'upsert'
+        ) as mock_upsert_global_event_state:
+            yield mock_upsert_global_event_state
+
     @pytest.fixture
     def external_patches(
         self,
@@ -218,6 +227,7 @@ class TestSchemaEventHandler(object):
         patch_populate_schema_cache,
         patch_create_schema_event_state,
         patch_update_schema_event_state,
+        patch_upsert_global_event_state,
         patch_flush,
     ):
         return SchemaHandlerExternalPatches(
@@ -229,6 +239,7 @@ class TestSchemaEventHandler(object):
             populate_schema_cache=patch_populate_schema_cache,
             create_schema_event_state=patch_create_schema_event_state,
             update_schema_event_state=patch_update_schema_event_state,
+            upsert_global_event_state=patch_upsert_global_event_state,
             flush=patch_flush,
         )
 
@@ -315,6 +326,7 @@ class TestSchemaEventHandler(object):
         assert external_patches.populate_schema_cache.call_count == 0
         assert external_patches.create_schema_event_state.call_count == 0
         assert external_patches.update_schema_event_state.call_count == 0
+        assert external_patches.upsert_global_event_state.call_count == 0
         assert external_patches.flush.call_count == 0
 
     def test_bad_query(
@@ -358,6 +370,7 @@ class TestSchemaEventHandler(object):
             schema_event_handler.handle_event(create_table_schema_event, test_gtid)
         assert external_patches.create_schema_event_state.call_count == 1
         assert external_patches.update_schema_event_state.call_count == 0
+        assert external_patches.upsert_global_event_state.call_count == 0
         assert external_patches.flush.call_count == 1
 
     def check_external_calls(
@@ -398,6 +411,7 @@ class TestSchemaEventHandler(object):
 
         assert external_patches.create_schema_event_state.call_count == 1
         assert external_patches.update_schema_event_state.call_count == 1
+        assert external_patches.upsert_global_event_state.call_count == 1
 
         assert external_patches.flush.call_count == 1
 

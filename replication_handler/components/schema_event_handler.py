@@ -8,6 +8,8 @@ from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
 from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
+from replication_handler.models.global_event_state import GlobalEventState
+from replication_handler.models.global_event_state import EventType
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
@@ -92,6 +94,11 @@ class SchemaEventHandler(BaseEventHandler):
             SchemaEventState.update_schema_event_state_to_complete_by_gtid(
                 session,
                 gtid
+            )
+            GlobalEventState.upsert(
+                session=session,
+                gtid=gtid,
+                event_type=EventType.SCHEMA_EVENT
             )
 
     def _reformat_query(self, raw_query):

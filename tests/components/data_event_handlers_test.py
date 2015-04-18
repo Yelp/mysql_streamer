@@ -13,6 +13,8 @@ from replication_handler.components.stubs.stub_dp_clientlib import OffsetInfo
 from replication_handler.components.stubs.stub_schemas import stub_business_schema
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
+from replication_handler.models.global_event_state import GlobalEventState
+from replication_handler.models.global_event_state import EventType
 from testing.events import RowsEvent
 
 
@@ -146,6 +148,13 @@ class TestDataEventHandler(object):
     def mock_rbr_state_session(self):
         return mock.Mock()
 
+    @pytest.yield_fixture
+    def patch_upsert_global_event_state(self):
+        with mock.patch.object(
+            GlobalEventState, 'upsert'
+        ) as mock_upsert_global_event_state:
+            yield mock_upsert_global_event_state
+
     def test_get_values(
         self,
         data_event_handler,
@@ -191,6 +200,7 @@ class TestDataEventHandler(object):
         patch_get_latest_published_offset,
         patch_create_data_event_checkpoint,
         patch_checkpoint_size,
+        patch_upsert_global_event_state
     ):
 
         data_event_handler.handle_event(add_data_event, test_gtid)
@@ -208,6 +218,7 @@ class TestDataEventHandler(object):
         assert expected_call_args == actual_call_args
         assert patch_publish_to_kafka.call_count == 3
         # We set the checkpoint size to 2, so 3 rows will checkpoint twice
+        # and upsert GlobalEventState twice
         assert patch_get_latest_published_offset.call_count == 2
         assert patch_create_data_event_checkpoint.call_count == 2
         assert patch_create_data_event_checkpoint.call_args_list == [
@@ -222,5 +233,18 @@ class TestDataEventHandler(object):
                 table_name="business",
                 gtid=test_gtid,
                 offset=3
+            ),
+        ]
+        assert patch_upsert_global_event_state.call_count == 2
+        assert patch_upsert_global_event_state.call_args_list == [
+            mock.call(
+                session=mock_rbr_state_session,
+                gtid=test_gtid,
+                event_type=EventType.DATA_EVENT
+            ),
+            mock.call(
+                session=mock_rbr_state_session,
+                gtid=test_gtid,
+                event_type=EventType.DATA_EVENT
             ),
         ]
