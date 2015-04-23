@@ -73,7 +73,8 @@ class ParseReplicationStream(Batch):
             )
 
     def _handle_graceful_termination(self, signal, frame):
-        # We will perform recovery for SchemaEvent anyway.
+        # After discussion with justinc, We will not do anything for SchemaEvent,
+        # because we have a good way to recover it.
         if self.current_event_type == EventType.DATA_EVENT:
             self.dp_client.flush()
             offset_info = self.dp_client.get_latest_published_offset()
