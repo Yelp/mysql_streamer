@@ -171,6 +171,19 @@ class TestParseReplicationStream(object):
         ]
         assert patch_data_handle_event.call_count == 2
 
+    def test_register_signal_handler(
+        self,
+        patch_rbr_state_rw,
+        patch_binlog_yielder,
+        patch_signal
+    ):
+        replication_stream = ParseReplicationStream()
+        assert patch_signal.call_count == 2
+        assert patch_signal.call_args_list == [
+            mock.call(signal.SIGINT, replication_stream._handle_graceful_termination),
+            mock.call(signal.SIGTERM, replication_stream._handle_graceful_termination),
+        ]
+
     def test_handle_graceful_termination_data_event(
         self,
         patch_binlog_yielder,
@@ -184,7 +197,6 @@ class TestParseReplicationStream(object):
         patch_signal
     ):
         replication_stream = ParseReplicationStream()
-        assert patch_signal.call_count == 2
         replication_stream.current_event_type = EventType.DATA_EVENT
         replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
         assert patch_get_latest_published_offset.call_count == 1
@@ -206,7 +218,6 @@ class TestParseReplicationStream(object):
         patch_signal
     ):
         replication_stream = ParseReplicationStream()
-        assert patch_signal.call_count == 2
         replication_stream.current_event_type = EventType.SCHEMA_EVENT
         replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
         assert patch_get_latest_published_offset.call_count == 0
@@ -214,4 +225,3 @@ class TestParseReplicationStream(object):
         assert patch_flush.call_count == 0
         assert patch_upsert_global_event_state.call_count == 0
         assert patch_exit.call_count == 1
-        assert patch_signal.call_count == 2
