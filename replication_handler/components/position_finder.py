@@ -2,7 +2,6 @@
 import copy
 import logging
 
-from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import RowsEvent
 
 from yelp_conn.connection_set import ConnectionSet
