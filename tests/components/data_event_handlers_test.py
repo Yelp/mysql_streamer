@@ -9,7 +9,7 @@ import pytest
 from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
-from replication_handler.components.stubs.stub_dp_clientlib import OffsetInfo
+from replication_handler.components.stubs.stub_dp_clientlib import PositionInfo
 from replication_handler.components.stubs.stub_schemas import stub_business_schema
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
@@ -69,7 +69,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def first_offset_info(self, test_gtid):
-        return OffsetInfo(
+        return PositionInfo(
             gtid=test_gtid,
             offset=1,
             table_name="business"
@@ -77,7 +77,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def second_offset_info(self, test_gtid):
-        return OffsetInfo(
+        return PositionInfo(
             gtid=test_gtid,
             offset=3,
             table_name="business"
