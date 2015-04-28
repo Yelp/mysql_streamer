@@ -23,6 +23,36 @@ class BadSchemaEventStateException(Exception):
     pass
 
 
+class Position(object):
+
+    def __init__(self, auto_position=None, log_pos=None, log_name=None, offset=None):
+        self.auto_position = auto_position
+        self.log_pos = log_pos
+        self.log_name = log_name
+        self.offset = offset
+
+    def get(self):
+        position_dict = {}
+        if self.auto_position:
+            position_dict["auto_position"] = self.auto_position
+        elif self.log_pos and self.log_name:
+            position_dict["log_pos"] = self.log_pos
+            position_dict["log_name"] = self.log_name
+        if self.offset:
+            position_dict["offset"] = self.offset
+        return position_dict
+
+    def set(self, auto_position=None, log_pos=None, log_name=None, offset=None):
+        if auto_position:
+            self.auto_position = auto_position
+        if log_pos:
+            self.log_pos = log_pos
+        if log_name:
+            self.log_name = log_name
+        if offset:
+            self.offset = offset
+
+
 class PositionFinder(object):
 
     MAX_EVENT_SIZE = 5000
@@ -40,43 +70,43 @@ class PositionFinder(object):
             # Now that rollback the table state and deleted the PENDING state, we
             # should just return this gtid since this is the next one we should
             # process.
-            return {"auto_position": self._format_gtid_set(event_state.gtid)}
+            return Position(auto_position=self._format_gtid_set(event_state.gtid))
 
         global_event_state = self._get_global_event_state()
-        position_info = self._get_position_from_saved_states(global_event_state)
+        position = self._get_position_from_saved_states(global_event_state)
         stream = BinlogStreamReaderWrapper(
-            **position_info
+            **position.get()
         )
         if isinstance(stream.peek(), RowsEvent) and not global_event_state.is_clean_shutdown:
-            return self._get_position_info_by_checking_clientlib(stream)
-        return position_info
+            return self._get_position_by_checking_clientlib(stream)
+        return position
 
     def _get_position_from_saved_states(self, global_event_state):
-        position_info = {}
+        position = Position()
         if global_event_state.event_type == EventType.DATA_EVENT:
             checkpoint = self._get_last_data_event_checkpoint()
             if checkpoint:
-                position_info = {
-                    "auto_position": self._format_gtid_set(checkpoint.gtid),
-                    "offset": checkpoint.offset
-                }
+                position.set(
+                    auto_position=self._format_gtid_set(checkpoint.gtid),
+                    offset=checkpoint.offset
+                )
         elif global_event_state.event_type == EventType.SCHEMA_EVENT:
             gtid = self._get_next_gtid_from_latest_completed_schema_event_state()
             if gtid:
-                position_info = {"auto_position": self._format_gtid_set(gtid)}
-        return position_info
+                position.set(auto_position=self._format_gtid_set(gtid))
+        return position
 
-    def _get_position_info_by_checking_clientlib(self, stream):
+    def _get_position_by_checking_clientlib(self, stream):
         messages = []
         while(len(messages) < self.MAX_EVENT_SIZE and
                 isinstance(stream.peek(), RowsEvent)):
             messages.append(stream.fetchone().rows)
 
         gtid, offset, table_name = self.dp_client.check_for_unpublished_messages(messages)
-        return {
-            "auto_position": self._format_gtid_set(gtid),
-            "offset": offset
-        }
+        return Position(
+            auto_position=self._format_gtid_set(gtid),
+            offset=offset
+        )
 
     def _format_gtid_set(self, gtid):
         """This method returns the GTID (as a set) to resume replication handler tailing

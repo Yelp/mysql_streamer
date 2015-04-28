@@ -8,6 +8,7 @@ from pymysqlreplication.row_event import RowsEvent
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.position_finder import PositionFinder
+from replication_handler.components.position_finder import Position
 from replication_handler.components.position_finder import BadSchemaEventStateException
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.components.stubs.stub_dp_clientlib import PositionInfo
@@ -17,6 +18,31 @@ from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
+
+
+class TestPosition(object):
+
+    def test_empty_position(self):
+        p = Position()
+        assert p.get() == {}
+
+    def test_auto_position_and_offset(self):
+        p = Position(auto_position="sid:1-10", offset=10)
+        assert p.get() == {"auto_position": "sid:1-10", "offset": 10}
+
+    def test_log_pos_and_name(self):
+        p = Position(log_pos=100, log_name="binlog")
+        assert p.get() == {"log_pos": 100, "log_name": "binlog"}
+
+    def test_set_auto_position_and_offset(self):
+        p = Position()
+        p.set(auto_position="sid:1-10", offset=10)
+        assert p.get() == {"auto_position": "sid:1-10", "offset": 10}
+
+    def test_set_log_pos_and_name(self):
+        p = Position()
+        p.set(log_pos=100, log_name="binlog")
+        assert p.get() == {"log_pos": 100, "log_name": "binlog"}
 
 
 class TestPositionFinder(object):
@@ -152,7 +178,7 @@ class TestPositionFinder(object):
         patch_get_pending_schema_event_state.return_value = pending_schema_event_state
         finder = PositionFinder()
         position = finder.get_gtid_set_to_resume_tailing_from()
-        assert position == {"auto_position": "sid:1-13"}
+        assert position.get() == {"auto_position": "sid:1-13"}
         assert patch_get_pending_schema_event_state.call_count == 1
         assert mock_cursor.execute.call_count == 2
         assert mock_cursor.execute.call_args_list == [
@@ -178,7 +204,7 @@ class TestPositionFinder(object):
         patch_get_latest_schema_event_state.return_value = completed_schema_event_state
         finder = PositionFinder()
         position = finder.get_gtid_set_to_resume_tailing_from()
-        assert position == {"auto_position": "sid:1-13"}
+        assert position.get() == {"auto_position": "sid:1-13"}
         assert patch_get_pending_schema_event_state.call_count == 1
         assert patch_get_latest_schema_event_state.call_count == 1
         assert patch_reader.return_value.peek.call_count == 1
@@ -220,7 +246,7 @@ class TestPositionFinder(object):
         patch_get_latest_schema_event_state.return_value = None
         finder = PositionFinder()
         position = finder.get_gtid_set_to_resume_tailing_from()
-        assert position == {}
+        assert position.get() == {}
 
     def test_data_event_clean_shutdown(
         self,
@@ -240,7 +266,7 @@ class TestPositionFinder(object):
         patch_get_data_event_checkpoint.return_value = data_event_checkpoint
         finder = PositionFinder()
         position = finder.get_gtid_set_to_resume_tailing_from()
-        assert position == {"auto_position": "sid:1-14", "offset": 10}
+        assert position.get() == {"auto_position": "sid:1-14", "offset": 10}
         assert patch_reader.return_value.peek.call_count == 1
         assert patch_get_global_event_state.call_count == 1
         assert patch_get_data_event_checkpoint.call_count == 1
@@ -275,7 +301,7 @@ class TestPositionFinder(object):
         )
         finder = PositionFinder()
         position = finder.get_gtid_set_to_resume_tailing_from()
-        assert position == {"auto_position": "sid:1-14", "offset": 20}
+        assert position.get() == {"auto_position": "sid:1-14", "offset": 20}
         assert patch_reader.return_value.peek.call_count == 3
         assert patch_get_global_event_state.call_count == 1
         assert patch_get_data_event_checkpoint.call_count == 1
