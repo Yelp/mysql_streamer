@@ -17,6 +17,7 @@ from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
+from replication_handler.util.position import Position
 
 
 class TestPositionFinder(object):
@@ -26,33 +27,41 @@ class TestPositionFinder(object):
         return PositionFinder()
 
     @pytest.fixture
-    def completed_schema_event_state(self):
+    def create_table_statement(self):
+        return "CREATE TABLE STATEMENT"
+
+    @pytest.fixture
+    def alter_table_statement(self):
+        return "ALTER TABLE STATEMENT"
+
+    @pytest.fixture
+    def completed_schema_event_state(self, create_table_statement):
         return SchemaEventState(
             gtid="sid:12",
             status=SchemaEventStatus.COMPLETED,
-            query="CREATE TABLE STATEMENT",
+            query=create_table_statement,
             table_name="Business",
-            create_table_statement="CREATE TABLE STATEMENT",
+            create_table_statement=create_table_statement,
         )
 
     @pytest.fixture
-    def pending_schema_event_state(self):
+    def pending_schema_event_state(self, create_table_statement, alter_table_statement):
         return SchemaEventState(
             gtid="sid:13",
             status=SchemaEventStatus.PENDING,
-            query="ALTER TABLE STATEMENT",
+            query=alter_table_statement,
             table_name="Business",
-            create_table_statement="CREATE TABLE STATEMENT",
+            create_table_statement=create_table_statement,
         )
 
     @pytest.fixture
-    def bad_state_schema_event(self):
+    def bad_state_schema_event(self, create_table_statement, alter_table_statement):
         return SchemaEventState(
             gtid="sid:13",
             status='BadState',
-            query="ALTER TABLE STATEMENT",
+            query=alter_table_statement,
             table_name="Business",
-            create_table_statement="CREATE TABLE STATEMENT",
+            create_table_statement=create_table_statement,
         )
 
     @pytest.fixture
@@ -62,6 +71,14 @@ class TestPositionFinder(object):
             offset=10,
             table_name="Business",
         )
+
+    @pytest.fixture
+    def schema_event_position(self):
+        return Position(auto_position="sid:1-13")
+
+    @pytest.fixture
+    def data_event_position(self):
+        return Position(auto_position="sid:1-14", offset=10)
 
     @pytest.yield_fixture
     def patch_get_latest_schema_event_state(
@@ -147,6 +164,8 @@ class TestPositionFinder(object):
     def test_get_gtid_set_to_resume_tailing_from_when_there_is_pending_state(
         self,
         position_finder,
+        schema_event_position,
+        create_table_statement,
         patch_get_pending_schema_event_state,
         pending_schema_event_state,
         patch_delete,
@@ -156,17 +175,18 @@ class TestPositionFinder(object):
     ):
         patch_get_pending_schema_event_state.return_value = pending_schema_event_state
         position = position_finder.get_gtid_set_to_resume_tailing_from()
-        assert position.get() == {"auto_position": "sid:1-13"}
+        assert position.get() == schema_event_position.get()
         assert patch_get_pending_schema_event_state.call_count == 1
         assert mock_cursor.execute.call_count == 2
         assert mock_cursor.execute.call_args_list == [
             mock.call("DROP TABLE `Business`"),
-            mock.call("CREATE TABLE STATEMENT")
+            mock.call(create_table_statement)
         ]
 
     def test_get_gtid_set_to_resume_tailing_from_when_there_is_no_pending_state(
         self,
         position_finder,
+        schema_event_position,
         patch_get_latest_schema_event_state,
         patch_get_pending_schema_event_state,
         completed_schema_event_state,
@@ -182,7 +202,7 @@ class TestPositionFinder(object):
         patch_get_pending_schema_event_state.return_value = None
         patch_get_latest_schema_event_state.return_value = completed_schema_event_state
         position = position_finder.get_gtid_set_to_resume_tailing_from()
-        assert position.get() == {"auto_position": "sid:1-13"}
+        assert position.get() == schema_event_position.get()
         assert patch_get_pending_schema_event_state.call_count == 1
         assert patch_get_latest_schema_event_state.call_count == 1
         assert patch_reader.return_value.peek.call_count == 1
@@ -208,7 +228,7 @@ class TestPositionFinder(object):
         with pytest.raises(BadSchemaEventStateException):
             position_finder.get_gtid_set_to_resume_tailing_from()
 
-    def test_no_position_info(
+    def test_no_position_if_no_pending_or_latest_state(
         self,
         position_finder,
         patch_get_pending_schema_event_state,
@@ -229,6 +249,7 @@ class TestPositionFinder(object):
     def test_data_event_clean_shutdown(
         self,
         position_finder,
+        data_event_position,
         patch_get_pending_schema_event_state,
         patch_session_connect_begin,
         patch_get_global_event_state,
@@ -244,7 +265,7 @@ class TestPositionFinder(object):
         patch_reader.return_value.peek.return_value = mock.Mock(spec=RowsEvent)
         patch_get_data_event_checkpoint.return_value = data_event_checkpoint
         position = position_finder.get_gtid_set_to_resume_tailing_from()
-        assert position.get() == {"auto_position": "sid:1-14", "offset": 10}
+        assert position.get() == data_event_position.get()
         assert patch_reader.return_value.peek.call_count == 1
         assert patch_get_global_event_state.call_count == 1
         assert patch_get_data_event_checkpoint.call_count == 1
@@ -252,6 +273,7 @@ class TestPositionFinder(object):
     def test_data_event_unclean_shutdown(
         self,
         position_finder,
+        data_event_position,
         patch_get_pending_schema_event_state,
         patch_session_connect_begin,
         patch_get_global_event_state,
@@ -275,11 +297,11 @@ class TestPositionFinder(object):
         patch_get_data_event_checkpoint.return_value = data_event_checkpoint
         patch_check_for_unpublished_messages.return_value = PositionInfo(
             gtid="sid:14",
-            offset=20,
-            table_name="Busienss"
+            offset=10,
+            table_name="Business"
         )
         position = position_finder.get_gtid_set_to_resume_tailing_from()
-        assert position.get() == {"auto_position": "sid:1-14", "offset": 20}
+        assert position.get() == data_event_position.get()
         assert patch_reader.return_value.peek.call_count == 3
         assert patch_get_global_event_state.call_count == 1
         assert patch_get_data_event_checkpoint.call_count == 1
