@@ -27,9 +27,7 @@ class BinlogEventYielder(object):
 
     def __init__(self):
         position = PositionFinder().get_gtid_set_to_resume_tailing_from()
-        self.stream = BinlogStreamReaderWrapper(
-            **position
-        )
+        self.stream = BinlogStreamReaderWrapper(position)
         self.current_gtid = None
 
     def __iter__(self):

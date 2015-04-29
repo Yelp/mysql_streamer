@@ -14,6 +14,7 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.binlog_stream_reader_wrapper import BinlogStreamReaderWrapper
+from replication_handler.util.position import Position
 
 
 log = logging.getLogger('replication_handler.components.auto_position_gtid_finder')
@@ -21,36 +22,6 @@ log = logging.getLogger('replication_handler.components.auto_position_gtid_finde
 
 class BadSchemaEventStateException(Exception):
     pass
-
-
-class Position(object):
-
-    def __init__(self, auto_position=None, log_pos=None, log_name=None, offset=None):
-        self.auto_position = auto_position
-        self.log_pos = log_pos
-        self.log_name = log_name
-        self.offset = offset
-
-    def get(self):
-        position_dict = {}
-        if self.auto_position:
-            position_dict["auto_position"] = self.auto_position
-        elif self.log_pos and self.log_name:
-            position_dict["log_pos"] = self.log_pos
-            position_dict["log_name"] = self.log_name
-        if self.offset:
-            position_dict["offset"] = self.offset
-        return position_dict
-
-    def set(self, auto_position=None, log_pos=None, log_name=None, offset=None):
-        if auto_position:
-            self.auto_position = auto_position
-        if log_pos:
-            self.log_pos = log_pos
-        if log_name:
-            self.log_name = log_name
-        if offset:
-            self.offset = offset
 
 
 class PositionFinder(object):
@@ -74,9 +45,7 @@ class PositionFinder(object):
 
         global_event_state = self._get_global_event_state()
         position = self._get_position_from_saved_states(global_event_state)
-        stream = BinlogStreamReaderWrapper(
-            **position.get()
-        )
+        stream = BinlogStreamReaderWrapper(position)
         if isinstance(stream.peek(), RowsEvent) and not global_event_state.is_clean_shutdown:
             return self._get_position_by_checking_clientlib(stream)
         return position

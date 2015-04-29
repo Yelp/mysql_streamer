@@ -7,6 +7,7 @@ from pymysqlreplication.event import QueryEvent
 
 from replication_handler import config
 from replication_handler.util.binlog_stream_reader_wrapper import BinlogStreamReaderWrapper
+from replication_handler.util.position import Position
 from testing.events import RowsEvent
 
 
@@ -36,7 +37,7 @@ class TestBinlogStreamReaderWrapper(object):
             schema_event
         ]
         stream = BinlogStreamReaderWrapper(
-            auto_position="sid:1-5",
+            Position(auto_position="sid:1-5")
         )
         assert stream.peek() == gtid_event
         assert stream.fetchone() == gtid_event
@@ -59,8 +60,10 @@ class TestBinlogStreamReaderWrapper(object):
             gtid_event_2
         ]
         stream = BinlogStreamReaderWrapper(
-            auto_position="sid:1-5",
-            offset=2
+            Position(
+                auto_position="sid:1-5",
+                offset=2
+            )
         )
         event = stream.peek()
         assert len(event.rows) == 1

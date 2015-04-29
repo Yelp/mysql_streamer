@@ -17,8 +17,9 @@ class BinlogStreamReaderWrapper(object):
 
     current_event = None
 
-    def __init__(self, **position_info):
-        """postision_info can be a dictionary like:
+    def __init__(self, position):
+        """position is an object, calling get() on it will return
+        a dictionary like:
         {"auto_position": gtid, "offset": offset} or
         {"log_file": log_file, "log_pos":log_pos, "offset": offset},
         schema_event may not have offsets.
@@ -37,7 +38,7 @@ class BinlogStreamReaderWrapper(object):
             UpdateRowsEvent
         ]
 
-        self._seek(connection_config, allowed_event_types, **position_info)
+        self._seek(connection_config, allowed_event_types, position)
 
     def peek(self):
         if not self.current_event:
@@ -51,7 +52,8 @@ class BinlogStreamReaderWrapper(object):
         else:
             return self.stream.fetchone()
 
-    def _seek(self, connection_config, allowed_event_types, **position_info):
+    def _seek(self, connection_config, allowed_event_types, position):
+        position_info = position.get()
         offset = position_info.pop("offset", None)
         # server_id doesn't seem to matter but must be set.
         # blocking=True will keep this iterator infinite.
@@ -65,10 +67,10 @@ class BinlogStreamReaderWrapper(object):
         # Put stream in correct position, assume that offset only
         # show up when it is a data event
         if offset is not None:
-            # gtid event
             event = self.stream.fetchone()
-            # query event
+            assert isinstance(event, GtidEvent)
             event = self.stream.fetchone()
+            assert isinstance(event, QueryEvent)
             while offset > 0:
                 event = self.stream.fetchone()
                 offset -= len(event.rows)
