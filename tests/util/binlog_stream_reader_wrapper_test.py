@@ -59,6 +59,7 @@ class TestBinlogStreamReaderWrapper(object):
             data_events,
             gtid_event_2
         ]
+        assert len(data_events.rows) == 3
         stream = BinlogStreamReaderWrapper(
             Position(
                 auto_position="sid:1-5",
