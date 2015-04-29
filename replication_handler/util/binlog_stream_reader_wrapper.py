@@ -18,12 +18,6 @@ class BinlogStreamReaderWrapper(object):
     current_event = None
 
     def __init__(self, position):
-        """position is an object, calling get() on it will return
-        a dictionary like:
-        {"auto_position": gtid, "offset": offset} or
-        {"log_file": log_file, "log_pos":log_pos, "offset": offset},
-        schema_event may not have offsets.
-        """
         source_config = config.source_database_config.entries[0]
         connection_config = {
             'host': source_config['host'],
