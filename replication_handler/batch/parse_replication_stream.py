@@ -8,6 +8,7 @@ import sys
 from pymysqlreplication.event import QueryEvent
 
 from yelp_batch import Batch
+from replication_handler.components.binlog_stream_reader_wrapper import BinlogStreamReaderWrapper
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.schema_event_handler import SchemaEventHandler
@@ -16,7 +17,6 @@ from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
-from replication_handler.components.binlog_stream_reader_wrapper import BinlogStreamReaderWrapper
 from replication_handler.util.misc import DataEvent
 
 
