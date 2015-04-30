@@ -56,9 +56,9 @@ class DataEventHandler(BaseEventHandler):
         datum = self._get_values(row)
         payload = self._serialize_payload(
             datum,
-            schema_cache_entry.avro_obj
+            schema_cache_entry.schema_obj
         )
-        self._publish_to_kafka(schema_cache_entry.kafka_topic, payload)
+        self._publish_to_kafka(schema_cache_entry.topic, payload)
         self.processor.push(datum)
 
     def _publish_to_kafka(self, topic, message):

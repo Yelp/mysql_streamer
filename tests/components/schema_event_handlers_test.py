@@ -106,7 +106,9 @@ class TestSchemaEventHandler(object):
             "fields": [{"type": "int", "name": "a_number"}]}'
         return {
             "schema": avro_schema,
-            "kafka_topic": test_table + ".0",
+            "topic": {
+                "name": test_table + ".0", "source": {"namespace": "yelp", "source": "business"}
+            },
             "schema_id": 0
         }
 
@@ -116,7 +118,9 @@ class TestSchemaEventHandler(object):
                 {"type": "int", "name": "a_number"},{"type": "int", "name": "another_number"}]}'
         return {
             "schema": avro_schema,
-            "kafka_topic": test_table + ".0",
+            "topic": {
+                "name": test_table + ".1", "source": {"namespace": "yelp", "source": "business"}
+            },
             "schema_id": 1
         }
 

@@ -28,18 +28,24 @@ class TestBaseEventHandler(object):
             {"default": null, "maxlen": 64, "type": ["null", "string"], "name": "name"}]}'
 
     @pytest.fixture
-    def kafka_topic(self):
-        return "services.datawarehouse.etl.business.0"
+    def topic(self):
+        return {
+            "name": "services.datawarehouse.etl.business.0",
+            "source": {
+                "namespace": "yelp",
+                "source": "business"
+            }
+        }
 
     @pytest.yield_fixture
-    def mock_response(self, avro_schema, kafka_topic):
+    def mock_response(self, avro_schema, topic):
         with mock.patch.object(
             stub_schemas, "stub_business_schema"
         ) as mock_response:
             mock_response.return_value = {
+                "schema_id": 0,
                 "schema": avro_schema,
-                "kafka_topic": kafka_topic,
-                "schema_id": 0
+                "topic": topic,
             }
             yield mock_response
 
@@ -47,24 +53,24 @@ class TestBaseEventHandler(object):
         self,
         base_event_handler,
         table,
-        kafka_topic,
+        topic,
         mock_response
     ):
         resp = base_event_handler.get_schema_for_schema_cache(table)
         assert resp == base_event_handler.schema_cache[table]
-        self._assert_expected_result(resp, kafka_topic)
+        self._assert_expected_result(resp, topic)
 
-    def test_schema_already_in_cache(self, base_event_handler, table, kafka_topic):
+    def test_schema_already_in_cache(self, base_event_handler, table, topic):
         resp = base_event_handler.get_schema_for_schema_cache(table)
-        self._assert_expected_result(resp, kafka_topic)
+        self._assert_expected_result(resp, topic)
 
     def test_non_existent_table_has_none_response(self, base_event_handler, bogus_table):
         resp = base_event_handler.get_schema_for_schema_cache(bogus_table)
         assert resp is None
 
-    def _assert_expected_result(self, resp, kafka_topic):
-        assert resp.kafka_topic == kafka_topic
-        assert resp.version == 0
-        assert resp.avro_obj.name == "business"
-        assert resp.avro_obj.fields[0].name == "id"
-        assert resp.avro_obj.fields[1].name == "name"
+    def _assert_expected_result(self, resp, topic):
+        assert resp.topic == topic["name"]
+        assert resp.schema_id == 0
+        assert resp.schema_obj.name == "business"
+        assert resp.schema_obj.fields[0].name == "id"
+        assert resp.schema_obj.fields[1].name == "name"

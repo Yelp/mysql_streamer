@@ -54,9 +54,9 @@ class TestDataEventHandler(object):
         avro_obj = avro.schema.parse(schema_in_json)
 
         return SchemaCacheEntry(
-            avro_obj=avro_obj,
-            kafka_topic="fake_topic",
-            version=0
+            schema_obj=avro_obj,
+            topic="fake_topic",
+            schema_id=0
         )
 
     @pytest.fixture
@@ -206,10 +206,10 @@ class TestDataEventHandler(object):
         data_event_handler.handle_event(add_data_event, test_gtid)
         expected_call_args = [
             (
-                schema_cache_entry.kafka_topic,
+                schema_cache_entry.topic,
                 self.avro_encoder(
                     data_event_handler._get_values(row),
-                    schema_cache_entry.avro_obj
+                    schema_cache_entry.schema_obj
                 )
             )
             for row in add_data_event.rows

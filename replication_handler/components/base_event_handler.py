@@ -10,12 +10,12 @@ from replication_handler.components.stubs import stub_schemas
 
 SchemaCacheEntry = namedtuple(
     'SchemaCacheEntry',
-    ('avro_obj', 'kafka_topic', 'version')
+    ('schema_obj', 'topic', 'schema_id')
 )
 
 SchemaStoreRegisterResponse = namedtuple(
     'SchemaStoreRegisterResponse',
-    ('avro_dict', 'kafka_topic', 'version', 'table')
+    ('schema_id', 'schema', 'topic', 'namespace', 'source')
 )
 
 Table = namedtuple('Table', ('schema', 'table_name'))
@@ -50,18 +50,18 @@ class BaseEventHandler(object):
 
     def _populate_schema_cache(self, table, resp):
         self.schema_cache[table] = SchemaCacheEntry(
-            avro_obj=avro.schema.parse(resp.avro_dict),
-            kafka_topic=resp.kafka_topic,
-            version=resp.version
+            schema_obj=avro.schema.parse(resp.schema),
+            topic=resp.topic,
+            schema_id=resp.schema_id
         )
 
     def _format_register_response(self, raw_resp):
-        """Isolate changes to the schematizer interface to here.
-           Fix when this changes from the trace_bullet
+        """ source is table, and namespace is cluster_name.database_name
         """
         return SchemaStoreRegisterResponse(
-            avro_dict=raw_resp['schema'],
-            table=raw_resp['kafka_topic'].split('.')[-2],
-            kafka_topic=raw_resp['kafka_topic'],
-            version=raw_resp['schema_id']
+            schema_id=raw_resp['schema_id'],
+            schema=raw_resp['schema'],
+            topic=raw_resp['topic']['name'],
+            namespace=raw_resp['topic']['source']['namespace'],
+            source=raw_resp['topic']['source']['source'],
         )
