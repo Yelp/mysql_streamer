@@ -67,7 +67,9 @@ class BinlogStreamReaderWrapper(object):
             )
 
     def fetchone(self):
-        """ Takes the next event out from the stream, and return that event."""
+        """ Takes the next event out from the stream, and return that event.
+        Note that each data event contains exactly one row.
+        """
         event = self.peek()
         self.current_events.remove(event)
         return event
