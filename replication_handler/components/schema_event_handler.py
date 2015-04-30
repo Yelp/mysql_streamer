@@ -6,8 +6,8 @@ from yelp_conn.connection_set import ConnectionSet
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
-from replication_handler.config import source_database_config
 from replication_handler.config import env_config
+from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType

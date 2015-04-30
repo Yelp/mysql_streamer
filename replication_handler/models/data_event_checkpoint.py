@@ -17,7 +17,8 @@ class DataEventCheckpoint(Base):
 
     id = Column(Integer, primary_key=True)
     position = Column(JSONType, nullable=False)
-    offset = Column(Integer, nullable=False)
+    kafka_topic = Column(String, nullable=False)
+    kafka_offset = Column(Integer, nullable=False)
     cluster_name = Column(String, nullable=False)
     database_name = Column(String, nullable=False)
     table_name = Column(String, nullable=False)
@@ -28,6 +29,7 @@ class DataEventCheckpoint(Base):
         cls,
         session,
         position,
+        kafka_topic,
         kafka_offset,
         cluster_name,
         database_name,
@@ -35,6 +37,7 @@ class DataEventCheckpoint(Base):
     ):
         data_event_checkpoint = DataEventCheckpoint(
             position=position,
+            kafka_topic=kafka_topic,
             kafka_offset=kafka_offset,
             cluster_name=cluster_name,
             database_name=database_name,

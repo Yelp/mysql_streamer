@@ -104,6 +104,7 @@ class DataEventHandler(BaseEventHandler):
             DataEventCheckpoint.create_data_event_checkpoint(
                 session=session,
                 position=latest_offset_info.position,
+                kafka_topic=latest_offset_info.kafka_topic,
                 kafka_offset=latest_offset_info.kafka_offset,
                 cluster_name=latest_offset_info.cluster_name,
                 database_name=latest_offset_info.database_name,

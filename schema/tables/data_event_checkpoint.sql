@@ -1,6 +1,7 @@
 CREATE TABLE `data_event_checkpoint` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `position` text NOT NULL,
+  `kafka_topic` varchar(255) NOT NULL,
   `kafka_offset` int(11) NOT NULL,
   `cluster_name` varchar(255) NOT NULL,
   `database_name` varchar(255) NOT NULL,
