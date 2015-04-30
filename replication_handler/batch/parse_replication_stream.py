@@ -6,18 +6,19 @@ import signal
 import sys
 
 from pymysqlreplication.event import QueryEvent
-from pymysqlreplication.row_event import UpdateRowsEvent
-from pymysqlreplication.row_event import WriteRowsEvent
 
 from yelp_batch import Batch
-from replication_handler.components.binlogevent_yielder import BinlogEventYielder
 from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
+from replication_handler.components.binlog_stream_reader_wrapper import BinlogStreamReaderWrapper
+from replication_handler.util.misc import DataEvent
+
 
 log = logging.getLogger('replication_handler.batch.parse_replication_stream')
 
@@ -41,36 +42,41 @@ class ParseReplicationStream(Batch):
         super(ParseReplicationStream, self).__init__()
 
         self.dp_client = DPClientlib()
-        self.binlog_event_yielder = BinlogEventYielder()
-        data_event_handler = DataEventHandler()
-        schema_event_handler = SchemaEventHandler()
-
-        self.handler_map = defaultdict()
-        self.handler_map[WriteRowsEvent] = HandlerInfo(
-            event_type=EventType.DATA_EVENT,
-            handler=data_event_handler
-        )
-        self.handler_map[UpdateRowsEvent] = HandlerInfo(
-            event_type=EventType.DATA_EVENT,
-            handler=data_event_handler
-        )
-        self.handler_map[QueryEvent] = HandlerInfo(
-            event_type=EventType.SCHEMA_EVENT,
-            handler=schema_event_handler
-        )
-
-        # Register the handler for SIGINT(KeyboardInterrupt) and SigTerm
-        signal.signal(signal.SIGINT, self._handle_graceful_termination)
-        signal.signal(signal.SIGTERM, self._handle_graceful_termination)
+        self.handler_map = self._build_handler_map()
+        self.stream = self._get_positioned_stream()
+        self._register_signal_handler()
 
     def run(self):
-        for replication_handler_event in self.binlog_event_yielder:
+        for replication_handler_event in self.stream:
             event_class = replication_handler_event.event.__class__
             self.current_event_type = self.handler_map[event_class]
             self.handler_map[event_class].handler.handle_event(
                 replication_handler_event.event,
-                replication_handler_event.gtid
+                replication_handler_event.position.gtid
             )
+
+    def _get_positioned_stream(self):
+        position = PositionFinder().get_gtid_set_to_resume_tailing_from()
+        return BinlogStreamReaderWrapper(position)
+
+    def _build_handler_map(self):
+        data_event_handler = DataEventHandler()
+        schema_event_handler = SchemaEventHandler()
+        handler_map = defaultdict()
+        handler_map[DataEvent] = HandlerInfo(
+            event_type=EventType.DATA_EVENT,
+            handler=data_event_handler
+        )
+        handler_map[QueryEvent] = HandlerInfo(
+            event_type=EventType.SCHEMA_EVENT,
+            handler=schema_event_handler
+        )
+        return handler_map
+
+    def _register_signal_handler(self):
+        """Register the handler for SIGINT(KeyboardInterrupt) and SigTerm"""
+        signal.signal(signal.SIGINT, self._handle_graceful_termination)
+        signal.signal(signal.SIGTERM, self._handle_graceful_termination)
 
     def _handle_graceful_termination(self, signal, frame):
         """This function would be invoked when SIGINT and SIGTERM

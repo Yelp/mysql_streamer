@@ -3,7 +3,6 @@ import mock
 import pytest
 
 from pymysqlreplication.event import QueryEvent
-from pymysqlreplication.row_event import RowsEvent
 
 from yelp_conn.connection_set import ConnectionSet
 
@@ -17,7 +16,8 @@ from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from replication_handler.util.position import Position
+from replication_handler.util.misc import DataEvent
+from replication_handler.util.position import GtidPosition
 
 
 class TestPositionFinder(object):
@@ -47,7 +47,7 @@ class TestPositionFinder(object):
     @pytest.fixture
     def pending_schema_event_state(self, create_table_statement, alter_table_statement):
         return SchemaEventState(
-            gtid="sid:13",
+            gtid="sid:12",
             status=SchemaEventStatus.PENDING,
             query=alter_table_statement,
             table_name="Business",
@@ -74,11 +74,11 @@ class TestPositionFinder(object):
 
     @pytest.fixture
     def schema_event_position(self):
-        return Position(auto_position="sid:1-13")
+        return GtidPosition(gtid="sid:12")
 
     @pytest.fixture
     def data_event_position(self):
-        return Position(auto_position="sid:1-14", offset=10)
+        return GtidPosition(gtid="sid:14", offset=10)
 
     @pytest.yield_fixture
     def patch_get_latest_schema_event_state(
@@ -262,7 +262,7 @@ class TestPositionFinder(object):
             event_type=EventType.DATA_EVENT,
             is_clean_shutdown=True
         )
-        patch_reader.return_value.peek.return_value = mock.Mock(spec=RowsEvent)
+        patch_reader.return_value.peek.return_value = mock.Mock(spec=DataEvent)
         patch_get_data_event_checkpoint.return_value = data_event_checkpoint
         position = position_finder.get_gtid_set_to_resume_tailing_from()
         assert position.get() == data_event_position.get()
@@ -288,12 +288,12 @@ class TestPositionFinder(object):
             is_clean_shutdown=False
         )
         patch_reader.return_value.peek.side_effect = [
-            mock.Mock(spec=RowsEvent),
-            mock.Mock(spec=RowsEvent),
+            mock.Mock(spec=DataEvent),
+            mock.Mock(spec=DataEvent),
             mock.Mock(spec=QueryEvent),
         ]
         message = mock.Mock()
-        patch_reader.return_value.fetchone.return_value = mock.Mock(rows=message)
+        patch_reader.return_value.fetchone.return_value = mock.Mock(row=message)
         patch_get_data_event_checkpoint.return_value = data_event_checkpoint
         patch_check_for_unpublished_messages.return_value = PositionInfo(
             gtid="sid:14",

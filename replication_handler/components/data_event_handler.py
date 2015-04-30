@@ -22,7 +22,7 @@ class DataEventHandler(BaseEventHandler):
     """Handles data change events: add and update"""
 
     # Checkpoint everytime when we process 5000 rows.
-    checkpoint_size = 5000
+    checkpoint_size = 500
 
     def __init__(self):
         """Initialize clientlib that will handle publishing to kafka,
@@ -31,26 +31,22 @@ class DataEventHandler(BaseEventHandler):
         """
         super(DataEventHandler, self).__init__()
         self.dp_client = DPClientlib()
+        # self._checkpoint_latest_published_offset will be invoked every time
+        # we process self.checkpoint_size number of rows, For More info on SegmentProcessor,
+        # Refer to https://opengrok.yelpcorp.com/xref/submodules/yelp_lib/yelp_lib/iteration.py#207
+        self.processor = iteration.SegmentProcessor(
+            self.checkpoint_size,
+            self._checkpoint_latest_published_offset
+        )
 
     def handle_event(self, event, gtid):
         """Make sure that the schema cache has the table, serialize the data,
-           publish to Kafka. For More info on SegmentProcessor,
-           Refer to https://opengrok.yelpcorp.com/xref/submodules/yelp_lib/yelp_lib/iteration.py#207
+           publish to Kafka.
         """
         schema_cache_entry = self._get_payload_schema(
             Table(schema=event.schema, table_name=event.table)
         )
-        # self._checkpoint_latest_published_offset will be invoked every time
-        # we process self.checkpoint_size number of rows.
-        with iteration.SegmentProcessor(
-            self.checkpoint_size,
-            self._checkpoint_latest_published_offset
-        ) as self.processor:
-            self._handle_rows(schema_cache_entry, event.rows)
-
-    def _handle_rows(self, schema_cache_entry, rows):
-        for row in rows:
-            self._handle_row(schema_cache_entry, row)
+        self._handle_row(schema_cache_entry, event.row)
 
     def _handle_row(self, schema_cache_entry, row):
         datum = self._get_values(row)
