@@ -18,7 +18,7 @@ SchemaStoreRegisterResponse = namedtuple(
     ('avro_dict', 'kafka_topic', 'version', 'table')
 )
 
-Table = namedtuple('Table', ('schema', 'table_name'))
+Table = namedtuple('Table', ('cluster_name', 'database_name', 'table_name'))
 
 ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 

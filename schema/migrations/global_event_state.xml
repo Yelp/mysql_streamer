@@ -2,7 +2,7 @@
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
   <changeSet author="cheng" id="1428448045">
     <createTable tableName="global_event_state">
-      <column name="gtid" type="VARCHAR(255)">
+      <column name="position" type="TEXT">
         <constraints primaryKey="true"/>
       </column>
       <column name="is_clean_shutdown" type="TINYINT(1)" defaultValue="0">

@@ -9,6 +9,7 @@ from yelp_lib import iteration
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
+from replication_handler.config import env_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import GlobalEventState
@@ -16,6 +17,7 @@ from replication_handler.models.global_event_state import EventType
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
+cluster_name = env_config.cluster_name
 
 
 class DataEventHandler(BaseEventHandler):
@@ -27,18 +29,22 @@ class DataEventHandler(BaseEventHandler):
     def __init__(self):
         """Initialize clientlib that will handle publishing to kafka,
            which includes the envelope schema management and logging
-           GTID checkpoints in the MySQL schema tracking db.
+           checkpoints in the MySQL schema tracking db.
         """
         super(DataEventHandler, self).__init__()
         self.dp_client = DPClientlib()
 
-    def handle_event(self, event, gtid):
+    def handle_event(self, event, position):
         """Make sure that the schema cache has the table, serialize the data,
            publish to Kafka. For More info on SegmentProcessor,
            Refer to https://opengrok.yelpcorp.com/xref/submodules/yelp_lib/yelp_lib/iteration.py#207
         """
         schema_cache_entry = self._get_payload_schema(
-            Table(schema=event.schema, table_name=event.table)
+            Table(
+                cluster_name=cluster_name,
+                database_name=event.schema,
+                table_name=event.table
+            )
         )
         # self._checkpoint_latest_published_offset will be invoked every time
         # we process self.checkpoint_size number of rows.
@@ -97,12 +103,14 @@ class DataEventHandler(BaseEventHandler):
         with rbr_state_session.connect_begin(ro=False) as session:
             DataEventCheckpoint.create_data_event_checkpoint(
                 session=session,
-                gtid=latest_offset_info.gtid,
-                offset=latest_offset_info.offset,
+                position=latest_offset_info.position,
+                kafka_offset=latest_offset_info.kafka_offset,
+                cluster_name=latest_offset_info.cluster_name,
+                database_name=latest_offset_info.database_name,
                 table_name=latest_offset_info.table_name
             )
             GlobalEventState.upsert(
                 session=session,
-                gtid=latest_offset_info.gtid,
+                position=latest_offset_info.position,
                 event_type=EventType.DATA_EVENT
             )

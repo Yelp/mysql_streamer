@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import simplejson as json
 from sqlalchemy import types
 
 from yelp_conn.session import declarative_base
@@ -43,3 +44,35 @@ class UnixTimeStampType(types.TypeDecorator):
 
 def default_now(context):
     return dates.default_now().replace(microsecond=0)
+
+
+class JSONType(types.TypeDecorator):
+
+    """
+    A JSONType is stored in the db as a string and we interact with it like a
+    dict
+
+    Note that special objects (e.g., ObjectId, Currency, datetime) will be
+    str'd before dumping into the db, so some work will need to be done to
+    recover those objects when they are loaded. See JSONSerializedType if
+    you'd like to preserve these objects on loading.
+    """
+    impl = types.Text
+    separators = (',', ':')
+
+    def process_bind_param(self, value, dialect=None):
+        """
+        Dump our value to a form our db recognizes (a string).
+        """
+        if value is None:
+            return None
+
+        return json.dumps(value, separators=self.separators)
+
+    def process_result_value(self, value, dialect=None):
+        """
+        Convert what we get from the db into a json dict
+        """
+        if value is None:
+            return None
+        return json.loads(value)
