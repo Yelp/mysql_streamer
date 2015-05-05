@@ -8,12 +8,9 @@ from pymysqlreplication.event import QueryEvent
 
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.models.database import rbr_state_session
-from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
-from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
@@ -31,24 +28,18 @@ class TestParseReplicationStream(object):
         return mock.Mock(spec=DataEvent)
 
     @pytest.yield_fixture
-    def patch_reader(
-        self,
-        schema_event,
-        data_event,
-    ):
+    def patch_restarter(self):
         with mock.patch(
-            'replication_handler.batch.parse_replication_stream.BinlogStreamReaderWrapper'
-        ) as mock_binlog_yielder:
-            yield mock_binlog_yielder
+            'replication_handler.batch.parse_replication_stream.ReplicationStreamRestarter'
+        ) as mock_restarter:
+            yield mock_restarter
 
     @pytest.yield_fixture
-    def patch_get_gtid_to_resume_tailing_from(self):
-        with mock.patch.object(
-            PositionFinder,
-            'get_gtid_set_to_resume_tailing_from',
-        ) as mock_get_gtid_to_resume_tailing_from:
-            mock_get_gtid_to_resume_tailing_from.return_value = {}
-            yield mock_get_gtid_to_resume_tailing_from
+    def patch_save_position(self):
+        with mock.patch(
+            'replication_handler.batch.parse_replication_stream.save_position'
+        ) as mock_save_position:
+            yield mock_save_position
 
     @pytest.yield_fixture
     def patch_data_handle_event(self):
@@ -81,21 +72,6 @@ class TestParseReplicationStream(object):
             'flush'
         ) as mock_get_latest_published_offset:
             yield mock_get_latest_published_offset
-
-    @pytest.yield_fixture
-    def patch_upsert_global_event_state(self):
-        with mock.patch.object(
-            GlobalEventState, 'upsert'
-        ) as mock_upsert_global_event_state:
-            yield mock_upsert_global_event_state
-
-    @pytest.yield_fixture
-    def patch_create_data_event_checkpoint(self):
-        with mock.patch.object(
-            DataEventCheckpoint,
-            'create_data_event_checkpoint'
-        ) as mock_create_data_event_checkpoint:
-            yield mock_create_data_event_checkpoint
 
     @pytest.yield_fixture
     def patch_rbr_state_rw(self, mock_rbr_state_session):
@@ -141,8 +117,8 @@ class TestParseReplicationStream(object):
         data_event,
         position_gtid_1,
         position_gtid_2,
-        patch_reader,
-        patch_get_gtid_to_resume_tailing_from,
+        patch_restarter,
+        patch_rbr_state_rw,
         patch_data_handle_event,
         patch_schema_handle_event
     ):
@@ -154,7 +130,7 @@ class TestParseReplicationStream(object):
             position=position_gtid_2,
             event=data_event
         )
-        patch_reader.return_value.__iter__.return_value = [
+        patch_restarter.return_value.get_stream.return_value.__iter__.return_value = [
             schema_event_with_gtid,
             data_event_with_gtid
         ]
@@ -173,8 +149,8 @@ class TestParseReplicationStream(object):
         data_event,
         position_gtid_1,
         position_gtid_2,
-        patch_reader,
-        patch_get_gtid_to_resume_tailing_from,
+        patch_restarter,
+        patch_rbr_state_rw,
         patch_data_handle_event,
     ):
         data_event_with_gtid_1 = ReplicationHandlerEvent(
@@ -185,7 +161,7 @@ class TestParseReplicationStream(object):
             position=position_gtid_2,
             event=data_event
         )
-        patch_reader.return_value.__iter__.return_value = [
+        patch_restarter.return_value.get_stream.return_value.__iter__.return_value = [
             data_event_with_gtid_1,
             data_event_with_gtid_2
         ]
@@ -200,8 +176,7 @@ class TestParseReplicationStream(object):
     def test_register_signal_handler(
         self,
         patch_rbr_state_rw,
-        patch_reader,
-        patch_get_gtid_to_resume_tailing_from,
+        patch_restarter,
         patch_signal
     ):
         replication_stream = ParseReplicationStream()
@@ -213,14 +188,11 @@ class TestParseReplicationStream(object):
 
     def test_handle_graceful_termination_data_event(
         self,
-        patch_reader,
-        patch_get_gtid_to_resume_tailing_from,
+        patch_restarter,
         patch_data_handle_event,
-        patch_rbr_state_rw,
         patch_get_latest_published_offset,
+        patch_save_position,
         patch_flush,
-        patch_create_data_event_checkpoint,
-        patch_upsert_global_event_state,
         patch_exit,
         patch_signal
     ):
@@ -228,21 +200,15 @@ class TestParseReplicationStream(object):
         replication_stream.current_event_type = EventType.DATA_EVENT
         replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
         assert patch_get_latest_published_offset.call_count == 1
-        assert patch_create_data_event_checkpoint.call_count == 1
         assert patch_flush.call_count == 1
-        assert patch_upsert_global_event_state.call_count == 1
         assert patch_exit.call_count == 1
 
     def test_handle_graceful_termination_schema_event(
         self,
-        patch_reader,
-        patch_get_gtid_to_resume_tailing_from,
+        patch_restarter,
         patch_data_handle_event,
-        patch_rbr_state_rw,
         patch_get_latest_published_offset,
         patch_flush,
-        patch_create_data_event_checkpoint,
-        patch_upsert_global_event_state,
         patch_exit,
         patch_signal
     ):
@@ -250,7 +216,5 @@ class TestParseReplicationStream(object):
         replication_stream.current_event_type = EventType.SCHEMA_EVENT
         replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
         assert patch_get_latest_published_offset.call_count == 0
-        assert patch_create_data_event_checkpoint.call_count == 0
         assert patch_flush.call_count == 0
-        assert patch_upsert_global_event_state.call_count == 0
         assert patch_exit.call_count == 1

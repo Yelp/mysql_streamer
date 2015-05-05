@@ -8,16 +8,13 @@ import sys
 from pymysqlreplication.event import QueryEvent
 
 from yelp_batch import Batch
-from replication_handler.components.binlog_stream_reader_wrapper import BinlogStreamReaderWrapper
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.components.position_finder import PositionFinder
+from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
-from replication_handler.models.database import rbr_state_session
-from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import EventType
-from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.util.misc import DataEvent
+from replication_handler.util.misc import save_position
 
 
 log = logging.getLogger('replication_handler.batch.parse_replication_stream')
@@ -43,7 +40,7 @@ class ParseReplicationStream(Batch):
 
         self.dp_client = DPClientlib()
         self.handler_map = self._build_handler_map()
-        self.stream = self._get_positioned_stream()
+        self.stream = self._get_stream()
         self._register_signal_handler()
 
     def run(self):
@@ -55,13 +52,14 @@ class ParseReplicationStream(Batch):
                 replication_handler_event.position.gtid
             )
 
-    def _get_positioned_stream(self):
-        position = PositionFinder().get_gtid_set_to_resume_tailing_from()
-        return BinlogStreamReaderWrapper(position)
+    def _get_stream(self):
+        replication_stream_restarter = ReplicationStreamRestarter(self.dp_client)
+        replication_stream_restarter.restart()
+        return replication_stream_restarter.get_stream()
 
     def _build_handler_map(self):
-        data_event_handler = DataEventHandler()
-        schema_event_handler = SchemaEventHandler()
+        data_event_handler = DataEventHandler(self.dp_client)
+        schema_event_handler = SchemaEventHandler(self.dp_client)
         handler_map = defaultdict()
         handler_map[DataEvent] = HandlerInfo(
             event_type=EventType.DATA_EVENT,
@@ -87,19 +85,7 @@ class ParseReplicationStream(Batch):
         if self.current_event_type == EventType.DATA_EVENT:
             self.dp_client.flush()
             offset_info = self.dp_client.get_latest_published_offset()
-            with rbr_state_session.connect_begin(ro=False) as session:
-                DataEventCheckpoint.create_data_event_checkpoint(
-                    session=session,
-                    gtid=offset_info.gtid,
-                    offset=offset_info.offset,
-                    table_name=offset_info.table_name
-                )
-                GlobalEventState.upsert(
-                    session=session,
-                    gtid=offset_info.gtid,
-                    event_type=EventType.DATA_EVENT,
-                    is_clean_shutdown=True
-                )
+            save_position(offset_info, is_clean_shutdown=True)
         log.info("Gracefully shutting down.")
         sys.exit()
 

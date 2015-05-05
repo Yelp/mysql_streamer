@@ -8,11 +8,7 @@ from yelp_lib import iteration
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
-from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
-from replication_handler.models.database import rbr_state_session
-from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
-from replication_handler.models.global_event_state import GlobalEventState
-from replication_handler.models.global_event_state import EventType
+from replication_handler.util.misc import save_position
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -24,13 +20,13 @@ class DataEventHandler(BaseEventHandler):
     # Checkpoint everytime when we process 5000 rows.
     checkpoint_size = 500
 
-    def __init__(self):
+    def __init__(self, dp_client):
         """Initialize clientlib that will handle publishing to kafka,
            which includes the envelope schema management and logging
            GTID checkpoints in the MySQL schema tracking db.
         """
         super(DataEventHandler, self).__init__()
-        self.dp_client = DPClientlib()
+        self.dp_client = dp_client
         # self._checkpoint_latest_published_offset will be invoked every time
         # we process self.checkpoint_size number of rows, For More info on SegmentProcessor,
         # Refer to https://opengrok.yelpcorp.com/xref/submodules/yelp_lib/yelp_lib/iteration.py#207
@@ -90,15 +86,4 @@ class DataEventHandler(BaseEventHandler):
 
     def _checkpoint_latest_published_offset(self, rows):
         latest_offset_info = self.dp_client.get_latest_published_offset()
-        with rbr_state_session.connect_begin(ro=False) as session:
-            DataEventCheckpoint.create_data_event_checkpoint(
-                session=session,
-                gtid=latest_offset_info.gtid,
-                offset=latest_offset_info.offset,
-                table_name=latest_offset_info.table_name
-            )
-            GlobalEventState.upsert(
-                session=session,
-                gtid=latest_offset_info.gtid,
-                event_type=EventType.DATA_EVENT
-            )
+        save_position(latest_offset_info)

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from collections import deque
 import logging
 
 from pymysqlreplication import BinLogStreamReader
@@ -38,7 +39,7 @@ class BinlogStreamReaderWrapper(object):
             WriteRowsEvent,
             UpdateRowsEvent
         ]
-        self.current_events = []
+        self.current_events = deque()
         self.current_gtid = None
 
         self._seek(connection_config, allowed_event_types, position)
@@ -56,22 +57,22 @@ class BinlogStreamReaderWrapper(object):
     def next(self):
         """ This method implements the iteration functionality."""
         if isinstance(self.peek(), GtidEvent):
-            self.current_gtid = self.fetchone().gtid
+            self.current_gtid = self._pop().gtid
 
         if isinstance(self.peek(), QueryEvent) or isinstance(self.peek(), DataEvent):
             position = self._get_position()
-            event = self.fetchone()
+            event = self._pop()
             return ReplicationHandlerEvent(
                 position=position,
                 event=event
             )
 
-    def fetchone(self):
+    def _pop(self):
         """ Takes the next event out from the stream, and return that event.
         Note that each data event contains exactly one row.
         """
         event = self.peek()
-        self.current_events.remove(event)
+        self.current_events.popleft()
         return event
 
     def _get_position(self):
@@ -113,11 +114,11 @@ class BinlogStreamReaderWrapper(object):
     def _point_stream_to(self, offset):
         # skip preceding GtidEvent and QueryEvent.
         if isinstance(self.peek(), GtidEvent):
-            self.fetchone()
+            self._pop()
         if isinstance(self.peek(), QueryEvent):
-            self.fetchone()
+            self._pop()
         # Iterate until we point the stream to the correct offset
         while offset > 0:
-            event = self.fetchone()
+            event = self._pop()
             assert isinstance(event, DataEvent)
             offset -= 1

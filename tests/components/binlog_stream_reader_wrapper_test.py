@@ -42,9 +42,9 @@ class TestBinlogStreamReaderWrapper(object):
             GtidPosition(gtid="sid:5")
         )
         assert stream.peek() == gtid_event
-        assert stream.fetchone() == gtid_event
+        assert stream._pop() == gtid_event
         assert stream.peek() == schema_event
-        assert stream.fetchone() == schema_event
+        assert stream._pop() == schema_event
 
     def test_data_event_and_offset(self, patch_stream):
         """data events has three rows, and we set offset to 2,
@@ -70,9 +70,9 @@ class TestBinlogStreamReaderWrapper(object):
         )
         event = stream.peek()
         assert event.row == data_events.rows[2]
-        assert stream.fetchone() == event
+        assert stream._pop() == event
         assert stream.peek() == gtid_event_2
-        assert stream.fetchone() == gtid_event_2
+        assert stream._pop() == gtid_event_2
 
     def test_data_event_and_offset_without_gtid(self, patch_stream):
         """data events has three rows, and we set offset to 2,
@@ -97,9 +97,9 @@ class TestBinlogStreamReaderWrapper(object):
         )
         event = stream.peek()
         assert event.row == data_events.rows[2]
-        assert stream.fetchone() == event
+        assert stream._pop() == event
         assert stream.peek() == query_event_2
-        assert stream.fetchone() == query_event_2
+        assert stream._pop() == query_event_2
 
     def test_yielding_repliaction_handler_events(self, patch_stream):
         gtid_event = mock.Mock(spec=GtidEvent, gtid="sid:11")

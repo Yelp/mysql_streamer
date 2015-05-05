@@ -37,7 +37,7 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture
     def schema_event_handler(self):
-        return SchemaEventHandler()
+        return SchemaEventHandler(DPClientlib())
 
     @pytest.fixture
     def test_table(self):

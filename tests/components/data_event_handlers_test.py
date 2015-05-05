@@ -38,7 +38,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def data_event_handler(self, patch_checkpoint_size):
-        return DataEventHandler()
+        return DataEventHandler(DPClientlib())
 
     @pytest.fixture
     def schema_in_json(self):
