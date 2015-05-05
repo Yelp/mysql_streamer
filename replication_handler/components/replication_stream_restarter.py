@@ -38,15 +38,16 @@ class ReplicationStreamRestarter(object):
         """
         position = self.position_finder.get_position_to_resume_tailing_from()
         self.stream = BinlogStreamReaderWrapper(position)
-        recovery_handler = RecoveryHandler(
-            stream=self.stream,
-            dp_client=self.dp_client,
-            is_clean_shutdown=self.global_event_state.is_clean_shutdown,
-            pending_schema_event=self.pending_schema_event,
-        )
+        if self.global_event_state:
+            recovery_handler = RecoveryHandler(
+                stream=self.stream,
+                dp_client=self.dp_client,
+                is_clean_shutdown=self.global_event_state.is_clean_shutdown,
+                pending_schema_event=self.pending_schema_event,
+            )
 
-        if recovery_handler.need_recovery:
-            recovery_handler.recover()
+            if recovery_handler.need_recovery:
+                recovery_handler.recover()
 
     def get_stream(self):
         """ This function returns the replication stream"""
