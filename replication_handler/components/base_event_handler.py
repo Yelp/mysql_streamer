@@ -55,13 +55,13 @@ class BaseEventHandler(object):
             schema_id=resp.schema_id
         )
 
-    def _format_register_response(self, raw_resp):
+    def _format_register_response(self, resp):
         """ source is table, and namespace is cluster_name.database_name
         """
         return SchemaStoreRegisterResponse(
-            schema_id=raw_resp['schema_id'],
-            schema=raw_resp['schema'],
-            topic=raw_resp['topic']['name'],
-            namespace=raw_resp['topic']['source']['namespace'],
-            source=raw_resp['topic']['source']['source'],
+            schema_id=resp.schema_id,
+            schema=resp.schema,
+            topic=resp.topic.name,
+            namespace=resp.topic.source.namespace,
+            source=resp.topic.source.name,
         )

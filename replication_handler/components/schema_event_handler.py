@@ -182,11 +182,11 @@ class SchemaEventHandler(BaseEventHandler):
            with response, one interface for both create and alter
            statements.
         """
-        raw_resp = self.schema_store_client.register_avro_schema_from_mysql_statements(
+        resp = self.schema_store_client.register_avro_schema_from_mysql_statements(
             namespace=table.schema,
             source=table.table_name,
             source_owner_email=self.notify_email,
             mysql_statements=mysql_statements
         )
-        resp = self._format_register_response(raw_resp)
+        resp = self._format_register_response(resp)
         return resp

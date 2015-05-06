@@ -182,7 +182,7 @@ class TestDataEventHandler(object):
         data_event_handler
     ):
         """Tests to make sure avro format is correct"""
-        payload_schema = avro.schema.parse(stub_business_schema()['schema'])
+        payload_schema = avro.schema.parse(stub_business_schema().schema)
         datum = RowsEvent.make_business_add_rows_event().rows[0]['values']
         assert self.avro_encoder(datum, payload_schema) \
             == data_event_handler._serialize_payload(datum, payload_schema)

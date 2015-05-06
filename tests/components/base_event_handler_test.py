@@ -28,25 +28,27 @@ class TestBaseEventHandler(object):
             {"default": null, "maxlen": 64, "type": ["null", "string"], "name": "name"}]}'
 
     @pytest.fixture
-    def topic(self):
-        return {
-            "name": "services.datawarehouse.etl.business.0",
-            "source": {
-                "namespace": "yelp",
-                "source": "business"
-            }
-        }
+    def source(self):
+        source = mock.Mock(namespace="yelp")
+        source.name = "business"
+        return source
+
+    @pytest.fixture
+    def topic(self, source):
+        topic = mock.Mock(source=source)
+        topic.name = "services.datawarehouse.etl.business.0"
+        return topic
 
     @pytest.yield_fixture
     def mock_response(self, avro_schema, topic):
         with mock.patch.object(
             stub_schemas, "stub_business_schema"
         ) as mock_response:
-            mock_response.return_value = {
-                "schema_id": 0,
-                "schema": avro_schema,
-                "topic": topic,
-            }
+            mock_response.return_value = mock.Mock(
+                schema_id=0,
+                schema=avro_schema,
+                topic=topic,
+            )
             yield mock_response
 
     def test_get_schema_for_schema_cache(
@@ -69,7 +71,7 @@ class TestBaseEventHandler(object):
         assert resp is None
 
     def _assert_expected_result(self, resp, topic):
-        assert resp.topic == topic["name"]
+        assert resp.topic == topic.name
         assert resp.schema_id == 0
         assert resp.schema_obj.name == "business"
         assert resp.schema_obj.fields[0].name == "id"

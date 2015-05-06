@@ -101,28 +101,42 @@ class TestSchemaEventHandler(object):
         return "SHOW CREATE TABLE `{0}`".format(test_table)
 
     @pytest.fixture
-    def create_table_schema_store_response(self, test_table):
-        avro_schema = '{"type": "record", "namespace": "yelp", "name": "FakeRow",\
-            "fields": [{"type": "int", "name": "a_number"}]}'
-        return {
-            "schema": avro_schema,
-            "topic": {
-                "name": test_table + ".0", "source": {"namespace": "yelp", "source": "business"}
-            },
-            "schema_id": 0
-        }
+    def source(self):
+        source = mock.Mock(namespace="yelp")
+        source.name = "business"
+        return source
 
     @pytest.fixture
-    def alter_table_schema_store_response(self, test_table):
+    def topic(self, source, test_table):
+        topic = mock.Mock(source=source)
+        topic.name = test_table + ".0"
+        return topic
+
+    @pytest.fixture
+    def topic_alter(self, source, test_table):
+        topic = mock.Mock(source=source)
+        topic.name = test_table + ".1"
+        return topic
+
+    @pytest.fixture
+    def create_table_schema_store_response(self, topic):
+        avro_schema = '{"type": "record", "namespace": "yelp", "name": "FakeRow",\
+            "fields": [{"type": "int", "name": "a_number"}]}'
+        return mock.Mock(
+            schema=avro_schema,
+            topic=topic,
+            schema_id=0
+        )
+
+    @pytest.fixture
+    def alter_table_schema_store_response(self, topic_alter):
         avro_schema = '{"type": "record", "namespace": "yelp", "name": "FakeRow", "fields": [\
                 {"type": "int", "name": "a_number"},{"type": "int", "name": "another_number"}]}'
-        return {
-            "schema": avro_schema,
-            "topic": {
-                "name": test_table + ".1", "source": {"namespace": "yelp", "source": "business"}
-            },
-            "schema_id": 1
-        }
+        return mock.Mock(
+            schema=avro_schema,
+            topic=topic_alter,
+            schema_id=1
+        )
 
     @pytest.fixture
     def table_with_schema_changes(self, test_schema, test_table):
