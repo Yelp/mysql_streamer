@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+""" This module is mainly created to mimic schematizer clientlib.
+The Response, Topic and Source classes are just ways to representing
+the response object we will be getting from clientlib.
+"""
 
 
 class Response(object):
