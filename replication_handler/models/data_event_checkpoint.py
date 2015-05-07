@@ -2,7 +2,6 @@
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy import Text
 from sqlalchemy import desc
 
 from replication_handler.models.database import Base

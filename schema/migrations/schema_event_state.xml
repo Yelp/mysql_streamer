@@ -6,7 +6,7 @@
         <constraints primaryKey="true"/>
       </column>
       <column name="position" type="TEXT">
-        <constraints nullable="false" unique="true"/>
+        <constraints nullable="false"/>
       </column>
       <column name="status" type="VARCHAR(20)" defaultValue="Pending">
         <constraints nullable="false"/>

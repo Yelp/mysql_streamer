@@ -2,7 +2,6 @@
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy import Text
 from sqlalchemy.types import Enum
 
 from yelp_lib.containers.lists import unlist
