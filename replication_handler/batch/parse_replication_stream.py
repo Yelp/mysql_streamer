@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from collections import defaultdict
 from collections import namedtuple
 import logging
 import signal
@@ -60,15 +59,16 @@ class ParseReplicationStream(Batch):
     def _build_handler_map(self):
         data_event_handler = DataEventHandler(self.dp_client)
         schema_event_handler = SchemaEventHandler(self.dp_client)
-        handler_map = defaultdict()
-        handler_map[DataEvent] = HandlerInfo(
-            event_type=EventType.DATA_EVENT,
-            handler=data_event_handler
-        )
-        handler_map[QueryEvent] = HandlerInfo(
-            event_type=EventType.SCHEMA_EVENT,
-            handler=schema_event_handler
-        )
+        handler_map = {
+            DataEvent: HandlerInfo(
+                event_type=EventType.DATA_EVENT,
+                handler=data_event_handler
+            ),
+            QueryEvent: HandlerInfo(
+                event_type=EventType.SCHEMA_EVENT,
+                handler=schema_event_handler
+            )
+        }
         return handler_map
 
     def _register_signal_handler(self):

@@ -62,6 +62,10 @@ class TestBaseEventHandler(object):
         resp = base_event_handler.get_schema_for_schema_cache(bogus_table)
         assert resp is None
 
+    def test_handle_event_not_implemented(self, base_event_handler):
+        with pytest.raises(NotImplementedError):
+            base_event_handler.handle_event(mock.Mock(), mock.Mock())
+
     def _assert_expected_result(self, resp, kafka_topic):
         assert resp.kafka_topic == kafka_topic
         assert resp.version == 0

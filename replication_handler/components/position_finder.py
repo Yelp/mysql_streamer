@@ -31,20 +31,19 @@ class PositionFinder(object):
     def _get_position_from_saved_states(self, global_event_state):
         # TODO(cheng|DATAPIPE-140): simplify the logic of getting position info from
         # saved states, and make it more flexible.
-        position = GtidPosition()
         if global_event_state:
             if global_event_state.event_type == EventType.DATA_EVENT:
                 checkpoint = self._get_last_data_event_checkpoint()
                 if checkpoint:
-                    position.set(
+                    return GtidPosition(
                         gtid=checkpoint.gtid,
                         offset=checkpoint.offset
                     )
             elif global_event_state.event_type == EventType.SCHEMA_EVENT:
                 schema_event_state = self._get_next_gtid_from_latest_completed_schema_event_state()
                 if schema_event_state:
-                    position.set(gtid=schema_event_state.gtid)
-        return position
+                    return GtidPosition(gtid=schema_event_state.gtid)
+        return GtidPosition()
 
     def _get_last_data_event_checkpoint(self):
         with rbr_state_session.connect_begin(ro=True) as session:

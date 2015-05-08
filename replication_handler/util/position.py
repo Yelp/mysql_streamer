@@ -5,12 +5,8 @@ class Position(object):
     """ This class makes it flexible to use different types of position in our system.
     Primarily gtid or log position.
     """
-
-    def get(self):
-        raise NotImplementedError
-
-    def set(self):
-        raise NotImplementedError
+    def to_dict(self):
+        raise NotImplementedError()
 
 
 class GtidPosition(Position):
@@ -26,7 +22,7 @@ class GtidPosition(Position):
         self.gtid = gtid
         self.offset = offset
 
-    def get(self):
+    def to_dict(self):
         """Turn gtid into auto_position which the param to init pymysqlreplication
         if Position(gtid="sid:13"), then we want auto_position to be "sid:1-14"
         if Position(gtid="sid:13", offset=10), then we want auto_position
@@ -39,12 +35,6 @@ class GtidPosition(Position):
         elif self.gtid:
             position_dict["auto_position"] = self._format_next_gtid_set(self.gtid)
         return position_dict
-
-    def set(self, gtid=None, offset=None):
-        if gtid:
-            self.gtid = gtid
-        if offset:
-            self.offset = offset
 
     def _format_gtid_set(self, gtid):
         """This method returns the GTID (as a set) to resume replication handler tailing
@@ -87,7 +77,7 @@ class LogPosition(Position):
         self.log_file = log_file
         self.offset = offset
 
-    def get(self):
+    def to_dict(self):
         position_dict = {}
         if self.log_pos and self.log_file:
             position_dict["log_pos"] = self.log_pos
@@ -95,11 +85,3 @@ class LogPosition(Position):
             if self.offset:
                 position_dict["offset"] = self.offset
         return position_dict
-
-    def set(self, log_pos=None, log_file=None, offset=None):
-        if log_pos:
-            self.log_pos = log_pos
-        if log_file:
-            self.log_file = log_file
-        if offset:
-            self.offset = offset

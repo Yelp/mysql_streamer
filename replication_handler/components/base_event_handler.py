@@ -32,6 +32,9 @@ class BaseEventHandler(object):
         self.schema_cache = {}
         self.schema_store_client = stub_schemas.StubSchemaClient()
 
+    def handle_event(self, event, gtid):
+        raise NotImplementedError
+
     def get_schema_for_schema_cache(self, table):
         """Gets the SchemaCacheEntry for the table from the cache.  If there
            is no entry in the cache for the table, ask the schema store.

@@ -94,7 +94,7 @@ class TestPositionFinder(object):
             pending_schema_event=pending_schema_event_state
         )
         position = position_finder.get_position_to_resume_tailing_from()
-        assert position.get() == schema_event_position.get()
+        assert position.to_dict() == schema_event_position.to_dict()
 
     def test_get_position_to_resume_tailing_from_when_there_is_no_pending_state(
         self,
@@ -112,7 +112,7 @@ class TestPositionFinder(object):
         )
         patch_get_latest_schema_event_state.return_value = completed_schema_event_state
         position = position_finder.get_position_to_resume_tailing_from()
-        assert position.get() == schema_event_position.get()
+        assert position.to_dict() == schema_event_position.to_dict()
         assert patch_get_latest_schema_event_state.call_count == 1
 
     def test_get_data_event_position(
@@ -131,5 +131,5 @@ class TestPositionFinder(object):
         )
         patch_get_data_event_checkpoint.return_value = data_event_checkpoint
         position = position_finder.get_position_to_resume_tailing_from()
-        assert position.get() == data_event_position.get()
+        assert position.to_dict() == data_event_position.to_dict()
         assert patch_get_data_event_checkpoint.call_count == 1

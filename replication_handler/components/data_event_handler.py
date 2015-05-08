@@ -17,7 +17,7 @@ log = logging.getLogger('replication_handler.parse_replication_stream')
 class DataEventHandler(BaseEventHandler):
     """Handles data change events: add and update"""
 
-    # Checkpoint everytime when we process 5000 rows.
+    # Checkpoint everytime when we process 500 rows.
     checkpoint_size = 500
 
     def __init__(self, dp_client):

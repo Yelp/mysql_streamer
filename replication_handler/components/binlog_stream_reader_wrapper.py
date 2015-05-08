@@ -50,8 +50,7 @@ class BinlogStreamReaderWrapper(object):
     def peek(self):
         """ Peek at the next event without actually taking it out of the stream.
         """
-        if not self.current_events:
-            self.current_events.extend(self._prepare_event(self.stream.fetchone()))
+        self._fetchone_if_empty_current_events()
         return self.current_events[0]
 
     def next(self):
@@ -67,13 +66,16 @@ class BinlogStreamReaderWrapper(object):
                 event=event
             )
 
+    def _fetchone_if_empty_current_events(self):
+        if not self.current_events:
+            self.current_events.extend(self._prepare_event(self.stream.fetchone()))
+
     def _pop(self):
         """ Takes the next event out from the stream, and return that event.
         Note that each data event contains exactly one row.
         """
-        event = self.peek()
-        self.current_events.popleft()
-        return event
+        self._fetchone_if_empty_current_events()
+        return self.current_events.popleft()
 
     def _get_position(self):
         # TODO(cheng|DATAPIPE-141): make this function return log position when gtid
@@ -81,7 +83,7 @@ class BinlogStreamReaderWrapper(object):
         return GtidPosition(gtid=self.current_gtid)
 
     def _prepare_event(self, event):
-        if isinstance(event, QueryEvent) or isinstance(event, GtidEvent):
+        if isinstance(event, (QueryEvent, GtidEvent)):
             return [event]
         else:
             return self._get_data_events_from_row_event(event)
@@ -97,7 +99,7 @@ class BinlogStreamReaderWrapper(object):
         ]
 
     def _seek(self, connection_config, allowed_event_types, position):
-        position_info = position.get()
+        position_info = position.to_dict()
         offset = position_info.pop("offset", None)
         # server_id doesn't seem to matter but must be set.
         # blocking=True will keep this iterator infinite.
