@@ -28,9 +28,10 @@ log = logging.getLogger('replication_handler.parse_replication_stream')
 class BaseEventHandler(object):
     """Base class for handling binlog events for the Replication Handler"""
 
-    def __init__(self):
+    def __init__(self, dp_client):
         self.schema_cache = {}
         self.schema_store_client = stub_schemas.StubSchemaClient()
+        self.dp_client = dp_client
 
     def handle_event(self, event, gtid):
         raise NotImplementedError

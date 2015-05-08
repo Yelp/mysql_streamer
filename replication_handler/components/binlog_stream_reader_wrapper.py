@@ -114,6 +114,8 @@ class BinlogStreamReaderWrapper(object):
             self._point_stream_to(offset)
 
     def _point_stream_to(self, offset):
+        """This method advances the internal dequeue to provided offset.
+        """
         # skip preceding GtidEvent and QueryEvent.
         if isinstance(self.peek(), GtidEvent):
             self._pop()

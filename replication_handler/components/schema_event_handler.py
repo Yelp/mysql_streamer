@@ -22,10 +22,9 @@ class SchemaEventHandler(BaseEventHandler):
 
     notify_email = "bam+replication+handler@yelp.com"
 
-    def __init__(self, dp_client):
+    def __init__(self, *args, **kwargs):
         """Store credentials for local tracking database"""
-        super(SchemaEventHandler, self).__init__()
-        self.dp_client = dp_client
+        super(SchemaEventHandler, self).__init__(*args, **kwargs)
 
     @property
     def schema_tracking_db_conn(self):

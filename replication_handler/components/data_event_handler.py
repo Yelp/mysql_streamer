@@ -20,13 +20,12 @@ class DataEventHandler(BaseEventHandler):
     # Checkpoint everytime when we process 500 rows.
     checkpoint_size = 500
 
-    def __init__(self, dp_client):
+    def __init__(self, *args, **kwargs):
         """Initialize clientlib that will handle publishing to kafka,
            which includes the envelope schema management and logging
            GTID checkpoints in the MySQL schema tracking db.
         """
-        super(DataEventHandler, self).__init__()
-        self.dp_client = dp_client
+        super(DataEventHandler, self).__init__(*args, **kwargs)
         # self._checkpoint_latest_published_offset will be invoked every time
         # we process self.checkpoint_size number of rows, For More info on SegmentProcessor,
         # Refer to https://opengrok.yelpcorp.com/xref/submodules/yelp_lib/yelp_lib/iteration.py#207

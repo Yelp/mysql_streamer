@@ -11,7 +11,7 @@ class TestBaseEventHandler(object):
 
     @pytest.fixture(scope="class")
     def base_event_handler(self):
-        return BaseEventHandler()
+        return BaseEventHandler(mock.Mock())
 
     @pytest.fixture
     def table(self):
