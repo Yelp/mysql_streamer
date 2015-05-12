@@ -45,7 +45,7 @@ class ParseReplicationStream(Batch):
     def run(self):
         for replication_handler_event in self.stream:
             event_class = replication_handler_event.event.__class__
-            self.current_event_type = self.handler_map[event_class]
+            self.current_event_type = self.handler_map[event_class].event_type
             self.handler_map[event_class].handler.handle_event(
                 replication_handler_event.event,
                 replication_handler_event.position.gtid

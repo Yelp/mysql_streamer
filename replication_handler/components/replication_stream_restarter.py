@@ -2,7 +2,7 @@
 import copy
 import logging
 
-from replication_handler.components.binlog_stream_reader_wrapper import BinlogStreamReaderWrapper
+from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.models.database import rbr_state_session
@@ -37,7 +37,7 @@ class ReplicationStreamRestarter(object):
         tables, or publish unpublished messages.
         """
         position = self.position_finder.get_position_to_resume_tailing_from()
-        self.stream = BinlogStreamReaderWrapper(position)
+        self.stream = SimpleBinlogStreamReaderWrapper(position)
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
                 stream=self.stream,

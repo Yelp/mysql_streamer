@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from collections import deque
 import logging
 
 from pymysqlreplication import BinLogStreamReader
@@ -9,23 +8,23 @@ from pymysqlreplication.row_event import UpdateRowsEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 
 from replication_handler import config
+from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.util.misc import DataEvent
-from replication_handler.util.misc import ReplicationHandlerEvent
-from replication_handler.util.position import GtidPosition
 
 
-log = logging.getLogger('replication_handler.components.binlog_stream_reader_wrapper')
+log = logging.getLogger('replication_handler.components.low_level_binlog_stream_reader_wrapper')
 
 
-class BinlogStreamReaderWrapper(object):
+class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     """ This class wraps pymysqlreplication stream object, providing the ability to
-    resume stream at a specific position, peek at next event, and iterate through stream.
+    resume stream at a specific position, peek at next event, and pop next event.
 
     Args:
       position(Position object): use to specify where the stream should resume.
     """
 
     def __init__(self, position):
+        super(LowLevelBinlogStreamReaderWrapper, self).__init__()
         source_config = config.source_database_config.entries[0]
         connection_config = {
             'host': source_config['host'],
@@ -39,48 +38,12 @@ class BinlogStreamReaderWrapper(object):
             WriteRowsEvent,
             UpdateRowsEvent
         ]
-        self.current_events = deque()
-        self.current_gtid = None
 
         self._seek(connection_config, allowed_event_types, position)
 
-    def __iter__(self):
-        return self
-
-    def peek(self):
-        """ Peek at the next event without actually taking it out of the stream.
-        """
-        self._fetchone_if_empty_current_events()
-        return self.current_events[0]
-
-    def next(self):
-        """ This method implements the iteration functionality."""
-        if isinstance(self.peek(), GtidEvent):
-            self.current_gtid = self._pop().gtid
-
-        if isinstance(self.peek(), QueryEvent) or isinstance(self.peek(), DataEvent):
-            position = self._get_position()
-            event = self._pop()
-            return ReplicationHandlerEvent(
-                position=position,
-                event=event
-            )
-
-    def _fetchone_if_empty_current_events(self):
+    def _refill_current_events_if_empty(self):
         if not self.current_events:
             self.current_events.extend(self._prepare_event(self.stream.fetchone()))
-
-    def _pop(self):
-        """ Takes the next event out from the stream, and return that event.
-        Note that each data event contains exactly one row.
-        """
-        self._fetchone_if_empty_current_events()
-        return self.current_events.popleft()
-
-    def _get_position(self):
-        # TODO(cheng|DATAPIPE-141): make this function return log position when gtid
-        # is not available.
-        return GtidPosition(gtid=self.current_gtid)
 
     def _prepare_event(self, event):
         if isinstance(event, (QueryEvent, GtidEvent)):
@@ -118,11 +81,11 @@ class BinlogStreamReaderWrapper(object):
         """
         # skip preceding GtidEvent and QueryEvent.
         if isinstance(self.peek(), GtidEvent):
-            self._pop()
+            self.pop()
         if isinstance(self.peek(), QueryEvent):
-            self._pop()
+            self.pop()
         # Iterate until we point the stream to the correct offset
         while offset > 0:
-            event = self._pop()
+            event = self.pop()
             assert isinstance(event, DataEvent)
             offset -= 1

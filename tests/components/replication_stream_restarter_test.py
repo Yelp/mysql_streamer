@@ -47,7 +47,7 @@ class TestReplicationStreamRestarter(object):
         self,
     ):
         with mock.patch(
-            'replication_handler.components.replication_stream_restarter.BinlogStreamReaderWrapper'
+            'replication_handler.components.replication_stream_restarter.SimpleBinlogStreamReaderWrapper'
         ) as mock_stream_reader:
             yield mock_stream_reader
 
