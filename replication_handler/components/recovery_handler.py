@@ -18,7 +18,8 @@ class BadSchemaEventStateException(Exception):
 
 class RecoveryHandler(object):
     """ This class handles the recovery process, including recreate table and position
-    stream to correct offset, and publish left over messages.
+    stream to correct offset, and publish left over messages. When recover process finishes,
+    the stream should be ready to be consumed.
 
     Args:
       stream(ReplicationStreamReaderWrapper object): a stream reader
