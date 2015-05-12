@@ -14,6 +14,12 @@ log = logging.getLogger('replication_handler.components.simple_binlog_stream_rea
 
 
 class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
+    """ This class is a higher level abstraction on top of LowLevelBinlogStreamReaderWrapper,
+    providing the ability to iterate through events with position information attached.
+
+    Args:
+      position(Position object): use to specify where the stream should resume.
+    """
 
     def __init__(self, position):
         super(SimpleBinlogStreamReaderWrapper, self).__init__()

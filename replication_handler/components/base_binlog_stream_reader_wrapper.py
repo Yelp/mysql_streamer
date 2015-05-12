@@ -3,6 +3,9 @@ from collections import deque
 
 
 class BaseBinlogStreamReaderWrapper(object):
+    """ This class is base class which implements peek/pop function, and subclass needs
+    to implement _refill_current_events_if_empty and use self.current_events as a buffer.
+    """
 
     def __init__(self):
         self.current_events = deque()
