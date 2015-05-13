@@ -138,7 +138,7 @@ class TestRecoveryHandler(object):
         patch_schema_tracker_connection,
         mock_cursor
     ):
-        stream.peek.return_value = mock.Mock(DataEvent)
+        stream.peek.return_value.event = mock.Mock(DataEvent)
         recovery_handler = RecoveryHandler(
             stream,
             dp_client,

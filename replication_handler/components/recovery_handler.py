@@ -55,13 +55,13 @@ class RecoveryHandler(object):
             self._rollback_pending_event(self.pending_schema_event)
 
     def _handle_unclean_shutdown(self):
-        if not self.is_clean_shutdown and isinstance(self.stream.peek(), DataEvent):
+        if not self.is_clean_shutdown and isinstance(self.stream.peek().event, DataEvent):
             self._recover_from_unclean_shutdown(self.stream)
 
     def _recover_from_unclean_shutdown(self, stream):
         messages = []
         while(len(messages) < self.MAX_EVENT_SIZE and
-                isinstance(stream.peek(), DataEvent)):
+                isinstance(stream.peek().event, DataEvent)):
             messages.append(stream.next().event.row)
         self.dp_client.check_for_unpublished_messages(messages)
 
