@@ -10,22 +10,27 @@ from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
 
 
+HEARTBEAT_TABLE = "heartbeat"
 log = logging.getLogger('replication_handler.components.simple_binlog_stream_reader_wrapper')
 
 
 class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     """ This class is a higher level abstraction on top of LowLevelBinlogStreamReaderWrapper,
-    providing the ability to iterate through events with position information attached.
+    focusing on dealing with offsets, and providing the ability to iterate through
+    events with position information attached.
 
     Args:
       position(Position object): use to specify where the stream should resume.
+      gtid_enabled(bool): use to indicate if gtid is enabled in the system.
     """
 
-    def __init__(self, position):
+    def __init__(self, position, gtid_enabled=False):
         super(SimpleBinlogStreamReaderWrapper, self).__init__()
         self.stream = LowLevelBinlogStreamReaderWrapper(position)
-        self.current_position = None
-        self.gtid_enabled = False
+        self.gtid_enabled = gtid_enabled
+        self._upstream_position = position
+        self._offset = 0
+        self._seek(self._upstream_position.offset)
 
     def __iter__(self):
         return self
@@ -34,25 +39,68 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         """ This method implements the iteration functionality."""
         return self.pop()
 
-    def _get_position(self):
-        if isinstance(self.stream.peek(), GtidEvent):
-            self.gtid_enabled = True
-            self.current_position = GtidPosition(gtid=self.stream.pop().gtid)
-            return self.current_position
-        elif self.gtid_enabled:
-            return self.current_position
+    def _seek(self, offset):
+        if offset is not None:
+            self._point_stream_to(offset)
+
+    def _point_stream_to(self, offset):
+        """This method advances the internal dequeue to provided offset.
+        """
+        original_offset = offset
+        while offset > 0:
+            self.pop()
+            offset -= 1
+
+        # Make sure that we skipped correct number of events.
+        assert self._offset == original_offset
+
+    def _is_position_update(self, event):
+        if self.gtid_enabled:
+            return isinstance(event, GtidEvent)
         else:
-            return LogPosition(
-                log_pos=self.stream.stream.log_pos,
-                log_file=self.stream.stream.log_file
+            return event.table == HEARTBEAT_TABLE
+
+    def _update_upstream_position(self, event):
+        """If gtid_enabled and the next event is GtidEvent,
+        we update the self._upstream_position with GtidPosition, if next event is
+        not GtidEvent, we keep the current self._upstream_position, if not gtid_enabled,
+        we update the self.upstream_position with LogPosition.
+        """
+        if self.gtid_enabled and isinstance(event, GtidEvent):
+            self._upstream_position = GtidPosition(
+                gtid=event.gtid
             )
+        elif (not self.gtid_enabled) and event.table == HEARTBEAT_TABLE:
+            self._upstream_position = LogPosition(
+                log_pos=event.log_pos,
+                log_file=event.log_file
+            )
+        self._offset = 0
 
     def _refill_current_events_if_empty(self):
         if not self.current_events:
-            position = self._get_position()
+            # If the site goes into readonly mode, there are only heartbeats, we should just
+            # update the position.
+            while self._is_position_update(self.stream.peek()):
+                self._update_upstream_position(self.stream.pop())
             event = self.stream.pop()
             replication_handler_event = ReplicationHandlerEvent(
-                position=position,
+                position=self._build_position(),
                 event=event
             )
+            self._offset += 1
             self.current_events.append(replication_handler_event)
+
+    def _build_position(self):
+        """ We need to instantiate a new position for each event."""
+        if self.gtid_enabled:
+            return GtidPosition(
+                gtid=self._upstream_position.gtid,
+                offset=self._offset
+            )
+        else:
+            return LogPosition(
+                log_pos=self._upstream_position.log_pos,
+                log_file=self._upstream_position.log_file,
+                offset=self._offset
+            )

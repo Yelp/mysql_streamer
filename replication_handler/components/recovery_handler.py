@@ -28,7 +28,7 @@ class RecoveryHandler(object):
       pending_schema_event(SchemaEventState object): schema event that has a pending state
     """
 
-    MAX_EVENT_SIZE = 5000
+    MAX_EVENT_SIZE = 1000
 
     def __init__(self, stream, dp_client, is_clean_shutdown=False, pending_schema_event=None):
         self.stream = stream

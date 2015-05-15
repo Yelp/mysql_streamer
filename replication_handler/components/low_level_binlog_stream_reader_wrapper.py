@@ -47,6 +47,8 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _prepare_event(self, event):
         if isinstance(event, (QueryEvent, GtidEvent)):
+            event.log_pos = self.stream.log_pos
+            event.log_file = self.stream.log_file
             return [event]
         else:
             return self._get_data_events_from_row_event(event)
@@ -57,35 +59,19 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             DataEvent(
                 schema=row_event.schema,
                 table=row_event.table,
+                log_pos=self.stream.log_pos,
+                log_file=self.stream.log_file,
                 row=row
             ) for row in row_event.rows
         ]
 
     def _seek(self, connection_config, allowed_event_types, position):
-        position_info = position.to_dict()
-        offset = position_info.pop("offset", None)
         # server_id doesn't seem to matter but must be set.
-        # blocking=True will keep this iterator infinite.
+        # blocking=True will will make stream iterate infinitely.
         self.stream = BinLogStreamReader(
             connection_settings=connection_config,
             server_id=1,
             blocking=True,
             only_events=allowed_event_types,
-            **position_info
+            **position.to_dict()
         )
-        if offset is not None:
-            self._point_stream_to(offset)
-
-    def _point_stream_to(self, offset):
-        """This method advances the internal dequeue to provided offset.
-        """
-        # skip preceding GtidEvent and QueryEvent.
-        if isinstance(self.peek(), GtidEvent):
-            self.pop()
-        if isinstance(self.peek(), QueryEvent):
-            self.pop()
-        # Iterate until we point the stream to the correct offset
-        while offset > 0:
-            event = self.pop()
-            assert isinstance(event, DataEvent)
-            offset -= 1

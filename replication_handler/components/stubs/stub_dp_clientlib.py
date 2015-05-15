@@ -22,13 +22,13 @@ class DPClientlib(object):
         our last checkpoint in case of a failure.
         """
         published_gtid = "1765f92f-d800-11e4-88b2-0242a9fe0285:14"
-        published_offset = 1
+        published_offset = 0
         table_name = "business"
         return PositionInfo(published_gtid, published_offset, table_name)
 
     def get_latest_published_offset(self):
         """This function is called periodically to checkpoint progress."""
         published_gtid = "1765f92f-d800-11e4-88b2-0242a9fe0285:14"
-        published_offset = 1
+        published_offset = 0
         table_name = "business"
         return PositionInfo(published_gtid, published_offset, table_name)

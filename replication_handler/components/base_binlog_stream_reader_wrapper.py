@@ -25,3 +25,6 @@ class BaseBinlogStreamReaderWrapper(object):
 
     def _refill_current_events_if_empty(self):
         raise NotImplementedError
+
+    def _seek(self):
+        raise NotImplementedError

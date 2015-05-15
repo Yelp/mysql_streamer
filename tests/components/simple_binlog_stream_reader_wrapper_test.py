@@ -21,69 +21,92 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         ) as mock_stream:
             yield mock_stream
 
-    def test_yielding_schema_repliaction_handler_events(self, patch_stream):
-        gtid_event = mock.Mock(spec=GtidEvent, gtid="sid:11")
-        query_event = mock.Mock(spec=QueryEvent)
-        gtid_event_2 = mock.Mock(spec=GtidEvent, gtid="sid:12")
+    def test_yield_events_when_gtid_enabled(self, patch_stream):
+        gtid_event_0 = mock.Mock(spec=GtidEvent, gtid="sid:11")
+        query_event_0 = mock.Mock(spec=QueryEvent)
+        query_event_1 = mock.Mock(spec=QueryEvent)
+        gtid_event_1 = mock.Mock(spec=GtidEvent, gtid="sid:12")
+        data_event_0 = mock.Mock(spec=DataEvent)
         data_event_1 = mock.Mock(spec=DataEvent)
         data_event_2 = mock.Mock(spec=DataEvent)
-        patch_stream.return_value.peek.side_effect = [
-            gtid_event,
-            gtid_event_2,
-            data_event_2
-        ]
-        patch_stream.return_value.pop.side_effect = [
-            gtid_event,
-            query_event,
-            gtid_event_2,
+        event_list = [
+            gtid_event_0,
+            query_event_0,
+            data_event_0,
             data_event_1,
-            data_event_2
+            data_event_2,
+            gtid_event_1,
+            query_event_1,
         ]
+        patch_stream.return_value.peek.side_effect = event_list
+        patch_stream.return_value.pop.side_effect = event_list
+        # set offset to 1, meaning we want to skip event at offset 0
         stream = SimpleBinlogStreamReaderWrapper(
             GtidPosition(
-                gtid="sid:10"
-            )
+                gtid="sid:10",
+                offset=2
+            ),
+            gtid_enabled=True
         )
         results = [
             ReplicationHandlerEvent(
-                event=query_event,
-                position=GtidPosition(gtid="sid:11")
-            ),
-            ReplicationHandlerEvent(
                 event=data_event_1,
-                position=GtidPosition(gtid="sid:12")
+                position=GtidPosition(gtid="sid:11", offset=2)
             ),
             ReplicationHandlerEvent(
                 event=data_event_2,
-                position=GtidPosition(gtid="sid:12")
+                position=GtidPosition(gtid="sid:11", offset=3)
+            ),
+            ReplicationHandlerEvent(
+                event=query_event_1,
+                position=GtidPosition(gtid="sid:12", offset=0)
             )
         ]
         for replication_event, result in zip(stream, results):
             assert replication_event.event == result.event
             assert replication_event.position.gtid == result.position.gtid
+            assert replication_event.position.offset == result.position.offset
 
-    def test_yielding_replication_handler_no_gtid(self, patch_stream):
-        data_event = mock.Mock(spec=DataEvent)
-        patch_stream.return_value.stream.log_pos = 10
-        patch_stream.return_value.stream.log_file = "binlog.001"
-        patch_stream.return_value.peek.side_effect = [
-            data_event
+    def test_yield_event_with_heartbeat_event(self, patch_stream):
+        log_pos = 10
+        log_file = "binlog.001"
+        heartbeat_event = mock.Mock(
+            spec=DataEvent,
+            table='heartbeat',
+            log_pos=log_pos,
+            log_file=log_file
+        )
+        data_event_0 = mock.Mock(spec=DataEvent, table="business")
+        data_event_1 = mock.Mock(spec=DataEvent, table="business")
+        data_event_2 = mock.Mock(spec=DataEvent, table="business")
+        event_list = [
+            heartbeat_event,
+            data_event_0,
+            data_event_1,
+            data_event_2,
         ]
-        patch_stream.return_value.pop.side_effect = [
-            data_event
-        ]
+        patch_stream.return_value.peek.side_effect = event_list
+        patch_stream.return_value.pop.side_effect = event_list
         stream = SimpleBinlogStreamReaderWrapper(
-            GtidPosition(
-                gtid="sid:10"
-            )
+            LogPosition(
+                log_pos=log_pos,
+                log_file=log_file,
+                offset=1
+            ),
+            gtid_enabled=False,
         )
         results = [
             ReplicationHandlerEvent(
-                event=data_event,
-                position=LogPosition(log_pos=10, log_file="binlog.001")
+                event=data_event_1,
+                position=LogPosition(log_pos=log_pos, log_file=log_file, offset=1)
+            ),
+            ReplicationHandlerEvent(
+                event=data_event_2,
+                position=LogPosition(log_pos=log_pos, log_file=log_file, offset=2)
             )
         ]
         for replication_event, result in zip(stream, results):
             assert replication_event.event == result.event
             assert replication_event.position.log_pos == result.position.log_pos
             assert replication_event.position.log_file == result.position.log_file
+            assert replication_event.position.offset == result.position.offset

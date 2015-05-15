@@ -26,11 +26,13 @@ class TestGtidPosition(object):
 
     def test_gtid_and_offset(self):
         p = GtidPosition(gtid="sid:10", offset=10)
-        assert p.to_dict() == {"auto_position": "sid:1-10", "offset": 10}
+        assert p.to_dict() == {"auto_position": "sid:1-10"}
+        assert p.offset == 10
 
 
 class TestLogPosition(object):
 
     def test_log_pos_and_name(self):
         p = LogPosition(log_pos=100, log_file="binlog", offset=10)
-        assert p.to_dict() == {"log_pos": 100, "log_file": "binlog", "offset": 10}
+        assert p.to_dict() == {"log_pos": 100, "log_file": "binlog"}
+        assert p.offset == 10

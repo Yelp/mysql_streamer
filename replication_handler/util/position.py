@@ -31,7 +31,6 @@ class GtidPosition(Position):
         position_dict = {}
         if self.gtid and self.offset:
             position_dict["auto_position"] = self._format_gtid_set(self.gtid)
-            position_dict["offset"] = self.offset
         elif self.gtid:
             position_dict["auto_position"] = self._format_next_gtid_set(self.gtid)
         return position_dict
@@ -82,6 +81,4 @@ class LogPosition(Position):
         if self.log_pos and self.log_file:
             position_dict["log_pos"] = self.log_pos
             position_dict["log_file"] = self.log_file
-            if self.offset:
-                position_dict["offset"] = self.offset
         return position_dict
