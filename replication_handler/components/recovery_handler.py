@@ -22,7 +22,7 @@ class RecoveryHandler(object):
     the stream should be ready to be consumed.
 
     Args:
-      stream(ReplicationStreamReaderWrapper object): a stream reader
+      stream(SimpleBinlogStreamReaderWrapper object): a stream reader
       dp_client(DataPipelineClientlib object): data pipeline clientlib
       is_clean_shutdown(boolean): whether the last operation was cleanly stopped.
       pending_schema_event(SchemaEventState object): schema event that has a pending state
