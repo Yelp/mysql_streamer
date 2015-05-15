@@ -47,6 +47,9 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _prepare_event(self, event):
         if isinstance(event, (QueryEvent, GtidEvent)):
+            # TODO(cheng|DATAPIPE-173): log_pos and log_file is useful information
+            # to have on events, we will decide if we want to remove this when gtid is
+            # enabled if the future.
             event.log_pos = self.stream.log_pos
             event.log_file = self.stream.log_file
             return [event]

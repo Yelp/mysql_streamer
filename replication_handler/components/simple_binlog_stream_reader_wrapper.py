@@ -65,6 +65,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         we update the self._upstream_position with GtidPosition, if next event is
         not GtidEvent, we keep the current self._upstream_position, if not gtid_enabled,
         we update the self.upstream_position with LogPosition.
+        TODO(cheng|DATAPIPE-172): We may need to skip duplicate heartbeats.
         """
         if self.gtid_enabled and isinstance(event, GtidEvent):
             self._upstream_position = GtidPosition(
