@@ -24,6 +24,8 @@ class ReplicationStreamRestarter(object):
 
     def __init__(self, dp_client):
         self.dp_client = dp_client
+        # Both global_event_state and pending_schema_event are information about
+        # last shutdown, we need them to do recovery process.
         self.global_event_state = self._get_global_event_state()
         self.pending_schema_event = self._get_pending_schema_event_state()
         self.position_finder = PositionFinder(

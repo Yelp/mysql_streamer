@@ -63,7 +63,8 @@ class RecoveryHandler(object):
         while(len(messages) < self.MAX_EVENT_SIZE and
                 isinstance(stream.peek().event, DataEvent)):
             messages.append(stream.next().event.row)
-        self.dp_client.check_for_unpublished_messages(messages)
+        if messages:
+            self.dp_client.check_for_unpublished_messages(messages)
 
     def _assert_event_state_status(self, event_state, status):
         if event_state.status != status:
