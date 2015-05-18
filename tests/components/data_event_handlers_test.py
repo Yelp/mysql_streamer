@@ -9,13 +9,14 @@ import pytest
 from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
-from replication_handler.components.stubs.stub_dp_clientlib import OffsetInfo
+from replication_handler.components.stubs.stub_dp_clientlib import PositionInfo
 from replication_handler.components.stubs.stub_schemas import stub_business_schema
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
 from testing.events import RowsEvent
+from testing.events import DataEvent
 
 
 class TestDataEventHandler(object):
@@ -36,8 +37,8 @@ class TestDataEventHandler(object):
         return "93fd11e6-cf7c-11e4-912d-0242a9fe01db:12"
 
     @pytest.fixture
-    def data_event_handler(self):
-        return DataEventHandler()
+    def data_event_handler(self, patch_checkpoint_size):
+        return DataEventHandler(DPClientlib())
 
     @pytest.fixture
     def schema_in_json(self):
@@ -68,8 +69,12 @@ class TestDataEventHandler(object):
         return RowsEvent.make_update_rows_event()
 
     @pytest.fixture
+    def data_events(self):
+        return DataEvent.make_data_event()
+
+    @pytest.fixture
     def first_offset_info(self, test_gtid):
-        return OffsetInfo(
+        return PositionInfo(
             gtid=test_gtid,
             offset=1,
             table_name="business"
@@ -77,7 +82,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def second_offset_info(self, test_gtid):
-        return OffsetInfo(
+        return PositionInfo(
             gtid=test_gtid,
             offset=3,
             table_name="business"
@@ -191,7 +196,7 @@ class TestDataEventHandler(object):
         self,
         test_gtid,
         data_event_handler,
-        add_data_event,
+        data_events,
         schema_cache_entry,
         patch_get_schema_for_schema_cache,
         patch_rbr_state_rw,
@@ -202,22 +207,22 @@ class TestDataEventHandler(object):
         patch_checkpoint_size,
         patch_upsert_global_event_state
     ):
-
-        data_event_handler.handle_event(add_data_event, test_gtid)
-        expected_call_args = [
-            (
-                schema_cache_entry.kafka_topic,
-                self.avro_encoder(
-                    data_event_handler._get_values(row),
-                    schema_cache_entry.avro_obj
+        expected_call_args = []
+        for data_event in data_events:
+            data_event_handler.handle_event(data_event, test_gtid)
+            expected_call_args.append(
+                (
+                    schema_cache_entry.kafka_topic,
+                    self.avro_encoder(
+                        data_event_handler._get_values(data_event.row),
+                        schema_cache_entry.avro_obj
+                    )
                 )
             )
-            for row in add_data_event.rows
-        ]
         actual_call_args = [i[0] for i in patch_publish_to_kafka.call_args_list]
         assert expected_call_args == actual_call_args
-        assert patch_publish_to_kafka.call_count == 3
-        # We set the checkpoint size to 2, so 3 rows will checkpoint twice
+        assert patch_publish_to_kafka.call_count == 4
+        # We set the checkpoint size to 2, so 4 rows will checkpoint twice
         # and upsert GlobalEventState twice
         assert patch_get_latest_published_offset.call_count == 2
         assert patch_create_data_event_checkpoint.call_count == 2

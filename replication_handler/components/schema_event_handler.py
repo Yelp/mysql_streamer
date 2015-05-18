@@ -13,7 +13,6 @@ from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -24,11 +23,6 @@ class SchemaEventHandler(BaseEventHandler):
     """Handles schema change events: create table and alter table"""
 
     notify_email = "bam+replication+handler@yelp.com"
-
-    def __init__(self):
-        """Store credentials for local tracking database"""
-        super(SchemaEventHandler, self).__init__()
-        self.dp_client = DPClientlib()
 
     @property
     def schema_tracking_db_conn(self):

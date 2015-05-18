@@ -11,7 +11,7 @@ class TestBaseEventHandler(object):
 
     @pytest.fixture(scope="class")
     def base_event_handler(self):
-        return BaseEventHandler()
+        return BaseEventHandler(mock.Mock())
 
     @pytest.fixture
     def table(self):
@@ -61,6 +61,10 @@ class TestBaseEventHandler(object):
     def test_non_existent_table_has_none_response(self, base_event_handler, bogus_table):
         resp = base_event_handler.get_schema_for_schema_cache(bogus_table)
         assert resp is None
+
+    def test_handle_event_not_implemented(self, base_event_handler):
+        with pytest.raises(NotImplementedError):
+            base_event_handler.handle_event(mock.Mock(), mock.Mock())
 
     def _assert_expected_result(self, resp, kafka_topic):
         assert resp.kafka_topic == kafka_topic

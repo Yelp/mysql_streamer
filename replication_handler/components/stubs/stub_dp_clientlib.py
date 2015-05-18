@@ -3,7 +3,7 @@ from collections import namedtuple
 
 
 # The response format we get from data pipeline clientlib
-OffsetInfo = namedtuple('OffsetInfo', ('gtid', 'offset', 'table_name'))
+PositionInfo = namedtuple('PositionInfo', ('gtid', 'offset', 'table_name'))
 
 
 class DPClientlib(object):
@@ -21,14 +21,14 @@ class DPClientlib(object):
         """This function is used to find out the actual offset since
         our last checkpoint in case of a failure.
         """
-        published_gtid = "1765f92f-d800-11e4-88b2-0242a9fe0285:13"
-        published_offset = 1
+        published_gtid = "1765f92f-d800-11e4-88b2-0242a9fe0285:14"
+        published_offset = 0
         table_name = "business"
-        return OffsetInfo(published_gtid, published_offset, table_name)
+        return PositionInfo(published_gtid, published_offset, table_name)
 
     def get_latest_published_offset(self):
         """This function is called periodically to checkpoint progress."""
-        published_gtid = "1765f92f-d800-11e4-88b2-0242a9fe0285:13"
-        published_offset = 1
+        published_gtid = "1765f92f-d800-11e4-88b2-0242a9fe0285:14"
+        published_offset = 0
         table_name = "business"
-        return OffsetInfo(published_gtid, published_offset, table_name)
+        return PositionInfo(published_gtid, published_offset, table_name)
