@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import copy
 import logging
 
 from yelp_conn.connection_set import ConnectionSet
@@ -80,9 +81,9 @@ class SchemaEventHandler(BaseEventHandler):
             table.table_name
         )
         with rbr_state_session.connect_begin(ro=False) as session:
-            return SchemaEventState.create_schema_event_state(
+            record = SchemaEventState.create_schema_event_state(
                 session=session,
-                position=position,
+                position=position.to_dict(),
                 status=SchemaEventStatus.PENDING,
                 query=event.query,
                 create_table_statement=create_table_statement.query,
@@ -90,6 +91,8 @@ class SchemaEventHandler(BaseEventHandler):
                 database_name=table.database_name,
                 table_name=table.table_name,
             )
+            session.flush()
+            return copy.copy(record)
 
     def _update_journaling_record(self, record):
         with rbr_state_session.connect_begin(ro=False) as session:
@@ -99,7 +102,7 @@ class SchemaEventHandler(BaseEventHandler):
             )
             GlobalEventState.upsert(
                 session=session,
-                position=position,
+                position=record.position,
                 event_type=EventType.SCHEMA_EVENT
             )
 

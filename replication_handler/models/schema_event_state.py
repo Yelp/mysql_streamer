@@ -89,8 +89,7 @@ class SchemaEventState(Base):
             table_name=table_name,
             create_table_statement=create_table_statement,
             cluster_name=cluster_name,
-            database_name=database_name
-            table_name=table,
+            database_name=database_name,
         )
         session.add(schema_event_state)
         return schema_event_state

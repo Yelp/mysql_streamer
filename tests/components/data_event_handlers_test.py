@@ -7,6 +7,7 @@ import mock
 import pytest
 
 from replication_handler.components.base_event_handler import SchemaCacheEntry
+from replication_handler.components.base_event_handler import Table
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.components.stubs.stub_dp_clientlib import PositionInfo
@@ -15,6 +16,7 @@ from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
+from replication_handler.util.position import GtidPosition
 from testing.events import RowsEvent
 from testing.events import DataEvent
 
@@ -53,7 +55,6 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def schema_cache_entry(self, schema_in_json):
         avro_obj = avro.schema.parse(schema_in_json)
-
         return SchemaCacheEntry(
             avro_obj=avro_obj,
             kafka_topic="fake_topic",
@@ -73,19 +74,41 @@ class TestDataEventHandler(object):
         return DataEvent.make_data_event()
 
     @pytest.fixture
-    def first_offset_info(self, test_gtid):
+    def test_table(self):
+        return Table(cluster_name="test_cluster", database_name="test_db", table_name="business")
+
+    @pytest.fixture
+    def test_topic(self):
+        return "test_topic"
+
+    @pytest.fixture
+    def test_kafka_offset(self):
+        return 10
+
+    @pytest.fixture
+    def first_test_position(self, test_gtid):
+        return GtidPosition(gtid=test_gtid, offset=1)
+
+    @pytest.fixture
+    def second_test_position(self, test_gtid):
+        return GtidPosition(gtid=test_gtid, offset=3)
+
+    @pytest.fixture
+    def first_offset_info(self, first_test_position, test_table, test_topic, test_kafka_offset):
         return PositionInfo(
-            gtid=test_gtid,
-            offset=1,
-            table_name="business"
+            position=first_test_position,
+            table=test_table,
+            kafka_topic=test_topic,
+            kafka_offset=test_kafka_offset
         )
 
     @pytest.fixture
-    def second_offset_info(self, test_gtid):
+    def second_offset_info(self, second_test_position, test_table, test_topic, test_kafka_offset):
         return PositionInfo(
-            gtid=test_gtid,
-            offset=3,
-            table_name="business"
+            position=second_test_position,
+            table=test_table,
+            kafka_topic=test_topic,
+            kafka_offset=test_kafka_offset
         )
 
     @pytest.yield_fixture
@@ -194,7 +217,11 @@ class TestDataEventHandler(object):
 
     def test_handle_event_to_publish_call(
         self,
-        test_gtid,
+        first_test_position,
+        second_test_position,
+        test_table,
+        test_topic,
+        test_kafka_offset,
         data_event_handler,
         data_events,
         schema_cache_entry,
@@ -209,7 +236,7 @@ class TestDataEventHandler(object):
     ):
         expected_call_args = []
         for data_event in data_events:
-            data_event_handler.handle_event(data_event, test_gtid)
+            data_event_handler.handle_event(data_event)
             expected_call_args.append(
                 (
                     schema_cache_entry.kafka_topic,
@@ -229,27 +256,33 @@ class TestDataEventHandler(object):
         assert patch_create_data_event_checkpoint.call_args_list == [
             mock.call(
                 session=mock_rbr_state_session,
-                table_name="business",
-                gtid=test_gtid,
-                offset=1
+                position=first_test_position.to_dict(),
+                kafka_topic=test_topic,
+                kafka_offset=test_kafka_offset,
+                cluster_name=test_table.cluster_name,
+                database_name=test_table.database_name,
+                table_name=test_table.table_name
             ),
             mock.call(
                 session=mock_rbr_state_session,
-                table_name="business",
-                gtid=test_gtid,
-                offset=3
+                position=second_test_position.to_dict(),
+                kafka_topic=test_topic,
+                kafka_offset=test_kafka_offset,
+                cluster_name=test_table.cluster_name,
+                database_name=test_table.database_name,
+                table_name=test_table.table_name
             ),
         ]
         assert patch_upsert_global_event_state.call_count == 2
         assert patch_upsert_global_event_state.call_args_list == [
             mock.call(
                 session=mock_rbr_state_session,
-                gtid=test_gtid,
+                position=first_test_position.to_dict(),
                 event_type=EventType.DATA_EVENT
             ),
             mock.call(
                 session=mock_rbr_state_session,
-                gtid=test_gtid,
+                position=second_test_position.to_dict(),
                 event_type=EventType.DATA_EVENT
             ),
         ]

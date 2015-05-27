@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from sqlalchemy import Column
 from sqlalchemy import Integer
-from sqlalchemy import String
 from sqlalchemy.types import Enum
 
 from yelp_lib.containers.lists import unlist
@@ -27,6 +26,7 @@ class GlobalEventState(Base):
 
     __tablename__ = 'global_event_state'
 
+    id = Column(Integer, primary_key=True)
     position = Column(JSONType, nullable=False)
     is_clean_shutdown = Column(Integer, nullable=False, default=0)
     event_type = Column(

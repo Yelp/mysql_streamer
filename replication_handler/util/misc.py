@@ -30,12 +30,15 @@ def save_position(position_info, is_clean_shutdown=False):
     with rbr_state_session.connect_begin(ro=False) as session:
         DataEventCheckpoint.create_data_event_checkpoint(
             session=session,
-            gtid=position_info.gtid,
-            offset=position_info.offset,
-            table_name=position_info.table_name
+            kafka_topic=position_info.kafka_topic,
+            kafka_offset=position_info.kafka_offset,
+            position=position_info.position.to_dict(),
+            cluster_name=position_info.table.cluster_name,
+            database_name=position_info.table.database_name,
+            table_name=position_info.table.table_name
         )
         GlobalEventState.upsert(
             session=session,
-            gtid=position_info.gtid,
+            position=position_info.position.to_dict(),
             event_type=EventType.DATA_EVENT
         )

@@ -138,9 +138,9 @@ class TestParseReplicationStream(object):
         replication_stream.run()
         # TODO(make handler take position directly)
         assert patch_schema_handle_event.call_args_list == \
-            [mock.call(schema_event, position_gtid_1.gtid)]
+            [mock.call(schema_event, position_gtid_1)]
         assert patch_data_handle_event.call_args_list == \
-            [mock.call(data_event, position_gtid_2.gtid)]
+            [mock.call(data_event, position_gtid_2)]
         assert patch_schema_handle_event.call_count == 1
         assert patch_data_handle_event.call_count == 1
 
@@ -168,8 +168,8 @@ class TestParseReplicationStream(object):
         replication_stream = ParseReplicationStream()
         replication_stream.run()
         assert patch_data_handle_event.call_args_list == [
-            mock.call(data_event, position_gtid_1.gtid),
-            mock.call(data_event, position_gtid_2.gtid)
+            mock.call(data_event, position_gtid_1),
+            mock.call(data_event, position_gtid_2)
         ]
         assert patch_data_handle_event.call_count == 2
 

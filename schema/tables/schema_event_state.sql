@@ -9,5 +9,5 @@ CREATE TABLE `schema_event_state` (
   `table_name` varchar(255) NOT NULL,
   `time_created` int(11) NOT NULL,
   `time_updated` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+class InvalidPositionDictException(Exception):
+    pass
 
 
 class Position(object):
@@ -6,6 +8,15 @@ class Position(object):
     Primarily gtid or log position.
     """
     def to_dict(self):
+        """This function turns the position object into a dict
+        to be saved in database.
+        """
+        raise NotImplementedError()
+
+    def to_replication_dict(self):
+        """This function turns the position object into a dict
+        to be used in resuming replication.
+        """
         raise NotImplementedError()
 
 
@@ -23,6 +34,14 @@ class GtidPosition(Position):
         self.offset = offset
 
     def to_dict(self):
+        position_dict = {}
+        if self.gtid:
+            position_dict["gtid"] = self.gtid
+        if self.offset:
+            position_dict["offset"] = self.offset
+        return position_dict
+
+    def to_replication_dict(self):
         """Turn gtid into auto_position which the param to init pymysqlreplication
         if Position(gtid="sid:13"), then we want auto_position to be "sid:1-14"
         if Position(gtid="sid:13", offset=10), then we want auto_position
@@ -81,4 +100,29 @@ class LogPosition(Position):
         if self.log_pos and self.log_file:
             position_dict["log_pos"] = self.log_pos
             position_dict["log_file"] = self.log_file
+        if self.offset:
+            position_dict["offset"] = self.offset
         return position_dict
+
+    def to_replication_dict(self):
+        position_dict = {}
+        if self.log_pos and self.log_file:
+            position_dict["log_pos"] = self.log_pos
+            position_dict["log_file"] = self.log_file
+        return position_dict
+
+
+def construct_position(position_dict):
+    if "gtid" in position_dict:
+        return GtidPosition(
+            gtid=position_dict.get("gtid"),
+            offset=position_dict.get("offset", None)
+        )
+    elif "log_pos" in position_dict and "log_file" in position_dict:
+        return LogPosition(
+            log_pos=position_dict.get("log_pos"),
+            log_file=position_dict.get("log_file"),
+            offset=position_dict.get("offset", None)
+        )
+    else:
+        raise InvalidPositionDictException

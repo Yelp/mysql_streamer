@@ -15,11 +15,11 @@ class TestBaseEventHandler(object):
 
     @pytest.fixture
     def table(self):
-        return Table(schema='yelp', table_name='business')
+        return Table(cluster_name="yelp_main", database_name='yelp', table_name='business')
 
     @pytest.fixture
     def bogus_table(self):
-        return Table(schema='yelp', table_name='bogus_table')
+        return Table(cluster_name="yelp_main", database_name='yelp', table_name='bogus_table')
 
     @pytest.fixture
     def avro_schema(self):

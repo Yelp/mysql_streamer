@@ -18,7 +18,7 @@ class TestGlobalEventState(object):
         assert GlobalEventState.get(sandbox_session) is None
         first_global_event_state = GlobalEventState.upsert(
             session=sandbox_session,
-            gtid="gtid1",
+            position={"gtid": "gtid1"},
             event_type=EventType.DATA_EVENT,
             is_clean_shutdown=0
         )
@@ -28,7 +28,7 @@ class TestGlobalEventState(object):
 
         second_global_event_state = GlobalEventState.upsert(
             session=sandbox_session,
-            gtid="gtid2",
+            position={"log_pos": 343, "log_file": "binlog.001"},
             event_type=EventType.SCHEMA_EVENT,
             is_clean_shutdown=1
         )

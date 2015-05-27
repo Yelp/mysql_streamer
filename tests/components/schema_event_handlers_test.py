@@ -13,6 +13,7 @@ from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.components.stubs.stub_schemas import StubSchemaClient
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
+from replication_handler.util.position import GtidPosition
 
 from testing.events import QueryEvent
 
@@ -48,8 +49,12 @@ class TestSchemaEventHandler(object):
         return "fake_schema"
 
     @pytest.fixture
-    def test_gtid(self):
-        return "3E11FA47-71CA-11E1-9E33-C80AA9429562:23"
+    def test_cluster(self):
+        return "yelp_main"
+
+    @pytest.fixture
+    def test_position(self):
+        return GtidPosition(gtid="3E11FA47-71CA-11E1-9E33-C80AA9429562:23")
 
     @pytest.fixture
     def create_table_schema_event(self, test_schema, test_table):
@@ -121,9 +126,10 @@ class TestSchemaEventHandler(object):
         }
 
     @pytest.fixture
-    def table_with_schema_changes(self, test_schema, test_table):
+    def table_with_schema_changes(self, test_cluster, test_schema, test_table):
         return Table(
-            schema=test_schema,
+            cluster_name=test_cluster,
+            database_name=test_schema,
             table_name=test_table
         )
 
@@ -205,7 +211,7 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def patch_update_schema_event_state(self):
         with mock.patch.object(
-            SchemaEventState, 'update_schema_event_state_to_complete_by_gtid'
+            SchemaEventState, 'update_schema_event_state_to_complete_by_id'
         ) as mock_update_schema_event_state:
             yield mock_update_schema_event_state
 
@@ -245,7 +251,7 @@ class TestSchemaEventHandler(object):
 
     def test_handle_event_create_table(
         self,
-        test_gtid,
+        test_position,
         schema_event_handler,
         create_table_schema_event,
         show_create_result_initial,
@@ -261,7 +267,7 @@ class TestSchemaEventHandler(object):
             create_table_schema_store_response
         external_patches.get_show_create_statement.return_value = show_create_result_initial
         mysql_statements = [show_create_result_initial]
-        schema_event_handler.handle_event(create_table_schema_event, test_gtid)
+        schema_event_handler.handle_event(create_table_schema_event, test_position)
 
         self.check_external_calls(
             create_table_schema_event,
@@ -275,7 +281,7 @@ class TestSchemaEventHandler(object):
 
     def test_handle_event_alter_table(
         self,
-        test_gtid,
+        test_position,
         schema_event_handler,
         alter_table_schema_event,
         show_create_result_initial,
@@ -303,7 +309,7 @@ class TestSchemaEventHandler(object):
             show_create_result_after_alter
         ]
 
-        schema_event_handler.handle_event(alter_table_schema_event, test_gtid)
+        schema_event_handler.handle_event(alter_table_schema_event, test_position)
         self.check_external_calls(
             alter_table_schema_event,
             mock_cursor,
@@ -316,13 +322,13 @@ class TestSchemaEventHandler(object):
 
     def test_filter_out_wrong_schema(
         self,
-        test_gtid,
+        test_position,
         schema_event_handler,
         create_table_schema_event,
         external_patches,
     ):
         external_patches.database_config.return_value = [{'db': 'different_schema'}]
-        schema_event_handler.handle_event(create_table_schema_event, test_gtid)
+        schema_event_handler.handle_event(create_table_schema_event, test_position)
         assert external_patches.populate_schema_cache.call_count == 0
         assert external_patches.create_schema_event_state.call_count == 0
         assert external_patches.update_schema_event_state.call_count == 0
@@ -331,23 +337,23 @@ class TestSchemaEventHandler(object):
 
     def test_bad_query(
         self,
-        test_gtid,
+        test_position,
         schema_event_handler,
         bad_query_event,
         external_patches
     ):
         with pytest.raises(Exception):
-            schema_event_handler.handle_event(bad_query_event, test_gtid)
+            schema_event_handler.handle_event(bad_query_event, test_position)
 
     def test_non_schema_relevant_query(
         self,
-        test_gtid,
+        test_position,
         schema_event_handler,
         mock_cursor,
         non_schema_relevant_query_event,
         external_patches
     ):
-        schema_event_handler.handle_event(non_schema_relevant_query_event, test_gtid)
+        schema_event_handler.handle_event(non_schema_relevant_query_event, test_position)
         assert mock_cursor.execute.call_count == 1
         assert mock_cursor.execute.call_args_list == [
             mock.call(non_schema_relevant_query_event.query)
@@ -356,7 +362,7 @@ class TestSchemaEventHandler(object):
 
     def test_incomplete_transaction(
         self,
-        test_gtid,
+        test_position,
         schema_event_handler,
         create_table_schema_event,
         show_create_result_initial,
@@ -367,7 +373,7 @@ class TestSchemaEventHandler(object):
             Exception
         ]
         with pytest.raises(Exception):
-            schema_event_handler.handle_event(create_table_schema_event, test_gtid)
+            schema_event_handler.handle_event(create_table_schema_event, test_position)
         assert external_patches.create_schema_event_state.call_count == 1
         assert external_patches.update_schema_event_state.call_count == 0
         assert external_patches.upsert_global_event_state.call_count == 0
@@ -396,7 +402,7 @@ class TestSchemaEventHandler(object):
         mysql_statements = [statement.query for statement in mysql_statements]
         assert external_patches.register_with_schema_store.call_args_list == [
             mock.call(
-                namespace=table.schema,
+                namespace="{0}.{1}".format(table.cluster_name, table.database_name),
                 source=table.table_name,
                 source_owner_email='bam+replication+handler@yelp.com',
                 mysql_statements=mysql_statements

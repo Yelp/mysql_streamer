@@ -50,7 +50,7 @@ class TestRecoveryHandler(object):
     @pytest.fixture
     def pending_schema_event_state(self, create_table_statement, alter_table_statement):
         return SchemaEventState(
-            gtid="sid:12",
+            position={"gtid": "sid:12"},
             status=SchemaEventStatus.PENDING,
             query=alter_table_statement,
             table_name="Business",
@@ -60,7 +60,7 @@ class TestRecoveryHandler(object):
     @pytest.fixture
     def bad_schema_event_state(self, create_table_statement, alter_table_statement):
         return SchemaEventState(
-            gtid="sid:13",
+            position={"gtid": "sid:13"},
             status='BadState',
             query=alter_table_statement,
             table_name="Business",

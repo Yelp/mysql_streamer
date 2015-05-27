@@ -36,7 +36,7 @@ class DataEventHandler(BaseEventHandler):
             self._checkpoint_latest_published_offset
         )
 
-    def handle_event(self, event, position):
+    def handle_event(self, event, position=None):
         """Make sure that the schema cache has the table, serialize the data,
            publish to Kafka.
         """

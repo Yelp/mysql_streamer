@@ -7,6 +7,7 @@ from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.util.position import GtidPosition
+from replication_handler.util.position import construct_position
 
 
 log = logging.getLogger('replication_handler.components.position_finder')
@@ -23,7 +24,7 @@ class PositionFinder(object):
 
     def get_position_to_resume_tailing_from(self):
         if self.pending_schema_event is not None:
-            return GtidPosition(gtid=self.pending_schema_event.gtid)
+            return construct_position(self.pending_schema_event.position)
 
         position = self._get_position_from_saved_states(self.global_event_state)
         return position
@@ -35,14 +36,11 @@ class PositionFinder(object):
             if global_event_state.event_type == EventType.DATA_EVENT:
                 checkpoint = self._get_last_data_event_checkpoint()
                 if checkpoint:
-                    return GtidPosition(
-                        gtid=checkpoint.gtid,
-                        offset=checkpoint.offset
-                    )
+                    return construct_position(checkpoint.position)
             elif global_event_state.event_type == EventType.SCHEMA_EVENT:
                 schema_event_state = self._get_next_gtid_from_latest_completed_schema_event_state()
                 if schema_event_state:
-                    return GtidPosition(gtid=schema_event_state.gtid)
+                    return construct_position(schema_event_state.position)
         return GtidPosition()
 
     def _get_last_data_event_checkpoint(self):
