@@ -24,7 +24,7 @@ class TestPositionFinder(object):
     @pytest.fixture
     def completed_schema_event_state(self, create_table_statement):
         return SchemaEventState(
-            gtid="sid:12",
+            position={"gtid": "sid:12"},
             status=SchemaEventStatus.COMPLETED,
             query=create_table_statement,
             table_name="Business",
@@ -34,7 +34,7 @@ class TestPositionFinder(object):
     @pytest.fixture
     def pending_schema_event_state(self, create_table_statement, alter_table_statement):
         return SchemaEventState(
-            gtid="sid:12",
+            position={"gtid": "sid:12"},
             status=SchemaEventStatus.PENDING,
             query=alter_table_statement,
             table_name="Business",
@@ -44,8 +44,7 @@ class TestPositionFinder(object):
     @pytest.fixture
     def data_event_checkpoint(self):
         return DataEventCheckpoint(
-            gtid="sid:14",
-            offset=10,
+            position={"gtid": "sid:14", "offset": 10},
             table_name="Business",
         )
 

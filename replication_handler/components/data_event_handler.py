@@ -8,10 +8,12 @@ from yelp_lib import iteration
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
+from replication_handler.config import env_config
 from replication_handler.util.misc import save_position
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
+cluster_name = env_config.cluster_name
 
 
 class DataEventHandler(BaseEventHandler):
@@ -23,7 +25,7 @@ class DataEventHandler(BaseEventHandler):
     def __init__(self, *args, **kwargs):
         """Initialize clientlib that will handle publishing to kafka,
            which includes the envelope schema management and logging
-           GTID checkpoints in the MySQL schema tracking db.
+           checkpoints in the MySQL schema tracking db.
         """
         super(DataEventHandler, self).__init__(*args, **kwargs)
         # self._checkpoint_latest_published_offset will be invoked every time
@@ -34,12 +36,16 @@ class DataEventHandler(BaseEventHandler):
             self._checkpoint_latest_published_offset
         )
 
-    def handle_event(self, event, gtid):
+    def handle_event(self, event, position=None):
         """Make sure that the schema cache has the table, serialize the data,
            publish to Kafka.
         """
         schema_cache_entry = self._get_payload_schema(
-            Table(schema=event.schema, table_name=event.table)
+            Table(
+                cluster_name=cluster_name,
+                database_name=event.schema,
+                table_name=event.table
+            )
         )
         self._handle_row(schema_cache_entry, event.row)
 

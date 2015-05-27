@@ -5,10 +5,19 @@
       <column autoIncrement="true" name="id" type="INT(11)">
         <constraints primaryKey="true"/>
       </column>
-      <column name="gtid" type="VARCHAR(255)">
+      <column name="position" type="TEXT">
         <constraints nullable="false"/>
       </column>
-      <column name="offset" type="INT(11)">
+      <column name="kafka_topic" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="kafka_offset" type="INT(11)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="cluster_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="database_name" type="VARCHAR(255)">
         <constraints nullable="false"/>
       </column>
       <column name="table_name" type="VARCHAR(255)">

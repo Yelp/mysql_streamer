@@ -76,5 +76,5 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             server_id=1,
             blocking=True,
             only_events=allowed_event_types,
-            **position.to_dict()
+            **position.to_replication_dict()
         )

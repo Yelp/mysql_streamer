@@ -1,5 +1,6 @@
 module_config:
     -  namespace: cluster_config
+       cluster_name: 'yelp_main'
        config:
            rbr_source_cluster: rbr_source
            schema_tracker_cluster: schema_tracker

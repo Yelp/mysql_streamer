@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import copy
 import logging
 
 from yelp_conn.connection_set import ConnectionSet
@@ -6,6 +7,7 @@ from yelp_conn.connection_set import ConnectionSet
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
+from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import GlobalEventState
@@ -15,6 +17,7 @@ from replication_handler.models.schema_event_state import SchemaEventStatus
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
+cluster_name = env_config.cluster_name
 
 
 class SchemaEventHandler(BaseEventHandler):
@@ -26,15 +29,15 @@ class SchemaEventHandler(BaseEventHandler):
     def schema_tracking_db_conn(self):
         return ConnectionSet.schema_tracker_rw().schema_tracker
 
-    def handle_event(self, event, gtid):
+    def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
         # Filter out changes not in this db
         if event.schema != source_database_config.entries[0]['db']:
             log.info(
-                "Skipping %s of gtid: %s, reason: schema mismatch. \
+                "Skipping %s of position: %s, reason: schema mismatch. \
                 Current schema: %s, incoming event schema: %s " % (
                     type(event),
-                    gtid,
+                    position,
                     source_database_config.entries[0]['db'],
                     event.schema
                 )
@@ -53,9 +56,9 @@ class SchemaEventHandler(BaseEventHandler):
             cursor = self.schema_tracking_db_conn.cursor()
             # DDL statements are commited implicitly, and can't be rollback.
             # so we need to implement journaling around.
-            self._create_journaling_record(table, event, gtid)
+            record = self._create_journaling_record(position, table, event)
             handle_method(cursor, event, table)
-            self._update_journaling_record(gtid)
+            self._update_journaling_record(record)
         else:
             self._execute_non_schema_store_relevant_query(event)
 
@@ -67,31 +70,39 @@ class SchemaEventHandler(BaseEventHandler):
             handle_method = self._handle_alter_table_event
         return handle_method
 
-    def _create_journaling_record(self, table, event, gtid):
+    def _create_journaling_record(
+        self,
+        position,
+        table,
+        event,
+    ):
         create_table_statement = self._get_show_create_statement(
             ConnectionSet.rbr_source_ro().rbr_source.cursor(),
             table.table_name
         )
         with rbr_state_session.connect_begin(ro=False) as session:
-            SchemaEventState.create_schema_event_state(
+            record = SchemaEventState.create_schema_event_state(
                 session=session,
-                gtid=gtid,
+                position=position.to_dict(),
                 status=SchemaEventStatus.PENDING,
                 query=event.query,
-                table_name=table.table_name,
                 create_table_statement=create_table_statement.query,
+                cluster_name=table.cluster_name,
+                database_name=table.database_name,
+                table_name=table.table_name,
             )
+            session.flush()
+            return copy.copy(record)
 
-    def _update_journaling_record(self, gtid):
-        """TODO(cheng|DATAPIPE-116): Update the global gtid as well."""
+    def _update_journaling_record(self, record):
         with rbr_state_session.connect_begin(ro=False) as session:
-            SchemaEventState.update_schema_event_state_to_complete_by_gtid(
+            SchemaEventState.update_schema_event_state_to_complete_by_id(
                 session,
-                gtid
+                record.id
             )
             GlobalEventState.upsert(
                 session=session,
-                gtid=gtid,
+                position=record.position,
                 event_type=EventType.SCHEMA_EVENT
             )
 
@@ -114,7 +125,11 @@ class SchemaEventHandler(BaseEventHandler):
         except:
             raise Exception("Cannot parse query table from {0}".format(event.query))
 
-        return query, Table(table_name=table_name, schema=event.schema)
+        return query, Table(
+            cluster_name=cluster_name,
+            database_name=event.schema,
+            table_name=table_name,
+        )
 
     def _execute_non_schema_store_relevant_query(self, event):
         """ Execute query that is not relevant to replication handler schema.
@@ -177,7 +192,7 @@ class SchemaEventHandler(BaseEventHandler):
            statements.
         """
         raw_resp = self.schema_store_client.register_avro_schema_from_mysql_statements(
-            namespace=table.schema,
+            namespace="{0}.{1}".format(table.cluster_name, table.database_name),
             source=table.table_name,
             source_owner_email=self.notify_email,
             mysql_statements=mysql_statements
