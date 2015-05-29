@@ -23,6 +23,7 @@ SchemaHandlerExternalPatches = namedtuple(
         'schema_tracking_db_conn',
         'rbr_source_ro_db_conn',
         'database_config',
+        'cluster_name',
         'get_show_create_statement',
         'register_with_schema_store',
         'populate_schema_cache',
@@ -165,6 +166,16 @@ class TestSchemaEventHandler(object):
             yield mock_entries
 
     @pytest.yield_fixture
+    def patch_cluster_name(self, test_schema):
+        with mock.patch.object(
+            config.DatabaseConfig,
+            'cluster_name',
+            new_callable=mock.PropertyMock
+        ) as mock_cluster_name:
+            mock_cluster_name.return_value = "yelp_main"
+            yield mock_cluster_name
+
+    @pytest.yield_fixture
     def patch_get_show_create_statement(self, schema_event_handler):
         with mock.patch.object(
             schema_event_handler,
@@ -228,6 +239,7 @@ class TestSchemaEventHandler(object):
         patch_db_conn,
         patch_rbr_source_ro,
         patch_config_db,
+        patch_cluster_name,
         patch_get_show_create_statement,
         patch_register,
         patch_populate_schema_cache,
@@ -240,6 +252,7 @@ class TestSchemaEventHandler(object):
             schema_tracking_db_conn=patch_db_conn,
             rbr_source_ro_db_conn=patch_rbr_source_ro,
             database_config=patch_config_db,
+            cluster_name=patch_cluster_name,
             get_show_create_statement=patch_get_show_create_statement,
             register_with_schema_store=patch_register,
             populate_schema_cache=patch_populate_schema_cache,
@@ -252,13 +265,13 @@ class TestSchemaEventHandler(object):
     def test_handle_event_create_table(
         self,
         test_position,
+        external_patches,
         schema_event_handler,
         create_table_schema_event,
         show_create_result_initial,
         table_with_schema_changes,
         mock_cursor,
         create_table_schema_store_response,
-        external_patches,
     ):
         """Integration test the things that need to be called during a handle
            create table event hence many mocks
@@ -282,6 +295,7 @@ class TestSchemaEventHandler(object):
     def test_handle_event_alter_table(
         self,
         test_position,
+        external_patches,
         schema_event_handler,
         alter_table_schema_event,
         show_create_result_initial,
@@ -289,7 +303,6 @@ class TestSchemaEventHandler(object):
         mock_cursor,
         table_with_schema_changes,
         alter_table_schema_store_response,
-        external_patches
     ):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
@@ -323,9 +336,9 @@ class TestSchemaEventHandler(object):
     def test_filter_out_wrong_schema(
         self,
         test_position,
+        external_patches,
         schema_event_handler,
         create_table_schema_event,
-        external_patches,
     ):
         external_patches.database_config.return_value = [{'db': 'different_schema'}]
         schema_event_handler.handle_event(create_table_schema_event, test_position)
@@ -338,9 +351,9 @@ class TestSchemaEventHandler(object):
     def test_bad_query(
         self,
         test_position,
+        external_patches,
         schema_event_handler,
         bad_query_event,
-        external_patches
     ):
         with pytest.raises(Exception):
             schema_event_handler.handle_event(bad_query_event, test_position)
@@ -348,10 +361,10 @@ class TestSchemaEventHandler(object):
     def test_non_schema_relevant_query(
         self,
         test_position,
+        external_patches,
         schema_event_handler,
         mock_cursor,
         non_schema_relevant_query_event,
-        external_patches
     ):
         schema_event_handler.handle_event(non_schema_relevant_query_event, test_position)
         assert mock_cursor.execute.call_count == 1
@@ -363,10 +376,10 @@ class TestSchemaEventHandler(object):
     def test_incomplete_transaction(
         self,
         test_position,
+        external_patches,
         schema_event_handler,
         create_table_schema_event,
         show_create_result_initial,
-        external_patches,
     ):
         external_patches.get_show_create_statement.side_effect = [
             show_create_result_initial,

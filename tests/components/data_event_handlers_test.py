@@ -278,11 +278,15 @@ class TestDataEventHandler(object):
             mock.call(
                 session=mock_rbr_state_session,
                 position=first_test_position.to_dict(),
-                event_type=EventType.DATA_EVENT
+                event_type=EventType.DATA_EVENT,
+                cluster_name=test_table.cluster_name,
+                database_name=test_table.database_name,
             ),
             mock.call(
                 session=mock_rbr_state_session,
                 position=second_test_position.to_dict(),
-                event_type=EventType.DATA_EVENT
+                event_type=EventType.DATA_EVENT,
+                cluster_name=test_table.cluster_name,
+                database_name=test_table.database_name,
             ),
         ]

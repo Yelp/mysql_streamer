@@ -7,7 +7,6 @@ from yelp_conn.connection_set import ConnectionSet
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
-from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import GlobalEventState
@@ -17,7 +16,6 @@ from replication_handler.models.schema_event_state import SchemaEventStatus
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
-cluster_name = env_config.cluster_name
 
 
 class SchemaEventHandler(BaseEventHandler):
@@ -58,7 +56,7 @@ class SchemaEventHandler(BaseEventHandler):
             # so we need to implement journaling around.
             record = self._create_journaling_record(position, table, event)
             handle_method(cursor, event, table)
-            self._update_journaling_record(record)
+            self._update_journaling_record(record, table)
         else:
             self._execute_non_schema_store_relevant_query(event)
 
@@ -94,7 +92,7 @@ class SchemaEventHandler(BaseEventHandler):
             session.flush()
             return copy.copy(record)
 
-    def _update_journaling_record(self, record):
+    def _update_journaling_record(self, record, table):
         with rbr_state_session.connect_begin(ro=False) as session:
             SchemaEventState.update_schema_event_state_to_complete_by_id(
                 session,
@@ -103,7 +101,9 @@ class SchemaEventHandler(BaseEventHandler):
             GlobalEventState.upsert(
                 session=session,
                 position=record.position,
-                event_type=EventType.SCHEMA_EVENT
+                event_type=EventType.SCHEMA_EVENT,
+                cluster_name=table.cluster_name,
+                database_name=table.database_name,
             )
 
     def _reformat_query(self, raw_query):
@@ -126,7 +126,7 @@ class SchemaEventHandler(BaseEventHandler):
             raise Exception("Cannot parse query table from {0}".format(event.query))
 
         return query, Table(
-            cluster_name=cluster_name,
+            cluster_name=self.cluster_name,
             database_name=event.schema,
             table_name=table_name,
         )

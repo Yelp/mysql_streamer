@@ -2,6 +2,7 @@
 import mock
 import pytest
 
+from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.stubs import stub_schemas
@@ -32,6 +33,16 @@ class TestBaseEventHandler(object):
         return "services.datawarehouse.etl.business.0"
 
     @pytest.yield_fixture
+    def patch_config(self):
+        with mock.patch.object(
+            config.DatabaseConfig,
+            'cluster_name',
+            new_callable=mock.PropertyMock
+        ) as mock_cluster_name:
+            mock_cluster_name.return_value = "yelp_main"
+            yield mock_cluster_name
+
+    @pytest.yield_fixture
     def mock_response(self, avro_schema, kafka_topic):
         with mock.patch.object(
             stub_schemas, "stub_business_schema"
@@ -45,10 +56,11 @@ class TestBaseEventHandler(object):
 
     def test_get_schema_for_schema_cache(
         self,
+        patch_config,
         base_event_handler,
         table,
         kafka_topic,
-        mock_response
+        mock_response,
     ):
         resp = base_event_handler.get_schema_for_schema_cache(table)
         assert resp == base_event_handler.schema_cache[table]

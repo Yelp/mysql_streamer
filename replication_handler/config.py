@@ -52,17 +52,13 @@ class EnvConfig(BaseConfig):
     def rbr_state_cluster(self):
         return self.module_env_config.get('config').get('rbr_state_cluster')
 
-    @property
-    def cluster_name(self):
-        return self.module_env_config.get('cluster_name')
-
 
 class DatabaseConfig(BaseConfig):
     """Used for reading database config out of topology.yaml in the environment"""
 
     def __init__(self, cluster_name):
         super(DatabaseConfig, self).__init__('topology.yaml')
-        self.cluster_name = cluster_name
+        self._cluster_name = cluster_name
 
     @property
     def cluster_config(self):
@@ -78,6 +74,14 @@ class DatabaseConfig(BaseConfig):
     @property
     def entries(self):
         return self.cluster_config['entries']
+
+    @property
+    def database_name(self):
+        return self.entries[0]['db']
+
+    @property
+    def cluster_name(self):
+        return self._cluster_name
 
 
 env_config = EnvConfig(CONFIG_FILE)

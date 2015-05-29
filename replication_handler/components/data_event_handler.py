@@ -8,12 +8,10 @@ from yelp_lib import iteration
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
-from replication_handler.config import env_config
 from replication_handler.util.misc import save_position
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
-cluster_name = env_config.cluster_name
 
 
 class DataEventHandler(BaseEventHandler):
@@ -42,7 +40,7 @@ class DataEventHandler(BaseEventHandler):
         """
         schema_cache_entry = self._get_payload_schema(
             Table(
-                cluster_name=cluster_name,
+                cluster_name=self.cluster_name,
                 database_name=event.schema,
                 table_name=event.table
             )

@@ -14,6 +14,12 @@
       <column name="event_type" type="VARCHAR(20)">
         <constraints nullable="false"/>
       </column>
+      <column name="cluster_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="database_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
       <column name="time_updated" type="INT(11)">
         <constraints nullable="false"/>
       </column>

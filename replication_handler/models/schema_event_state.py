@@ -47,20 +47,25 @@ class SchemaEventState(Base):
     time_updated = Column(UnixTimeStampType, default=default_now, onupdate=default_now)
 
     @classmethod
-    def get_pending_schema_event_state(cls, session):
+    def get_pending_schema_event_state(cls, session, cluster_name, database_name):
         result = session.query(
             SchemaEventState
         ).filter(
-            SchemaEventState.status == SchemaEventStatus.PENDING
+            SchemaEventState.status == SchemaEventStatus.PENDING,
+            SchemaEventState.cluster_name == cluster_name,
+            SchemaEventState.database_name == database_name
         ).all()
         # There should be at most one event with Pending status, so we are using
         # unlist to verify
         return unlist(result)
 
     @classmethod
-    def get_latest_schema_event_state(cls, session):
+    def get_latest_schema_event_state(cls, session, cluster_name, database_name):
         result = session.query(
             SchemaEventState
+        ).filter(
+            SchemaEventState.cluster_name == cluster_name,
+            SchemaEventState.database_name == database_name
         ).order_by(desc(SchemaEventState.time_created)).first()
         return result
 

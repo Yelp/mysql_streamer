@@ -2,6 +2,7 @@
 import copy
 import logging
 
+from replication_handler.config import source_database_config
 from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
@@ -26,8 +27,13 @@ class ReplicationStreamRestarter(object):
         self.dp_client = dp_client
         # Both global_event_state and pending_schema_event are information about
         # last shutdown, we need them to do recovery process.
-        self.global_event_state = self._get_global_event_state()
-        self.pending_schema_event = self._get_pending_schema_event_state()
+        cluster_name = source_database_config.cluster_name
+        database_name = source_database_config.database_name
+        self.global_event_state = self._get_global_event_state(cluster_name, database_name)
+        self.pending_schema_event = self._get_pending_schema_event_state(
+            cluster_name,
+            database_name
+        )
         self.position_finder = PositionFinder(
             self.global_event_state,
             self.pending_schema_event
@@ -57,16 +63,26 @@ class ReplicationStreamRestarter(object):
         """ This function returns the replication stream"""
         return self.stream
 
-    def _get_global_event_state(self):
+    def _get_global_event_state(self, cluster_name, database_name):
         with rbr_state_session.connect_begin(ro=True) as session:
-            return copy.copy(GlobalEventState.get(session))
+            return copy.copy(
+                GlobalEventState.get(
+                    session,
+                    cluster_name=cluster_name,
+                    database_name=database_name
+                )
+            )
 
-    def _get_pending_schema_event_state(self):
+    def _get_pending_schema_event_state(self, cluster_name, database_name):
         with rbr_state_session.connect_begin(ro=True) as session:
             # In services we cant do expire_on_commit=False, so
             # if we want to use the object after the session commits, we
             # need to figure out a way to hold it. for more context:
             # https://trac.yelpcorp.com/wiki/JulianKPage/WhyNoExpireOnCommitFalse
             return copy.copy(
-                SchemaEventState.get_pending_schema_event_state(session)
+                SchemaEventState.get_pending_schema_event_state(
+                    session,
+                    cluster_name=cluster_name,
+                    database_name=database_name
+                )
             )

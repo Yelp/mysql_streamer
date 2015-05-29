@@ -83,30 +83,48 @@ class TestSchemaEventState(object):
     def test_get_pending_schema_event_state(
         self,
         pending_schema_event_state_obj,
-        sandbox_session
+        sandbox_session,
+        cluster_name,
+        database_name
     ):
-        result = SchemaEventState.get_pending_schema_event_state(sandbox_session)
+        result = SchemaEventState.get_pending_schema_event_state(
+            sandbox_session,
+            cluster_name=cluster_name,
+            database_name=database_name
+        )
         self.assert_equivalent_schema_events(result, pending_schema_event_state_obj)
 
     def test_delete_schema_event_state_by_id(
         self,
         pending_schema_event_state_obj,
-        sandbox_session
+        sandbox_session,
+        cluster_name,
+        database_name
     ):
         result = SchemaEventState.delete_schema_event_state_by_id(
             sandbox_session,
             pending_schema_event_state_obj.id
         )
         sandbox_session.commit()
-        result = SchemaEventState.get_pending_schema_event_state(sandbox_session)
+        result = SchemaEventState.get_pending_schema_event_state(
+            sandbox_session,
+            cluster_name=cluster_name,
+            database_name=database_name
+        )
         assert result is None
 
     def test_get_lastest_schema_event_state(
         self,
         completed_schema_event_state_obj,
-        sandbox_session
+        sandbox_session,
+        cluster_name,
+        database_name
     ):
-        result = SchemaEventState.get_latest_schema_event_state(sandbox_session)
+        result = SchemaEventState.get_latest_schema_event_state(
+            sandbox_session,
+            cluster_name=cluster_name,
+            database_name=database_name
+        )
         self.assert_equivalent_schema_events(result, completed_schema_event_state_obj)
 
     def test_update_schema_event_state_to_complete_by_id(

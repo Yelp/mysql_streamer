@@ -40,5 +40,7 @@ def save_position(position_info, is_clean_shutdown=False):
         GlobalEventState.upsert(
             session=session,
             position=position_info.position.to_dict(),
-            event_type=EventType.DATA_EVENT
+            event_type=EventType.DATA_EVENT,
+            cluster_name=position_info.table.cluster_name,
+            database_name=position_info.table.database_name,
         )
