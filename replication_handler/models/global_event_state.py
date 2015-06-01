@@ -54,19 +54,12 @@ class GlobalEventState(Base):
     ):
         global_event_state = cls.get(session, cluster_name, database_name)
         if global_event_state is None:
-            global_event_state = GlobalEventState(
-                position=position,
-                event_type=event_type,
-                is_clean_shutdown=is_clean_shutdown,
-                cluster_name=cluster_name,
-                database_name=database_name
-            )
-        else:
-            global_event_state.position = position
-            global_event_state.event_type = event_type
-            global_event_state.is_clean_shutdown = is_clean_shutdown
-            global_event_state.cluster_name = cluster_name
-            global_event_state.database_name = database_name
+            global_event_state = GlobalEventState()
+        global_event_state.position = position
+        global_event_state.event_type = event_type
+        global_event_state.is_clean_shutdown = is_clean_shutdown
+        global_event_state.cluster_name = cluster_name
+        global_event_state.database_name = database_name
         session.add(global_event_state)
         return global_event_state
 

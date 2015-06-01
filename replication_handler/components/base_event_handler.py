@@ -35,7 +35,7 @@ class BaseEventHandler(object):
         self.dp_client = dp_client
         self.cluster_name = source_database_config.cluster_name
 
-    def handle_event(self, event, gtid):
+    def handle_event(self, event, position):
         raise NotImplementedError
 
     def get_schema_for_schema_cache(self, table):
