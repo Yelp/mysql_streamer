@@ -136,7 +136,6 @@ class TestParseReplicationStream(object):
         ]
         replication_stream = ParseReplicationStream()
         replication_stream.run()
-        # TODO(make handler take position directly)
         assert patch_schema_handle_event.call_args_list == \
             [mock.call(schema_event, position_gtid_1)]
         assert patch_data_handle_event.call_args_list == \

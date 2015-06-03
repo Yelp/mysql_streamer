@@ -222,14 +222,16 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def patch_update_schema_event_state(self):
         with mock.patch.object(
-            SchemaEventState, 'update_schema_event_state_to_complete_by_id'
+            SchemaEventState,
+            'update_schema_event_state_to_complete_by_id'
         ) as mock_update_schema_event_state:
             yield mock_update_schema_event_state
 
     @pytest.yield_fixture
     def patch_upsert_global_event_state(self):
         with mock.patch.object(
-            GlobalEventState, 'upsert'
+            GlobalEventState,
+            'upsert'
         ) as mock_upsert_global_event_state:
             yield mock_upsert_global_event_state
 

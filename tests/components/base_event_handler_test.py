@@ -45,7 +45,8 @@ class TestBaseEventHandler(object):
     @pytest.yield_fixture
     def mock_response(self, avro_schema, kafka_topic):
         with mock.patch.object(
-            stub_schemas, "stub_business_schema"
+            stub_schemas,
+            "stub_business_schema"
         ) as mock_response:
             mock_response.return_value = {
                 "schema": avro_schema,
