@@ -39,7 +39,7 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture
     def schema_event_handler(self):
-        return SchemaEventHandler(DPClientlib())
+        return SchemaEventHandler(DPClientlib(), StubSchemaClient())
 
     @pytest.fixture
     def test_table(self):

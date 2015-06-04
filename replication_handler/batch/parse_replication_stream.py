@@ -11,6 +11,7 @@ from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
+from replication_handler.components.stubs.stub_schemas import StubSchemaClient
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import save_position
@@ -38,6 +39,7 @@ class ParseReplicationStream(Batch):
         super(ParseReplicationStream, self).__init__()
 
         self.dp_client = DPClientlib()
+        self.schema_store_client = StubSchemaClient()
         self.handler_map = self._build_handler_map()
         self.stream = self._get_stream()
         self._register_signal_handler()
@@ -57,8 +59,8 @@ class ParseReplicationStream(Batch):
         return replication_stream_restarter.get_stream()
 
     def _build_handler_map(self):
-        data_event_handler = DataEventHandler(self.dp_client)
-        schema_event_handler = SchemaEventHandler(self.dp_client)
+        data_event_handler = DataEventHandler(self.dp_client, self.schema_store_client)
+        schema_event_handler = SchemaEventHandler(self.dp_client, self.schema_store_client)
         handler_map = {
             DataEvent: HandlerInfo(
                 event_type=EventType.DATA_EVENT,

@@ -29,9 +29,9 @@ log = logging.getLogger('replication_handler.parse_replication_stream')
 class BaseEventHandler(object):
     """Base class for handling binlog events for the Replication Handler"""
 
-    def __init__(self, dp_client):
+    def __init__(self, dp_client, schema_store_client):
         self.schema_cache = {}
-        self.schema_store_client = stub_schemas.StubSchemaClient()
+        self.schema_store_client = schema_store_client
         self.dp_client = dp_client
         self.cluster_name = source_database_config.cluster_name
 

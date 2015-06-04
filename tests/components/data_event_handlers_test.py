@@ -11,6 +11,7 @@ from replication_handler.components.base_event_handler import Table
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.components.stubs.stub_dp_clientlib import PositionInfo
+from replication_handler.components.stubs.stub_schemas import StubSchemaClient
 from replication_handler.components.stubs.stub_schemas import stub_business_schema
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
@@ -40,7 +41,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def data_event_handler(self, patch_checkpoint_size):
-        return DataEventHandler(DPClientlib())
+        return DataEventHandler(DPClientlib(), StubSchemaClient())
 
     @pytest.fixture
     def schema_in_json(self):
