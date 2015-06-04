@@ -2,6 +2,7 @@
 import mock
 import pytest
 
+from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.stubs import stub_schemas
@@ -11,15 +12,15 @@ class TestBaseEventHandler(object):
 
     @pytest.fixture(scope="class")
     def base_event_handler(self):
-        return BaseEventHandler()
+        return BaseEventHandler(mock.Mock())
 
     @pytest.fixture
     def table(self):
-        return Table(schema='yelp', table_name='business')
+        return Table(cluster_name="yelp_main", database_name='yelp', table_name='business')
 
     @pytest.fixture
     def bogus_table(self):
-        return Table(schema='yelp', table_name='bogus_table')
+        return Table(cluster_name="yelp_main", database_name='yelp', table_name='bogus_table')
 
     @pytest.fixture
     def avro_schema(self):
@@ -40,9 +41,20 @@ class TestBaseEventHandler(object):
         return topic
 
     @pytest.yield_fixture
+    def patch_config(self):
+        with mock.patch.object(
+            config.DatabaseConfig,
+            'cluster_name',
+            new_callable=mock.PropertyMock
+        ) as mock_cluster_name:
+            mock_cluster_name.return_value = "yelp_main"
+            yield mock_cluster_name
+
+    @pytest.yield_fixture
     def mock_response(self, avro_schema, topic):
         with mock.patch.object(
-            stub_schemas, "stub_business_schema"
+            stub_schemas,
+            "stub_business_schema"
         ) as mock_response:
             mock_response.return_value = mock.Mock(
                 schema_id=0,
@@ -53,6 +65,7 @@ class TestBaseEventHandler(object):
 
     def test_get_schema_for_schema_cache(
         self,
+        patch_config,
         base_event_handler,
         table,
         topic,
@@ -76,3 +89,7 @@ class TestBaseEventHandler(object):
         assert resp.schema_obj.name == "business"
         assert resp.schema_obj.fields[0].name == "id"
         assert resp.schema_obj.fields[1].name == "name"
+
+    def test_handle_event_not_implemented(self, base_event_handler):
+        with pytest.raises(NotImplementedError):
+            base_event_handler.handle_event(mock.Mock(), mock.Mock())

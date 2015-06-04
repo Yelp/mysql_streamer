@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import simplejson as json
 from sqlalchemy import types
 
 from yelp_conn.session import declarative_base
@@ -27,7 +28,7 @@ rbr_state_session = scoped_session(
 
 
 class UnixTimeStampType(types.TypeDecorator):
-    """A datetime.datetime that is stored as a unix timestamp."""
+    """ A datetime.datetime that is stored as a unix timestamp."""
     impl = types.Integer
 
     def process_bind_param(self, value, dialect=None):
@@ -43,3 +44,24 @@ class UnixTimeStampType(types.TypeDecorator):
 
 def default_now(context):
     return dates.default_now().replace(microsecond=0)
+
+
+class JSONType(types.TypeDecorator):
+    """ A JSONType is stored in the db as a string and we interact with it like a
+    dict.
+    """
+    impl = types.Text
+    separators = (',', ':')
+
+    def process_bind_param(self, value, dialect=None):
+        """ Dump our value to a form our db recognizes (a string)."""
+        if value is None:
+            return None
+
+        return json.dumps(value, separators=self.separators)
+
+    def process_result_value(self, value, dialect=None):
+        """ Convert what we get from the db into a json dict"""
+        if value is None:
+            return None
+        return json.loads(value)

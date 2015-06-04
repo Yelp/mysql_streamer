@@ -14,8 +14,23 @@ class TestDataEventCheckpoint(object):
             yield sandbox_session
 
     @pytest.fixture
-    def gtid(self):
-        return "3E11FA47-71CA-11E1-9E33-C80AA9429562:15"
+    def first_position(self):
+        return {"gtid": "3E11FA47-71CA-11E1-9E33-C80AA9429562:15"}
+
+    @pytest.fixture
+    def second_position(self):
+        return {
+            "log_file": "binlog.001",
+            "log_pos": "343"
+        }
+
+    @pytest.fixture
+    def kafka_offset(self):
+        return 100
+
+    @pytest.fixture
+    def kafka_topic(self):
+        return "fake_table.0"
 
     @pytest.fixture
     def first_offset(self):
@@ -26,6 +41,14 @@ class TestDataEventCheckpoint(object):
         return 30
 
     @pytest.fixture
+    def cluster_name(self):
+        return "cluster"
+
+    @pytest.fixture
+    def database_name(self):
+        return "yelp"
+
+    @pytest.fixture
     def table_name(self):
         return "fake_table"
 
@@ -33,15 +56,21 @@ class TestDataEventCheckpoint(object):
     def first_data_event_checkpoint(
         self,
         sandbox_session,
-        gtid,
-        first_offset,
+        kafka_offset,
+        kafka_topic,
+        first_position,
+        cluster_name,
+        database_name,
         table_name
     ):
         first_data_event_checkpoint = DataEventCheckpoint.create_data_event_checkpoint(
             sandbox_session,
-            gtid,
-            first_offset,
-            table_name
+            position=first_position,
+            kafka_offset=kafka_offset,
+            kafka_topic=kafka_topic,
+            cluster_name=cluster_name,
+            database_name=database_name,
+            table_name=table_name
         )
         sandbox_session.flush()
         # Sleep to make sure first is earlier than second event.
@@ -54,15 +83,21 @@ class TestDataEventCheckpoint(object):
     def second_data_event_checkpoint(
         self,
         sandbox_session,
-        gtid,
-        second_offset,
+        kafka_offset,
+        kafka_topic,
+        second_position,
+        cluster_name,
+        database_name,
         table_name
     ):
         second_data_event_checkpoint = DataEventCheckpoint.create_data_event_checkpoint(
             sandbox_session,
-            gtid,
-            second_offset,
-            table_name
+            position=second_position,
+            kafka_offset=kafka_offset,
+            kafka_topic=kafka_topic,
+            cluster_name=cluster_name,
+            database_name=database_name,
+            table_name=table_name
         )
         sandbox_session.flush()
         return second_data_event_checkpoint

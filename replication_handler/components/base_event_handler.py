@@ -6,6 +6,7 @@ from collections import namedtuple
 import logging
 
 from replication_handler.components.stubs import stub_schemas
+from replication_handler.config import source_database_config
 
 
 SchemaCacheEntry = namedtuple(
@@ -18,7 +19,7 @@ SchemaStoreRegisterResponse = namedtuple(
     ('schema_id', 'schema', 'topic', 'namespace', 'source')
 )
 
-Table = namedtuple('Table', ('schema', 'table_name'))
+Table = namedtuple('Table', ('cluster_name', 'database_name', 'table_name'))
 
 ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 
@@ -28,9 +29,14 @@ log = logging.getLogger('replication_handler.parse_replication_stream')
 class BaseEventHandler(object):
     """Base class for handling binlog events for the Replication Handler"""
 
-    def __init__(self):
+    def __init__(self, dp_client):
         self.schema_cache = {}
         self.schema_store_client = stub_schemas.StubSchemaClient()
+        self.dp_client = dp_client
+        self.cluster_name = source_database_config.cluster_name
+
+    def handle_event(self, event, position):
+        raise NotImplementedError
 
     def get_schema_for_schema_cache(self, table):
         """Gets the SchemaCacheEntry for the table from the cache.  If there
@@ -40,7 +46,7 @@ class BaseEventHandler(object):
             return self.schema_cache[table]
 
         # TODO (ryani|DATAPIPE-77) actually use the schematizer clientlib
-        if table == Table(schema='yelp', table_name='business'):
+        if table == Table(cluster_name=self.cluster_name, database_name='yelp', table_name='business'):
             resp = self._format_register_response(stub_schemas.stub_business_schema())
         else:
             return

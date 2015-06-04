@@ -2,13 +2,22 @@
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
   <changeSet author="cheng" id="1428448045">
     <createTable tableName="global_event_state">
-      <column name="gtid" type="VARCHAR(255)">
+      <column autoIncrement="true" name="id" type="INT(11)">
         <constraints primaryKey="true"/>
+      </column>
+      <column name="position" type="TEXT">
+        <constraints nullable="false"/>
       </column>
       <column name="is_clean_shutdown" type="TINYINT(1)" defaultValue="0">
         <constraints nullable="false"/>
       </column>
       <column name="event_type" type="VARCHAR(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="cluster_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="database_name" type="VARCHAR(255)">
         <constraints nullable="false"/>
       </column>
       <column name="time_updated" type="INT(11)">

@@ -15,6 +15,29 @@ class QueryEvent(object):
         self.query = query
 
 
+class DataEvent(object):
+    """Class to test Single Row Event"""
+
+    def __init__(self, schema, table, row):
+        self.schema = schema
+        self.table = table
+        self.row = row
+
+    @classmethod
+    def make_data_event(cls):
+        rows = [
+            {'values': {'a_number': 100}},
+            {'values': {'a_number': 200}},
+            {'values': {'a_number': 300}},
+            {'values': {'a_number': 400}}
+        ]
+        return [cls(
+            table="fake_table",
+            schema="fake_database",
+            row=row
+        ) for row in rows]
+
+
 class RowsEvent(object):
     """Class made to be for testing RowsEvents from pymysqlreplication
 

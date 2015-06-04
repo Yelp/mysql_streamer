@@ -58,7 +58,7 @@ class DatabaseConfig(BaseConfig):
 
     def __init__(self, cluster_name):
         super(DatabaseConfig, self).__init__('topology.yaml')
-        self.cluster_name = cluster_name
+        self._cluster_name = cluster_name
 
     @property
     def cluster_config(self):
@@ -74,6 +74,14 @@ class DatabaseConfig(BaseConfig):
     @property
     def entries(self):
         return self.cluster_config['entries']
+
+    @property
+    def database_name(self):
+        return self.entries[0]['db']
+
+    @property
+    def cluster_name(self):
+        return self._cluster_name
 
 
 env_config = EnvConfig(CONFIG_FILE)
