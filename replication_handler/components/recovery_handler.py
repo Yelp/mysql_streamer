@@ -67,7 +67,7 @@ class RecoveryHandler(object):
                 isinstance(stream.peek().event, DataEvent)):
             messages.append(stream.next().event.row)
         if messages:
-            with rbr_state_session.connect_begin(ro=False) as session:
+            with rbr_state_session.connect_begin(ro=True) as session:
                 topic_offsets = DataEventCheckpoint.get_topic_to_kafka_offset_map(
                     session,
                     self.cluster_name
