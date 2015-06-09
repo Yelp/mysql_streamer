@@ -32,7 +32,7 @@ class DataEventHandler(BaseEventHandler):
             self._checkpoint_latest_published_offset
         )
 
-    def handle_event(self, event, position=None):
+    def handle_event(self, event, position):
         """Make sure that the schema cache has the table, publish to Kafka.
         """
         schema_cache_entry = self._get_payload_schema(
@@ -42,17 +42,22 @@ class DataEventHandler(BaseEventHandler):
                 table_name=event.table
             )
         )
-        self._handle_row(schema_cache_entry, event.row)
+        self._handle_row(schema_cache_entry, event.row, position)
 
-    def _handle_row(self, schema_cache_entry, row):
+    def _handle_row(self, schema_cache_entry, row, position):
         message = self._get_values(row)
-        self._publish_to_kafka(schema_cache_entry.topic, schema_cache_entry.schema_id, message)
+        self._publish_to_kafka(schema_cache_entry.topic, schema_cache_entry.schema_id, message, position)
         self.processor.push(message)
 
-    def _publish_to_kafka(self, topic, schema_id, message):
+    def _publish_to_kafka(self, topic, schema_id, message, position):
         """Calls the clientlib for pushing payload to kafka.
            The clientlib will encapsulate this in envelope."""
-        message = Message(topic=topic, schema_id=schema_id, payload=message)
+        message = Message(
+            topic=topic,
+            schema_id=schema_id,
+            payload=message,
+            upstream_position_info=position.to_dict()
+        )
         self.dp_client.publish(message)
 
     def _get_values(self, row):
