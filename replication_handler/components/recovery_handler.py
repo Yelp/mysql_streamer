@@ -3,7 +3,9 @@ import logging
 
 from yelp_conn.connection_set import ConnectionSet
 
+from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
+from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import DataEvent
@@ -35,6 +37,7 @@ class RecoveryHandler(object):
         self.dp_client = dp_client
         self.is_clean_shutdown = is_clean_shutdown
         self.pending_schema_event = pending_schema_event
+        self.cluster_name = source_database_config.cluster_name
 
     @property
     def need_recovery(self):
@@ -64,7 +67,12 @@ class RecoveryHandler(object):
                 isinstance(stream.peek().event, DataEvent)):
             messages.append(stream.next().event.row)
         if messages:
-            self.dp_client.check_for_unpublished_messages(messages)
+            with rbr_state_session.connect_begin(ro=False) as session:
+                topic_offsets = DataEventCheckpoint.get_topic_to_kafka_offset_map(
+                    session,
+                    self.cluster_name
+                )
+                self.dp_client.ensure_messages_published(messages, topic_offsets)
 
     def _assert_event_state_status(self, event_state, status):
         if event_state.status != status:

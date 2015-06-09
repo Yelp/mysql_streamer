@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-import avro.io
-import avro.schema
-import io
 import logging
 
 from yelp_lib import iteration
@@ -9,6 +6,7 @@ from yelp_lib import iteration
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.util.misc import save_position
+from replication_handler.components.stubs.stub_dp_clientlib import Message
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -35,8 +33,7 @@ class DataEventHandler(BaseEventHandler):
         )
 
     def handle_event(self, event, position=None):
-        """Make sure that the schema cache has the table, serialize the data,
-           publish to Kafka.
+        """Make sure that the schema cache has the table, publish to Kafka.
         """
         schema_cache_entry = self._get_payload_schema(
             Table(
@@ -48,18 +45,15 @@ class DataEventHandler(BaseEventHandler):
         self._handle_row(schema_cache_entry, event.row)
 
     def _handle_row(self, schema_cache_entry, row):
-        datum = self._get_values(row)
-        payload = self._serialize_payload(
-            datum,
-            schema_cache_entry.schema_obj
-        )
-        self._publish_to_kafka(schema_cache_entry.topic, payload)
-        self.processor.push(datum)
+        message = self._get_values(row)
+        self._publish_to_kafka(schema_cache_entry.topic, schema_cache_entry.schema_id, message)
+        self.processor.push(message)
 
-    def _publish_to_kafka(self, topic, message):
+    def _publish_to_kafka(self, topic, schema_id, message):
         """Calls the clientlib for pushing payload to kafka.
            The clientlib will encapsulate this in envelope."""
-        self.dp_client.publish(topic, message)
+        message = Message(topic=topic, schema_id=schema_id, payload=message)
+        self.dp_client.publish(message)
 
     def _get_values(self, row):
         """Gets the new value of the row changed.  If add row occurs,
@@ -73,14 +67,6 @@ class DataEventHandler(BaseEventHandler):
         elif 'after_values' in row:
             return row['after_values']
 
-    def _serialize_payload(self, datum, payload_schema):
-        """Serializes payload/row into provided avro schema"""
-        writer = avro.io.DatumWriter(writers_schema=payload_schema)
-        bytes_writer = io.BytesIO()
-        encoder = avro.io.BinaryEncoder(bytes_writer)
-        writer.write(datum, encoder)
-        return bytes_writer.getvalue()
-
     def _get_payload_schema(self, table):
         """Get payload avro schema from cache or from schema store"""
         if table not in self.schema_cache:
@@ -88,5 +74,5 @@ class DataEventHandler(BaseEventHandler):
         return self.schema_cache[table]
 
     def _checkpoint_latest_published_offset(self, rows):
-        latest_offset_info = self.dp_client.get_latest_published_offset()
-        save_position(latest_offset_info)
+        position_data = self.dp_client.get_checkpoint_position_data()
+        save_position(position_data)

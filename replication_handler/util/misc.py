@@ -26,21 +26,21 @@ class DataEvent(object):
         self.row = row
 
 
-def save_position(position_info, is_clean_shutdown=False):
+def save_position(position_data, is_clean_shutdown=False):
+    position_info = \
+        position_data.last_published_message_position_info["upstream_offset"]
+    topic_to_kafka_offset_map = position_data.topic_to_kafka_offset_map
     with rbr_state_session.connect_begin(ro=False) as session:
-        DataEventCheckpoint.create_data_event_checkpoint(
-            session=session,
-            kafka_topic=position_info.kafka_topic,
-            kafka_offset=position_info.kafka_offset,
-            position=position_info.position.to_dict(),
-            cluster_name=position_info.table.cluster_name,
-            database_name=position_info.table.database_name,
-            table_name=position_info.table.table_name
-        )
         GlobalEventState.upsert(
             session=session,
-            position=position_info.position.to_dict(),
+            position=position_info["position"],
             event_type=EventType.DATA_EVENT,
-            cluster_name=position_info.table.cluster_name,
-            database_name=position_info.table.database_name,
+            cluster_name=position_info["cluster_name"],
+            database_name=position_info["database_name"],
+            table_name=position_info["table_name"],
+        )
+        DataEventCheckpoint.upsert_data_event_checkpoint(
+            session=session,
+            topic_to_kafka_offset_map=topic_to_kafka_offset_map,
+            cluster_name=position_info["cluster_name"]
         )

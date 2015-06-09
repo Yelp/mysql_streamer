@@ -86,8 +86,8 @@ class ParseReplicationStream(Batch):
         # a good way to recover it.
         if self.current_event_type == EventType.DATA_EVENT:
             self.dp_client.flush()
-            offset_info = self.dp_client.get_latest_published_offset()
-            save_position(offset_info, is_clean_shutdown=True)
+            position_data = self.dp_client.get_checkpoint_position_data()
+            save_position(position_data, is_clean_shutdown=True)
         log.info("Gracefully shutting down.")
         sys.exit()
 

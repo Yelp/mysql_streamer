@@ -4,7 +4,6 @@ import pytest
 
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.models.database import rbr_state_session
-from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
@@ -22,9 +21,13 @@ class TestPositionFinder(object):
         return "ALTER TABLE STATEMENT"
 
     @pytest.fixture
-    def completed_schema_event_state(self, create_table_statement):
+    def position_dict(self):
+        return {"gtid": "sid:12"}
+
+    @pytest.fixture
+    def completed_schema_event_state(self, create_table_statement, position_dict):
         return SchemaEventState(
-            position={"gtid": "sid:12"},
+            position=position_dict,
             status=SchemaEventStatus.COMPLETED,
             query=create_table_statement,
             table_name="Business",
@@ -32,9 +35,11 @@ class TestPositionFinder(object):
         )
 
     @pytest.fixture
-    def pending_schema_event_state(self, create_table_statement, alter_table_statement):
+    def pending_schema_event_state(
+        self, create_table_statement, alter_table_statement, position_dict
+    ):
         return SchemaEventState(
-            position={"gtid": "sid:12"},
+            position=position_dict,
             status=SchemaEventStatus.PENDING,
             query=alter_table_statement,
             table_name="Business",
@@ -42,19 +47,8 @@ class TestPositionFinder(object):
         )
 
     @pytest.fixture
-    def data_event_checkpoint(self):
-        return DataEventCheckpoint(
-            position={"gtid": "sid:14", "offset": 10},
-            table_name="Business",
-        )
-
-    @pytest.fixture
     def schema_event_position(self):
         return GtidPosition(gtid="sid:12")
-
-    @pytest.fixture
-    def data_event_position(self):
-        return GtidPosition(gtid="sid:14", offset=10)
 
     @pytest.yield_fixture
     def patch_get_latest_schema_event_state(
@@ -75,14 +69,6 @@ class TestPositionFinder(object):
             mock_session_connect_begin.return_value.__enter__.return_value = mock.Mock()
             yield mock_session_connect_begin
 
-    @pytest.yield_fixture
-    def patch_get_data_event_checkpoint(self):
-        with mock.patch.object(
-            DataEventCheckpoint,
-            'get_last_data_event_checkpoint'
-        ) as mock_get_data_event_checkpoint:
-            yield mock_get_data_event_checkpoint
-
     def test_get_position_to_resume_tailing_from_when_there_is_pending_state(
         self,
         schema_event_position,
@@ -101,9 +87,11 @@ class TestPositionFinder(object):
         patch_get_latest_schema_event_state,
         completed_schema_event_state,
         patch_session_connect_begin,
+        position_dict
     ):
         global_event_state = mock.Mock(
             event_type=EventType.SCHEMA_EVENT,
+            position=position_dict,
         )
         position_finder = PositionFinder(
             global_event_state=global_event_state,
@@ -112,23 +100,3 @@ class TestPositionFinder(object):
         patch_get_latest_schema_event_state.return_value = completed_schema_event_state
         position = position_finder.get_position_to_resume_tailing_from()
         assert position.to_dict() == schema_event_position.to_dict()
-        assert patch_get_latest_schema_event_state.call_count == 1
-
-    def test_get_data_event_position(
-        self,
-        data_event_position,
-        patch_session_connect_begin,
-        patch_get_data_event_checkpoint,
-        data_event_checkpoint
-    ):
-        global_event_state = mock.Mock(
-            event_type=EventType.DATA_EVENT,
-        )
-        position_finder = PositionFinder(
-            global_event_state=global_event_state,
-            pending_schema_event=None
-        )
-        patch_get_data_event_checkpoint.return_value = data_event_checkpoint
-        position = position_finder.get_position_to_resume_tailing_from()
-        assert position.to_dict() == data_event_position.to_dict()
-        assert patch_get_data_event_checkpoint.call_count == 1

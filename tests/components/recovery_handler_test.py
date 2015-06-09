@@ -2,14 +2,15 @@
 import mock
 import pytest
 
-
 from pymysqlreplication.event import QueryEvent
 
 from yelp_conn.connection_set import ConnectionSet
 
+from replication_handler import config
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.recovery_handler import BadSchemaEventStateException
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
+from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
@@ -95,12 +96,30 @@ class TestRecoveryHandler(object):
             yield mock_connection
 
     @pytest.yield_fixture
-    def patch_check_for_unpublished_messages(self):
+    def patch_ensure_messages_published(self):
         with mock.patch.object(
             DPClientlib,
-            'check_for_unpublished_messages'
-        ) as mock_check_for_unpublished_messages:
-            yield mock_check_for_unpublished_messages
+            'ensure_messages_published'
+        ) as mock_ensure_messages_published:
+            yield mock_ensure_messages_published
+
+    @pytest.yield_fixture
+    def patch_config(self):
+        with mock.patch.object(
+            config.DatabaseConfig,
+            'cluster_name',
+            new_callable=mock.PropertyMock
+        ) as mock_cluster_name:
+            mock_cluster_name.return_value = "yelp_main"
+            yield mock_cluster_name
+
+    @pytest.yield_fixture
+    def patch_get_topic_to_kafka_offset_map(self):
+        with mock.patch.object(
+            DataEventCheckpoint,
+            'get_topic_to_kafka_offset_map'
+        ) as mock_get_topic_to_kafka_offset_map:
+            yield mock_get_topic_to_kafka_offset_map
 
     def test_recovery_when_there_is_pending_state(
         self,
@@ -111,6 +130,7 @@ class TestRecoveryHandler(object):
         patch_delete,
         patch_session_connect_begin,
         patch_schema_tracker_connection,
+        patch_config,
         mock_cursor
     ):
         recovery_handler = RecoveryHandler(
@@ -136,6 +156,8 @@ class TestRecoveryHandler(object):
         patch_delete,
         patch_session_connect_begin,
         patch_schema_tracker_connection,
+        patch_config,
+        patch_get_topic_to_kafka_offset_map,
         mock_cursor
     ):
         stream.peek.return_value.event = mock.Mock(DataEvent)
@@ -147,7 +169,8 @@ class TestRecoveryHandler(object):
         )
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
-        assert dp_client.check_for_unpublished_messages.call_count == 1
+        assert dp_client.ensure_messages_published.call_count == 1
+        assert patch_get_topic_to_kafka_offset_map.call_count == 1
 
     def test_bad_schema_event_state(
         self,

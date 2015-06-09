@@ -16,25 +16,32 @@ class TestGlobalEventState(object):
     def database_name(self):
         return "yelp"
 
+    @pytest.fixture
+    def table_name(self):
+        return 'user'
+
     @pytest.yield_fixture
     def sandbox_session(self):
         with sandbox.database_sandbox_master_connection_set() as sandbox_session:
             yield sandbox_session
 
-    def test_upsert_global_event_state(self, sandbox_session, cluster_name, database_name):
+    def test_upsert_global_event_state(
+        self, sandbox_session, cluster_name, database_name, table_name
+    ):
         # No rows in database yet
-        assert GlobalEventState.get(sandbox_session, cluster_name, database_name) is None
+        assert GlobalEventState.get(sandbox_session, cluster_name) is None
         first_global_event_state = GlobalEventState.upsert(
             session=sandbox_session,
             position={"gtid": "gtid1"},
             event_type=EventType.DATA_EVENT,
             cluster_name=cluster_name,
             database_name=database_name,
+            table_name=table_name,
             is_clean_shutdown=0
         )
         sandbox_session.flush()
         # one row has been created
-        assert GlobalEventState.get(sandbox_session, cluster_name, database_name) == first_global_event_state
+        assert GlobalEventState.get(sandbox_session, cluster_name) == first_global_event_state
 
         second_global_event_state = GlobalEventState.upsert(
             session=sandbox_session,
@@ -43,7 +50,8 @@ class TestGlobalEventState(object):
             is_clean_shutdown=1,
             cluster_name=cluster_name,
             database_name=database_name,
+            table_name=table_name,
         )
         sandbox_session.flush()
         # update the one existing row
-        assert GlobalEventState.get(sandbox_session, cluster_name, database_name) == second_global_event_state
+        assert GlobalEventState.get(sandbox_session, cluster_name) == second_global_event_state

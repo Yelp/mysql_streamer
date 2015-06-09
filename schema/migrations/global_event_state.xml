@@ -20,6 +20,9 @@
       <column name="database_name" type="VARCHAR(255)">
         <constraints nullable="false"/>
       </column>
+      <column name="table_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
       <column name="time_updated" type="INT(11)">
         <constraints nullable="false"/>
       </column>

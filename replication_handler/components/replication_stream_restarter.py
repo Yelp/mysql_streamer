@@ -69,7 +69,6 @@ class ReplicationStreamRestarter(object):
                 GlobalEventState.get(
                     session,
                     cluster_name=cluster_name,
-                    database_name=database_name
                 )
             )
 

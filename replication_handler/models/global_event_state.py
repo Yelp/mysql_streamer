@@ -40,6 +40,7 @@ class GlobalEventState(Base):
     )
     cluster_name = Column(String, nullable=False)
     database_name = Column(String, nullable=False)
+    table_name = Column(String, nullable=False)
     time_updated = Column(UnixTimeStampType, default=default_now, onupdate=default_now)
 
     @classmethod
@@ -50,9 +51,10 @@ class GlobalEventState(Base):
         event_type,
         cluster_name,
         database_name,
+        table_name,
         is_clean_shutdown=False
     ):
-        global_event_state = cls.get(session, cluster_name, database_name)
+        global_event_state = cls.get(session, cluster_name)
         if global_event_state is None:
             global_event_state = GlobalEventState()
         global_event_state.position = position
@@ -60,15 +62,15 @@ class GlobalEventState(Base):
         global_event_state.is_clean_shutdown = is_clean_shutdown
         global_event_state.cluster_name = cluster_name
         global_event_state.database_name = database_name
+        global_event_state.table_name = table_name
         session.add(global_event_state)
         return global_event_state
 
     @classmethod
-    def get(cls, session, cluster_name, database_name):
+    def get(cls, session, cluster_name):
         result = session.query(
             GlobalEventState
         ).filter(
             GlobalEventState.cluster_name == cluster_name,
-            GlobalEventState.database_name == database_name,
         ).all()
         return unlist(result)

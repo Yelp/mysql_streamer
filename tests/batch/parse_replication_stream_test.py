@@ -58,10 +58,10 @@ class TestParseReplicationStream(object):
             yield mock_handle_event
 
     @pytest.yield_fixture
-    def patch_get_latest_published_offset(self):
+    def patch_get_checkpoint_position_data(self):
         with mock.patch.object(
             DPClientlib,
-            'get_latest_published_offset'
+            'get_checkpoint_position_data'
         ) as mock_get_latest_published_offset:
             yield mock_get_latest_published_offset
 
@@ -189,7 +189,7 @@ class TestParseReplicationStream(object):
         self,
         patch_restarter,
         patch_data_handle_event,
-        patch_get_latest_published_offset,
+        patch_get_checkpoint_position_data,
         patch_save_position,
         patch_flush,
         patch_exit,
@@ -198,7 +198,7 @@ class TestParseReplicationStream(object):
         replication_stream = ParseReplicationStream()
         replication_stream.current_event_type = EventType.DATA_EVENT
         replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
-        assert patch_get_latest_published_offset.call_count == 1
+        assert patch_get_checkpoint_position_data.call_count == 1
         assert patch_flush.call_count == 1
         assert patch_exit.call_count == 1
 
@@ -206,7 +206,7 @@ class TestParseReplicationStream(object):
         self,
         patch_restarter,
         patch_data_handle_event,
-        patch_get_latest_published_offset,
+        patch_get_checkpoint_position_data,
         patch_flush,
         patch_exit,
         patch_signal
@@ -214,6 +214,6 @@ class TestParseReplicationStream(object):
         replication_stream = ParseReplicationStream()
         replication_stream.current_event_type = EventType.SCHEMA_EVENT
         replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
-        assert patch_get_latest_published_offset.call_count == 0
+        assert patch_get_checkpoint_position_data.call_count == 0
         assert patch_flush.call_count == 0
         assert patch_exit.call_count == 1

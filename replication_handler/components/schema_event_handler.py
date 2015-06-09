@@ -104,6 +104,7 @@ class SchemaEventHandler(BaseEventHandler):
                 event_type=EventType.SCHEMA_EVENT,
                 cluster_name=table.cluster_name,
                 database_name=table.database_name,
+                table_name=table.table_name,
             )
 
     def _reformat_query(self, raw_query):
