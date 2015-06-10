@@ -233,16 +233,16 @@ class TestDataEventHandler(object):
             position = mock.Mock()
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(Message(
-                schema_cache_entry.topic,
-                data_event_handler._get_values(data_event.row),
-                schema_cache_entry.schema_id,
+                topic=schema_cache_entry.topic,
+                payload=data_event_handler._get_values(data_event.row),
+                schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position
             ))
         actual_call_args = [i[0][0] for i in patch_publish_to_kafka.call_args_list]
         for expected_message, actual_message in zip(expected_call_args, actual_call_args):
-            expected_message.topic = actual_message.topic
-            expected_message.schema_id = actual_message.schema_id
-            expected_message.payload = actual_message.payload
+            assert expected_message.topic == actual_message.topic
+            assert expected_message.schema_id == actual_message.schema_id
+            assert expected_message.payload == actual_message.payload
 
         assert patch_publish_to_kafka.call_count == 4
         # We set the checkpoint size to 2, so 4 rows will checkpoint twice

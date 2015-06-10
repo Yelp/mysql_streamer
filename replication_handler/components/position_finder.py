@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from replication_handler.util.position import GtidPosition
+from replication_handler.util.position import Position
 from replication_handler.util.position import construct_position
 
 
@@ -27,4 +27,4 @@ class PositionFinder(object):
     def _get_position_from_saved_states(self, global_event_state):
         if global_event_state:
             return construct_position(global_event_state.position)
-        return GtidPosition()
+        return Position()

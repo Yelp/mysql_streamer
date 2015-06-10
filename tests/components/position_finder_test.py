@@ -51,9 +51,7 @@ class TestPositionFinder(object):
         return GtidPosition(gtid="sid:12")
 
     @pytest.yield_fixture
-    def patch_get_latest_schema_event_state(
-        self,
-    ):
+    def patch_get_latest_schema_event_state(self):
         with mock.patch.object(
             SchemaEventState,
             'get_latest_schema_event_state'

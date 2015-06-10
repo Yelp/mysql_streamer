@@ -67,12 +67,8 @@ class RecoveryHandler(object):
                 isinstance(stream.peek().event, DataEvent)):
             messages.append(stream.next().event.row)
         if messages:
-            with rbr_state_session.connect_begin(ro=True) as session:
-                topic_offsets = DataEventCheckpoint.get_topic_to_kafka_offset_map(
-                    session,
-                    self.cluster_name
-                )
-                self.dp_client.ensure_messages_published(messages, topic_offsets)
+            topic_offsets = self._get_topic_offsets_map_for_cluster()
+            self.dp_client.ensure_messages_published(messages, topic_offsets)
 
     def _assert_event_state_status(self, event_state, status):
         if event_state.status != status:
@@ -105,3 +101,11 @@ class RecoveryHandler(object):
         )
         cursor.execute(drop_table_query)
         cursor.execute(create_table_statement)
+
+    def _get_topic_offsets_map_for_cluster(self):
+        with rbr_state_session.connect_begin(ro=True) as session:
+            topic_offsets = DataEventCheckpoint.get_topic_to_kafka_offset_map(
+                session,
+                self.cluster_name
+            )
+        return topic_offsets
