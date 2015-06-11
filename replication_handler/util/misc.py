@@ -38,6 +38,7 @@ def save_position(position_data, is_clean_shutdown=False):
             cluster_name=position_info["cluster_name"],
             database_name=position_info["database_name"],
             table_name=position_info["table_name"],
+            is_clean_shutdown=is_clean_shutdown,
         )
         DataEventCheckpoint.upsert_data_event_checkpoint(
             session=session,

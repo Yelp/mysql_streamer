@@ -97,7 +97,10 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def first_position_info(
-        self, first_test_position, test_topic, first_test_kafka_offset
+        self,
+        first_test_position,
+        test_topic,
+        first_test_kafka_offset
     ):
         return PositionData(
             last_published_message_position_info={'upstream_offset': first_test_position},
@@ -107,7 +110,10 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def second_position_info(
-        self, second_test_position, test_topic, second_test_kafka_offset
+        self,
+        second_test_position,
+        test_topic,
+        second_test_kafka_offset
     ):
         return PositionData(
             last_published_message_position_info={'upstream_offset': second_test_position},
@@ -270,6 +276,7 @@ class TestDataEventHandler(object):
                 cluster_name=test_table.cluster_name,
                 database_name=test_table.database_name,
                 table_name=test_table.table_name,
+                is_clean_shutdown=False,
             ),
             mock.call(
                 session=mock_rbr_state_session,
@@ -278,5 +285,6 @@ class TestDataEventHandler(object):
                 cluster_name=test_table.cluster_name,
                 database_name=test_table.database_name,
                 table_name=test_table.table_name,
+                is_clean_shutdown=False,
             ),
         ]

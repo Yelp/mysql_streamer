@@ -193,7 +193,6 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_flush,
         patch_exit,
-        patch_signal
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.current_event_type = EventType.DATA_EVENT
@@ -209,7 +208,6 @@ class TestParseReplicationStream(object):
         patch_get_checkpoint_position_data,
         patch_flush,
         patch_exit,
-        patch_signal
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.current_event_type = EventType.SCHEMA_EVENT

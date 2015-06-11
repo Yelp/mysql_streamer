@@ -45,17 +45,17 @@ class DataEventHandler(BaseEventHandler):
         self._handle_row(schema_cache_entry, event.row, position)
 
     def _handle_row(self, schema_cache_entry, row, position):
-        message = self._get_values(row)
-        self._publish_to_kafka(schema_cache_entry.topic, schema_cache_entry.schema_id, message, position)
-        self.processor.push(message)
+        payload = self._get_values(row)
+        self._publish_to_kafka(schema_cache_entry.topic, schema_cache_entry.schema_id, payload, position)
+        self.processor.push(payload)
 
-    def _publish_to_kafka(self, topic, schema_id, message, position):
+    def _publish_to_kafka(self, topic, schema_id, payload, position):
         """Calls the clientlib for pushing payload to kafka.
            The clientlib will encapsulate this in envelope."""
         message = Message(
             topic=topic,
             schema_id=schema_id,
-            payload=message,
+            payload=payload,
             upstream_position_info=position.to_dict()
         )
         self.dp_client.publish(message)

@@ -20,11 +20,6 @@ class PositionFinder(object):
     def get_position_to_resume_tailing_from(self):
         if self.pending_schema_event is not None:
             return construct_position(self.pending_schema_event.position)
-
-        position = self._get_position_from_saved_states(self.global_event_state)
-        return position
-
-    def _get_position_from_saved_states(self, global_event_state):
-        if global_event_state:
-            return construct_position(global_event_state.position)
+        if self.global_event_state:
+            return construct_position(self.global_event_state.position)
         return Position()
