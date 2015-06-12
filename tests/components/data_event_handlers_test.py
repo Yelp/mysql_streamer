@@ -17,7 +17,6 @@ from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
-from testing.events import RowsEvent
 from testing.events import DataEvent
 
 
