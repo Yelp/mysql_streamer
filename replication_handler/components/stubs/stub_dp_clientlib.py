@@ -14,12 +14,23 @@ PositionData = namedtuple("PositionData", [
 class Message(object):
     """Stub for data_pipeline.message"""
 
-    def __init__(self, topic, schema_id, payload, message_type, upstream_position_info):
+    def __init__(
+        self,
+        topic,
+        schema_id,
+        payload,
+        message_type,
+        upstream_position_info,
+        previous_payload_data=None
+    ):
         self.topic = topic
         self.schema_id = schema_id
         self.payload = payload
         self.upstream_position_info = upstream_position_info
         self.message_type = message_type
+        self.previous_payload_data = previous_payload_data
+        if self.message_type == MessageType.update:
+            assert self.previous_payload_data is not None
 
 
 class MessageType(Enum):

@@ -29,7 +29,7 @@ class DataEvent(object):
         self.event_type = event_type
 
     @classmethod
-    def make_data_event(cls):
+    def make_data_create_event(cls):
         rows = [
             {'values': {'a_number': 100}},
             {'values': {'a_number': 200}},
@@ -41,6 +41,21 @@ class DataEvent(object):
             schema="fake_database",
             row=row,
             event_type=MessageType.create,
+        ) for row in rows]
+
+    @classmethod
+    def make_data_update_event(cls):
+        rows = [
+            {'after_values': {'a_number': 100}, 'before_values': {'a_number': 110}},
+            {'after_values': {'a_number': 200}, 'before_values': {'a_number': 210}},
+            {'after_values': {'a_number': 300}, 'before_values': {'a_number': 310}},
+            {'after_values': {'a_number': 400}, 'before_values': {'a_number': 410}}
+        ]
+        return [cls(
+            table="fake_table",
+            schema="fake_database",
+            row=row,
+            event_type=MessageType.update,
         ) for row in rows]
 
 

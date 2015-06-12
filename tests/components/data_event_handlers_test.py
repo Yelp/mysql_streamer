@@ -51,16 +51,12 @@ class TestDataEventHandler(object):
         )
 
     @pytest.fixture
-    def add_data_event(self):
-        return RowsEvent.make_add_rows_event()
+    def data_create_events(self):
+        return DataEvent.make_data_create_event()
 
     @pytest.fixture
-    def update_data_event(self):
-        return RowsEvent.make_update_rows_event()
-
-    @pytest.fixture
-    def data_events(self):
-        return DataEvent.make_data_event()
+    def data_update_events(self):
+        return DataEvent.make_data_update_event()
 
     @pytest.fixture
     def test_table(self):
@@ -193,29 +189,19 @@ class TestDataEventHandler(object):
         ) as mock_upsert_global_event_state:
             yield mock_upsert_global_event_state
 
-    def test_get_values(
-        self,
-        data_event_handler,
-        add_data_event,
-        update_data_event
-    ):
-        assert data_event_handler._get_values(add_data_event.rows[0]) \
-            == add_data_event.rows[0]['values']
-        assert data_event_handler._get_values(update_data_event.rows[0]) \
-            == update_data_event.rows[0]['after_values']
-
     def test_call_to_populate_schema(
         self,
         data_event_handler,
-        add_data_event,
+        data_create_events,
         patch_get_schema_for_schema_cache
     ):
-        assert add_data_event.table not in data_event_handler.schema_cache
-        data_event_handler._get_payload_schema(add_data_event.table)
-        patch_get_schema_for_schema_cache.assert_called_once_with(add_data_event.table)
-        assert add_data_event.table in data_event_handler.schema_cache
+        event = data_create_events[0]
+        assert event.table not in data_event_handler.schema_cache
+        data_event_handler._get_payload_schema(event.table)
+        patch_get_schema_for_schema_cache.assert_called_once_with(event.table)
+        assert event.table in data_event_handler.schema_cache
 
-    def test_handle_event_to_publish_call(
+    def test_handle_data_create_event_to_publish_call(
         self,
         first_test_position,
         second_test_position,
@@ -224,7 +210,7 @@ class TestDataEventHandler(object):
         first_test_kafka_offset,
         second_test_kafka_offset,
         data_event_handler,
-        data_events,
+        data_create_events,
         schema_cache_entry,
         patch_get_schema_for_schema_cache,
         patch_rbr_state_rw,
@@ -236,7 +222,7 @@ class TestDataEventHandler(object):
         patch_upsert_global_event_state
     ):
         expected_call_args = []
-        for data_event in data_events:
+        for data_event in data_create_events:
             position = mock.Mock()
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(Message(
@@ -244,13 +230,15 @@ class TestDataEventHandler(object):
                 payload=data_event_handler._get_values(data_event.row),
                 message_type=MessageType.create,
                 schema_id=schema_cache_entry.schema_id,
-                upstream_position_info=position
+                upstream_position_info=position.to_dict()
             ))
         actual_call_args = [i[0][0] for i in patch_publish_to_kafka.call_args_list]
         for expected_message, actual_message in zip(expected_call_args, actual_call_args):
             assert expected_message.topic == actual_message.topic
             assert expected_message.schema_id == actual_message.schema_id
             assert expected_message.payload == actual_message.payload
+            assert expected_message.message_type == actual_message.message_type
+            assert expected_message.upstream_position_info == actual_message.upstream_position_info
 
         assert patch_publish_to_kafka.call_count == 4
         # We set the checkpoint size to 2, so 4 rows will checkpoint twice
@@ -290,3 +278,44 @@ class TestDataEventHandler(object):
                 is_clean_shutdown=False,
             ),
         ]
+
+    def test_handle_data_update_event(
+        self,
+        first_test_position,
+        second_test_position,
+        test_table,
+        test_topic,
+        first_test_kafka_offset,
+        second_test_kafka_offset,
+        data_event_handler,
+        data_update_events,
+        schema_cache_entry,
+        patch_get_schema_for_schema_cache,
+        patch_rbr_state_rw,
+        mock_rbr_state_session,
+        patch_publish_to_kafka,
+        patch_get_checkpoint_position_data,
+        patch_upsert_data_event_checkpoint,
+        patch_checkpoint_size,
+        patch_upsert_global_event_state
+    ):
+        expected_call_args = []
+        for data_event in data_update_events:
+            position = mock.Mock()
+            data_event_handler.handle_event(data_event, position)
+            expected_call_args.append(Message(
+                topic=schema_cache_entry.topic,
+                payload=data_event_handler._get_values(data_event.row),
+                message_type=MessageType.update,
+                schema_id=schema_cache_entry.schema_id,
+                upstream_position_info=position.to_dict(),
+                previous_payload_data=data_event.row["before_values"]
+            ))
+        actual_call_args = [i[0][0] for i in patch_publish_to_kafka.call_args_list]
+        for expected_message, actual_message in zip(expected_call_args, actual_call_args):
+            assert expected_message.topic == actual_message.topic
+            assert expected_message.schema_id == actual_message.schema_id
+            assert expected_message.payload == actual_message.payload
+            assert expected_message.message_type == actual_message.message_type
+            assert expected_message.upstream_position_info == actual_message.upstream_position_info
+            assert expected_message.previous_payload_data == actual_message.previous_payload_data
