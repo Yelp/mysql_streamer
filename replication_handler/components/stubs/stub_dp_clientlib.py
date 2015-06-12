@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
+from enum import Enum
 
 
 # The response format we get from data pipeline clientlib
@@ -13,11 +14,19 @@ PositionData = namedtuple("PositionData", [
 class Message(object):
     """Stub for data_pipeline.message"""
 
-    def __init__(self, topic, schema_id, payload, upstream_position_info):
+    def __init__(self, topic, schema_id, payload, message_type, upstream_position_info):
         self.topic = topic
         self.schema_id = schema_id
         self.payload = payload
         self.upstream_position_info = upstream_position_info
+        self.message_type = message_type
+
+
+class MessageType(Enum):
+    create = 1
+    update = 2
+    delete = 3
+    refresh = 4
 
 
 class DPClientlib(object):

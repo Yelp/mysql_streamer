@@ -18,12 +18,13 @@ class DataEvent(object):
     row per event.
     """
 
-    def __init__(self, schema, table, log_pos, log_file, row):
+    def __init__(self, schema, table, log_pos, log_file, row, event_type):
         self.schema = schema
         self.table = table
         self.log_pos = log_pos
         self.log_file = log_file
         self.row = row
+        self.event_type = event_type
 
 
 def save_position(position_data, is_clean_shutdown=False):

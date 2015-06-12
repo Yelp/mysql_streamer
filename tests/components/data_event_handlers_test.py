@@ -10,6 +10,7 @@ from replication_handler.components.base_event_handler import Table
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.components.stubs.stub_dp_clientlib import Message
+from replication_handler.components.stubs.stub_dp_clientlib import MessageType
 from replication_handler.components.stubs.stub_dp_clientlib import PositionData
 from replication_handler.components.stubs.stub_schemas import StubSchemaClient
 from replication_handler.models.database import rbr_state_session
@@ -241,6 +242,7 @@ class TestDataEventHandler(object):
             expected_call_args.append(Message(
                 topic=schema_cache_entry.topic,
                 payload=data_event_handler._get_values(data_event.row),
+                message_type=MessageType.create,
                 schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position
             ))

@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
+from pymysqlreplication.constants.BINLOG import UPDATE_ROWS_EVENT_V2
+
+from replication_handler.components.stubs.stub_dp_clientlib import MessageType
 
 
 class GtidEvent(object):
@@ -18,10 +22,11 @@ class QueryEvent(object):
 class DataEvent(object):
     """Class to test Single Row Event"""
 
-    def __init__(self, schema, table, row):
+    def __init__(self, schema, table, row, event_type):
         self.schema = schema
         self.table = table
         self.row = row
+        self.event_type = event_type
 
     @classmethod
     def make_data_event(cls):
@@ -34,7 +39,8 @@ class DataEvent(object):
         return [cls(
             table="fake_table",
             schema="fake_database",
-            row=row
+            row=row,
+            event_type=MessageType.create,
         ) for row in rows]
 
 
@@ -57,10 +63,11 @@ class RowsEvent(object):
             }
     """
 
-    def __init__(self, schema, table, rows):
+    def __init__(self, schema, table, rows, event_type):
         self.schema = schema
         self.table = table
         self.rows = rows
+        self.event_type = event_type
 
     @classmethod
     def make_add_rows_event(cls):
@@ -72,7 +79,8 @@ class RowsEvent(object):
         return cls(
             table="fake_table",
             schema="fake_database",
-            rows=rows
+            rows=rows,
+            event_type=WRITE_ROWS_EVENT_V2,
         )
 
     @classmethod
@@ -85,7 +93,8 @@ class RowsEvent(object):
         return cls(
             table="fake_table",
             schema="fake_database",
-            rows=rows
+            rows=rows,
+            event_type=UPDATE_ROWS_EVENT_V2,
         )
 
     @classmethod

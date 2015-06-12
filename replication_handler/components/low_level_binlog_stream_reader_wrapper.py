@@ -6,13 +6,24 @@ from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import UpdateRowsEvent
 from pymysqlreplication.row_event import WriteRowsEvent
+from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
+from pymysqlreplication.constants.BINLOG import UPDATE_ROWS_EVENT_V2
+from pymysqlreplication.constants.BINLOG import DELETE_ROWS_EVENT_V2
 
 from replication_handler import config
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
+from replication_handler.components.stubs.stub_dp_clientlib import MessageType
 from replication_handler.util.misc import DataEvent
 
 
 log = logging.getLogger('replication_handler.components.low_level_binlog_stream_reader_wrapper')
+
+
+event_type_map = {
+    WRITE_ROWS_EVENT_V2: MessageType.create,
+    UPDATE_ROWS_EVENT_V2: MessageType.update,
+    DELETE_ROWS_EVENT_V2: MessageType.delete,
+}
 
 
 class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
@@ -64,7 +75,8 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 table=row_event.table,
                 log_pos=self.stream.log_pos,
                 log_file=self.stream.log_file,
-                row=row
+                row=row,
+                event_type=event_type_map[row_event.event_type]
             ) for row in row_event.rows
         ]
 
