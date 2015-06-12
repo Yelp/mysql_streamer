@@ -60,8 +60,6 @@ class DataEventHandler(BaseEventHandler):
         """Gets the new value of the row changed.  If add row occurs,
            row['values'] contains the data.
            If an update row occurs, row['after_values'] contains the data.
-           Also, on an update row, row['before_values'] exists too but is
-           currently unused.
         """
         if 'values' in row:
             return row['values']
