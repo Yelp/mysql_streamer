@@ -11,14 +11,13 @@ from replication_handler.util.position import construct_position
 class TestPostion(object):
 
     def test_to_dict_not_implemented(self):
-        with pytest.raises(NotImplementedError):
-            p = Position()
-            p.to_dict()
+        p = Position()
+        assert p.to_dict() == {}
+        assert p.offset is None
 
     def test_to_replication_dict_not_implemented(self):
-        with pytest.raises(NotImplementedError):
-            p = Position()
-            p.to_replication_dict()
+        p = Position()
+        assert p.to_replication_dict() == {}
 
 
 class TestGtidPosition(object):

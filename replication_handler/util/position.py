@@ -7,17 +7,19 @@ class Position(object):
     """ This class makes it flexible to use different types of position in our system.
     Primarily gtid or log position.
     """
+    offset = None
+
     def to_dict(self):
         """This function turns the position object into a dict
         to be saved in database.
         """
-        raise NotImplementedError()
+        return {}
 
     def to_replication_dict(self):
         """This function turns the position object into a dict
         to be used in resuming replication.
         """
-        raise NotImplementedError()
+        return {}
 
 
 class GtidPosition(Position):
