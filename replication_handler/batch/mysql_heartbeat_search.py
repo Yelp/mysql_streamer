@@ -35,9 +35,13 @@ class MySQLHeartbeatSearch(Batch):
         self.target_hb = target_hb
         self.verbose = verbose
 
-        # Used in bounds checking, but this value is only set
-        # if the search for a heartbeat ever hits the last log file 
+        # The end log position of the final event in the final log
+        # Retrieving this value is slightly expensive so it is only set if we 
+        # need it (as in, a binary search hits the final log)
         self.final_log_pos = None
+
+        # Load in a list of all the log files
+        self.all_logs = self._get_log_file_list()
 
         # Set up database connection configuration info
         source_config = config.source_database_config.entries[0]
@@ -51,7 +55,7 @@ class MySQLHeartbeatSearch(Batch):
 
     def _print_verbose(self, message):
         """
-        Prints a message if verbosity is enabled
+        Prints a message if the verbose setting is enabled.
         """
         if self.verbose:
             print message
@@ -59,7 +63,7 @@ class MySQLHeartbeatSearch(Batch):
 
     def _is_heartbeat(self, event):
         """
-        Returns true if a given binlog event is a writerows heartbeat event
+        @returns whether or not a binlog event is a heartbeat event
         """
         if isinstance(event, WriteRowsEvent) and event.table == "heartbeat":
             return True
@@ -68,9 +72,8 @@ class MySQLHeartbeatSearch(Batch):
 
     def _get_log_file_list(self):
         """
-        Returns a list of all log files in the configured mysql server
+        @returns a list of all the log files names on the configured mysql instance
         """
-        self._print_verbose("Getting list of all log files from mysql server")
         cursor = ConnectionSet.rbr_source_ro().rbr_source.cursor()
         cursor.execute('SHOW BINARY LOGS;')
         names = []
@@ -81,12 +84,8 @@ class MySQLHeartbeatSearch(Batch):
 
     def _get_last_log_position(self, binlog):
         """
-        Returns the last log position in a binary log file. 
-        The process this uses might seem like its useful for doing a full binary search 
-        of each individual log files, but apparently SHOW BINLOG EVENTS will tell you 
-        that a WriteRows event happened but it doesnt return metadata about what was
-        actually written. 
-        So instead, we use it to bound check the end of a log stream. 
+        @returns the end log position of the final log entry in the requested binlog 
+        This process isn't exactly cheap.
         """
         self._print_verbose("Getting last log position for {}".format(binlog))
         cursor = ConnectionSet.rbr_source_ro().rbr_source.cursor()
@@ -100,7 +99,9 @@ class MySQLHeartbeatSearch(Batch):
 
     def _bounds_check(self, current_log, current_position):
         """
-        Returns true if the stream has hit a bound and needs to be manually closed.
+        @returns true if the stream has hit the last element of the last log
+        and needs to be manually closed.
+        @arg current_position should be the end_log_pos of the event being executed 
         """
         if current_log != self.all_logs[len(self.all_logs)-1]:
             return False
@@ -113,7 +114,8 @@ class MySQLHeartbeatSearch(Batch):
 
     def _open_stream(self, start_file = "mysql-bin.000001", start_pos = 4):
         """
-        Opens a binary log stream starting at the given file and directly after the given position. 
+        @returns a binary log stream starting at the given file and directly 
+        after the given position. 
         """
         self._print_verbose("Opening stream at file {} position {}".format(start_file, start_pos))
         return BinLogStreamReader(
@@ -128,10 +130,8 @@ class MySQLHeartbeatSearch(Batch):
 
     def _get_first_heartbeat(self, start_file, start_pos = 4):
         """
-        Returns the first heartbeat we find after the given start_file and start_position.
-        The resulting heartbeat could be in a log file greater than start_file.
-        The list of all log files is passed in so this method can bounds check on the last 
-        one and return None if it finds no heartbeats.
+        @returns the first heartbeat we find after the given start_file and start_position.
+        (heartbeat_serial, log_file, log_pos) or None if there are no heartbeats after.
         """
         self._print_verbose("Getting first heartbeat after {}:{}".format(start_file, start_pos))
         stream = self._open_stream(start_file, start_pos)
@@ -161,12 +161,22 @@ class MySQLHeartbeatSearch(Batch):
         @returns the name of the file it should be in
         """
         self._print_verbose("Shallow binary search bound on {}->{}".format(left_bound, right_bound))
+        
+        # binary search base case in which a single log file is found
         if left_bound >= right_bound - 1:
             return self.all_logs[left_bound]
+
+        # calculate the midpoint between the bounds and get the first hb after that midpoint
         mid = (left_bound + right_bound) / 2
         first_tup = self._get_first_heartbeat(self.all_logs[mid])
+        
+        # that method call searches from the midpoint to the very end of all the logs 
+        # regardless of what right_bound is set to. so if it returns none that means 
+        # there are no hbs at all after mid, so we proceed the search below mid
         if first_tup is None:
-            return None
+            return self._binary_search_log_files(left_bound, mid)
+        
+        # otherwise, we can do a typical binary search with the result we found
         found_seq, actual_file, pos = first_tup
         actual_file = self.all_logs.index(actual_file)
         if found_seq == self.target_hb:
@@ -174,12 +184,15 @@ class MySQLHeartbeatSearch(Batch):
         elif found_seq > self.target_hb:
             return self._binary_search_log_files(left_bound, mid)
         else:
+            # because the streams we open continue reading after reaching the end of a file,
+            # we can speed up the search by setting the left bound to the actual file
+            # the heartbeat was found in instead of the midpoint like a traditional binsearch
             return self._binary_search_log_files(actual_file, right_bound)
 
 
     def _find_hb_log_file(self):
         """
-        Wrapper around _binary_search_log_files that loads the log list and sets proper 
+        wrapper around _binary_search_log_files that loads the log list and sets proper 
         start parameters
         """
         return self._binary_search_log_files(0, len(self.all_logs))
@@ -187,8 +200,9 @@ class MySQLHeartbeatSearch(Batch):
 
     def _full_search_log_file(self, start_file):
         """
-        Does a full search on a given log file for the target heartbeat
-        Returns the name of the log file and its position in that file
+        does a full search on a given log file for the target heartbeat
+        @returns the name of the log file and its position in that file.
+        (log_file, end_log_pos of the heartbeat) or None if the heartbeat was not found.
         """
         self._print_verbose("Doing full search for heartbeat on file {}".format(start_file))
         stream = self._open_stream(start_file)
@@ -214,10 +228,6 @@ class MySQLHeartbeatSearch(Batch):
 
     def run(self):
         self._print_verbose("Running batch for heartbeat {}".format(self.target_hb))
-
-        # Load in a list of all the log files
-        self.all_logs = self._get_log_file_list()
-
         filen = self._find_hb_log_file()
         print self._full_search_log_file(filen)
 
