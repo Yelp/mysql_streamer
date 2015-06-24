@@ -9,7 +9,6 @@ from yelp_conn.connection_set import ConnectionSet
 from replication_handler import config
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.recovery_handler import BadSchemaEventStateException
-from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
