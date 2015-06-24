@@ -9,6 +9,7 @@ from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import DataEvent
+from replication_handler.util.misc import save_position
 
 
 log = logging.getLogger('replication_handler.components.recvoery_handler')
@@ -68,7 +69,8 @@ class RecoveryHandler(object):
             messages.append(stream.next().event.row)
         if messages:
             topic_offsets = self._get_topic_offsets_map_for_cluster()
-            self.dp_client.ensure_messages_published(messages, topic_offsets)
+            position_data = self.dp_client.ensure_messages_published(messages, topic_offsets)
+            save_position(position_data)
 
     def _assert_event_state_status(self, event_state, status):
         if event_state.status != status:

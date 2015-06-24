@@ -14,6 +14,7 @@ from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
+from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.util.misc import DataEvent
 
 
@@ -96,14 +97,6 @@ class TestRecoveryHandler(object):
             yield mock_connection
 
     @pytest.yield_fixture
-    def patch_ensure_messages_published(self):
-        with mock.patch.object(
-            DPClientlib,
-            'ensure_messages_published'
-        ) as mock_ensure_messages_published:
-            yield mock_ensure_messages_published
-
-    @pytest.yield_fixture
     def patch_config(self):
         with mock.patch.object(
             config.DatabaseConfig,
@@ -120,6 +113,22 @@ class TestRecoveryHandler(object):
             'get_topic_to_kafka_offset_map'
         ) as mock_get_topic_to_kafka_offset_map:
             yield mock_get_topic_to_kafka_offset_map
+
+    @pytest.yield_fixture
+    def patch_upsert_data_event_checkpoint(self):
+        with mock.patch.object(
+            DataEventCheckpoint,
+            'upsert_data_event_checkpoint'
+        ) as mock_upsert_data_event_checkpoint:
+            yield mock_upsert_data_event_checkpoint
+
+    @pytest.yield_fixture
+    def patch_upsert_global_event(self):
+        with mock.patch.object(
+            GlobalEventState,
+            'upsert'
+        ) as mock_global_upsert:
+            yield mock_global_upsert
 
     def test_recovery_when_there_is_pending_state(
         self,
@@ -158,9 +167,22 @@ class TestRecoveryHandler(object):
         patch_schema_tracker_connection,
         patch_config,
         patch_get_topic_to_kafka_offset_map,
-        mock_cursor
+        mock_cursor,
+        patch_upsert_data_event_checkpoint,
+        patch_upsert_global_event,
     ):
         stream.peek.return_value.event = mock.Mock(DataEvent)
+        position_data = mock.Mock()
+        position_data.last_published_message_position_info = {
+            "upstream_offset": {
+                "position": {"gtid": "sid:10"},
+                "cluster_name": "yelp_main",
+                "database_name": "yelp",
+                "table_name": "business"
+            },
+        }
+        position_data.topic_to_kafka_offset_map = {"topic": 1}
+        dp_client.ensure_messages_published.return_value = position_data
         recovery_handler = RecoveryHandler(
             stream,
             dp_client,
@@ -171,6 +193,8 @@ class TestRecoveryHandler(object):
         recovery_handler.recover()
         assert dp_client.ensure_messages_published.call_count == 1
         assert patch_get_topic_to_kafka_offset_map.call_count == 1
+        assert patch_upsert_data_event_checkpoint.call_count == 1
+        assert patch_upsert_global_event.call_count == 1
 
     def test_bad_schema_event_state(
         self,
