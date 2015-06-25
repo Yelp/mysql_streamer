@@ -28,7 +28,7 @@ class MySQLHeartbeatSearch(Batch):
         "mhoc@yelp.com"
     ]
 
-    def __init__(self, target_hb, verbose=False):
+    def __init__(self, target_hb, db_cnct=None, verbose=False):
         super(MySQLHeartbeatSearch, self).__init__()
         self.target_hb = target_hb
         self.verbose = verbose
@@ -38,9 +38,6 @@ class MySQLHeartbeatSearch(Batch):
         # need it (as in, a binary search hits the final log)
         self.final_log_pos = None
 
-        # Load in a list of all the log files
-        self.all_logs = self._get_log_file_list()
-
         # Set up database connection configuration info
         source_config = config.source_database_config.entries[0]
         self.connection_config = {
@@ -49,6 +46,20 @@ class MySQLHeartbeatSearch(Batch):
             'user': source_config['user'],
             'passwd': source_config['passwd']
         }
+
+        # Create the database connection
+        # This value can be provided in the call to __init__ to customize
+        # the database connection for purposes such as mocking.
+        if db_cnct is None:
+            self.db_cnct = ConnectionSet.rbr_source_ro().rbr_source
+        else:
+            self.db_cnct = db_cnct
+
+        # Load in a list of every log file
+        # This is done here because there are many methods on this class
+        # which require the list of all files and those methods might be called
+        # independent of start()/run() (IE in testing)
+        self.all_logs = self._get_log_file_list()
 
     def _print_verbose(self, message):
         """
@@ -69,7 +80,8 @@ class MySQLHeartbeatSearch(Batch):
         """
         @returns a list of all the log files names on the configured mysql instance
         """
-        cursor = ConnectionSet.rbr_source_ro().rbr_source.cursor()
+        self._print_verbose("Getting list of all log files on")
+        cursor = self.db_cnct.cursor()
         cursor.execute('SHOW BINARY LOGS;')
         names = []
         for row in cursor.fetchall():
@@ -79,15 +91,14 @@ class MySQLHeartbeatSearch(Batch):
     def _get_last_log_position(self, binlog):
         """
         @returns the end log position of the final log entry in the requested binlog
-        This process isn't exactly cheap.
+        This process isn't exactly free so it is used as little as possible in the search.
         """
         self._print_verbose("Getting last log position for {}".format(binlog))
-        cursor = ConnectionSet.rbr_source_ro().rbr_source.cursor()
+        cursor = self.db_cnct.cursor()
         cursor.execute('SHOW BINLOG EVENTS IN \'{}\';'.format(binlog))
         last = -1
         for row in cursor.fetchall():
-            # 0: Log_name 1: Pos 2: Event_type 3: Server_id 4: End_log_pos 5:
-            # Info
+            # 0:Log_name 1:Pos 2:Event_type 3:Server_id 4:End_log_pos 5:Info
             last = row[4]
         return last
 
@@ -97,7 +108,7 @@ class MySQLHeartbeatSearch(Batch):
         and needs to be manually closed.
         @arg current_position should be the end_log_pos of the event being executed
         """
-        if current_log != self.all_logs[len(self.all_logs) - 1]:
+        if current_log != self.all_logs[-1]:
             return False
         if self.final_log_pos is None:
             self.final_log_pos = self._get_last_log_position(current_log)
@@ -230,6 +241,7 @@ class MySQLHeartbeatSearch(Batch):
         self._print_verbose(
             "Running batch for heartbeat {}".format(
                 self.target_hb))
+
         filen = self._find_hb_log_file()
         print self._full_search_log_file(filen)
 
