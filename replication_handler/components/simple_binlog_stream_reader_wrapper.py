@@ -63,7 +63,6 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             else:
                 return False
 
-
     def _update_upstream_position(self, event):
         """If gtid_enabled and the next event is GtidEvent,
         we update the self._upstream_position with GtidPosition, if next event is

@@ -1,17 +1,13 @@
 
 from pymysqlreplication import BinLogStreamReader
-from pymysqlreplication.event import QueryEvent, GtidEvent
-from pymysqlreplication.row_event import WriteRowsEvent, TableMapEvent
+from pymysqlreplication.row_event import WriteRowsEvent
 
 from replication_handler import config
 
 from yelp_batch import Batch
 from yelp_conn.connection_set import ConnectionSet
 
-import os
 import sys
-import time
-import threading
 
 
 class MySQLHeartbeatSearch(Batch):

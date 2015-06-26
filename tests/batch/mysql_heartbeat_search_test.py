@@ -2,7 +2,6 @@
 from replication_handler.batch.mysql_heartbeat_search import MySQLHeartbeatSearch
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
-from yelp_conn.connection_set import ConnectionSet, SetBoundCursorWrapper, SetBoundConnectionWrapper
 
 from mock import Mock, patch
 import pytest
@@ -152,7 +151,7 @@ class BinLogStreamMock(MockBinLogEvents):
                 raise StopIteration()
             else:
                 self.log_pos = 0
-                self.log_file = self.filenames[self.filenames.index(self.log_file)+1]
+                self.log_file = self.filenames[self.filenames.index(self.log_file) + 1]
         r = self.stream[self.log_file][self.log_pos]
         self.log_pos += 1
         return r
@@ -247,7 +246,7 @@ class TestMySQLHeartbeatSearchMocks(object):
             nevents += 1
         # Reduce which calculates the total number of events across all files in the dict of events
         # Equivalent of `for key in events.keys(): total_events += len(events[key])`
-        assert nevents == reduce(lambda x,y: x + len(y), [ li for li in base_data.events.values() ], 0)
+        assert nevents == reduce(lambda x, y: x + len(y), [li for li in base_data.events.values()], 0)
 
     def test_binlog_stream_close(self):
         """Tests that close() is properly supported (as in, it is callable but does nothing)"""
