@@ -110,35 +110,22 @@ class BinLogStreamMock(MockBinLogEvents):
         self.log_pos = 0
 
         # Parse the event stream into a binlogstream
-        # Dictionary comprehension which maps filenames to a list of log events
-        self.stream = {
-            # List comprehension which creates a list of mock log events
-            log_name: [
-                # If the event is defined in the original events data as being a heartbeat,
-                # Create a mock heartbeat event
-                Mock(
-                    # The mock class has named args like 'spec' but also allows us to provide
-                    # arbitrary named args which it then just sets as parameters on the mock
-                    # after creation. This is what makes this monstrosity of a comprehension possible.
-                    spec=WriteRowsEvent,
-                    # The table has to be set to heartbeat
-                    table="heartbeat",
-                    # The rows is a list of every row in the event, which in our case is always a single row
-                    # Every row has a values key then a key for each column in the row; we only care about serial
-                    rows=[{"values": {"serial": self.events[log_name][i][1]}}]
-                )
-                if self.events[log_name][i][0]
-                # Otherwise, create a random non-heartbeat event. We just use queryevents here.
-                # Nothing special about that choice, just cant be a WriteRows to the heartbeat table.
-                else Mock(spec=QueryEvent)
-                # Do this for every event inside this log
-                for i in range(len(self.events[log_name]))
-            ]
-            # And for every log file
-            for log_name in self.filenames
-        }
-        # The feeling that I have for this comprehension is beyond comprehension
-        # A bit of pride. A bit of disgust.
+        self.stream = {}
+        # For each log name in the list of all log names
+        for log_name in self.filenames:
+            # Each log is a list of log events
+            self.stream[log_name] = []
+            # For each event in the backing store of mock events,
+            # if we want it to be a heartbeat then append a writerows heartbeat event
+            # Otherwise just append a query event to simulate a non-heartbeat event
+            for i in range(len(self.events[log_name])):
+                if self.events[log_name][i][0]:
+                    row = [{"values": {"serial": self.events[log_name][i][1]}}]
+                    mock = Mock(spec=WriteRowsEvent, table="heartbeat", rows=row)
+                    self.stream[log_name].append(mock)
+                else:
+                    mock = Mock(spec=QueryEvent)
+                    self.stream[log_name].append(mock)
 
     def __iter__(self):
         return self
