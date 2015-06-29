@@ -5,7 +5,7 @@ import pytest
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 
-from replication_handler.batch.mysql_heartbeat_search import MySQLHeartbeatSearch
+from replication_handler.components.heartbeat_searcher import HeartbeatSearcher
 from replication_handler.util.position import HeartbeatPosition
 
 
@@ -154,7 +154,7 @@ class BinLogStreamMock(MockBinLogEvents):
         pass
 
 
-class TestMySQLHeartbeatSearchMocks(object):
+class TestHeartbeatSearcherMocks(object):
     """Test methods just to confirm functionality in the mocks above. If the
     mocks dont work then obviously the actual tests using them wont work either.
     """
@@ -247,7 +247,7 @@ class TestMySQLHeartbeatSearchMocks(object):
         stream.close()
 
 
-class TestMySQLHeartbeatSearch(object):
+class TestHeartbeatSearcher(object):
 
     @pytest.fixture
     def mock_cursor(self):
@@ -271,7 +271,7 @@ class TestMySQLHeartbeatSearch(object):
         passed to the mock
         """
         with patch(
-            'replication_handler.batch.mysql_heartbeat_search.BinLogStreamReader'
+            'replication_handler.components.heartbeat_searcher.BinLogStreamReader'
         ) as patch_binlog_stream_reader:
             patch_binlog_stream_reader.side_effect = lambda log_file, **kwargs: BinLogStreamMock(log_file)
             yield patch_binlog_stream_reader
@@ -293,7 +293,7 @@ class TestMySQLHeartbeatSearch(object):
         mock_db_cnct
     ):
         """Tests the method which determines whether an event is or is not a heartbeat event"""
-        hbs = MySQLHeartbeatSearch(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
         r1 = hbs._is_heartbeat(binlog_event_1)
         r2 = hbs._is_heartbeat(binlog_event_2)
         assert r1 is True
@@ -304,7 +304,7 @@ class TestMySQLHeartbeatSearch(object):
         mock_db_cnct
     ):
         """Tests the method which returns a list of all the log files on the connection"""
-        hbs = MySQLHeartbeatSearch(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
         all_logs = hbs._get_log_file_list()
         assert len(all_logs) == 4
         assert all_logs[0] == "binlog1"
@@ -318,7 +318,7 @@ class TestMySQLHeartbeatSearch(object):
     ):
         """Tests the method which returns the last log position of a given binlog.
         In the mocks, this is equal to the len(events_log)"""
-        hbs = MySQLHeartbeatSearch(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
         res = hbs._get_last_log_position("binlog1")
         assert res == 2
         res = hbs._get_last_log_position("binlog2")
@@ -334,7 +334,7 @@ class TestMySQLHeartbeatSearch(object):
     ):
         """Tests the method which checks whether or not a given logfile and logpos is
         on the boundary of all the log files (as in, is the last log file and final log pos in the file)"""
-        hbs = MySQLHeartbeatSearch(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
         res = hbs._reaches_bound("binlog1", 0)
         assert res is False
         res = hbs._reaches_bound("binlog2", 1)
@@ -354,7 +354,7 @@ class TestMySQLHeartbeatSearch(object):
         """Very simple test which just makes sure the _open_stream method
         returns a mock stream object
         """
-        hbs = MySQLHeartbeatSearch(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
         stream = hbs._open_stream("binlog1")
         assert stream is not None
         assert isinstance(stream, BinLogStreamMock)
@@ -369,7 +369,7 @@ class TestMySQLHeartbeatSearch(object):
         """Tests getting the first heartbeat in a given log file, including
         behavior in which the stream has to search the next log file to find it
         """
-        hbs = MySQLHeartbeatSearch(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
         first = hbs._get_first_heartbeat("binlog1")
         assert first == HeartbeatPosition(0, "4/1/2015", 1, 'binlog1')
         first = hbs._get_first_heartbeat("binlog2")
@@ -394,7 +394,7 @@ class TestMySQLHeartbeatSearch(object):
         heartbeat is located in.
         """
         base_data = MockBinLogEvents()
-        hbs = MySQLHeartbeatSearch(0, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(0, db_cnct=mock_db_cnct)
         f = hbs._binary_search_log_files(0, len(base_data.filenames))
         assert f == 'binlog1'
         hbs.target_hb = 1
@@ -420,7 +420,7 @@ class TestMySQLHeartbeatSearch(object):
     ):
         """Tests the full search of a log file, as well as the possibility that you could
         ask it to find a heartbeat which doesnt exist in the stream after the file provided"""
-        hbs = MySQLHeartbeatSearch(0, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(0, db_cnct=mock_db_cnct)
         r = hbs._full_search_log_file('binlog1')
         assert r == HeartbeatPosition(0, '4/1/2015', 1, 'binlog1')
         hbs.target_hb = 1
