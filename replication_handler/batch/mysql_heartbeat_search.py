@@ -16,6 +16,7 @@ class MySQLHeartbeatSearchBatch(Batch):
     not be found.
     """
 
+    # Change this before final approval
     notify_emails = [
         "mhoc@yelp.com"
     ]
