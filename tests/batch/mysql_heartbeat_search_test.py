@@ -1,17 +1,24 @@
 
-from replication_handler.batch.mysql_heartbeat_search import MySQLHeartbeatSearch
+from mock import Mock, patch
+
+import pytest
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 
-from mock import Mock, patch
-import pytest
+from replication_handler.batch.mysql_heartbeat_search import MySQLHeartbeatSearch
+from replication_handler.util.position import HeartbeatPosition
+
+
+def assertt(tup):
+    """Asserts that two items in a tuple are equivalent
+    Used later with map() for really terse two array comparisons"""
+    assert tup[0] == tup[1]
 
 
 class MockBinLogEvents(Mock):
-    """
-    Class which contains a bunch of fake binary log event information for use in testing.
-    This isn't created anywhere and is instead used as a base class for the cursor and
-    stream mocks below.
+    """Class which contains a bunch of fake binary log event information for
+    use in testing. This isn't created anywhere and is instead used as a base
+    class for the cursor and stream mocks so they all point to the same data.
     """
 
     def __init__(self, events=None):
@@ -23,25 +30,16 @@ class MockBinLogEvents(Mock):
             # increasing across all heartbeat events
             self.events = {
                 "binlog1": [
-                    (True, 0),
-                    (True, 1),
-                    (False, -1)
+                    (True, 0), (True, 1), (False, -1)
                 ],
                 "binlog2": [
-                    (False, -1),
-                    (False, -1),
-                    (False, -1),
-                    (False, -1)
+                    (False, -1), (False, -1), (False, -1), (False, -1)
                 ],
                 "binlog3": [
-                    (True, 2),
-                    (False, -1)
+                    (True, 2), (False, -1)
                 ],
                 "binlog4": [
-                    (False, -1),
-                    (True, 3),
-                    (True, 4),
-                    (True, 5)
+                    (False, -1), (True, 3), (True, 4), (True, 5)
                 ]
             }
         else:
@@ -50,11 +48,15 @@ class MockBinLogEvents(Mock):
         # Pre-compile an ordered list of "filenames"
         self.filenames = sorted(self.events.keys())
 
+    def n_events(self):
+        """Returns the total number of events in the mock binary logs"""
+        return reduce(lambda x, y: x + len(y), [li for li in self.events.values()], 0)
+
 
 class CursorMock(MockBinLogEvents):
-    """
-    Mock of a database cursor which reads sql statements we expect in this batch during
-    execute() then sets the result of fetchall() for later retrieval.
+    """Mock of a database cursor which reads sql statements we expect in
+    this batch during execute() then sets the result of fetchall() for later
+    retrieval.
     """
 
     def __init__(self):
@@ -63,37 +65,34 @@ class CursorMock(MockBinLogEvents):
     def execute(self, stmt):
         if "SHOW BINARY LOGS" in stmt:
             self.fetch_retv = []
+            # Each item is a tuple with the binlog name and its size
+            # Size isn't all that important here; we never use it.
             for binlog in self.filenames:
-                # Each item is a tuple with the binlog name and its size
-                # Size isn't all that important here; we never use it.
                 self.fetch_retv.append((binlog, 1000))
 
         elif "SHOW BINLOG EVENTS" in stmt:
             self.fetch_retv = []
             # SQL statement parsing which parses the binlog name out of the statment
             target_filename = stmt.split(" ")[4].replace("'", "").replace(";", "")
-
             for i in xrange(0, len(self.events[target_filename])):
                 self.fetch_retv.append((
-                    target_filename,    # Log File
-                    i,                  # Log Position
-                    "Write_rows",       # Event type, never used
-                    1,                  # Server id, never used
-                    i,                  # End log position
-                    "Random info"       # "Info" about the tx, never used
+                    target_filename,  # Log File
+                    i,                # Log Position
+                    "Write_rows",     # Event type, never used
+                    1,                # Server id, never used
+                    i,                # End log position
+                    "Random info"     # "Info" about the tx, never used
                 ))
 
         else:
-            raise ValueError("Just crash it")
+            raise ValueError("We dont't recognize the sql statemt so crashy crashy")
 
     def fetchall(self):
         return self.fetch_retv
 
 
 class BinLogStreamMock(MockBinLogEvents):
-    """
-    Mock of a binary log stream which itself supports iteration.
-    """
+    """Mock of a binary log stream which supports iteration."""
 
     def __init__(self, log_file):
         super(BinLogStreamMock, self).__init__()
@@ -104,26 +103,29 @@ class BinLogStreamMock(MockBinLogEvents):
             self.log_file = log_file
         else:
             self.log_file = self.filenames[0]
-
-        # Just manually set the log position to 0, its never used
-        # in the heartbeat search anyway
         self.log_pos = 0
 
         # Parse the event stream into a binlogstream
         self.stream = {}
-        # For each log name in the list of all log names
         for log_name in self.filenames:
-            # Each log is a list of log events
+            # Each log file is a list of log events
             self.stream[log_name] = []
-            # For each event in the backing store of mock events,
-            # if we want it to be a heartbeat then append a writerows heartbeat event
-            # Otherwise just append a query event to simulate a non-heartbeat event
             for i in range(len(self.events[log_name])):
                 if self.events[log_name][i][0]:
-                    row = [{"values": {"serial": self.events[log_name][i][1]}}]
+                    # If we want it to be a heartbeat then append a writerows
+                    # heartbeat event
+                    row = [{
+                        "values": {
+                            "serial": self.events[log_name][i][1],
+                            "timestamp": "4/1/2015"
+                        }
+                    }]
                     mock = Mock(spec=WriteRowsEvent, table="heartbeat", rows=row)
                     self.stream[log_name].append(mock)
                 else:
+                    # Otherwise just append a query event to simulate a generic
+                    # non-heartbeat event (the fact its a query event doesnt
+                    # actually matter)
                     mock = Mock(spec=QueryEvent)
                     self.stream[log_name].append(mock)
 
@@ -131,26 +133,30 @@ class BinLogStreamMock(MockBinLogEvents):
         return self
 
     def next(self):
-        # next() should iterate to the end of a log file, then continue to the top
-        # of the next log file before coming to an end at the end of the last log file.
+        """next() should iterate to the end of a log file, then continue to the
+        top of the next log file before coming to an end at the end of the
+        last log file.
+        """
         if self.log_pos >= len(self.stream[self.log_file]):
             if self.filenames.index(self.log_file) == len(self.filenames) - 1:
                 raise StopIteration()
             else:
                 self.log_pos = 0
                 self.log_file = self.filenames[self.filenames.index(self.log_file) + 1]
-        r = self.stream[self.log_file][self.log_pos]
+        next_item = self.stream[self.log_file][self.log_pos]
         self.log_pos += 1
-        return r
+        return next_item
 
     def close(self):
+        """This method is necessary because without it the mock object returned cannot
+        have close() called on it. For some reason. It crashes.
+        """
         pass
 
 
 class TestMySQLHeartbeatSearchMocks(object):
-    """
-    Test methods just to confirm functionality in the mocks above. If the mocks dont work
-    then obviously the actual tests using them wont work either.
+    """Test methods just to confirm functionality in the mocks above. If the
+    mocks dont work then obviously the actual tests using them wont work either.
     """
 
     def test_base_event_class_default(self):
@@ -173,31 +179,27 @@ class TestMySQLHeartbeatSearchMocks(object):
         cursor = CursorMock()
         cursor.execute("SHOW BINARY LOGS")
         logs = cursor.fetchall()
-        assert logs is not None and isinstance(logs, list)
         assert len(logs) == len(base_data.filenames)
+        for filename1, filename2 in zip(logs, base_data.filenames):
+            assert filename1[0] == filename2
 
     def test_cursor_show_binlog_events(self):
         """Tests that the cursor works with the show binlog events statement and different log names"""
         base_data = MockBinLogEvents()
         cursor = CursorMock()
-        cursor.execute("SHOW BINLOG EVENTS IN '{}';".format(base_data.filenames[0]))
-        events = cursor.fetchall()
-        assert events is not None and isinstance(events, list)
-        assert len(events) == len(base_data.events[base_data.filenames[0]])
-        cursor.execute("SHOW BINLOG EVENTS IN '{}';".format(base_data.filenames[-1]))
-        events = cursor.fetchall()
-        assert events is not None and isinstance(events, list)
-        assert len(events) == len(base_data.events[base_data.filenames[-1]])
+        for filename in base_data.filenames:
+            cursor.execute("SHOW BINLOG EVENTS IN '{}';".format(filename))
+            events = cursor.fetchall()
+            # This is all we can test in this test because the cursor doesn't actually
+            # return detailed information about each event in the stream; it only returns
+            # that some event happened and the position of the event.
+            assert len(events) == len(base_data.events[filename])
 
     def test_cursor_improper_sql(self):
         """Tests that the cursor throws an error if any unrecognized sql statement is provided"""
         cursor = CursorMock()
-        e = None
-        try:
+        with pytest.raises(ValueError):
             cursor.execute("SELECT * FROM WHATEVER")
-        except ValueError as er:
-            e = er
-        assert e is not None
 
     def test_binlog_stream_correct_params(self):
         """Tests that the binlogstream respects the log file passed in"""
@@ -231,12 +233,14 @@ class TestMySQLHeartbeatSearchMocks(object):
             elif not isinstance(event, QueryEvent):
                 assert False
             nevents += 1
-        # Reduce which calculates the total number of events across all files in the dict of events
-        # Equivalent of `for key in events.keys(): total_events += len(events[key])`
-        assert nevents == reduce(lambda x, y: x + len(y), [li for li in base_data.events.values()], 0)
+        # Calculates the total number of events across all files in the dict of events
+        assert nevents == base_data.n_events()
 
     def test_binlog_stream_close(self):
-        """Tests that close() is properly supported (as in, it is callable but does nothing)"""
+        """Tests that close() is properly supported. We're not testing if any
+        methods actually call close(), but rather close() is itself callable.
+        There was a bug earlier where if close() isn't properly implemented in
+        the mock the tests crash, so this is just a simple regression."""
         stream = BinLogStreamMock(log_file="binlog1")
         for event in stream:
             pass
@@ -254,7 +258,8 @@ class TestMySQLHeartbeatSearch(object):
     def mock_db_cnct(self, mock_cursor):
         """Returns a mock database connection with the sole purpose of providing a plain cursor.
         This is used instead of patching the ConnsetionSet import of the search class because that
-        way would save 4 lines of code in __init__ of the search but adds like 10-15 lines here"""
+        way would save 4 lines of code in __init__ of the search but adds like 10-15 lines here
+        """
         m = Mock()
         m.cursor = Mock(return_value=mock_cursor)
         return m
@@ -262,7 +267,9 @@ class TestMySQLHeartbeatSearch(object):
     @pytest.yield_fixture
     def patch_binlog_stream_reader(self):
         """Patches the binlog stream in the search class with a mock one from here
-        Ignores all parameters to __init__ of the binlog stream except log_file which is passed to the mock"""
+        Ignores all parameters to __init__ of the binlog stream except log_file which is
+        passed to the mock
+        """
         with patch(
             'replication_handler.batch.mysql_heartbeat_search.BinLogStreamReader'
         ) as patch_binlog_stream_reader:
@@ -321,22 +328,22 @@ class TestMySQLHeartbeatSearch(object):
         res = hbs._get_last_log_position("binlog4")
         assert res == 3
 
-    def test_bounds_check(
+    def test_reaches_bound(
         self,
         mock_db_cnct
     ):
         """Tests the method which checks whether or not a given logfile and logpos is
         on the boundary of all the log files (as in, is the last log file and final log pos in the file)"""
         hbs = MySQLHeartbeatSearch(1, db_cnct=mock_db_cnct)
-        res = hbs._bounds_check("binlog1", 0)
+        res = hbs._reaches_bound("binlog1", 0)
         assert res is False
-        res = hbs._bounds_check("binlog2", 1)
+        res = hbs._reaches_bound("binlog2", 1)
         assert res is False
-        res = hbs._bounds_check("binlog3", 0)
+        res = hbs._reaches_bound("binlog3", 0)
         assert res is False
-        res = hbs._bounds_check("binlog3", 25)
+        res = hbs._reaches_bound("binlog3", 25)
         assert res is False
-        res = hbs._bounds_check("binlog4", 3)
+        res = hbs._reaches_bound("binlog4", 3)
         assert res is True
 
     def test_open_stream(
@@ -344,7 +351,9 @@ class TestMySQLHeartbeatSearch(object):
         mock_db_cnct,
         patch_binlog_stream_reader
     ):
-        """Very simple test which just makes sure the _open_stream method returns a mock stream object"""
+        """Very simple test which just makes sure the _open_stream method
+        returns a mock stream object
+        """
         hbs = MySQLHeartbeatSearch(1, db_cnct=mock_db_cnct)
         stream = hbs._open_stream("binlog1")
         assert stream is not None
@@ -358,47 +367,50 @@ class TestMySQLHeartbeatSearch(object):
         patch_binlog_stream_reader
     ):
         """Tests getting the first heartbeat in a given log file, including
-        behavior in which the stream has to search the next log file to find it"""
+        behavior in which the stream has to search the next log file to find it
+        """
         hbs = MySQLHeartbeatSearch(1, db_cnct=mock_db_cnct)
         first = hbs._get_first_heartbeat("binlog1")
-        assert first == (0, 'binlog1', 1)
+        assert first == HeartbeatPosition(0, "4/1/2015", 1, 'binlog1')
         first = hbs._get_first_heartbeat("binlog2")
-        assert first == (2, 'binlog3', 1)
+        assert first == HeartbeatPosition(2, "4/1/2015", 1, 'binlog3')
         first = hbs._get_first_heartbeat("binlog3")
-        assert first == (2, 'binlog3', 1)
+        assert first == HeartbeatPosition(2, "4/1/2015", 1, 'binlog3')
         first = hbs._get_first_heartbeat("binlog4")
-        assert first == (3, 'binlog4', 2)
-        # This behavior is a little bit undefined because i dont verify that the binlog name
-        # provided to this function (or any function) actually exists. It defaults
-        # to the first binary log in the stream which is the behavior of the binlogstream.
+        assert first == HeartbeatPosition(3, "4/1/2015", 2, 'binlog4')
+        # This behavior is a little bit undefined because i dont verify that
+        # the binlog name provided to this function (or any function) actually
+        # exists. It defaults to the first binary log in the stream which is
+        # the behavior of the binlogstream.
         first = hbs._get_first_heartbeat("binlog5")
-        assert first == (0, 'binlog1', 1)
+        assert first == HeartbeatPosition(0, "4/1/2015", 1, 'binlog1')
 
     def test_find_hb_log_file(
         self,
         mock_db_cnct,
         patch_binlog_stream_reader
     ):
-        """Tests the binary search functionality. This tests both _find_hb_log_file and
-        _binary_search_log_files because the former is just a very light wrapper around the
-        latter"""
+        """Tests the binary search functionality to find the log file a
+        heartbeat is located in.
+        """
+        base_data = MockBinLogEvents()
         hbs = MySQLHeartbeatSearch(0, db_cnct=mock_db_cnct)
-        f = hbs._find_hb_log_file()
+        f = hbs._binary_search_log_files(0, len(base_data.filenames))
         assert f == 'binlog1'
         hbs.target_hb = 1
-        f = hbs._find_hb_log_file()
+        f = hbs._binary_search_log_files(0, len(base_data.filenames))
         assert f == 'binlog1'
         hbs.target_hb = 2
-        f = hbs._find_hb_log_file()
+        f = hbs._binary_search_log_files(0, len(base_data.filenames))
         assert f == 'binlog3'
         hbs.target_hb = 3
-        f = hbs._find_hb_log_file()
+        f = hbs._binary_search_log_files(0, len(base_data.filenames))
         assert f == 'binlog4'
         hbs.target_hb = 4
-        f = hbs._find_hb_log_file()
+        f = hbs._binary_search_log_files(0, len(base_data.filenames))
         assert f == 'binlog4'
         hbs.target_hb = 5
-        f = hbs._find_hb_log_file()
+        f = hbs._binary_search_log_files(0, len(base_data.filenames))
         assert f == 'binlog4'
 
     def test_full_search_log_file(
@@ -410,12 +422,12 @@ class TestMySQLHeartbeatSearch(object):
         ask it to find a heartbeat which doesnt exist in the stream after the file provided"""
         hbs = MySQLHeartbeatSearch(0, db_cnct=mock_db_cnct)
         r = hbs._full_search_log_file('binlog1')
-        assert r == ('binlog1', 1)
+        assert r == HeartbeatPosition(0, '4/1/2015', 1, 'binlog1')
         hbs.target_hb = 1
         r = hbs._full_search_log_file('binlog1')
-        assert r == ('binlog1', 2)
+        assert r == HeartbeatPosition(1, '4/1/2015', 2, 'binlog1')
         r = hbs._full_search_log_file('binlog2')
         assert r is None
         hbs.target_hb = 2
         r = hbs._full_search_log_file('binlog2')
-        assert r == ('binlog3', 1)
+        assert r == HeartbeatPosition(2, '4/1/2015', 1, 'binlog3')
