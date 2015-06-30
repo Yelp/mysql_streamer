@@ -159,9 +159,6 @@ class HeartbeatSearcher(object):
         """
         stream = self._open_stream(start_file)
         for event in stream:
-            if self._reaches_bound(stream.log_file, stream.log_pos):
-                stream.close()
-                return None
             if not self._is_heartbeat(event):
                 continue
             serial = event.rows[0]["values"]["serial"]
@@ -176,5 +173,8 @@ class HeartbeatSearcher(object):
                     log_file=stream.log_file,
                     log_pos=stream.log_pos
                 )
+            if self._reaches_bound(stream.log_file, stream.log_pos):
+                stream.close()
+                return None
         stream.close()
         return None

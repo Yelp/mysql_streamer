@@ -17,23 +17,31 @@ class MockBinLogEvents(Mock):
 
     def __init__(self, events=None):
         super(MockBinLogEvents, self).__init__()
-
         if events is None:
             # Each event defines whether or not its a heartbeat (true/false) and
-            # if it is, gives a heartbeat sequence number which should strictly
+            # if it is, gives a heartbeat sequence number and timestamp which should
             # increase across all heartbeat events.
             self.events = {
                 "binlog1": [
-                    (True, 0), (True, 1), (False,)
+                    (True, 0, "1/1/2015"),
+                    (True, 1, "1/2/2015"),
+                    (False,)
                 ],
                 "binlog2": [
-                    (False,), (False,), (False,), (False,)
+                    (False,),
+                    (False,),
+                    (False,),
+                    (False,)
                 ],
                 "binlog3": [
-                    (True, 2), (False,)
+                    (True, 2, "1/3/2015"),
+                    (False,)
                 ],
                 "binlog4": [
-                    (False,), (True, 3), (True, 4), (True, 5)
+                    (False,),
+                    (True, 3, "1/4/2015"),
+                    (True, 4, "1/5/2015"),
+                    (True, 5, "1/6/2015")
                 ]
             }
         else:
@@ -42,9 +50,51 @@ class MockBinLogEvents(Mock):
         # Pre-compile an ordered list of "filenames"
         self.filenames = sorted(self.events.keys())
 
-    def n_events(self):
-        """Returns the total number of events in the mock binary logs"""
-        return reduce(lambda x, y: x + len(y), [li for li in self.events.values()], 0)
+    def construct_heartbeat_pos(self, log, index):
+        """Constructs a HeartbeatPosition object located at a given log and index"""
+        return HeartbeatPosition(
+            hb_serial=self.events[log][index][1],
+            hb_timestamp=self.events[log][index][2],
+            log_file=log,
+            log_pos=index
+        )
+
+    def n_events(self, log=None):
+        """Returns the total number of events in the mock binary logs or in a specific log"""
+        if log is None:
+            return reduce(lambda x, y: x + len(y), [li for li in self.events.values()], 0)
+        else:
+            return len(self.events[log])
+
+    def last_heartbeat(self):
+        """Returns the HeartbeatPosition of the last heartbeat in the mock logs"""
+        for log in reversed(self.filenames):
+            for i in xrange(len(self.events[log]) - 1, -1, -1):
+                if self.events[log][i][0]:
+                    return self.construct_heartbeat_pos(log, i)
+
+    def first_hb_event_in(self, log):
+        """Returns the HeartbeatPosition of the first heartbeat event
+        starting at a given mock log
+        """
+        for log in self.filenames[self.filenames.index(log):]:
+            for i in xrange(0, len(self.events[log])):
+                if self.events[log][i][0]:
+                    return self.construct_heartbeat_pos(log, i)
+
+    def get_log_file_for_hb(self, hb):
+        """Returns the mock log file name a given heartbeat is in"""
+        for log in self.filenames:
+            for event in self.events[log]:
+                if event[0] and event[1] == hb:
+                    return log
+
+    def get_index_for_hb(self, hb):
+        """Returns the log index (log_pos) for a given heartbeat serial"""
+        for log in self.filenames:
+            for i in xrange(0, len(self.events[log])):
+                if self.events[log][i][0] and self.events[log][i][1] == hb:
+                    return i
 
 
 class CursorMock(MockBinLogEvents):
@@ -97,7 +147,7 @@ class BinLogStreamMock(MockBinLogEvents):
             self.log_file = log_file
         else:
             self.log_file = self.filenames[0]
-        self.log_pos = 0
+        self.log_pos = -1
 
         # Parse the event stream into a binlogstream
         self.stream = {}
@@ -111,7 +161,7 @@ class BinLogStreamMock(MockBinLogEvents):
                     row = [{
                         "values": {
                             "serial": self.events[log_name][i][1],
-                            "timestamp": "4/1/2015"
+                            "timestamp": self.events[log_name][i][2]
                         }
                     }]
                     mock = Mock(spec=WriteRowsEvent, table="heartbeat", rows=row)
@@ -129,16 +179,18 @@ class BinLogStreamMock(MockBinLogEvents):
     def next(self):
         """next() should iterate to the end of a log file, then continue to the
         top of the next log file before coming to an end at the end of the
-        last log file.
+        last log file. self.log_pos should always correspond to the index of the
+        item which next() has last returned.
         """
+        self.log_pos += 1
         if self.log_pos >= len(self.stream[self.log_file]):
             if self.filenames.index(self.log_file) == len(self.filenames) - 1:
+                self.log_pos -= 1
                 raise StopIteration()
             else:
                 self.log_pos = 0
                 self.log_file = self.filenames[self.filenames.index(self.log_file) + 1]
         next_item = self.stream[self.log_file][self.log_pos]
-        self.log_pos += 1
         return next_item
 
     def close(self):
@@ -185,8 +237,7 @@ class TestHeartbeatSearcherMocks(object):
             cursor.execute("SHOW BINLOG EVENTS IN '{}';".format(filename))
             events = cursor.fetchall()
             # This is all we can test in this test because the cursor doesn't actually
-            # return detailed information about each event in the stream; it only returns
-            # that some event happened and the position of the event.
+            # return detailed information about each event in the stream
             assert len(events) == len(base_data.events[filename])
 
     def test_cursor_improper_sql(self):
@@ -200,20 +251,20 @@ class TestHeartbeatSearcherMocks(object):
         base_data = MockBinLogEvents()
         stream = BinLogStreamMock(log_file=base_data.filenames[-1])
         assert stream.log_file == base_data.filenames[-1]
-        assert stream.log_pos == 0
+        assert stream.log_pos == -1
         for event in stream:
             pass
-        assert stream.log_pos == len(base_data.events[base_data.filenames[-1]])
+        assert stream.log_pos == (len(base_data.events[base_data.filenames[-1]]) - 1)
 
     def test_binlog_stream_incorrect_params(self):
         """Tests that the binlogstream defaults to file 0 if a bad filename is given"""
         base_data = MockBinLogEvents()
         stream = BinLogStreamMock(log_file="This log file defeinitely doesnt exist")
         assert stream.log_file == base_data.filenames[0]
-        assert stream.log_pos == 0
+        assert stream.log_pos == -1
         for event in stream:
             pass
-        assert stream.log_pos == len(base_data.events[base_data.filenames[-1]])
+        assert stream.log_pos == len(base_data.events[base_data.filenames[-1]]) - 1
 
     def test_binlog_stream_event_content(self):
         base_data = MockBinLogEvents()
@@ -334,7 +385,7 @@ class TestHeartbeatSearcher(object):
         assert stream is not None
         assert isinstance(stream, BinLogStreamMock)
         assert stream.log_file == base_data.filenames[0]
-        assert stream.log_pos == 0
+        assert stream.log_pos == -1
 
     def test_get_first_heartbeat(
         self,
@@ -344,21 +395,15 @@ class TestHeartbeatSearcher(object):
         """Tests getting the first heartbeat in a given log file, including
         behavior in which the stream has to search the next log file to find it
         """
+        base_data = MockBinLogEvents()
         hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
-        first = hbs._get_first_heartbeat("binlog1")
-        assert first == HeartbeatPosition(0, "4/1/2015", 1, 'binlog1')
-        first = hbs._get_first_heartbeat("binlog2")
-        assert first == HeartbeatPosition(2, "4/1/2015", 1, 'binlog3')
-        first = hbs._get_first_heartbeat("binlog3")
-        assert first == HeartbeatPosition(2, "4/1/2015", 1, 'binlog3')
-        first = hbs._get_first_heartbeat("binlog4")
-        assert first == HeartbeatPosition(3, "4/1/2015", 2, 'binlog4')
-        # This behavior is a little bit undefined because i dont verify that
-        # the binlog name provided to this function (or any function) actually
-        # exists. It defaults to the first binary log in the stream which is
-        # the behavior of the binlogstream.
-        first = hbs._get_first_heartbeat("binlog5")
-        assert first == HeartbeatPosition(0, "4/1/2015", 1, 'binlog1')
+        for log in base_data.filenames:
+            expected = base_data.first_hb_event_in(log)
+            actual = hbs._get_first_heartbeat(log)
+            assert expected.hb_serial == actual.hb_serial
+            assert expected.hb_timestamp == actual.hb_timestamp
+            assert expected.log_file == actual.log_file
+            assert expected.log_pos == expected.log_pos
 
     def test_find_hb_log_file(
         self,
@@ -369,24 +414,11 @@ class TestHeartbeatSearcher(object):
         heartbeat is located in.
         """
         base_data = MockBinLogEvents()
-        hbs = HeartbeatSearcher(0, db_cnct=mock_db_cnct)
-        f = hbs._binary_search_log_files(0, len(base_data.filenames))
-        assert f == 'binlog1'
-        hbs.target_hb = 1
-        f = hbs._binary_search_log_files(0, len(base_data.filenames))
-        assert f == 'binlog1'
-        hbs.target_hb = 2
-        f = hbs._binary_search_log_files(0, len(base_data.filenames))
-        assert f == 'binlog3'
-        hbs.target_hb = 3
-        f = hbs._binary_search_log_files(0, len(base_data.filenames))
-        assert f == 'binlog4'
-        hbs.target_hb = 4
-        f = hbs._binary_search_log_files(0, len(base_data.filenames))
-        assert f == 'binlog4'
-        hbs.target_hb = 5
-        f = hbs._binary_search_log_files(0, len(base_data.filenames))
-        assert f == 'binlog4'
+        for i in xrange(0, base_data.last_heartbeat().hb_serial + 1):
+            hbs = HeartbeatSearcher(i, db_cnct=mock_db_cnct)
+            actual_log = hbs._binary_search_log_files(0, len(base_data.filenames))
+            expected_log = base_data.get_log_file_for_hb(hbs.target_hb)
+            assert actual_log == expected_log
 
     def test_full_search_log_file(
         self,
@@ -395,14 +427,15 @@ class TestHeartbeatSearcher(object):
     ):
         """Tests the full search of a log file, as well as the possibility that you could
         ask it to find a heartbeat which doesnt exist in the stream after the file provided"""
-        hbs = HeartbeatSearcher(0, db_cnct=mock_db_cnct)
-        r = hbs._full_search_log_file('binlog1')
-        assert r == HeartbeatPosition(0, '4/1/2015', 1, 'binlog1')
-        hbs.target_hb = 1
-        r = hbs._full_search_log_file('binlog1')
-        assert r == HeartbeatPosition(1, '4/1/2015', 2, 'binlog1')
-        r = hbs._full_search_log_file('binlog2')
-        assert r is None
-        hbs.target_hb = 2
-        r = hbs._full_search_log_file('binlog2')
-        assert r == HeartbeatPosition(2, '4/1/2015', 1, 'binlog3')
+        base_data = MockBinLogEvents()
+        hbs = HeartbeatSearcher(4, db_cnct=mock_db_cnct)
+        for hbs.target_hb in xrange(0, base_data.last_heartbeat().hb_serial + 1):
+            actual = hbs._full_search_log_file(base_data.filenames[0])
+            expected = base_data.construct_heartbeat_pos(
+                base_data.get_log_file_for_hb(hbs.target_hb),
+                base_data.get_index_for_hb(hbs.target_hb)
+            )
+            assert actual.hb_serial == expected.hb_serial
+            assert actual.hb_timestamp == expected.hb_timestamp
+            assert actual.log_file == expected.log_file
+            assert actual.log_pos == expected.log_pos
