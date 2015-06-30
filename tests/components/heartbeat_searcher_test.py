@@ -103,8 +103,8 @@ class CursorMock(MockBinLogEvents):
     retrieval.
     """
 
-    def __init__(self):
-        super(CursorMock, self).__init__()
+    def __init__(self, events=None):
+        super(CursorMock, self).__init__(events=events)
 
     def execute(self, stmt):
         if "SHOW BINARY LOGS" in stmt:
@@ -138,8 +138,8 @@ class CursorMock(MockBinLogEvents):
 class BinLogStreamMock(MockBinLogEvents):
     """Mock of a binary log stream which supports iteration."""
 
-    def __init__(self, log_file):
-        super(BinLogStreamMock, self).__init__()
+    def __init__(self, log_file, events=None):
+        super(BinLogStreamMock, self).__init__(events=events)
 
         # Check if the filename passed in is good
         # This emulates the behavior of a real binlog stream
@@ -426,10 +426,11 @@ class TestHeartbeatSearcher(object):
         patch_binlog_stream_reader
     ):
         """Tests the full search of a log file, as well as the possibility that you could
-        ask it to find a heartbeat which doesnt exist in the stream after the file provided"""
+        ask it to find a heartbeat which doesnt exist in the stream after the file provided
+        """
         base_data = MockBinLogEvents()
-        hbs = HeartbeatSearcher(4, db_cnct=mock_db_cnct)
-        for hbs.target_hb in xrange(0, base_data.last_heartbeat().hb_serial + 1):
+        for i in xrange(0, base_data.last_heartbeat().hb_serial + 1):
+            hbs = HeartbeatSearcher(i, db_cnct=mock_db_cnct)
             actual = hbs._full_search_log_file(base_data.filenames[0])
             expected = base_data.construct_heartbeat_pos(
                 base_data.get_log_file_for_hb(hbs.target_hb),

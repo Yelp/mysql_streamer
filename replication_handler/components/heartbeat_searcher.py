@@ -79,8 +79,6 @@ class HeartbeatSearcher(object):
         """
         if current_log != self.all_logs[-1]:
             return False
-        if self.final_log_pos is None:
-            self.final_log_pos = self._get_last_log_position(current_log)
         if current_position == self.final_log_pos:
             return True
         return False
