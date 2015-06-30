@@ -9,12 +9,6 @@ from replication_handler.components.heartbeat_searcher import HeartbeatSearcher
 from replication_handler.util.position import HeartbeatPosition
 
 
-def assertt(tup):
-    """Asserts that two items in a tuple are equivalent
-    Used later with map() for really terse two array comparisons"""
-    assert tup[0] == tup[1]
-
-
 class MockBinLogEvents(Mock):
     """Class which contains a bunch of fake binary log event information for
     use in testing. This isn't created anywhere and is instead used as a base
@@ -25,21 +19,21 @@ class MockBinLogEvents(Mock):
         super(MockBinLogEvents, self).__init__()
 
         if events is None:
-            # Each event defines whether or not its a a heartbeat (true/false) and
-            # if it is, it gives a heartbeat sequence number which should strictly increase
-            # increasing across all heartbeat events
+            # Each event defines whether or not its a heartbeat (true/false) and
+            # if it is, gives a heartbeat sequence number which should strictly
+            # increase across all heartbeat events.
             self.events = {
                 "binlog1": [
-                    (True, 0), (True, 1), (False, -1)
+                    (True, 0), (True, 1), (False,)
                 ],
                 "binlog2": [
-                    (False, -1), (False, -1), (False, -1), (False, -1)
+                    (False,), (False,), (False,), (False,)
                 ],
                 "binlog3": [
-                    (True, 2), (False, -1)
+                    (True, 2), (False,)
                 ],
                 "binlog4": [
-                    (False, -1), (True, 3), (True, 4), (True, 5)
+                    (False,), (True, 3), (True, 4), (True, 5)
                 ]
             }
         else:
@@ -221,8 +215,7 @@ class TestHeartbeatSearcherMocks(object):
             pass
         assert stream.log_pos == len(base_data.events[base_data.filenames[-1]])
 
-    def test_binlog_stream_events(self):
-        """Tests that the events provided by the binlogstream are in the proper format"""
+    def test_binlog_stream_event_content(self):
         base_data = MockBinLogEvents()
         stream = BinLogStreamMock(log_file="binlog1")
         nevents = 0
@@ -233,18 +226,7 @@ class TestHeartbeatSearcherMocks(object):
             elif not isinstance(event, QueryEvent):
                 assert False
             nevents += 1
-        # Calculates the total number of events across all files in the dict of events
         assert nevents == base_data.n_events()
-
-    def test_binlog_stream_close(self):
-        """Tests that close() is properly supported. We're not testing if any
-        methods actually call close(), but rather close() is itself callable.
-        There was a bug earlier where if close() isn't properly implemented in
-        the mock the tests crash, so this is just a simple regression."""
-        stream = BinLogStreamMock(log_file="binlog1")
-        for event in stream:
-            pass
-        stream.close()
 
 
 class TestHeartbeatSearcher(object):
@@ -277,25 +259,25 @@ class TestHeartbeatSearcher(object):
             yield patch_binlog_stream_reader
 
     @pytest.fixture
-    def binlog_event_1(self):
+    def heartbeat_binlog_event(self):
         """Mock binary log event on the heartbeat table"""
         return Mock(spec=WriteRowsEvent, table="heartbeat")
 
     @pytest.fixture
-    def binlog_event_2(self):
+    def nonheartbeat_binlog_event(self):
         """Mock binary log event which isn't a heartbeat"""
         return Mock(spec=WriteRowsEvent, table="business")
 
     def test_is_heartbeat(
         self,
-        binlog_event_1,
-        binlog_event_2,
+        heartbeat_binlog_event,
+        nonheartbeat_binlog_event,
         mock_db_cnct
     ):
         """Tests the method which determines whether an event is or is not a heartbeat event"""
         hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
-        r1 = hbs._is_heartbeat(binlog_event_1)
-        r2 = hbs._is_heartbeat(binlog_event_2)
+        r1 = hbs._is_heartbeat(heartbeat_binlog_event)
+        r2 = hbs._is_heartbeat(nonheartbeat_binlog_event)
         assert r1 is True
         assert r2 is False
 
@@ -304,47 +286,39 @@ class TestHeartbeatSearcher(object):
         mock_db_cnct
     ):
         """Tests the method which returns a list of all the log files on the connection"""
+        base_data = MockBinLogEvents()
         hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
         all_logs = hbs._get_log_file_list()
-        assert len(all_logs) == 4
-        assert all_logs[0] == "binlog1"
-        assert all_logs[1] == "binlog2"
-        assert all_logs[2] == "binlog3"
-        assert all_logs[3] == "binlog4"
+        assert len(all_logs) == len(base_data.filenames)
+        for found_log, actual_log in zip(all_logs, base_data.filenames):
+            assert found_log == actual_log
 
     def test_get_last_log_position(
         self,
         mock_db_cnct
     ):
         """Tests the method which returns the last log position of a given binlog.
-        In the mocks, this is equal to the len(events_log)"""
+        In the mocks, this is equal to the len(events_log)
+        """
+        base_data = MockBinLogEvents()
         hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
-        res = hbs._get_last_log_position("binlog1")
-        assert res == 2
-        res = hbs._get_last_log_position("binlog2")
-        assert res == 3
-        res = hbs._get_last_log_position("binlog3")
-        assert res == 1
-        res = hbs._get_last_log_position("binlog4")
-        assert res == 3
+        for logfile in hbs.all_logs:
+            assert hbs._get_last_log_position(logfile) == len(base_data.events[logfile]) - 1
 
     def test_reaches_bound(
         self,
         mock_db_cnct
     ):
         """Tests the method which checks whether or not a given logfile and logpos is
-        on the boundary of all the log files (as in, is the last log file and final log pos in the file)"""
+        on the boundary of all the log files (or, is the last log file and final log pos in the file)
+        """
+        base_data = MockBinLogEvents()
         hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
-        res = hbs._reaches_bound("binlog1", 0)
-        assert res is False
-        res = hbs._reaches_bound("binlog2", 1)
-        assert res is False
-        res = hbs._reaches_bound("binlog3", 0)
-        assert res is False
-        res = hbs._reaches_bound("binlog3", 25)
-        assert res is False
-        res = hbs._reaches_bound("binlog4", 3)
-        assert res is True
+        for log in hbs.all_logs:
+            for i in xrange(0, len(base_data.events[log])):
+                r = hbs._reaches_bound(log, i)
+                expect = len(base_data.events[log]) - 1 == i and log == base_data.filenames[-1]
+                assert r == expect
 
     def test_open_stream(
         self,
@@ -354,11 +328,12 @@ class TestHeartbeatSearcher(object):
         """Very simple test which just makes sure the _open_stream method
         returns a mock stream object
         """
+        base_data = MockBinLogEvents()
         hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
-        stream = hbs._open_stream("binlog1")
+        stream = hbs._open_stream(base_data.filenames[0])
         assert stream is not None
         assert isinstance(stream, BinLogStreamMock)
-        assert stream.log_file == "binlog1"
+        assert stream.log_file == base_data.filenames[0]
         assert stream.log_pos == 0
 
     def test_get_first_heartbeat(

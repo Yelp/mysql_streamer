@@ -20,12 +20,7 @@ class HeartbeatSearcher(object):
     def __init__(self, target_hb, db_cnct=None):
         self.target_hb = target_hb
 
-        # The end log position of the final event in the final log
-        # Retrieving this value is slightly expensive so it is only set if we
-        # need it (as in, a binary search hits the final log)
-        self.final_log_pos = None
-
-        # Set up database connection configuration info
+        # Set up database configuration info and connection
         source_config = config.source_database_config.entries[0]
         self.connection_config = {
             'host': source_config['host'],
@@ -33,20 +28,16 @@ class HeartbeatSearcher(object):
             'user': source_config['user'],
             'passwd': source_config['passwd']
         }
-
-        # Create the database connection
-        # This value can be provided in the call to __init__ to customize
-        # the database connection for purposes such as mocking.
         if db_cnct is None:
             self.db_cnct = ConnectionSet.rbr_source_ro().rbr_source
         else:
             self.db_cnct = db_cnct
 
         # Load in a list of every log file
-        # This is done here because there are many methods on this class
-        # which require the list of all files and those methods might be called
-        # independent of start()/run() (IE in testing)
         self.all_logs = self._get_log_file_list()
+
+        # Log_pos integer which corresponds to the final log_pos in the final log_file
+        self.final_log_pos = self._get_last_log_position(self.all_logs[-1])
 
     def get_position(self):
         """Entry method for using the class from other python modules, which
@@ -98,6 +89,8 @@ class HeartbeatSearcher(object):
         """Returns a binary log stream starting at the given file and directly
         after the given position. server_id and blocking are both set here
         but they appear to have no effect on the actual stream.
+        start_pos defaults to 4 because the first event in every binlog starts
+        at log_pos 4.
         """
         return BinLogStreamReader(
             connection_settings=self.connection_config,

@@ -16,11 +16,6 @@ class MySQLHeartbeatSearchBatch(Batch):
     not be found.
     """
 
-    # Change this before final approval
-    notify_emails = [
-        "mhoc@yelp.com"
-    ]
-
     def __init__(self, hb_seq_num):
         super(MySQLHeartbeatSearchBatch, self).__init__()
         self.hb_seq_num = hb_seq_num
