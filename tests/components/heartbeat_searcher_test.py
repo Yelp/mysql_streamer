@@ -326,7 +326,7 @@ class TestHeartbeatSearcher(object):
         mock_db_cnct
     ):
         """Tests the method which determines whether an event is or is not a heartbeat event"""
-        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(db_cnct=mock_db_cnct)
         r1 = hbs._is_heartbeat(heartbeat_binlog_event)
         r2 = hbs._is_heartbeat(nonheartbeat_binlog_event)
         assert r1 is True
@@ -338,7 +338,7 @@ class TestHeartbeatSearcher(object):
     ):
         """Tests the method which returns a list of all the log files on the connection"""
         base_data = MockBinLogEvents()
-        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(db_cnct=mock_db_cnct)
         all_logs = hbs._get_log_file_list()
         assert len(all_logs) == len(base_data.filenames)
         for found_log, actual_log in zip(all_logs, base_data.filenames):
@@ -352,7 +352,7 @@ class TestHeartbeatSearcher(object):
         In the mocks, this is equal to the len(events_log)
         """
         base_data = MockBinLogEvents()
-        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(db_cnct=mock_db_cnct)
         for logfile in hbs.all_logs:
             assert hbs._get_last_log_position(logfile) == len(base_data.events[logfile]) - 1
 
@@ -364,7 +364,7 @@ class TestHeartbeatSearcher(object):
         on the boundary of all the log files (or, is the last log file and final log pos in the file)
         """
         base_data = MockBinLogEvents()
-        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(db_cnct=mock_db_cnct)
         for log in hbs.all_logs:
             for i in xrange(0, len(base_data.events[log])):
                 r = hbs._reaches_bound(log, i)
@@ -380,7 +380,7 @@ class TestHeartbeatSearcher(object):
         returns a mock stream object
         """
         base_data = MockBinLogEvents()
-        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(db_cnct=mock_db_cnct)
         stream = hbs._open_stream(base_data.filenames[0])
         assert stream is not None
         assert isinstance(stream, BinLogStreamMock)
@@ -396,7 +396,7 @@ class TestHeartbeatSearcher(object):
         behavior in which the stream has to search the next log file to find it
         """
         base_data = MockBinLogEvents()
-        hbs = HeartbeatSearcher(1, db_cnct=mock_db_cnct)
+        hbs = HeartbeatSearcher(db_cnct=mock_db_cnct)
         for log in base_data.filenames:
             expected = base_data.first_hb_event_in(log)
             actual = hbs._get_first_heartbeat(log)
@@ -415,9 +415,9 @@ class TestHeartbeatSearcher(object):
         """
         base_data = MockBinLogEvents()
         for i in xrange(0, base_data.last_heartbeat().hb_serial + 1):
-            hbs = HeartbeatSearcher(i, db_cnct=mock_db_cnct)
-            actual_log = hbs._binary_search_log_files(0, len(base_data.filenames))
-            expected_log = base_data.get_log_file_for_hb(hbs.target_hb)
+            hbs = HeartbeatSearcher(db_cnct=mock_db_cnct)
+            actual_log = hbs._binary_search_log_files(i, 0, len(base_data.filenames))
+            expected_log = base_data.get_log_file_for_hb(i)
             assert actual_log == expected_log
 
     def test_full_search_log_file(
@@ -430,11 +430,11 @@ class TestHeartbeatSearcher(object):
         """
         base_data = MockBinLogEvents()
         for i in xrange(0, base_data.last_heartbeat().hb_serial + 1):
-            hbs = HeartbeatSearcher(i, db_cnct=mock_db_cnct)
-            actual = hbs._full_search_log_file(base_data.filenames[0])
+            hbs = HeartbeatSearcher(db_cnct=mock_db_cnct)
+            actual = hbs._full_search_log_file(base_data.filenames[0], i)
             expected = base_data.construct_heartbeat_pos(
-                base_data.get_log_file_for_hb(hbs.target_hb),
-                base_data.get_index_for_hb(hbs.target_hb)
+                base_data.get_log_file_for_hb(i),
+                base_data.get_index_for_hb(i)
             )
             assert actual.hb_serial == expected.hb_serial
             assert actual.hb_timestamp == expected.hb_timestamp

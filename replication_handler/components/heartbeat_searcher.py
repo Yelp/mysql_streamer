@@ -17,9 +17,7 @@ class HeartbeatSearcher(object):
         or None if it wasnt found
     """
 
-    def __init__(self, target_hb, db_cnct=None):
-        self.target_hb = target_hb
-
+    def __init__(self, db_cnct=None):
         # Set up database configuration info and connection
         source_config = config.source_database_config.entries[0]
         self.connection_config = {
@@ -39,12 +37,12 @@ class HeartbeatSearcher(object):
         # Log_pos integer which corresponds to the final log_pos in the final log_file
         self.final_log_pos = self._get_last_log_position(self.all_logs[-1])
 
-    def get_position(self):
+    def get_position(self, target_hb):
         """Entry method for using the class from other python modules, which
         returns the HeartbeatPosition object.
         """
-        filen = self._binary_search_log_files(0, len(self.all_logs))
-        return self._full_search_log_file(filen)
+        filen = self._binary_search_log_files(target_hb, 0, len(self.all_logs))
+        return self._full_search_log_file(filen, target_hb)
 
     def _is_heartbeat(self, event):
         """Returns whether or not a binlog event is a heartbeat event"""
@@ -119,7 +117,7 @@ class HeartbeatSearcher(object):
                 log_pos=stream.log_pos,
             )
 
-    def _binary_search_log_files(self, left_bound, right_bound):
+    def _binary_search_log_files(self, target_hb, left_bound, right_bound):
         """Recursive binary search to determine the log file in which a heartbeat sequence
         should be found. Returns the name of the file it should be in
         """
@@ -134,23 +132,23 @@ class HeartbeatSearcher(object):
         # None that means there are no hbs at all after mid, so we proceed
         # the search below mid
         if first_in_file is None:
-            return self._binary_search_log_files(left_bound, mid)
+            return self._binary_search_log_files(target_hb, left_bound, mid)
 
         # otherwise, we can do a typical binary search with the result we found
         found_serial = first_in_file.hb_serial
         actual_file = self.all_logs.index(first_in_file.log_file)
-        if found_serial == self.target_hb:
+        if found_serial == target_hb:
             return self.all_logs[actual_file]
-        elif found_serial > self.target_hb:
-            return self._binary_search_log_files(left_bound, mid)
+        elif found_serial > target_hb:
+            return self._binary_search_log_files(target_hb, left_bound, mid)
         else:
             # because the streams we open continue reading after reaching the end of a file,
             # we can speed up the search by setting the left bound to the actual file
             # the heartbeat was found in instead of the midpoint like a
             # traditional binsearch
-            return self._binary_search_log_files(actual_file, right_bound)
+            return self._binary_search_log_files(target_hb, actual_file, right_bound)
 
-    def _full_search_log_file(self, start_file):
+    def _full_search_log_file(self, start_file, target_hb):
         """Does a full search on a given log file for the target heartbeat
         Returns a HeartbeatPosition or None if it was not found in the
         specified file or any file after that one in the stream
@@ -160,10 +158,10 @@ class HeartbeatSearcher(object):
             if not self._is_heartbeat(event):
                 continue
             serial = event.rows[0]["values"]["serial"]
-            if serial > self.target_hb:
+            if serial > target_hb:
                 stream.close()
                 return None
-            if serial == self.target_hb:
+            if serial == target_hb:
                 stream.close()
                 return HeartbeatPosition(
                     hb_serial=serial,

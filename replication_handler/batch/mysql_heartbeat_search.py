@@ -16,13 +16,17 @@ class MySQLHeartbeatSearchBatch(Batch):
     not be found.
     """
 
+    notify_emails = [
+        "mhoc@yelp.com"
+    ]
+
     def __init__(self, hb_seq_num):
         super(MySQLHeartbeatSearchBatch, self).__init__()
         self.hb_seq_num = hb_seq_num
 
     def run(self):
         """Runs the batch by calling out to the heartbeat searcher component"""
-        print HeartbeatSearcher(self.hb_seq_num).get_position()
+        print HeartbeatSearcher().get_position(self.hb_seq_num)
 
 
 if __name__ == '__main__':
