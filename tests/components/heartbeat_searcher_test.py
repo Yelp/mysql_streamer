@@ -1,5 +1,6 @@
 
-from mock import Mock, patch
+from mock import Mock
+from mock import patch
 
 import pytest
 from pymysqlreplication.event import QueryEvent
@@ -400,10 +401,7 @@ class TestHeartbeatSearcher(object):
         for log in base_data.filenames:
             expected = base_data.first_hb_event_in(log)
             actual = hbs._get_first_heartbeat(log)
-            assert expected.hb_serial == actual.hb_serial
-            assert expected.hb_timestamp == actual.hb_timestamp
-            assert expected.log_file == actual.log_file
-            assert expected.log_pos == expected.log_pos
+            assert actual == expected
 
     def test_find_hb_log_file(
         self,
@@ -436,7 +434,4 @@ class TestHeartbeatSearcher(object):
                 base_data.get_log_file_for_hb(i),
                 base_data.get_index_for_hb(i)
             )
-            assert actual.hb_serial == expected.hb_serial
-            assert actual.hb_timestamp == expected.hb_timestamp
-            assert actual.log_file == expected.log_file
-            assert actual.log_pos == expected.log_pos
+            assert actual == expected

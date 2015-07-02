@@ -159,8 +159,7 @@ class HeartbeatSearcher(object):
                 continue
             serial = event.rows[0]["values"]["serial"]
             if serial > target_hb:
-                stream.close()
-                return None
+                break
             if serial == target_hb:
                 stream.close()
                 return HeartbeatPosition(
@@ -170,7 +169,6 @@ class HeartbeatSearcher(object):
                     log_pos=stream.log_pos
                 )
             if self._reaches_bound(stream.log_file, stream.log_pos):
-                stream.close()
-                return None
+                break
         stream.close()
         return None
