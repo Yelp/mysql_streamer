@@ -11,9 +11,10 @@ from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.recovery_handler import BadSchemaEventStateException
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
+from replication_handler.models.global_event_state import EventType
+from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.util.misc import DataEvent
 
 
@@ -35,13 +36,17 @@ class TestRecoveryHandler(object):
     def dp_client(self):
         return mock.Mock()
 
+    @pytest.fixture
+    def session(self):
+        return mock.Mock()
+
     @pytest.yield_fixture
-    def patch_session_connect_begin(self):
+    def patch_session_connect_begin(self, session):
         with mock.patch.object(
             rbr_state_session,
             'connect_begin'
         ) as mock_session_connect_begin:
-            mock_session_connect_begin.return_value.__enter__.return_value = mock.Mock()
+            mock_session_connect_begin.return_value.__enter__.return_value = session
             yield mock_session_connect_begin
 
     @pytest.fixture
@@ -160,6 +165,7 @@ class TestRecoveryHandler(object):
         self,
         stream,
         dp_client,
+        session,
         pending_schema_event_state,
         patch_delete,
         patch_session_connect_begin,
@@ -194,6 +200,24 @@ class TestRecoveryHandler(object):
         assert patch_get_topic_to_kafka_offset_map.call_count == 1
         assert patch_upsert_data_event_checkpoint.call_count == 1
         assert patch_upsert_global_event.call_count == 1
+        assert patch_upsert_global_event.call_args_list == [
+            mock.call(
+                session=session,
+                position={"gtid": "sid:10"},
+                event_type=EventType.DATA_EVENT,
+                cluster_name="yelp_main",
+                database_name="yelp",
+                table_name="business",
+                is_clean_shutdown=False
+            ),
+        ]
+        assert patch_upsert_data_event_checkpoint.call_args_list == [
+            mock.call(
+                session=session,
+                topic_to_kafka_offset_map={"topic": 1},
+                cluster_name="yelp_main",
+            ),
+        ]
 
     def test_bad_schema_event_state(
         self,
