@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from pymysqlreplication.event import GtidEvent, QueryEvent
+from pymysqlreplication.event import GtidEvent
+from pymysqlreplication.event import QueryEvent
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
+from replication_handler.util.misc import DataEvent
 
 
 HEARTBEAT_TABLE = "heartbeat"
@@ -59,6 +61,8 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             return isinstance(event, GtidEvent)
         else:
             if isinstance(event, QueryEvent):
+                # Not sure if this branch should check against a QueryEvent or a DataEvent
+                # TODO(cheng|DATAPIPE-238)
                 return HEARTBEAT_TABLE in event.query
             else:
                 return False
