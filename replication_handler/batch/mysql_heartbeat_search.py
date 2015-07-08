@@ -17,7 +17,7 @@ class MySQLHeartbeatSearchBatch(Batch):
     """
 
     notify_emails = [
-        "mhoc@yelp.com"
+        "bam+replication+handler@yelp.com"
     ]
 
     def __init__(self, hb_seq_num):

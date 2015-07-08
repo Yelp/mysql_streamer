@@ -9,7 +9,6 @@ from replication_handler.components.low_level_binlog_stream_reader_wrapper impor
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
-from replication_handler.util.misc import DataEvent
 
 
 HEARTBEAT_TABLE = "heartbeat"

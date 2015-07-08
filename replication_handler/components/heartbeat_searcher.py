@@ -12,7 +12,7 @@ class HeartbeatSearcher(object):
     binary log given its sequence number.
 
     To use from other modules:
-        pos = MySQLHeartbeatSearch({heartbeat_sequence_num}).get_position()
+        pos = MySQLHeartbeatSearch().get_position({heartbeat_sequence_num})
     Returns a replication_handler.util.position.HeartbeatPosition object
         or None if it wasnt found
     """
