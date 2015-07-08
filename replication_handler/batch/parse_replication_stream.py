@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
 import logging
+from optparse import OptionGroup
 import signal
 import sys
 
-from optparse import OptionGroup
 from pymysqlreplication.event import QueryEvent
+
 from yelp_batch import Batch
 from yelp_batch.batch import batch_command_line_options
 
