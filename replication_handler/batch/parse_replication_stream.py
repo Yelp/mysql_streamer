@@ -4,9 +4,11 @@ import logging
 import signal
 import sys
 
+from optparse import OptionGroup
 from pymysqlreplication.event import QueryEvent
-
 from yelp_batch import Batch
+from yelp_batch.batch import batch_command_line_options
+
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
@@ -37,14 +39,27 @@ class ParseReplicationStream(Batch):
 
     def __init__(self):
         super(ParseReplicationStream, self).__init__()
-
         self.dp_client = DPClientlib()
         self.schema_store_client = StubSchemaClient()
+
+    @batch_command_line_options
+    def dry_run_option(self, option_parser):
+        group = OptionGroup(option_parser, "Dry run options")
+        group.add_option(
+            '--publish-dry-run', action='store_true', default=False,
+            help='Do not publish messages')
+        group.add_option(
+            '--register-dry-run', action='store_true', default=False,
+            help='Do not register schemas')
+        return group
+
+    def _setup_batch(self):
         self.handler_map = self._build_handler_map()
         self.stream = self._get_stream()
         self._register_signal_handler()
 
     def run(self):
+        self._setup_batch()
         for replication_handler_event in self.stream:
             event_class = replication_handler_event.event.__class__
             self.current_event_type = self.handler_map[event_class].event_type
@@ -59,8 +74,16 @@ class ParseReplicationStream(Batch):
         return replication_stream_restarter.get_stream()
 
     def _build_handler_map(self):
-        data_event_handler = DataEventHandler(self.dp_client, self.schema_store_client)
-        schema_event_handler = SchemaEventHandler(self.dp_client, self.schema_store_client)
+        data_event_handler = DataEventHandler(
+            self.dp_client,
+            self.schema_store_client,
+            publish_dry_run=self.options.publish_dry_run
+        )
+        schema_event_handler = SchemaEventHandler(
+            self.dp_client,
+            self.schema_store_client,
+            register_dry_run=self.options.register_dry_run
+        )
         handler_map = {
             DataEvent: HandlerInfo(
                 event_type=EventType.DATA_EVENT,

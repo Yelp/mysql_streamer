@@ -39,7 +39,11 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture
     def schema_event_handler(self):
-        return SchemaEventHandler(DPClientlib(), StubSchemaClient())
+        return SchemaEventHandler(DPClientlib(), StubSchemaClient(), register_dry_run=False)
+
+    @pytest.fixture
+    def dry_run_schema_event_handler(self):
+        return SchemaEventHandler(DPClientlib(), StubSchemaClient(), register_dry_run=True)
 
     @pytest.fixture
     def test_table(self):
@@ -196,7 +200,7 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def patch_get_show_create_statement(self, schema_event_handler):
         with mock.patch.object(
-            schema_event_handler,
+            SchemaEventHandler,
             '_get_show_create_statement'
         ) as mock_show_create:
             yield mock_show_create
@@ -226,7 +230,7 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def patch_populate_schema_cache(self, schema_event_handler):
         with mock.patch.object(
-            schema_event_handler, '_populate_schema_cache'
+            SchemaEventHandler, '_populate_schema_cache'
         ) as mock_populate_schema_cache:
             yield mock_populate_schema_cache
 
@@ -453,6 +457,18 @@ class TestSchemaEventHandler(object):
         assert external_patches.upsert_global_event_state.call_count == 1
 
         assert external_patches.flush.call_count == 1
+
+    def test_dry_run_handle_event(
+        self,
+        dry_run_schema_event_handler,
+        test_position,
+        create_table_schema_event,
+        mock_cursor,
+        external_patches,
+    ):
+        dry_run_schema_event_handler.handle_event(create_table_schema_event, test_position)
+        assert mock_cursor.execute.call_count == 1
+        assert external_patches.register_with_schema_store.call_count == 0
 
     def test_get_show_create_table_statement(
         self,

@@ -44,7 +44,11 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def data_event_handler(self, patch_checkpoint_size):
-        return DataEventHandler(DPClientlib(), StubSchemaClient())
+        return DataEventHandler(DPClientlib(), StubSchemaClient(), publish_dry_run=False)
+
+    @pytest.fixture
+    def dry_run_data_event_handler(self, patch_checkpoint_size):
+        return DataEventHandler(DPClientlib(), StubSchemaClient(), publish_dry_run=True)
 
     @pytest.fixture
     def schema_in_json(self):
@@ -136,7 +140,7 @@ class TestDataEventHandler(object):
     @pytest.yield_fixture
     def patch_get_schema_for_schema_cache(self, data_event_handler, schema_cache_entry):
         with mock.patch.object(
-            data_event_handler,
+            DataEventHandler,
             'get_schema_for_schema_cache',
             return_value=schema_cache_entry
         ) as mock_get_schema:
@@ -267,6 +271,7 @@ class TestDataEventHandler(object):
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
 
         assert patches.patch_publish_to_kafka.call_count == 4
+        assert patches.patch_publish_to_kafka.call_args[1]['dry_run'] is False
         # We set the checkpoint size to 2, so 4 rows will checkpoint twice
         # and upsert GlobalEventState twice
         assert patches.patch_get_checkpoint_position_data.call_count == 2
@@ -332,6 +337,18 @@ class TestDataEventHandler(object):
             ))
         actual_call_args = [i[0][0] for i in patches.patch_publish_to_kafka.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
+
+    def test_dry_run_handler_event(
+        self,
+        dry_run_data_event_handler,
+        data_create_events,
+        patches,
+    ):
+        for data_event in data_create_events:
+            position = mock.Mock()
+            dry_run_data_event_handler.handle_event(data_event, position)
+        assert patches.patch_publish_to_kafka.call_count == 4
+        assert patches.patch_publish_to_kafka.call_args[1]['dry_run'] is True
 
     def _assert_messages_as_expected(self, expected, actual):
         for expected_message, actual_message in zip(expected, actual):

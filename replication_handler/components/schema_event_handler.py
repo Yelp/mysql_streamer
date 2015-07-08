@@ -23,6 +23,10 @@ class SchemaEventHandler(BaseEventHandler):
 
     notify_email = "bam+replication+handler@yelp.com"
 
+    def __init__(self, *args, **kwargs):
+        self._register_dry_run = kwargs.pop('register_dry_run')
+        super(SchemaEventHandler, self).__init__(*args, **kwargs)
+
     @property
     def schema_tracking_db_conn(self):
         return ConnectionSet.schema_tracker_rw().schema_tracker
@@ -146,11 +150,12 @@ class SchemaEventHandler(BaseEventHandler):
         show_create_result = self._exec_query_and_get_show_create_statement(
             cursor, event, table
         )
-        schema_store_response = self._register_with_schema_store(
-            table,
-            [show_create_result.query]
-        )
-        self._populate_schema_cache(table, schema_store_response)
+        if not self._register_dry_run:
+            schema_store_response = self._register_with_schema_store(
+                table,
+                [show_create_result.query]
+            )
+            self._populate_schema_cache(table, schema_store_response)
 
     def _handle_alter_table_event(self, cursor, event, table):
         """This method contains the core logic for handling an *alter* event

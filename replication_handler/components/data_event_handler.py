@@ -24,6 +24,7 @@ class DataEventHandler(BaseEventHandler):
            which includes the envelope schema management and logging
            checkpoints in the MySQL schema tracking db.
         """
+        self._publish_dry_run = kwargs.pop('publish_dry_run')
         super(DataEventHandler, self).__init__(*args, **kwargs)
         # self._checkpoint_latest_published_offset will be invoked every time
         # we process self.checkpoint_size number of rows, For More info on SegmentProcessor,
@@ -53,7 +54,7 @@ class DataEventHandler(BaseEventHandler):
             event_type,
             position
         )
-        self.dp_client.publish(message)
+        self.dp_client.publish(message, dry_run=self._publish_dry_run)
         self.processor.push(message)
 
     def _get_values(self, row):

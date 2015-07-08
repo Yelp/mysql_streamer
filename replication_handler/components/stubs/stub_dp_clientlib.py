@@ -42,8 +42,9 @@ class MessageType(Enum):
 
 class DPClientlib(object):
 
-    def publish(self, message):
-        print "Publishing to kafka on topic {0}".format(message.topic)
+    def publish(self, message, dry_run=False):
+        if not dry_run:
+            print "Publishing to kafka on topic {0}".format(message.topic)
 
     def flush(self):
         """Calling this function will BLOCK caller untill dp_client has

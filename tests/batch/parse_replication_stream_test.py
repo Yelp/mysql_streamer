@@ -134,8 +134,9 @@ class TestParseReplicationStream(object):
             schema_event_with_gtid,
             data_event_with_gtid
         ]
-        replication_stream = ParseReplicationStream()
-        replication_stream.run()
+        self._init_and_run_batch(
+            ['--publish-dry-run', '--register-dry-run']
+        )
         assert patch_schema_handle_event.call_args_list == \
             [mock.call(schema_event, position_gtid_1)]
         assert patch_data_handle_event.call_args_list == \
@@ -164,8 +165,9 @@ class TestParseReplicationStream(object):
             data_event_with_gtid_1,
             data_event_with_gtid_2
         ]
-        replication_stream = ParseReplicationStream()
-        replication_stream.run()
+        self._init_and_run_batch(
+            ['--publish-dry-run', '--register-dry-run']
+        )
         assert patch_data_handle_event.call_args_list == [
             mock.call(data_event, position_gtid_1),
             mock.call(data_event, position_gtid_2)
@@ -178,7 +180,9 @@ class TestParseReplicationStream(object):
         patch_restarter,
         patch_signal
     ):
-        replication_stream = ParseReplicationStream()
+        replication_stream = self._init_and_run_batch(
+            ['--publish-dry-run', '--register-dry-run']
+        )
         assert patch_signal.call_count == 2
         assert patch_signal.call_args_list == [
             mock.call(signal.SIGINT, replication_stream._handle_graceful_termination),
@@ -215,3 +219,25 @@ class TestParseReplicationStream(object):
         assert patch_get_checkpoint_position_data.call_count == 0
         assert patch_flush.call_count == 0
         assert patch_exit.call_count == 1
+
+    def test_with_dry_run_options(self):
+        replication_stream = self._init_batch(['--publish-dry-run', '--register-dry-run'])
+        assert replication_stream.options.publish_dry_run is True
+        assert replication_stream.options.register_dry_run is True
+
+    def test_without_dry_run_options(self):
+        replication_stream = self._init_batch([''])
+        assert replication_stream.options.publish_dry_run is False
+        assert replication_stream.options.register_dry_run is False
+
+    def _init_batch(self, options):
+        replication_stream = ParseReplicationStream()
+        replication_stream.process_commandline_options(
+            args=options
+        )
+        return replication_stream
+
+    def _init_and_run_batch(self, options):
+        replication_stream = self._init_batch(options)
+        replication_stream.run()
+        return replication_stream
