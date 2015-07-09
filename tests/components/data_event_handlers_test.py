@@ -350,6 +350,13 @@ class TestDataEventHandler(object):
         assert patches.patch_publish_to_kafka.call_count == 4
         assert patches.patch_publish_to_kafka.call_args[1]['dry_run'] is True
 
+    def test_dry_run_schema(
+        self,
+        dry_run_data_event_handler,
+    ):
+        assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).topic == 'dry_run'
+        assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).schema_id == 1
+
     def _assert_messages_as_expected(self, expected, actual):
         for expected_message, actual_message in zip(expected, actual):
             assert expected_message.topic == actual_message.topic

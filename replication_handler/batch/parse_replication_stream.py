@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from collections import namedtuple
 import logging
-from optparse import OptionGroup
 import signal
 import sys
+from collections import namedtuple
+from optparse import OptionGroup
 
 from pymysqlreplication.event import QueryEvent
 
@@ -47,10 +47,14 @@ class ParseReplicationStream(Batch):
     def dry_run_option(self, option_parser):
         group = OptionGroup(option_parser, "Dry run options")
         group.add_option(
-            '--publish-dry-run', action='store_true', default=False,
+            '--publish-dry-run',
+            action='store_true',
+            default=False,
             help='Do not publish messages')
         group.add_option(
-            '--register-dry-run', action='store_true', default=False,
+            '--register-dry-run',
+            action='store_true',
+            default=False,
             help='Do not register schemas')
         return group
 

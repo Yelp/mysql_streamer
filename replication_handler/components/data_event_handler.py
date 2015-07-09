@@ -5,6 +5,7 @@ from yelp_lib import iteration
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
+from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.util.misc import save_position
 from replication_handler.components.stubs.stub_dp_clientlib import Message
 from replication_handler.components.stubs.stub_dp_clientlib import MessageType
@@ -83,6 +84,8 @@ class DataEventHandler(BaseEventHandler):
 
     def _get_payload_schema(self, table):
         """Get payload avro schema from cache or from schema store"""
+        if self._publish_dry_run:
+            return self._dry_run_schema
         if table not in self.schema_cache:
             self.schema_cache[table] = self.get_schema_for_schema_cache(table)
         return self.schema_cache[table]
@@ -90,3 +93,8 @@ class DataEventHandler(BaseEventHandler):
     def _checkpoint_latest_published_offset(self, rows):
         position_data = self.dp_client.get_checkpoint_position_data()
         save_position(position_data)
+
+    @property
+    def _dry_run_schema(self):
+        """A schema cache to go with dry run mode."""
+        return SchemaCacheEntry(schema_obj=None, topic='dry_run', schema_id=1)
