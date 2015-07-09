@@ -50,12 +50,14 @@ class ParseReplicationStream(Batch):
             '--publish-dry-run',
             action='store_true',
             default=False,
-            help='Do not publish messages')
+            help='Do not publish messages'
+        )
         group.add_option(
             '--register-dry-run',
             action='store_true',
             default=False,
-            help='Do not register schemas')
+            help='Do not register schemas'
+        )
         return group
 
     def _setup_batch(self):
