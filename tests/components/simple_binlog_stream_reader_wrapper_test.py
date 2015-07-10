@@ -97,12 +97,16 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         )
         results = [
             ReplicationHandlerEvent(
-                event=data_event_1,
+                event=data_event_0,
                 position=LogPosition(log_pos=log_pos, log_file=log_file, offset=1)
             ),
             ReplicationHandlerEvent(
-                event=data_event_2,
+                event=data_event_1,
                 position=LogPosition(log_pos=log_pos, log_file=log_file, offset=2)
+            ),
+            ReplicationHandlerEvent(
+                event=data_event_2,
+                position=LogPosition(log_pos=log_pos, log_file=log_file, offset=3)
             )
         ]
         for replication_event, result in zip(stream, results):

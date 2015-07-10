@@ -2,6 +2,7 @@
 import logging
 
 from pymysqlreplication.event import GtidEvent
+from pymysqlreplication.event import QueryEvent
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
@@ -58,7 +59,12 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         if self.gtid_enabled:
             return isinstance(event, GtidEvent)
         else:
-            return event.table == HEARTBEAT_TABLE
+            if isinstance(event, QueryEvent):
+                # Not sure if this branch should check against a QueryEvent or a DataEvent
+                # TODO(cheng|DATAPIPE-238)
+                return HEARTBEAT_TABLE in event.query
+            else:
+                return False
 
     def _update_upstream_position(self, event):
         """If gtid_enabled and the next event is GtidEvent,
@@ -71,7 +77,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             self._upstream_position = GtidPosition(
                 gtid=event.gtid
             )
-        elif (not self.gtid_enabled) and event.table == HEARTBEAT_TABLE:
+        elif (not self.gtid_enabled) and HEARTBEAT_TABLE in event.query:
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
                 log_file=event.log_file

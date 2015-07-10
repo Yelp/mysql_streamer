@@ -128,3 +128,24 @@ def construct_position(position_dict):
         )
     else:
         raise InvalidPositionDictException
+
+
+class HeartbeatPosition(LogPosition):
+    """ The location of a MySQL heartbeat event inside a log file
+    Contains additional information about the heartbeat such as its
+    sequence number and date-time. """
+
+    def __init__(self, hb_serial, hb_timestamp, log_pos, log_file, offset=0):
+        super(HeartbeatPosition, self).__init__(log_pos, log_file, offset)
+        self.hb_serial, self.hb_timestamp = hb_serial, hb_timestamp
+
+    def __str__(self):
+        return "Serial:     {}\nTimestamp:  {}\nFile:       {}\nPosition:   {}".format(
+            self.hb_serial, self.hb_timestamp, self.log_file, self.log_pos
+        )
+
+    def __eq__(self, other):
+        return (self.hb_serial == other.hb_serial and
+                self.hb_timestamp == other.hb_timestamp and
+                self.log_file == other.log_file and
+                self.log_pos == other.log_pos)

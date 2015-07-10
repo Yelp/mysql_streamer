@@ -3,6 +3,7 @@ import pytest
 
 from replication_handler.util.position import InvalidPositionDictException
 from replication_handler.util.position import GtidPosition
+from replication_handler.util.position import HeartbeatPosition
 from replication_handler.util.position import LogPosition
 from replication_handler.util.position import Position
 from replication_handler.util.position import construct_position
@@ -76,3 +77,22 @@ class TestConstructPosition(object):
     def test_invalid_position_dict(self):
         with pytest.raises(InvalidPositionDictException):
             construct_position({"position": "invalid"})
+
+
+class TestHeartbeatPosition(object):
+
+    def test_construct_heartbeat_position(self):
+        hb_serial = 112345
+        timestamp = "1/2/03"
+        log_file = "mysql-bin.00001"
+        log_pos = 456
+        hb_position = HeartbeatPosition(
+            hb_serial=hb_serial,
+            hb_timestamp=timestamp,
+            log_file=log_file,
+            log_pos=log_pos
+        )
+        assert hb_position.hb_serial == hb_serial
+        assert hb_position.hb_timestamp == timestamp
+        assert hb_position.log_file == log_file
+        assert hb_position.log_pos == log_pos
