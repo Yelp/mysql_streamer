@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from replication_handler.util.position import Position
+from replication_handler.util.position import LogPosition
 from replication_handler.util.position import construct_position
 
 
@@ -22,4 +22,4 @@ class PositionFinder(object):
             return construct_position(self.pending_schema_event.position)
         if self.global_event_state:
             return construct_position(self.global_event_state.position)
-        return Position()
+        return LogPosition()

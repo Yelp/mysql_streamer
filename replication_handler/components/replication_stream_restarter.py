@@ -47,7 +47,7 @@ class ReplicationStreamRestarter(object):
         process.
         """
         position = self.position_finder.get_position_to_resume_tailing_from()
-        self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=True)
+        self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=False)
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
                 stream=self.stream,

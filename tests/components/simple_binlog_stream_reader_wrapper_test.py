@@ -72,13 +72,13 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         log_file = "binlog.001"
         heartbeat_event = mock.Mock(
             spec=DataEvent,
-            table='heartbeat',
+            schema='yelp_heartbeat',
             log_pos=log_pos,
             log_file=log_file
         )
-        data_event_0 = mock.Mock(spec=DataEvent, table="business")
-        data_event_1 = mock.Mock(spec=DataEvent, table="business")
-        data_event_2 = mock.Mock(spec=DataEvent, table="business")
+        data_event_0 = mock.Mock(spec=DataEvent, table="business", schema="yelp")
+        data_event_1 = mock.Mock(spec=DataEvent, table="business", schema="yelp")
+        data_event_2 = mock.Mock(spec=DataEvent, table="business", schema="yelp")
         event_list = [
             heartbeat_event,
             data_event_0,
@@ -95,18 +95,16 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             ),
             gtid_enabled=False,
         )
+        # Since the offset is 1, so the result should start offset 1, and skip
+        # data_event_0 which is at offset 0.
         results = [
             ReplicationHandlerEvent(
-                event=data_event_0,
+                event=data_event_1,
                 position=LogPosition(log_pos=log_pos, log_file=log_file, offset=1)
             ),
             ReplicationHandlerEvent(
-                event=data_event_1,
-                position=LogPosition(log_pos=log_pos, log_file=log_file, offset=2)
-            ),
-            ReplicationHandlerEvent(
                 event=data_event_2,
-                position=LogPosition(log_pos=log_pos, log_file=log_file, offset=3)
+                position=LogPosition(log_pos=log_pos, log_file=log_file, offset=2)
             )
         ]
         for replication_event, result in zip(stream, results):
