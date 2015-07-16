@@ -43,11 +43,9 @@ class ReplicationStreamRestarter(object):
         """ This function retrive the saved position from database, and init
         stream with that position, and perform recovery procedure, like recreating
         tables, or publish unpublished messages.
-        TODO(cheng|DATAPIPE-165) we should checkpoint after finish all the recovery
-        process.
         """
         position = self.position_finder.get_position_to_resume_tailing_from()
-        self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=True)
+        self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=False)
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
                 stream=self.stream,
