@@ -4,28 +4,28 @@ topology:
     entries:
         - charset: utf8
           use_unicode: true
-          host: 127.0.0.1
+          host: rbrsource
           db: yelp
-          port: 8001
           user: yelpdev
           passwd: ""
+          port: 3306
 -   cluster: schema_tracker
     replica: master
     entries:
         - charset: utf8
           use_unicode: true
-          host: 127.0.0.1
+          host: schematracker
           db: yelp
-          port: 8002
           user: yelpdev
           passwd: ""
+          port: 3306
 -   cluster: rbr_state
     replica: master
     entries:
         - charset: utf8
           use_unicode: true
-          host: 127.0.0.1
+          host: rbrstate
           db: yelp
-          port: 8003
           user: yelpdev
           passwd: ""
+          port: 3306

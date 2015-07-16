@@ -1,15 +1,31 @@
 topology:
--   cluster: replication_handler
+-   cluster: rbr_source
+    replica: slave
+    entries:
+        - charset: utf8
+          use_unicode: true
+          host: rbrsource
+          db: yelp
+          user: yelpdev
+          passwd: ""
+          port: 3306
+-   cluster: schema_tracker
     replica: master
     entries:
-    -   db: yelp
-        host: dbmaster
-        passwd: ""
-        user: yelpdev
--   cluster: replication_handler
-    replica: local
+        - charset: utf8
+          use_unicode: true
+          host: schematracker
+          db: yelp
+          user: yelpdev
+          passwd: ""
+          port: 3306
+-   cluster: rbr_state
+    replica: master
     entries:
-    -   db: yelp
-        host: dblocal
-        passwd: ""
-        user: yelpdev
+        - charset: utf8
+          use_unicode: true
+          host: rbrstate
+          db: yelp
+          user: yelpdev
+          passwd: ""
+          port: 3306

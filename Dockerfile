@@ -30,5 +30,4 @@ ADD     . /code
 
 WORKDIR /code
 ENV     BASEPATH /code
-CMD /code/virtualenv_run/bin/python /code/replication_handler/batch/parse_replication_stream.py
-
+CMD /code/virtualenv_run/bin/python /code/replication_handler/batch/parse_replication_stream.py -v --no-notification
