@@ -1,7 +1,3 @@
-/*
-Schemas and users to support the repl_heartbeat_daemon
-*/
-
 CREATE TABLE `replication_heartbeat` (
     `serial` bigint(20) NOT NULL,
     `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

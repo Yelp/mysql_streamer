@@ -1,17 +1,11 @@
 rbrsource:
     build: devdbs/rbr_source/
-    #ports:
-    #    - "127.0.0.1:8001:3306"
 
 schematracker:
     build: devdbs/schema_tracker/
-    #ports:
-    #    - "127.0.0.1:8002:3306"
 
 rbrstate:
     build: devdbs/rbr_state/
-    #ports:
-    #    - "127.0.0.1:8003:3306"
 
 replicationhandlerconfigs:
     build: acceptance/configs/
