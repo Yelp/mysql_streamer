@@ -111,10 +111,20 @@ class TestParseReplicationStream(object):
     def position_gtid_2(self):
         return GtidPosition(gtid="fake_gtid_2")
 
+    @pytest.yield_fixture
+    def patch_config(sefl):
+        with mock.patch(
+            'replication_handler.batch.parse_replication_stream.config.env_config'
+        ) as mock_config:
+            mock_config.register_dry_run = False
+            mock_config.publish_dry_run = False
+            yield mock_config
+
     def test_replication_stream_different_events(
         self,
         schema_event,
         data_event,
+        patch_config,
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
@@ -134,17 +144,20 @@ class TestParseReplicationStream(object):
             schema_event_with_gtid,
             data_event_with_gtid
         ]
-        self._init_and_run_batch()
+        stream = self._init_and_run_batch()
         assert patch_schema_handle_event.call_args_list == \
             [mock.call(schema_event, position_gtid_1)]
         assert patch_data_handle_event.call_args_list == \
             [mock.call(data_event, position_gtid_2)]
         assert patch_schema_handle_event.call_count == 1
         assert patch_data_handle_event.call_count == 1
+        assert stream.register_dry_run is False
+        assert stream.publish_dry_run is False
 
     def test_replication_stream_same_events(
         self,
         data_event,
+        patch_config,
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
@@ -172,6 +185,7 @@ class TestParseReplicationStream(object):
 
     def test_register_signal_handler(
         self,
+        patch_config,
         patch_rbr_state_rw,
         patch_restarter,
         patch_signal
@@ -185,6 +199,7 @@ class TestParseReplicationStream(object):
 
     def test_handle_graceful_termination_data_event(
         self,
+        patch_config,
         patch_restarter,
         patch_data_handle_event,
         patch_get_checkpoint_position_data,
@@ -201,6 +216,7 @@ class TestParseReplicationStream(object):
 
     def test_handle_graceful_termination_schema_event(
         self,
+        patch_config,
         patch_restarter,
         patch_data_handle_event,
         patch_get_checkpoint_position_data,
@@ -214,26 +230,17 @@ class TestParseReplicationStream(object):
         assert patch_flush.call_count == 0
         assert patch_exit.call_count == 1
 
-    def test_with_dry_run_options(self):
-        replication_stream = self._init_batch(options=['--publish-dry-run', '--register-dry-run'])
-        assert replication_stream.options.publish_dry_run is True
-        assert replication_stream.options.register_dry_run is True
+    def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter):
+        with mock.patch(
+            'replication_handler.batch.parse_replication_stream.config.env_config'
+        ) as mock_config:
+            mock_config.register_dry_run = True
+            mock_config.publish_dry_run = False
+            replication_stream = ParseReplicationStream()
+            assert replication_stream.register_dry_run is True
+            assert replication_stream.publish_dry_run is False
 
-    def test_without_dry_run_options(self):
-        replication_stream = self._init_batch()
-        assert replication_stream.options.publish_dry_run is False
-        assert replication_stream.options.register_dry_run is False
-
-    def _init_batch(self, options=None):
-        if not options:
-            options = ['']
+    def _init_and_run_batch(self):
         replication_stream = ParseReplicationStream()
-        replication_stream.process_commandline_options(
-            args=options
-        )
-        return replication_stream
-
-    def _init_and_run_batch(self, options=None):
-        replication_stream = self._init_batch(options)
         replication_stream.run()
         return replication_stream

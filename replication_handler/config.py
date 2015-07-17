@@ -52,6 +52,14 @@ class EnvConfig(BaseConfig):
     def rbr_state_cluster(self):
         return self.module_env_config.get('config').get('rbr_state_cluster')
 
+    @property
+    def register_dry_run(self):
+        return self.module_env_config.get('config').get('register_dry_run')
+
+    @property
+    def publish_dry_run(self):
+        return self.module_env_config.get('config').get('publish_dry_run')
+
 
 class DatabaseConfig(BaseConfig):
     """Used for reading database config out of topology.yaml in the environment"""

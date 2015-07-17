@@ -1,9 +1,11 @@
 module_config:
-    -  namespace: cluster_config
+    -  namespace: env_config
        config:
-           rbr_source_cluster: rbr_source
-           schema_tracker_cluster: schema_tracker
-           rbr_state_cluster: rbr_state
+            rbr_source_cluster: rbr_source
+            schema_tracker_cluster: schema_tracker
+            rbr_state_cluster: rbr_state
+            register_dry_run: True
+            publish_dry_run: True
 
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml
