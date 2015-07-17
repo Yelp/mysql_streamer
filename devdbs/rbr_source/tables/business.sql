@@ -32,4 +32,4 @@ CREATE TABLE `business` (
   KEY `phone` (`phone`),
   KEY `review_count` (`review_count`),
   KEY `geoquad` (`geoquad`)
-) ENGINE=InnoDB AUTO_INCREMENT=31854197 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
