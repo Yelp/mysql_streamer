@@ -112,7 +112,7 @@ class TestParseReplicationStream(object):
         return GtidPosition(gtid="fake_gtid_2")
 
     @pytest.yield_fixture
-    def patch_config(sefl):
+    def patch_config(self):
         with mock.patch(
             'replication_handler.batch.parse_replication_stream.config.env_config'
         ) as mock_config:

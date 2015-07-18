@@ -1,6 +1,6 @@
 module_config:
-    -  namespace: env_config
-       config:
+    -   namespace: env_config
+        config:
             rbr_source_cluster: rbr_source
             schema_tracker_cluster: schema_tracker
             rbr_state_cluster: rbr_state
