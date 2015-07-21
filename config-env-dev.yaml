@@ -1,0 +1,9 @@
+module_env_config:
+    -   namespace: env_config
+        config:
+            rbr_source_cluster: rbr_main
+            schema_tracker_cluster: repltracker
+            rbr_state_cluster: replhandler
+            register_dry_run: True
+            publish_dry_run: True
+            topology_path: '/nail/srv/configs/topology.yaml'

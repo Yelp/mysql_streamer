@@ -6,6 +6,7 @@ module_config:
             rbr_state_cluster: replhandler
             register_dry_run: True
             publish_dry_run: True
+            topology_path: 'topology.yaml'
 
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml

@@ -13,8 +13,6 @@ config_util.load_default_config('config.yaml')
 
 CONFIG_FILE = 'config.yaml'
 
-TOPOLOGY_PATH = '/nail/srv/configs/topology.yaml'
-
 
 class BaseConfig(object):
     """Staticconf base object for managing config"""
@@ -62,12 +60,16 @@ class EnvConfig(BaseConfig):
     def publish_dry_run(self):
         return self.module_env_config.get('config').get('publish_dry_run')
 
+    @property
+    def topology_path(self):
+        return self.module_env_config.get('config').get('topology_path')
+
 
 class DatabaseConfig(BaseConfig):
     """Used for reading database config out of topology.yaml in the environment"""
 
-    def __init__(self, cluster_name):
-        super(DatabaseConfig, self).__init__(TOPOLOGY_PATH)
+    def __init__(self, cluster_name, topology_path):
+        super(DatabaseConfig, self).__init__(topology_path)
         self._cluster_name = cluster_name
 
     @property
@@ -75,7 +77,6 @@ class DatabaseConfig(BaseConfig):
         """Loads config and returns object to watch the environment config file.
         object.reload_if_changed() will reload the config file if its changed.
         """
-
         self.config_facade_holder.reload_if_changed()
         for topo_item in staticconf.get('topology'):
             if topo_item.get('cluster') == self.cluster_name:
@@ -97,8 +98,10 @@ class DatabaseConfig(BaseConfig):
 env_config = EnvConfig(CONFIG_FILE)
 
 source_database_config = DatabaseConfig(
-    env_config.rbr_source_cluster
+    env_config.rbr_source_cluster,
+    env_config.topology_path
 )
 schema_tracking_database_config = DatabaseConfig(
-    env_config.schema_tracker_cluster
+    env_config.schema_tracker_cluster,
+    env_config.topology_path
 )
