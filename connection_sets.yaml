@@ -2,12 +2,12 @@ connection_sets:
     rbr_source_ro:
         connection_configuration:
             read_only: true
-        rbr_source: "slave"
+        rbr_main: "slave"
     schema_tracker_rw:
-        schema_tracker: "master"
+        repltracker: "master"
     rbr_state_rw:
-        rbr_state: "master"
+        replhandler: "master"
     rbr_state_ro:
         connection_configuration:
             read_only: true
-        rbr_state: "master"
+        replhandler: "master"

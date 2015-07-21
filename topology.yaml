@@ -1,5 +1,5 @@
 topology:
--   cluster: rbr_source
+-   cluster: rbr_main
     replica: slave
     entries:
         - charset: utf8
@@ -9,7 +9,7 @@ topology:
           user: yelpdev
           passwd: ""
           port: 3306
--   cluster: schema_tracker
+-   cluster: repltracker
     replica: master
     entries:
         - charset: utf8
@@ -19,7 +19,7 @@ topology:
           user: yelpdev
           passwd: ""
           port: 3306
--   cluster: rbr_state
+-   cluster: replhandler
     replica: master
     entries:
         - charset: utf8

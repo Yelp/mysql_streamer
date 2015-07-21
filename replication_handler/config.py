@@ -13,6 +13,8 @@ config_util.load_default_config('config.yaml')
 
 CONFIG_FILE = 'config.yaml'
 
+TOPOLOGY_PATH = '/nail/srv/configs/topology.yaml'
+
 
 class BaseConfig(object):
     """Staticconf base object for managing config"""
@@ -65,7 +67,7 @@ class DatabaseConfig(BaseConfig):
     """Used for reading database config out of topology.yaml in the environment"""
 
     def __init__(self, cluster_name):
-        super(DatabaseConfig, self).__init__('topology.yaml')
+        super(DatabaseConfig, self).__init__(TOPOLOGY_PATH)
         self._cluster_name = cluster_name
 
     @property
