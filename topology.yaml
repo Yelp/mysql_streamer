@@ -1,6 +1,6 @@
 topology:
--   cluster: rbr_main
-    replica: slave
+-   cluster: refresh_primary
+    replica: master
     entries:
         - charset: utf8
           use_unicode: true

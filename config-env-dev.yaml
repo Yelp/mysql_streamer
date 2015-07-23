@@ -1,4 +1,4 @@
-rbr_source_cluster: rbr_main
+rbr_source_cluster: refresh_primary
 
 schema_tracker_cluster: repltracker
 
@@ -8,7 +8,6 @@ register_dry_run: True
 
 publish_dry_run: True
 
-topology_path: topology.yaml
-
+topology_path: /nail/srv/configs/topology.yaml
 
 module_env_config: []

@@ -2,7 +2,7 @@ connection_sets:
     rbr_source_ro:
         connection_configuration:
             read_only: true
-        rbr_main: "slave"
+        refresh_primary: "master"
     schema_tracker_rw:
         repltracker: "master"
     rbr_state_rw:

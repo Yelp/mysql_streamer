@@ -79,7 +79,7 @@ class SchemaEventHandler(BaseEventHandler):
         event,
     ):
         create_table_statement = self._get_show_create_statement(
-            ConnectionSet.rbr_source_ro().rbr_main.cursor(),
+            ConnectionSet.rbr_source_ro().refresh_primary.cursor(),
             table.table_name
         )
         with rbr_state_session.connect_begin(ro=False) as session:

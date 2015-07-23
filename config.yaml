@@ -1,4 +1,4 @@
-rbr_source_cluster: rbr_main
+rbr_source_cluster: refresh_primary
 
 schema_tracker_cluster: repltracker
 
@@ -16,7 +16,6 @@ module_config:
         initialize: yelp_conn.initialize
         config:
             connection_set_file: connection_sets.yaml
-            topology: topology.yaml
 
             connection_wrappers:
                 - yelp_conn.sqllogger.LoggingConnectionWrapper
