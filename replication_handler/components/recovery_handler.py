@@ -97,7 +97,7 @@ class RecoveryHandler(object):
         DDL. see http://dev.mysql.com/doc/refman/5.5/en/implicit-commit.html for more
         background.
         """
-        cursor = ConnectionSet.schema_tracker_rw().schema_tracker.cursor()
+        cursor = ConnectionSet.schema_tracker_rw().repltracker.cursor()
         drop_table_query = "DROP TABLE `{0}`".format(
             table_name
         )

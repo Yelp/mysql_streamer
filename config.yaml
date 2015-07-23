@@ -1,13 +1,16 @@
-module_config:
-    -   namespace: env_config
-        config:
-            rbr_source_cluster: rbr_main
-            schema_tracker_cluster: repltracker
-            rbr_state_cluster: replhandler
-            register_dry_run: True
-            publish_dry_run: True
-            topology_path: 'topology.yaml'
+rbr_source_cluster: rbr_main
 
+schema_tracker_cluster: repltracker
+
+rbr_state_cluster: replhandler
+
+register_dry_run: True
+
+publish_dry_run: True
+
+topology_path: topology.yaml
+
+module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml
         initialize: yelp_conn.initialize

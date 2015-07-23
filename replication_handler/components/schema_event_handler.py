@@ -29,7 +29,7 @@ class SchemaEventHandler(BaseEventHandler):
 
     @property
     def schema_tracking_db_conn(self):
-        return ConnectionSet.schema_tracker_rw().schema_tracker
+        return ConnectionSet.schema_tracker_rw().repltracker
 
     def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
@@ -79,7 +79,7 @@ class SchemaEventHandler(BaseEventHandler):
         event,
     ):
         create_table_statement = self._get_show_create_statement(
-            ConnectionSet.rbr_source_ro().rbr_source.cursor(),
+            ConnectionSet.rbr_source_ro().rbr_main.cursor(),
             table.table_name
         )
         with rbr_state_session.connect_begin(ro=False) as session:

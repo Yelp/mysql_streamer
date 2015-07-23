@@ -166,7 +166,7 @@ class TestSchemaEventHandler(object):
             ConnectionSet,
             'schema_tracker_rw'
         ) as mock_connection:
-            mock_connection.return_value.schema_tracker.cursor.return_value = mock_cursor
+            mock_connection.return_value.repltracker.cursor.return_value = mock_cursor
             yield mock_connection
 
     @pytest.yield_fixture

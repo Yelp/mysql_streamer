@@ -4,80 +4,61 @@ import logging
 
 import staticconf
 
-from yelp_servlib import config_util
+from yelp_servlib.config_util import load_default_config
 
 
 log = logging.getLogger('replication_handler.config')
 
-config_util.load_default_config('config.yaml')
-
-CONFIG_FILE = 'config.yaml'
-
 
 class BaseConfig(object):
-    """Staticconf base object for managing config"""
+    """Staticconf base object for managing config
+    TODO: (cheng|DATAPIPE-88) Removed the config reloading code, will work on that later.
+    """
 
-    def __init__(self, config_file):
-        self.env_config_path = os.environ.get(
-            'SERVICE_CONFIG_PATH',
-            config_file
-        )
-        self.config_facade_holder = self._load_config_facade()
-
-    def _load_config_facade(self):
-        return staticconf.ConfigFacade.load(
-            self.env_config_path,
-            staticconf.config.DEFAULT,
-            staticconf.YamlConfiguration
-        )
+    def __init__(self, config_path='config.yaml', env_config_path='config-env-dev.yaml'):
+        SERVICE_CONFIG_PATH = os.environ.get('SERVICE_CONFIG_PATH', config_path)
+        SERVICE_ENV_CONFIG_PATH = os.environ.get('SERVICE_ENV_CONFIG_PATH', env_config_path)
+        load_default_config(SERVICE_CONFIG_PATH, SERVICE_ENV_CONFIG_PATH)
 
 
 class EnvConfig(BaseConfig):
-    """Loads environment-specific config"""
-
-    @property
-    def module_env_config(self):
-        # TODO (ryani|DATAPIPE-78) add dynamic environment config ('module_env_config)
-        return staticconf.get('module_config')[0]
+    """When we do staticconf.get(), we will get a ValueProxy object, sometimes it is
+    not accepted, so by calling value on that we will get its original value."""
 
     @property
     def rbr_source_cluster(self):
-        return self.module_env_config.get('config').get('rbr_source_cluster')
+        return staticconf.get('rbr_source_cluster').value
 
     @property
     def schema_tracker_cluster(self):
-        return self.module_env_config.get('config').get('schema_tracker_cluster')
+        return staticconf.get('schema_tracker_cluster').value
 
     @property
     def rbr_state_cluster(self):
-        return self.module_env_config.get('config').get('rbr_state_cluster')
+        return staticconf.get('rbr_state_cluster').value
 
     @property
     def register_dry_run(self):
-        return self.module_env_config.get('config').get('register_dry_run')
+        return staticconf.get('register_dry_run').value
 
     @property
     def publish_dry_run(self):
-        return self.module_env_config.get('config').get('publish_dry_run')
+        return staticconf.get('publish_dry_run').value
 
     @property
     def topology_path(self):
-        return self.module_env_config.get('config').get('topology_path')
+        return staticconf.get('topology_path').value
 
 
-class DatabaseConfig(BaseConfig):
+class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""
 
     def __init__(self, cluster_name, topology_path):
-        super(DatabaseConfig, self).__init__(topology_path)
+        load_default_config(topology_path)
         self._cluster_name = cluster_name
 
     @property
     def cluster_config(self):
-        """Loads config and returns object to watch the environment config file.
-        object.reload_if_changed() will reload the config file if its changed.
-        """
-        self.config_facade_holder.reload_if_changed()
         for topo_item in staticconf.get('topology'):
             if topo_item.get('cluster') == self.cluster_name:
                 return topo_item
@@ -95,7 +76,7 @@ class DatabaseConfig(BaseConfig):
         return self._cluster_name
 
 
-env_config = EnvConfig(CONFIG_FILE)
+env_config = EnvConfig()
 
 source_database_config = DatabaseConfig(
     env_config.rbr_source_cluster,
