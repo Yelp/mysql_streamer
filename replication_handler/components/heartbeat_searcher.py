@@ -27,7 +27,7 @@ class HeartbeatSearcher(object):
             'passwd': source_config['passwd']
         }
         if db_cnct is None:
-            self.db_cnct = ConnectionSet.rbr_source_ro().rbr_source
+            self.db_cnct = ConnectionSet.rbr_source_ro().refresh_primary
         else:
             self.db_cnct = db_cnct
 
