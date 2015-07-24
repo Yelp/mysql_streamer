@@ -94,6 +94,7 @@ class LogPosition(Position):
       hb_timestamp(int): the timestamp when the hearbeat is inserted.
 
     TODO(DATAPIPE-312|cheng): clean up and unify LogPosition and HeartbeatSearcher.
+    TODO(DATAPIPE-315|cheng): create a data struture for hb_serial and hb_timestamp.
     """
 
     def __init__(self, log_pos=None, log_file=None, offset=None, hb_serial=None, hb_timestamp=None):
