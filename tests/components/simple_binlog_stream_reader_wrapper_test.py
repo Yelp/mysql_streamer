@@ -70,7 +70,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
     def test_yield_event_with_heartbeat_event(self, patch_stream):
         log_pos = 10
         log_file = "binlog.001"
-        row = {"values": {"serial": 123, "timestamp": 456}}
+        row = {"after_values": {"serial": 123, "timestamp": 456}}
         heartbeat_event = mock.Mock(
             spec=DataEvent,
             schema='yelp_heartbeat',
