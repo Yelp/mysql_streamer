@@ -49,6 +49,10 @@ class EnvConfig(BaseConfig):
     def topology_path(self):
         return staticconf.get('topology_path').value
 
+    @property
+    def schema_blacklist(self):
+        return staticconf.get('schema_blacklist').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

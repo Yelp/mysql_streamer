@@ -7,6 +7,7 @@ import json
 import mock
 import pytest
 
+from replication_handler import config
 from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.data_event_handler import DataEventHandler
@@ -356,6 +357,19 @@ class TestDataEventHandler(object):
     ):
         assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).topic == 'dry_run'
         assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).schema_id == 1
+
+    def test_skip_blacklist_schema(self, data_event_handler, patches, data_create_events):
+        with mock.patch.object(
+            config.EnvConfig,
+            'schema_blacklist',
+            new_callable=mock.PropertyMock
+        ) as mock_blacklist:
+            mock_blacklist.return_value = ['fake_database']
+            for data_event in data_create_events:
+                position = mock.Mock()
+                data_event_handler.handle_event(data_event, position)
+                assert patches.patch_publish_to_kafka.call_count == 0
+                assert patches.patch_upsert_data_event_checkpoint.call_count == 0
 
     def _assert_messages_as_expected(self, expected, actual):
         for expected_message, actual_message in zip(expected, actual):

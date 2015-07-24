@@ -6,6 +6,7 @@ from collections import namedtuple
 import logging
 
 from replication_handler.components.stubs import stub_schemas
+from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 
 
@@ -23,7 +24,7 @@ Table = namedtuple('Table', ('cluster_name', 'database_name', 'table_name'))
 
 ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 
-log = logging.getLogger('replication_handler.parse_replication_stream')
+log = logging.getLogger('replication_handler.component.base_event_handler')
 
 
 class BaseEventHandler(object):
@@ -70,4 +71,18 @@ class BaseEventHandler(object):
             topic=resp.topic.name,
             namespace=resp.topic.source.namespace,
             source=resp.topic.source.name,
+        )
+
+    def is_blacklisted(self, event):
+        if event.schema in env_config.schema_blacklist:
+            self.log_blacklisted_schema(event)
+            return True
+        return False
+
+    def log_blacklisted_schema(self, event):
+        log.info(
+            "Skipping {event}, reason: schema: {schema} is blacklisted.".format(
+                event=str(type(event)),
+                schema=event.schema
+            )
         )

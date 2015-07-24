@@ -10,4 +10,10 @@ publish_dry_run: True
 
 topology_path: /nail/srv/configs/topology.yaml
 
+schema_blacklist:
+    - information_schema
+    - mysql
+    - performance_schema
+    - test
+
 module_env_config: []

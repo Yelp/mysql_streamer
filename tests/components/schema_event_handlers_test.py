@@ -180,12 +180,12 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def patch_config_db(self, test_schema):
         with mock.patch.object(
-            config.DatabaseConfig,
-            'entries',
+            config.EnvConfig,
+            'schema_blacklist',
             new_callable=mock.PropertyMock
-        ) as mock_entries:
-            mock_entries.return_value = [{'db': test_schema}]
-            yield mock_entries
+        ) as mock_blacklist:
+            mock_blacklist.return_value = []
+            yield mock_blacklist
 
     @pytest.yield_fixture
     def patch_cluster_name(self, test_schema):
@@ -364,7 +364,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         create_table_schema_event,
     ):
-        external_patches.database_config.return_value = [{'db': 'different_schema'}]
+        external_patches.database_config.return_value = ['fake_schema']
         schema_event_handler.handle_event(create_table_schema_event, test_position)
         assert external_patches.populate_schema_cache.call_count == 0
         assert external_patches.create_schema_event_state.call_count == 0

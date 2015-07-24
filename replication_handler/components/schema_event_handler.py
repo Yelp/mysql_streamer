@@ -7,7 +7,6 @@ from yelp_conn.connection_set import ConnectionSet
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
-from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
@@ -15,7 +14,7 @@ from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 
 
-log = logging.getLogger('replication_handler.parse_replication_stream')
+log = logging.getLogger('replication_handler.component.schema_event_handler')
 
 
 class SchemaEventHandler(BaseEventHandler):
@@ -33,17 +32,8 @@ class SchemaEventHandler(BaseEventHandler):
 
     def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
-        # Filter out changes not in this db
-        if event.schema != source_database_config.entries[0]['db']:
-            log.info(
-                "Skipping %s of position: %s, reason: schema mismatch. \
-                Current schema: %s, incoming event schema: %s " % (
-                    type(event),
-                    position,
-                    source_database_config.entries[0]['db'],
-                    event.schema
-                )
-            )
+        # Filter out blacklisted schemas
+        if self.is_blacklisted(event):
             return
         handle_method = self._get_handle_method(self._reformat_query(event.query))
         if handle_method is not None:

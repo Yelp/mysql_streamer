@@ -38,6 +38,8 @@ class DataEventHandler(BaseEventHandler):
     def handle_event(self, event, position):
         """Make sure that the schema cache has the table, publish to Kafka.
         """
+        if self.is_blacklisted(event):
+            return
         schema_cache_entry = self._get_payload_schema(
             Table(
                 cluster_name=self.cluster_name,
