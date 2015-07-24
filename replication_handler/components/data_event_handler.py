@@ -69,14 +69,14 @@ class DataEventHandler(BaseEventHandler):
         elif 'after_values' in row:
             return row['after_values']
 
-    def _build_message(self, topic, schema_id, key, row, event_type, position):
+    def _build_message(self, topic, schema_id, topic_key, row, event_type, position):
         message_params = {
             "topic": topic,
             "schema_id": schema_id,
             "payload": self._get_values(row),
             "message_type": event_type,
             "upstream_position_info": position.to_dict(),
-            "key": key,
+            "topic_key": topic_key,
         }
         if event_type == MessageType.update:
             assert "before_values" in row.keys()
