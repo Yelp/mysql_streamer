@@ -74,7 +74,9 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         elif (not self.gtid_enabled) and event.schema == HEARTBEAT_DB:
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
-                log_file=event.log_file
+                log_file=event.log_file,
+                hb_serial=event.row["after_values"]["serial"],
+                hb_timestamp=event.row["after_values"]["timestamp"],
             )
         self._offset = 0
 
@@ -103,5 +105,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             return LogPosition(
                 log_pos=self._upstream_position.log_pos,
                 log_file=self._upstream_position.log_file,
-                offset=self._offset
+                offset=self._offset,
+                hb_serial=self._upstream_position.hb_serial,
+                hb_timestamp=self._upstream_position.hb_timestamp,
             )
