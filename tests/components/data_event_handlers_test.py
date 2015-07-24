@@ -66,7 +66,8 @@ class TestDataEventHandler(object):
         return SchemaCacheEntry(
             schema_obj=avro_obj,
             topic="fake_topic",
-            schema_id=0
+            schema_id=0,
+            primary_keys=['primary_key'],
         )
 
     @pytest.fixture
@@ -265,7 +266,8 @@ class TestDataEventHandler(object):
                 payload=data_event_handler._get_values(data_event.row),
                 message_type=MessageType.create,
                 schema_id=schema_cache_entry.schema_id,
-                upstream_position_info=position.to_dict()
+                upstream_position_info=position.to_dict(),
+                key=['primary_key']
             ))
         actual_call_args = [i[0][0] for i in patches.patch_publish_to_kafka.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
@@ -333,7 +335,8 @@ class TestDataEventHandler(object):
                 message_type=MessageType.update,
                 schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position.to_dict(),
-                previous_payload_data=data_event.row["before_values"]
+                previous_payload_data=data_event.row["before_values"],
+                key=['primary_key']
             ))
         actual_call_args = [i[0][0] for i in patches.patch_publish_to_kafka.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
@@ -365,3 +368,4 @@ class TestDataEventHandler(object):
             assert expected_message.message_type == actual_message.message_type
             assert expected_message.upstream_position_info == actual_message.upstream_position_info
             assert expected_message.previous_payload_data == actual_message.previous_payload_data
+            assert expected_message.key == actual_message.key

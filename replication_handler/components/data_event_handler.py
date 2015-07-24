@@ -51,6 +51,7 @@ class DataEventHandler(BaseEventHandler):
         message = self._build_message(
             schema_cache_entry.topic,
             schema_cache_entry.schema_id,
+            schema_cache_entry.primary_keys,
             row,
             event_type,
             position
@@ -68,13 +69,14 @@ class DataEventHandler(BaseEventHandler):
         elif 'after_values' in row:
             return row['after_values']
 
-    def _build_message(self, topic, schema_id, row, event_type, position):
+    def _build_message(self, topic, schema_id, key, row, event_type, position):
         message_params = {
             "topic": topic,
             "schema_id": schema_id,
             "payload": self._get_values(row),
             "message_type": event_type,
-            "upstream_position_info": position.to_dict()
+            "upstream_position_info": position.to_dict(),
+            "key": key,
         }
         if event_type == MessageType.update:
             assert "before_values" in row.keys()
@@ -97,4 +99,4 @@ class DataEventHandler(BaseEventHandler):
     @property
     def _dry_run_schema(self):
         """A schema cache to go with dry run mode."""
-        return SchemaCacheEntry(schema_obj=None, topic='dry_run', schema_id=1)
+        return SchemaCacheEntry(schema_obj=None, topic='dry_run', schema_id=1, primary_keys=[])

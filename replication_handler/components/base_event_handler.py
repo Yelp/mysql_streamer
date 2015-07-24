@@ -11,12 +11,12 @@ from replication_handler.config import source_database_config
 
 SchemaCacheEntry = namedtuple(
     'SchemaCacheEntry',
-    ('schema_obj', 'topic', 'schema_id')
+    ('schema_obj', 'topic', 'schema_id', 'primary_keys')
 )
 
 SchemaStoreRegisterResponse = namedtuple(
     'SchemaStoreRegisterResponse',
-    ('schema_id', 'schema', 'topic', 'namespace', 'source')
+    ('schema_id', 'schema', 'topic', 'namespace', 'source', 'primary_keys')
 )
 
 Table = namedtuple('Table', ('cluster_name', 'database_name', 'table_name'))
@@ -58,7 +58,8 @@ class BaseEventHandler(object):
         self.schema_cache[table] = SchemaCacheEntry(
             schema_obj=avro.schema.parse(resp.schema),
             topic=resp.topic,
-            schema_id=resp.schema_id
+            schema_id=resp.schema_id,
+            primary_keys=resp.primary_keys,
         )
 
     def _format_register_response(self, resp):
@@ -70,4 +71,5 @@ class BaseEventHandler(object):
             topic=resp.topic.name,
             namespace=resp.topic.source.namespace,
             source=resp.topic.source.name,
+            primary_keys=resp.primary_keys,
         )
