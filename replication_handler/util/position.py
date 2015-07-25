@@ -90,12 +90,19 @@ class LogPosition(Position):
       log_pos(int): the log position on binlog.
       log_file(string): binlog name.
       offset(int): offset within a pymysqlreplication RowEvent.
+      hb_serial(int): the serial number of this heartbeat.
+      hb_timestamp(int): the timestamp when the hearbeat is inserted.
+
+    TODO(DATAPIPE-312|cheng): clean up and unify LogPosition and HeartbeatSearcher.
+    TODO(DATAPIPE-315|cheng): create a data struture for hb_serial and hb_timestamp.
     """
 
-    def __init__(self, log_pos=None, log_file=None, offset=None):
+    def __init__(self, log_pos=None, log_file=None, offset=None, hb_serial=None, hb_timestamp=None):
         self.log_pos = log_pos
         self.log_file = log_file
         self.offset = offset
+        self.hb_serial = hb_serial
+        self.hb_timestamp = hb_timestamp
 
     def to_dict(self):
         position_dict = {}
@@ -104,6 +111,9 @@ class LogPosition(Position):
             position_dict["log_file"] = self.log_file
         if self.offset:
             position_dict["offset"] = self.offset
+        if self.hb_serial and self.hb_timestamp:
+            position_dict["hb_serial"] = self.hb_serial
+            position_dict["hb_timestamp"] = self.hb_timestamp
         return position_dict
 
     def to_replication_dict(self):
@@ -124,7 +134,9 @@ def construct_position(position_dict):
         return LogPosition(
             log_pos=position_dict.get("log_pos"),
             log_file=position_dict.get("log_file"),
-            offset=position_dict.get("offset", None)
+            offset=position_dict.get("offset", None),
+            hb_serial=position_dict.get("hb_serial", None),
+            hb_timestamp=position_dict.get("hb_timestamp", None),
         )
     else:
         raise InvalidPositionDictException

@@ -70,11 +70,13 @@ class TestSimpleBinlogStreamReaderWrapper(object):
     def test_yield_event_with_heartbeat_event(self, patch_stream):
         log_pos = 10
         log_file = "binlog.001"
+        row = {"after_values": {"serial": 123, "timestamp": 456}}
         heartbeat_event = mock.Mock(
             spec=DataEvent,
             schema='yelp_heartbeat',
             log_pos=log_pos,
-            log_file=log_file
+            log_file=log_file,
+            row=row
         )
         data_event_0 = mock.Mock(spec=DataEvent, table="business", schema="yelp")
         data_event_1 = mock.Mock(spec=DataEvent, table="business", schema="yelp")
@@ -100,11 +102,23 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         results = [
             ReplicationHandlerEvent(
                 event=data_event_1,
-                position=LogPosition(log_pos=log_pos, log_file=log_file, offset=1)
+                position=LogPosition(
+                    log_pos=log_pos,
+                    log_file=log_file,
+                    offset=1,
+                    hb_serial=123,
+                    hb_timestamp=456,
+                )
             ),
             ReplicationHandlerEvent(
                 event=data_event_2,
-                position=LogPosition(log_pos=log_pos, log_file=log_file, offset=2)
+                position=LogPosition(
+                    log_pos=log_pos,
+                    log_file=log_file,
+                    offset=2,
+                    hb_serial=123,
+                    hb_timestamp=456,
+                )
             )
         ]
         for replication_event, result in zip(stream, results):
@@ -112,3 +126,5 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             assert replication_event.position.log_pos == result.position.log_pos
             assert replication_event.position.log_file == result.position.log_file
             assert replication_event.position.offset == result.position.offset
+            assert replication_event.position.hb_serial == result.position.hb_serial
+            assert replication_event.position.hb_timestamp == result.position.hb_timestamp

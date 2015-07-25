@@ -47,14 +47,27 @@ class TestGtidPosition(object):
 
 class TestLogPosition(object):
 
-    def test_replication_log_pos_and_name(self):
+    def test_log_pos_replication_dict(self):
         p = LogPosition(log_pos=100, log_file="binlog", offset=10)
         assert p.to_replication_dict() == {"log_pos": 100, "log_file": "binlog"}
         assert p.offset == 10
 
-    def test_log_pos_and_name(self):
-        p = LogPosition(log_pos=100, log_file="binlog", offset=10)
-        assert p.to_dict() == {"log_pos": 100, "log_file": "binlog", "offset": 10}
+    def test_log_pos_dict(self):
+        p = LogPosition(
+            log_pos=100,
+            log_file="binlog",
+            offset=10,
+            hb_serial=123,
+            hb_timestamp=456,
+        )
+        expected_dict = {
+            "log_pos": 100,
+            "log_file": "binlog",
+            "offset": 10,
+            "hb_serial": 123,
+            "hb_timestamp": 456,
+        }
+        assert p.to_dict() == expected_dict
 
 
 class TestConstructPosition(object):
@@ -67,12 +80,19 @@ class TestConstructPosition(object):
         assert position.offset == gtid_position.offset
 
     def test_construct_log_position(self):
-        position_dict = {"log_pos": 324, "log_file": "binlog.001", "offset": 10}
+        position_dict = {
+            "log_pos": 324,
+            "log_file": "binlog.001",
+            "offset": 10,
+            "hb_serial": 123,
+            "hb_timestamp": 456,
+        }
         position = construct_position(position_dict)
-        gtid_position = LogPosition(log_pos=324, log_file="binlog.001", offset=10)
-        assert position.log_file == gtid_position.log_file
-        assert position.log_pos == gtid_position.log_pos
-        assert position.offset == gtid_position.offset
+        assert position.log_pos == 324
+        assert position.log_file == "binlog.001"
+        assert position.offset == 10
+        assert position.hb_serial == 123
+        assert position.hb_timestamp == 456
 
     def test_invalid_position_dict(self):
         with pytest.raises(InvalidPositionDictException):
