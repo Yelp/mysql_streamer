@@ -74,7 +74,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         elif (not self.gtid_enabled) and event.schema == HEARTBEAT_DB:
             # This should be an update event, so a row will look like
             # {"previous_values": {"serial": 123, "timestamp": "2015/07/22"},
-            #"after_value": {"serial": 456, "timestamp": "2015/07/23"}}
+            # "after_values": {"serial": 456, "timestamp": "2015/07/23"}}
             # for more details, check out python-mysql-replication docs.
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
