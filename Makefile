@@ -1,7 +1,14 @@
-.PHONY: clean venv-dev test
+.PHONY: clean venv-dev test build-image
+
+DOCKER_TAG ?= replication-handler-dev-$(USER)
 
 test:
 	tox
+
+itest: build-image
+
+build-image:
+	docker build -t $(DOCKER_TAG) .
 
 clean:
 	find . -name '*.pyc' -delete
