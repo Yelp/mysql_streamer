@@ -29,6 +29,10 @@ class TestBaseEventHandler(object):
             {"default": null, "maxlen": 64, "type": ["null", "string"], "name": "name"}]}'
 
     @pytest.fixture
+    def primary_keys(self):
+        return ['primary_key']
+
+    @pytest.fixture
     def source(self):
         source = mock.Mock(namespace="yelp")
         source.name = "business"
@@ -51,7 +55,7 @@ class TestBaseEventHandler(object):
             yield mock_cluster_name
 
     @pytest.yield_fixture
-    def mock_response(self, avro_schema, topic):
+    def mock_response(self, avro_schema, topic, primary_keys):
         with mock.patch.object(
             stub_schemas,
             "stub_business_schema"
@@ -60,6 +64,7 @@ class TestBaseEventHandler(object):
                 schema_id=0,
                 schema=avro_schema,
                 topic=topic,
+                primary_keys=primary_keys
             )
             yield mock_response
 
@@ -89,6 +94,7 @@ class TestBaseEventHandler(object):
         assert resp.schema_obj.name == "business"
         assert resp.schema_obj.fields[0].name == "id"
         assert resp.schema_obj.fields[1].name == "name"
+        assert resp.primary_keys == ['primary_key']
 
     def test_handle_event_not_implemented(self, base_event_handler):
         with pytest.raises(NotImplementedError):

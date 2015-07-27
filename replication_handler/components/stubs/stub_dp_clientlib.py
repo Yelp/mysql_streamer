@@ -21,7 +21,8 @@ class Message(object):
         payload,
         message_type,
         upstream_position_info,
-        previous_payload_data=None
+        previous_payload_data=None,
+        topic_key=None
     ):
         self.topic = topic
         self.schema_id = schema_id
@@ -29,6 +30,7 @@ class Message(object):
         self.upstream_position_info = upstream_position_info
         self.message_type = message_type
         self.previous_payload_data = previous_payload_data
+        self.topic_key = topic_key
         if self.message_type == MessageType.update:
             assert self.previous_payload_data is not None
 
