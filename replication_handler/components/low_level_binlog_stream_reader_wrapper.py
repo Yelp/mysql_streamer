@@ -82,11 +82,10 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _seek(self, connection_config, allowed_event_types, position):
         # server_id doesn't seem to matter but must be set.
-        # blocking=True will will make stream iterate infinitely.
         self.stream = BinLogStreamReader(
             connection_settings=connection_config,
             server_id=1,
-            blocking=True,
             only_events=allowed_event_types,
+            resume_stream=True,
             **position.to_replication_dict()
         )

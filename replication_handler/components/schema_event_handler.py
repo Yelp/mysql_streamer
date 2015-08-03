@@ -133,7 +133,8 @@ class SchemaEventHandler(BaseEventHandler):
            and occurs within a transaction in case of failure
         """
         show_create_result = self._exec_query_and_get_show_create_statement(
-            event, table
+            event,
+            table
         )
         if not self._register_dry_run:
             schema_store_response = self._register_with_schema_store(
@@ -148,7 +149,8 @@ class SchemaEventHandler(BaseEventHandler):
         """
         show_create_result_before = self._get_show_create_statement(table)
         show_create_result_after = self._exec_query_and_get_show_create_statement(
-            event, table
+            event,
+            table
         )
         mysql_statements = [
             event.query,
