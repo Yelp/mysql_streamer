@@ -107,8 +107,8 @@ class TestSchemaEventHandler(object):
         )
 
     @pytest.fixture
-    def show_create_query(self, test_table):
-        return "SHOW CREATE TABLE `{0}`".format(test_table)
+    def show_create_query(self, test_table, test_schema):
+        return "SHOW CREATE TABLE `{0}`.`{1}`".format(test_schema, test_table)
 
     @pytest.fixture
     def source(self):
@@ -157,24 +157,29 @@ class TestSchemaEventHandler(object):
         )
 
     @pytest.fixture
-    def mock_cursor(self):
+    def mock_schema_tracker_cursor(self):
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_rbr_source_cursor(self):
         return mock.Mock()
 
     @pytest.yield_fixture
-    def patch_db_conn(self, mock_cursor):
+    def patch_schema_tracker_rw(self, mock_schema_tracker_cursor):
         with mock.patch.object(
             ConnectionSet,
             'schema_tracker_rw'
-        ) as mock_connection:
-            mock_connection.return_value.repltracker.cursor.return_value = mock_cursor
-            yield mock_connection
+        ) as mock_schema_tracker_rw:
+            mock_schema_tracker_rw.return_value.repltracker.cursor.return_value = mock_schema_tracker_cursor
+            yield mock_schema_tracker_rw
 
     @pytest.yield_fixture
-    def patch_rbr_source_ro(self):
+    def patch_rbr_source_ro(self, mock_rbr_source_cursor):
         with mock.patch.object(
             ConnectionSet,
             'rbr_source_ro'
         ) as mock_rbr_source_ro:
+            mock_rbr_source_ro.return_value.refresh_primary.cursor.return_value = mock_rbr_source_cursor
             yield mock_rbr_source_ro
 
     @pytest.yield_fixture
@@ -260,7 +265,7 @@ class TestSchemaEventHandler(object):
     @pytest.fixture
     def external_patches(
         self,
-        patch_db_conn,
+        patch_schema_tracker_rw,
         patch_rbr_source_ro,
         patch_config_db,
         patch_cluster_name,
@@ -273,7 +278,7 @@ class TestSchemaEventHandler(object):
         patch_flush,
     ):
         return SchemaHandlerExternalPatches(
-            schema_tracking_db_conn=patch_db_conn,
+            schema_tracking_db_conn=patch_schema_tracker_rw,
             rbr_source_ro_db_conn=patch_rbr_source_ro,
             database_config=patch_config_db,
             cluster_name=patch_cluster_name,
@@ -294,7 +299,7 @@ class TestSchemaEventHandler(object):
         create_table_schema_event,
         show_create_result_initial,
         table_with_schema_changes,
-        mock_cursor,
+        mock_schema_tracker_cursor,
         create_table_schema_store_response,
     ):
         """Integration test the things that need to be called during a handle
@@ -308,7 +313,7 @@ class TestSchemaEventHandler(object):
 
         self.check_external_calls(
             create_table_schema_event,
-            mock_cursor,
+            mock_schema_tracker_cursor,
             table_with_schema_changes,
             schema_event_handler,
             mysql_statements,
@@ -324,7 +329,7 @@ class TestSchemaEventHandler(object):
         alter_table_schema_event,
         show_create_result_initial,
         show_create_result_after_alter,
-        mock_cursor,
+        mock_schema_tracker_cursor,
         table_with_schema_changes,
         alter_table_schema_store_response,
     ):
@@ -349,7 +354,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler.handle_event(alter_table_schema_event, test_position)
         self.check_external_calls(
             alter_table_schema_event,
-            mock_cursor,
+            mock_schema_tracker_cursor,
             table_with_schema_changes,
             schema_event_handler,
             mysql_statements,
@@ -387,12 +392,12 @@ class TestSchemaEventHandler(object):
         test_position,
         external_patches,
         schema_event_handler,
-        mock_cursor,
+        mock_schema_tracker_cursor,
         non_schema_relevant_query_event,
     ):
         schema_event_handler.handle_event(non_schema_relevant_query_event, test_position)
-        assert mock_cursor.execute.call_count == 1
-        assert mock_cursor.execute.call_args_list == [
+        assert mock_schema_tracker_cursor.execute.call_count == 1
+        assert mock_schema_tracker_cursor.execute.call_args_list == [
             mock.call(non_schema_relevant_query_event.query)
         ]
         assert external_patches.flush.call_count == 0
@@ -419,7 +424,7 @@ class TestSchemaEventHandler(object):
     def check_external_calls(
         self,
         event,
-        mock_cursor,
+        mock_schema_tracker_cursor,
         table,
         schema_event_handler,
         mysql_statements,
@@ -432,8 +437,13 @@ class TestSchemaEventHandler(object):
 
         # Make sure query was executed on tracking db
         # execute of show create is mocked out above
-        assert mock_cursor.execute.call_count == 1
-        assert mock_cursor.execute.call_args_list == [mock.call(event.query)]
+        # mock_schema_tracker_cursor.execute is called twice now because
+        # we need to select db
+        assert mock_schema_tracker_cursor.execute.call_count == 2
+        assert mock_schema_tracker_cursor.execute.call_args_list == [
+            mock.call("USE {0}".format(event.schema)),
+            mock.call(event.query)
+        ]
 
         assert external_patches.register_with_schema_store.call_count == 1
         mysql_statements = [statement.query for statement in mysql_statements]
@@ -460,25 +470,30 @@ class TestSchemaEventHandler(object):
 
     def test_dry_run_handle_event(
         self,
+        external_patches,
         dry_run_schema_event_handler,
         test_position,
         create_table_schema_event,
-        mock_cursor,
-        external_patches,
+        mock_schema_tracker_cursor,
     ):
         dry_run_schema_event_handler.handle_event(create_table_schema_event, test_position)
-        assert mock_cursor.execute.call_count == 1
+        assert mock_schema_tracker_cursor.execute.call_count == 2
         assert external_patches.register_with_schema_store.call_count == 0
 
     def test_get_show_create_table_statement(
         self,
-        mock_cursor,
+        patch_schema_tracker_rw,
+        patch_rbr_source_ro,
+        mock_rbr_source_cursor,
         schema_event_handler,
         show_create_query,
-        test_table
+        test_table,
+        table_with_schema_changes
     ):
-        mock_cursor.fetchone.return_value = [test_table, show_create_query]
-        schema_event_handler._get_show_create_statement(mock_cursor, test_table)
-        assert mock_cursor.execute.call_count == 1
-        assert mock_cursor.execute.call_args_list == [mock.call(show_create_query)]
-        assert mock_cursor.fetchone.call_count == 1
+        mock_rbr_source_cursor.fetchone.return_value = [test_table, show_create_query]
+        schema_event_handler._get_show_create_statement(table_with_schema_changes)
+        assert mock_rbr_source_cursor.execute.call_count == 1
+        assert mock_rbr_source_cursor.execute.call_args_list == [
+            mock.call(show_create_query)
+        ]
+        assert mock_rbr_source_cursor.fetchone.call_count == 1

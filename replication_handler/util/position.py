@@ -113,7 +113,7 @@ class LogPosition(Position):
             position_dict["offset"] = self.offset
         if self.hb_serial and self.hb_timestamp:
             position_dict["hb_serial"] = self.hb_serial
-            position_dict["hb_timestamp"] = self.hb_timestamp
+            position_dict["hb_timestamp"] = str(self.hb_timestamp)
         return position_dict
 
     def to_replication_dict(self):

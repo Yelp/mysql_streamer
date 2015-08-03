@@ -25,10 +25,8 @@ class SchemaEventHandler(BaseEventHandler):
     def __init__(self, *args, **kwargs):
         self._register_dry_run = kwargs.pop('register_dry_run')
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
-
-    @property
-    def schema_tracking_db_conn(self):
-        return ConnectionSet.schema_tracker_rw().repltracker
+        self.schema_tracker_cursor = ConnectionSet.schema_tracker_rw().repltracker.cursor()
+        self.rbr_source_cursor = ConnectionSet.rbr_source_ro().refresh_primary.cursor()
 
     def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
@@ -45,11 +43,10 @@ class SchemaEventHandler(BaseEventHandler):
             self.dp_client.flush()
 
             query, table = self._parse_query(event)
-            cursor = self.schema_tracking_db_conn.cursor()
             # DDL statements are commited implicitly, and can't be rollback.
             # so we need to implement journaling around.
             record = self._create_journaling_record(position, table, event)
-            handle_method(cursor, event, table)
+            handle_method(event, table)
             self._update_journaling_record(record, table)
         else:
             self._execute_non_schema_store_relevant_query(event)
@@ -69,8 +66,7 @@ class SchemaEventHandler(BaseEventHandler):
         event,
     ):
         create_table_statement = self._get_show_create_statement(
-            ConnectionSet.rbr_source_ro().refresh_primary.cursor(),
-            table.table_name
+            table
         )
         with rbr_state_session.connect_begin(ro=False) as session:
             record = SchemaEventState.create_schema_event_state(
@@ -130,15 +126,14 @@ class SchemaEventHandler(BaseEventHandler):
         """ Execute query that is not relevant to replication handler schema.
             Some queries are comments, or just BEGIN
         """
-        cursor = self.schema_tracking_db_conn.cursor()
-        cursor.execute(event.query)
+        self.schema_tracker_cursor.execute(event.query)
 
-    def _handle_create_table_event(self, cursor, event, table):
+    def _handle_create_table_event(self, event, table):
         """This method contains the core logic for handling a *create* event
            and occurs within a transaction in case of failure
         """
         show_create_result = self._exec_query_and_get_show_create_statement(
-            cursor, event, table
+            event, table
         )
         if not self._register_dry_run:
             schema_store_response = self._register_with_schema_store(
@@ -147,13 +142,13 @@ class SchemaEventHandler(BaseEventHandler):
             )
             self._populate_schema_cache(table, schema_store_response)
 
-    def _handle_alter_table_event(self, cursor, event, table):
+    def _handle_alter_table_event(self, event, table):
         """This method contains the core logic for handling an *alter* event
            and occurs within a transaction in case of failure
         """
-        show_create_result_before = self._get_show_create_statement(cursor, table.table_name)
+        show_create_result_before = self._get_show_create_statement(table)
         show_create_result_after = self._exec_query_and_get_show_create_statement(
-            cursor, event, table
+            event, table
         )
         mysql_statements = [
             event.query,
@@ -166,16 +161,18 @@ class SchemaEventHandler(BaseEventHandler):
         )
         self._populate_schema_cache(table, schema_store_response)
 
-    def _exec_query_and_get_show_create_statement(self, cursor, event, table):
-        cursor.execute(event.query)
-        return self._get_show_create_statement(cursor, table.table_name)
+    def _exec_query_and_get_show_create_statement(self, event, table):
+        use_db_query = "USE {0}".format(table.database_name)
+        self.schema_tracker_cursor.execute(use_db_query)
+        self.schema_tracker_cursor.execute(event.query)
+        return self._get_show_create_statement(table)
 
-    def _get_show_create_statement(self, cursor, table_name):
-        query_str = "SHOW CREATE TABLE `{0}`".format(table_name)
-        cursor.execute(query_str)
-        res = cursor.fetchone()
+    def _get_show_create_statement(self, table):
+        query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(table.database_name, table.table_name)
+        self.rbr_source_cursor.execute(query_str)
+        res = self.rbr_source_cursor.fetchone()
         create_res = ShowCreateResult(*res)
-        assert create_res.table == table_name
+        assert create_res.table == table.table_name
         return create_res
 
     def _register_with_schema_store(

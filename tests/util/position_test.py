@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import datetime
 import pytest
 
 from replication_handler.util.position import InvalidPositionDictException
@@ -58,14 +59,14 @@ class TestLogPosition(object):
             log_file="binlog",
             offset=10,
             hb_serial=123,
-            hb_timestamp=456,
+            hb_timestamp=datetime.datetime(2011, 10, 21, 0, 1)
         )
         expected_dict = {
             "log_pos": 100,
             "log_file": "binlog",
             "offset": 10,
             "hb_serial": 123,
-            "hb_timestamp": 456,
+            "hb_timestamp": '2011-10-21 00:01:00',
         }
         assert p.to_dict() == expected_dict
 

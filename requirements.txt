@@ -3,7 +3,7 @@
 --extra-index-url https://pypi.python.org/pypi
 -e .
 MySQL-python==1.2.5
-PyMySQL==0.6.6
+PyMySQL==0.6.3
 PyStaticConfiguration==0.8.0
 PyYAML==3.11
 SQLAlchemy==0.9.8
