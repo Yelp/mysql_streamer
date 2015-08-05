@@ -1,23 +1,40 @@
-FROM    docker-dev.yelpcorp.com/lucid_yelp
+FROM ubuntu:14.04.1
 
-ENV     DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND noninteractive
 
-RUN     apt-get update && \
-        apt-get install -y \
-            python2.7-dev \
-            libmysqlclient-dev \
-            python-pkg-resources \
-            python-setuptools \
-            python-virtualenv \
-            python-pip
+run apt-get update && apt-get upgrade -y
+RUN apt-get install -y \
+        build-essential \
+        python-dev \
+        libmysqlclient-dev \
+        python-pkg-resources \
+        python-setuptools \
+        python-virtualenv \
+        python-pip \
+        libpq5 \
+        libpq-dev \
+        wget \
+        language-pack-en-base
+
+run locale-gen en_US en_US.UTF-8 && dpkg-reconfigure locales
+
+# Setup pypy
+run mkdir /src
+workdir /src
+run wget https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.0-linux64.tar.bz2 --no-check-certificate
+run bunzip2 pypy-2.5.0-linux64.tar.bz2
+run tar xvf pypy-2.5.0-linux64.tar
+ENV PATH $PATH:/src/pypy-2.5.0-linux64/bin/
+run wget https://bootstrap.pypa.io/get-pip.py --no-check-certificate
+run pypy get-pip.py
+
+run ln -s /usr/bin/gcc /usr/local/bin/cc
 
 # Add the service code
-
-# Make workdir here because in requirements.txt -e . looks for setup.py
 WORKDIR /code
 ADD     requirements.txt /code/requirements.txt
 ADD     setup.py /code/setup.py
-RUN     virtualenv --python=python2.7 /code/virtualenv_run
+RUN     virtualenv -p pypy /code/virtualenv_run
 RUN     /code/virtualenv_run/bin/pip install \
             -i https://pypi-dev.yelpcorp.com/simple \
             -r /code/requirements.txt
@@ -30,4 +47,4 @@ ADD     . /code
 
 WORKDIR /code
 ENV     BASEPATH /code
-CMD /code/virtualenv_run/bin/python /code/replication_handler/batch/parse_replication_stream.py -v --no-notification
+CMD /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -v --no-notification
