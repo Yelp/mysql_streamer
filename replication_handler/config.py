@@ -53,6 +53,10 @@ class EnvConfig(BaseConfig):
     def schema_blacklist(self):
         return staticconf.get('schema_blacklist').value
 
+    @property
+    def table_whitelist(self):
+        return staticconf.get('table_whitelist').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

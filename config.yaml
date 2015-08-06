@@ -16,6 +16,9 @@ schema_blacklist:
     - performance_schema
     - test
 
+table_whitelist:
+    - business
+
 module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml
