@@ -4,7 +4,6 @@ import pytest
 import signal
 import sys
 
-from data_pipeline.producer import Producer
 from pymysqlreplication.event import QueryEvent
 
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
