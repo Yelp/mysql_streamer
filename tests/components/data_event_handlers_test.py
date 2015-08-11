@@ -256,7 +256,7 @@ class TestDataEventHandler(object):
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(CreateMessage(
                 topic=schema_cache_entry.topic,
-                payload_data=data_event_handler._get_values(data_event.row),
+                payload_data=data_event.row["values"],
                 schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position.to_dict(),
                 keys=['primary_key']
@@ -324,7 +324,7 @@ class TestDataEventHandler(object):
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(UpdateMessage(
                 topic=schema_cache_entry.topic,
-                payload_data=data_event_handler._get_values(data_event.row),
+                payload_data=data_event.row['after_values'],
                 schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position.to_dict(),
                 previous_payload_data=data_event.row["before_values"],

@@ -2,12 +2,12 @@
 import logging
 
 from data_pipeline.producer import Producer
-from data_pipeline.message import UpdateMessage
 from yelp_lib import iteration
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.base_event_handler import SchemaCacheEntry
+from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
 from replication_handler.util.misc import save_position
 
@@ -45,51 +45,22 @@ class DataEventHandler(BaseEventHandler):
                 table_name=event.table
             )
         )
-        self._handle_row(schema_cache_entry, event.row, event.message_type, position)
+        self._handle_row(schema_cache_entry, event, position)
 
-    def _handle_row(self, schema_cache_entry, row, message_type, position):
-        message = self._build_message(
-            schema_cache_entry.topic,
-            schema_cache_entry.schema_id,
-            schema_cache_entry.primary_keys,
-            row,
-            message_type,
-            position
+    def _handle_row(self, schema_cache_entry, event, position):
+        builder = MessageBuilder(
+            schema_cache_entry,
+            event,
+            position,
+            self.register_dry_run
         )
+        message = builder.build_message()
         with Producer(
             REPLICATION_HANDLER_PRODUCER_NAME,
             dry_run=self.publish_dry_run
         ) as producer:
             producer.publish(message)
         self.processor.push(message)
-
-    def _get_values(self, row):
-        """Gets the new value of the row changed.  If add row occurs,
-           row['values'] contains the data.
-           If an update row occurs, row['after_values'] contains the data.
-        """
-        if 'values' in row:
-            return row['values']
-        elif 'after_values' in row:
-            return row['after_values']
-
-    def _build_message(self, topic, schema_id, topic_key, row, message_type, position):
-        #TODO(cheng|DATAPIPE-255): set pii flag once pii_generator is shipped.
-        #TODO(figure out topic key)
-        message_params = {
-            "topic": topic,
-            "schema_id": schema_id,
-            "payload_data": self._get_values(row),
-            "upstream_position_info": position.to_dict(),
-            "keys": topic_key,
-            "contains_pii": False,
-            "dry_run": self.register_dry_run,
-        }
-        if message_type == UpdateMessage:
-            assert "before_values" in row.keys()
-            message_params["previous_payload_data"] = row["before_values"]
-
-        return message_type(**message_params)
 
     def _get_payload_schema(self, table):
         """Get payload avro schema from cache or from schema store"""
