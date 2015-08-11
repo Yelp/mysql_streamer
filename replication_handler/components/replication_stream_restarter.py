@@ -19,12 +19,9 @@ class ReplicationStreamRestarter(object):
     including put stream to a saved position, and perform recovery procedure
     if needed.
 
-    Args:
-      dp_client(DataPipelineClientlib object): data pipeline clientlib
     """
 
-    def __init__(self, dp_client):
-        self.dp_client = dp_client
+    def __init__(self):
         # Both global_event_state and pending_schema_event are information about
         # last shutdown, we need them to do recovery process.
         cluster_name = source_database_config.cluster_name
@@ -39,7 +36,7 @@ class ReplicationStreamRestarter(object):
             self.pending_schema_event
         )
 
-    def restart(self):
+    def restart(self, publish_dry_run=True, register_dry_run=True):
         """ This function retrive the saved position from database, and init
         stream with that position, and perform recovery procedure, like recreating
         tables, or publish unpublished messages.
@@ -49,9 +46,10 @@ class ReplicationStreamRestarter(object):
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
                 stream=self.stream,
-                dp_client=self.dp_client,
                 is_clean_shutdown=self.global_event_state.is_clean_shutdown,
                 pending_schema_event=self.pending_schema_event,
+                publish_dry_run=publish_dry_run,
+                register_dry_run=register_dry_run,
             )
 
             if recovery_handler.need_recovery:
