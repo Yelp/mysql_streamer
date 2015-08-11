@@ -7,19 +7,19 @@ import json
 import mock
 import pytest
 
+from data_pipeline.message import CreateMessage
+from data_pipeline.message import UpdateMessage
+from data_pipeline.position_data import PositionData
+
 from replication_handler import config
 from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
-from replication_handler.components.stubs.stub_dp_clientlib import Message
-from replication_handler.components.stubs.stub_dp_clientlib import MessageType
-from replication_handler.components.stubs.stub_dp_clientlib import PositionData
-from replication_handler.components.stubs.stub_schemas import StubSchemaClient
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
+from replication_handler.util.position import LogPosition
 from testing.events import DataEvent
 
 
@@ -28,8 +28,7 @@ DataHandlerExternalPatches = namedtuple(
         "patch_get_schema_for_schema_cache",
         "patch_rbr_state_rw",
         "mock_rbr_state_session",
-        "patch_publish_to_kafka",
-        "patch_get_checkpoint_position_data",
+        "patch_producer",
         "patch_upsert_data_event_checkpoint",
         "patch_checkpoint_size",
         "patch_upsert_global_event_state"
@@ -45,11 +44,11 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def data_event_handler(self, patch_checkpoint_size):
-        return DataEventHandler(DPClientlib(), StubSchemaClient(), publish_dry_run=False)
+        return DataEventHandler(register_dry_run=False, publish_dry_run=False)
 
     @pytest.fixture
     def dry_run_data_event_handler(self, patch_checkpoint_size):
-        return DataEventHandler(DPClientlib(), StubSchemaClient(), publish_dry_run=True)
+        return DataEventHandler(register_dry_run=True, publish_dry_run=True)
 
     @pytest.fixture
     def schema_in_json(self):
@@ -148,28 +147,22 @@ class TestDataEventHandler(object):
         ) as mock_get_schema:
             yield mock_get_schema
 
-    @pytest.yield_fixture
-    def patch_publish_to_kafka(self):
-        with mock.patch.object(
-            DPClientlib, 'publish'
-        ) as mock_kafka_publish:
-            yield mock_kafka_publish
+    @pytest.fixture
+    def producer(self, first_position_info, second_position_info):
+        producer = mock.Mock()
+        producer.get_checkpoint_position_data.side_effect = [
+            first_position_info,
+            second_position_info
+        ]
+        return producer
 
     @pytest.yield_fixture
-    def patch_get_checkpoint_position_data(
-        self,
-        first_position_info,
-        second_position_info
-    ):
-        with mock.patch.object(
-            DPClientlib,
-            'get_checkpoint_position_data'
-        ) as mock_get_checkpoint_position_data:
-            mock_get_checkpoint_position_data.side_effect = [
-                first_position_info,
-                second_position_info
-            ]
-            yield mock_get_checkpoint_position_data
+    def patch_producer(self, producer):
+        with mock.patch(
+            'replication_handler.components.data_event_handler.Producer'
+        ) as mock_producer:
+            mock_producer.return_value.__enter__.return_value = producer
+            yield mock_producer
 
     @pytest.yield_fixture
     def patch_upsert_data_event_checkpoint(self):
@@ -216,21 +209,19 @@ class TestDataEventHandler(object):
         patch_get_schema_for_schema_cache,
         patch_rbr_state_rw,
         mock_rbr_state_session,
-        patch_publish_to_kafka,
-        patch_get_checkpoint_position_data,
         patch_upsert_data_event_checkpoint,
         patch_checkpoint_size,
-        patch_upsert_global_event_state
+        patch_upsert_global_event_state,
+        patch_producer,
     ):
         return DataHandlerExternalPatches(
             patch_get_schema_for_schema_cache=patch_get_schema_for_schema_cache,
             patch_rbr_state_rw=patch_rbr_state_rw,
             mock_rbr_state_session=mock_rbr_state_session,
-            patch_publish_to_kafka=patch_publish_to_kafka,
-            patch_get_checkpoint_position_data=patch_get_checkpoint_position_data,
             patch_upsert_data_event_checkpoint=patch_upsert_data_event_checkpoint,
             patch_checkpoint_size=patch_checkpoint_size,
-            patch_upsert_global_event_state=patch_upsert_global_event_state
+            patch_upsert_global_event_state=patch_upsert_global_event_state,
+            patch_producer=patch_producer,
         )
 
     def test_call_to_populate_schema(
@@ -247,6 +238,7 @@ class TestDataEventHandler(object):
 
     def test_handle_data_create_event_to_publish_call(
         self,
+        producer,
         first_test_position,
         second_test_position,
         test_table,
@@ -260,24 +252,23 @@ class TestDataEventHandler(object):
     ):
         expected_call_args = []
         for data_event in data_create_events:
-            position = mock.Mock()
+            position = LogPosition()
             data_event_handler.handle_event(data_event, position)
-            expected_call_args.append(Message(
+            expected_call_args.append(CreateMessage(
                 topic=schema_cache_entry.topic,
-                payload=data_event_handler._get_values(data_event.row),
-                message_type=MessageType.create,
+                payload_data=data_event_handler._get_values(data_event.row),
                 schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position.to_dict(),
-                topic_key=['primary_key']
+                keys=['primary_key']
             ))
-        actual_call_args = [i[0][0] for i in patches.patch_publish_to_kafka.call_args_list]
+        actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
 
-        assert patches.patch_publish_to_kafka.call_count == 4
-        assert patches.patch_publish_to_kafka.call_args[1]['dry_run'] is False
+        assert producer.publish.call_count == 4
+        assert patches.patch_producer.call_args_list[1][1]['dry_run'] is False
         # We set the checkpoint size to 2, so 4 rows will checkpoint twice
         # and upsert GlobalEventState twice
-        assert patches.patch_get_checkpoint_position_data.call_count == 2
+        assert producer.get_checkpoint_position_data.call_count == 2
         assert patches.patch_upsert_data_event_checkpoint.call_count == 2
         assert patches.patch_upsert_data_event_checkpoint.call_args_list == [
             mock.call(
@@ -315,6 +306,7 @@ class TestDataEventHandler(object):
 
     def test_handle_data_update_event(
         self,
+        producer,
         first_test_position,
         second_test_position,
         test_table,
@@ -328,31 +320,31 @@ class TestDataEventHandler(object):
     ):
         expected_call_args = []
         for data_event in data_update_events:
-            position = mock.Mock()
+            position = LogPosition()
             data_event_handler.handle_event(data_event, position)
-            expected_call_args.append(Message(
+            expected_call_args.append(UpdateMessage(
                 topic=schema_cache_entry.topic,
-                payload=data_event_handler._get_values(data_event.row),
-                message_type=MessageType.update,
+                payload_data=data_event_handler._get_values(data_event.row),
                 schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position.to_dict(),
                 previous_payload_data=data_event.row["before_values"],
-                topic_key=['primary_key']
+                keys=['primary_key']
             ))
-        actual_call_args = [i[0][0] for i in patches.patch_publish_to_kafka.call_args_list]
+        actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
 
     def test_dry_run_handler_event(
         self,
+        producer,
         dry_run_data_event_handler,
         data_create_events,
         patches,
     ):
         for data_event in data_create_events:
-            position = mock.Mock()
+            position = LogPosition()
             dry_run_data_event_handler.handle_event(data_event, position)
-        assert patches.patch_publish_to_kafka.call_count == 4
-        assert patches.patch_publish_to_kafka.call_args[1]['dry_run'] is True
+        assert producer.publish.call_count == 4
+        assert patches.patch_producer.call_args_list[3][1]['dry_run'] is True
 
     def test_dry_run_schema(
         self,
@@ -371,15 +363,17 @@ class TestDataEventHandler(object):
             for data_event in data_create_events:
                 position = mock.Mock()
                 data_event_handler.handle_event(data_event, position)
-                assert patches.patch_publish_to_kafka.call_count == 0
+                assert patches.patch_producer.publish.call_count == 0
                 assert patches.patch_upsert_data_event_checkpoint.call_count == 0
 
     def _assert_messages_as_expected(self, expected, actual):
         for expected_message, actual_message in zip(expected, actual):
             assert expected_message.topic == actual_message.topic
             assert expected_message.schema_id == actual_message.schema_id
-            assert expected_message.payload == actual_message.payload
+            assert expected_message.payload_data == actual_message.payload_data
             assert expected_message.message_type == actual_message.message_type
             assert expected_message.upstream_position_info == actual_message.upstream_position_info
-            assert expected_message.previous_payload_data == actual_message.previous_payload_data
-            assert expected_message.topic_key == actual_message.topic_key
+            # TODO(DATAPIPE-350): keys are inaccessible right now.
+            # assert expected_message.keys == actual_message.keys
+            if type(expected_message) == UpdateMessage:
+                assert expected_message.previous_payload_data == actual_message.previous_payload_data
