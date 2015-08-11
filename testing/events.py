@@ -23,11 +23,11 @@ class QueryEvent(object):
 class DataEvent(object):
     """Class to test Single Row Event"""
 
-    def __init__(self, schema, table, row, event_type):
+    def __init__(self, schema, table, row, message_type):
         self.schema = schema
         self.table = table
         self.row = row
-        self.event_type = event_type
+        self.message_type = message_type
 
     @classmethod
     def make_data_create_event(cls):
@@ -41,7 +41,7 @@ class DataEvent(object):
             table="fake_table",
             schema="fake_database",
             row=row,
-            event_type=CreateMessage
+            message_type=CreateMessage
         ) for row in rows]
 
     @classmethod
@@ -56,7 +56,7 @@ class DataEvent(object):
             table="fake_table",
             schema="fake_database",
             row=row,
-            event_type=UpdateMessage
+            message_type=UpdateMessage
         ) for row in rows]
 
 
