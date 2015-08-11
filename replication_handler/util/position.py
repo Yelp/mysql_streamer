@@ -109,7 +109,7 @@ class LogPosition(Position):
         if self.log_pos and self.log_file:
             position_dict["log_pos"] = self.log_pos
             position_dict["log_file"] = self.log_file
-        if self.offset:
+        if self.offset is not None:
             position_dict["offset"] = self.offset
         if self.hb_serial and self.hb_timestamp:
             position_dict["hb_serial"] = self.hb_serial

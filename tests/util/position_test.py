@@ -70,6 +70,23 @@ class TestLogPosition(object):
         }
         assert p.to_dict() == expected_dict
 
+    def test_offset_zero(self):
+        p = LogPosition(
+            log_pos=100,
+            log_file="binlog",
+            offset=0,
+            hb_serial=123,
+            hb_timestamp=datetime.datetime(2011, 10, 21, 0, 1)
+        )
+        expected_dict = {
+            "log_pos": 100,
+            "log_file": "binlog",
+            "offset": 0,
+            "hb_serial": 123,
+            "hb_timestamp": '2011-10-21 00:01:00',
+        }
+        assert p.to_dict() == expected_dict
+
 
 class TestConstructPosition(object):
 
