@@ -2,7 +2,8 @@
 from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
 from pymysqlreplication.constants.BINLOG import UPDATE_ROWS_EVENT_V2
 
-from replication_handler.components.stubs.stub_dp_clientlib import MessageType
+from data_pipeline.message import CreateMessage
+from data_pipeline.message import UpdateMessage
 
 
 class GtidEvent(object):
@@ -40,7 +41,7 @@ class DataEvent(object):
             table="fake_table",
             schema="fake_database",
             row=row,
-            event_type=MessageType.create,
+            event_type=CreateMessage
         ) for row in rows]
 
     @classmethod
@@ -55,7 +56,7 @@ class DataEvent(object):
             table="fake_table",
             schema="fake_database",
             row=row,
-            event_type=MessageType.update,
+            event_type=UpdateMessage
         ) for row in rows]
 
 
