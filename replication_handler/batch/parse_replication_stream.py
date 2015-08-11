@@ -6,15 +6,16 @@ from collections import namedtuple
 
 from pymysqlreplication.event import QueryEvent
 
+from data_pipeline.producer import Producer
+from data_pipeline.schema_cache import get_schema_cache
 from yelp_batch import Batch
 
 from replication_handler import config
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
-from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
-from replication_handler.components.stubs.stub_schemas import StubSchemaClient
 from replication_handler.models.global_event_state import EventType
+from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import save_position
 
@@ -30,8 +31,7 @@ class ParseReplicationStream(Batch):
        This involves
        (1) Using python-mysql-replication to get stream events.
        (2) Calls to the schema store to get the avro schema
-       (3) Avro serialization of the payload.
-       (4) Publishing to kafka through a datapipeline clientlib
+       (3) Publishing to kafka through a datapipeline clientlib
            that will encapsulate payloads.
     """
     notify_emails = ['bam+batch@yelp.com']
@@ -39,8 +39,7 @@ class ParseReplicationStream(Batch):
 
     def __init__(self):
         super(ParseReplicationStream, self).__init__()
-        self.dp_client = DPClientlib()
-        self.schema_store_client = StubSchemaClient()
+        self.schematizer_client = get_schema_cache().schematizer_client
         self.register_dry_run = config.env_config.register_dry_run
         self.publish_dry_run = config.env_config.publish_dry_run
         self.handler_map = self._build_handler_map()
@@ -57,20 +56,22 @@ class ParseReplicationStream(Batch):
             )
 
     def _get_stream(self):
-        replication_stream_restarter = ReplicationStreamRestarter(self.dp_client)
-        replication_stream_restarter.restart()
+        replication_stream_restarter = ReplicationStreamRestarter()
+        replication_stream_restarter.restart(
+            publish_dry_run=self.publish_dry_run,
+            register_dry_run=self.register_dry_run,
+        )
         return replication_stream_restarter.get_stream()
 
     def _build_handler_map(self):
         data_event_handler = DataEventHandler(
-            self.dp_client,
-            self.schema_store_client,
+            register_dry_run=self.register_dry_run,
             publish_dry_run=self.publish_dry_run
         )
         schema_event_handler = SchemaEventHandler(
-            self.dp_client,
-            self.schema_store_client,
-            register_dry_run=self.register_dry_run
+            schematizer_client=self.schematizer_client,
+            register_dry_run=self.register_dry_run,
+            publish_dry_run=self.publish_dry_run
         )
         handler_map = {
             DataEvent: HandlerInfo(
@@ -96,9 +97,10 @@ class ParseReplicationStream(Batch):
         # We will not do anything for SchemaEvent, because we have
         # a good way to recover it.
         if self.current_event_type == EventType.DATA_EVENT:
-            self.dp_client.flush()
-            position_data = self.dp_client.get_checkpoint_position_data()
-            save_position(position_data, is_clean_shutdown=True)
+            with Producer(REPLICATION_HANDLER_PRODUCER_NAME) as producer:
+                producer.flush()
+                position_data = producer.get_checkpoint_position_data()
+                save_position(position_data, is_clean_shutdown=True)
         log.info("Gracefully shutting down.")
         sys.exit()
 
