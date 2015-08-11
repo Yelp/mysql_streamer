@@ -5,14 +5,13 @@ import pytest
 from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
-from replication_handler.components.stubs import stub_schemas
 
 
 class TestBaseEventHandler(object):
 
     @pytest.fixture(scope="class")
     def base_event_handler(self):
-        return BaseEventHandler(mock.Mock(), mock.Mock())
+        return BaseEventHandler()
 
     @pytest.fixture
     def table(self):
@@ -35,7 +34,7 @@ class TestBaseEventHandler(object):
     @pytest.fixture
     def source(self):
         source = mock.Mock(namespace="yelp")
-        source.name = "business"
+        source.source = "business"
         return source
 
     @pytest.fixture
@@ -54,28 +53,24 @@ class TestBaseEventHandler(object):
             mock_cluster_name.return_value = "yelp_main"
             yield mock_cluster_name
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def mock_response(self, avro_schema, topic, primary_keys):
-        with mock.patch.object(
-            stub_schemas,
-            "stub_business_schema"
-        ) as mock_response:
-            mock_response.return_value = mock.Mock(
-                schema_id=0,
-                schema=avro_schema,
-                topic=topic,
-                primary_keys=primary_keys
-            )
-            yield mock_response
+        return mock.Mock(
+            schema_id=0,
+            schema=avro_schema,
+            topic=topic.name,
+            primary_keys=primary_keys
+        )
 
     def test_get_schema_for_schema_cache(
         self,
+        mock_response,
         patch_config,
         base_event_handler,
         table,
         topic,
-        mock_response
     ):
+        base_event_handler._populate_schema_cache(table, mock_response)
         resp = base_event_handler.get_schema_for_schema_cache(table)
         assert resp == base_event_handler.schema_cache[table]
         self._assert_expected_result(resp, topic)

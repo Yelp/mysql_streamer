@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-
 import avro.io
 import avro.schema
 from collections import namedtuple
 import logging
 
-from replication_handler.components.stubs import stub_schemas
 from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 
@@ -30,10 +28,8 @@ log = logging.getLogger('replication_handler.component.base_event_handler')
 class BaseEventHandler(object):
     """Base class for handling binlog events for the Replication Handler"""
 
-    def __init__(self, dp_client, schema_store_client):
+    def __init__(self):
         self.schema_cache = {}
-        self.schema_store_client = schema_store_client
-        self.dp_client = dp_client
         self.cluster_name = source_database_config.cluster_name
 
     def handle_event(self, event, position):
@@ -45,15 +41,12 @@ class BaseEventHandler(object):
         """
         if table in self.schema_cache:
             return self.schema_cache[table]
-
-        # TODO (ryani|DATAPIPE-77) actually use the schematizer clientlib
-        if table == Table(cluster_name=self.cluster_name, database_name='yelp', table_name='business'):
-            resp = self._format_register_response(stub_schemas.stub_business_schema())
         else:
             return
 
-        self._populate_schema_cache(table, resp)
-        return self.schema_cache[table]
+        # TODO (cheng|DATAPIPE-222) use the schematizer clientlib to get the cache
+        # self._populate_schema_cache(table, resp)
+        # return self.schema_cache[table]
 
     def _populate_schema_cache(self, table, resp):
         self.schema_cache[table] = SchemaCacheEntry(
@@ -71,7 +64,7 @@ class BaseEventHandler(object):
             schema=resp.schema,
             topic=resp.topic.name,
             namespace=resp.topic.source.namespace,
-            source=resp.topic.source.name,
+            source=resp.topic.source.source,
             primary_keys=resp.primary_keys,
         )
 
