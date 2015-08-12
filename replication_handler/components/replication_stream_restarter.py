@@ -36,7 +36,7 @@ class ReplicationStreamRestarter(object):
             self.pending_schema_event
         )
 
-    def restart(self, publish_dry_run=True, register_dry_run=True):
+    def restart(self, producer, register_dry_run=True):
         """ This function retrive the saved position from database, and init
         stream with that position, and perform recovery procedure, like recreating
         tables, or publish unpublished messages.
@@ -46,9 +46,9 @@ class ReplicationStreamRestarter(object):
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
                 stream=self.stream,
+                producer=producer,
                 is_clean_shutdown=self.global_event_state.is_clean_shutdown,
                 pending_schema_event=self.pending_schema_event,
-                publish_dry_run=publish_dry_run,
                 register_dry_run=register_dry_run,
             )
 

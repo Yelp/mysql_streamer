@@ -13,6 +13,10 @@ from replication_handler.models.schema_event_state import SchemaEventState
 
 class TestReplicationStreamRestarter(object):
 
+    @pytest.fixture
+    def producer(self):
+        return mock.Mock()
+
     @pytest.yield_fixture
     def patch_session_connect_begin(self):
         with mock.patch.object(
@@ -66,6 +70,7 @@ class TestReplicationStreamRestarter(object):
 
     def test_restart_with_clean_shutdown_and_no_pending_schema_event(
         self,
+        producer,
         patch_session_connect_begin,
         patch_get_global_event_state,
         patch_get_pending_schema_event_state,
@@ -81,13 +86,14 @@ class TestReplicationStreamRestarter(object):
         )
         patch_get_pending_schema_event_state.return_value = None
         restarter = ReplicationStreamRestarter()
-        restarter.restart()
+        restarter.restart(producer)
         assert restarter.get_stream().next() == next_event
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
         assert patch_recover.call_count == 0
 
     def test_restart_with_unclean_shutdown_and_no_pending_schema_event(
         self,
+        producer,
         patch_session_connect_begin,
         patch_get_global_event_state,
         patch_get_pending_schema_event_state,
@@ -101,12 +107,13 @@ class TestReplicationStreamRestarter(object):
         )
         patch_get_pending_schema_event_state.return_value = None
         restarter = ReplicationStreamRestarter()
-        restarter.restart()
+        restarter.restart(producer)
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
         assert patch_recover.call_count == 1
 
     def test_restart_with_clean_shutdown_and_pending_schema_event(
         self,
+        producer,
         patch_session_connect_begin,
         patch_get_global_event_state,
         patch_get_pending_schema_event_state,
@@ -120,6 +127,6 @@ class TestReplicationStreamRestarter(object):
         )
         patch_get_pending_schema_event_state.return_value = mock.Mock()
         restarter = ReplicationStreamRestarter()
-        restarter.restart()
+        restarter.restart(producer)
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
         assert patch_recover.call_count == 1
