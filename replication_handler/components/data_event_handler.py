@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from data_pipeline.producer import Producer
 from yelp_lib import iteration
 
 from replication_handler.components.base_event_handler import BaseEventHandler
@@ -55,11 +54,7 @@ class DataEventHandler(BaseEventHandler):
             self.register_dry_run
         )
         message = builder.build_message()
-        with Producer(
-            REPLICATION_HANDLER_PRODUCER_NAME,
-            dry_run=self.publish_dry_run
-        ) as producer:
-            producer.publish(message)
+        self.producer.publish(message)
         self.processor.push(message)
 
     def _get_payload_schema(self, table):
@@ -71,9 +66,8 @@ class DataEventHandler(BaseEventHandler):
         return self.schema_cache[table]
 
     def _checkpoint_latest_published_offset(self, rows):
-        with Producer(REPLICATION_HANDLER_PRODUCER_NAME) as producer:
-            position_data = producer.get_checkpoint_position_data()
-            save_position(position_data)
+        position_data = self.producer.get_checkpoint_position_data()
+        save_position(position_data)
 
     @property
     def _dry_run_schema(self):

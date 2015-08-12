@@ -28,7 +28,6 @@ DataHandlerExternalPatches = namedtuple(
         "patch_get_schema_for_schema_cache",
         "patch_rbr_state_rw",
         "mock_rbr_state_session",
-        "patch_producer",
         "patch_upsert_data_event_checkpoint",
         "patch_checkpoint_size",
         "patch_upsert_global_event_state"
@@ -43,12 +42,12 @@ class TestDataEventHandler(object):
         return "93fd11e6-cf7c-11e4-912d-0242a9fe01db:12"
 
     @pytest.fixture
-    def data_event_handler(self, patch_checkpoint_size):
-        return DataEventHandler(register_dry_run=False, publish_dry_run=False)
+    def data_event_handler(self, patch_checkpoint_size, producer):
+        return DataEventHandler(producer, register_dry_run=False, publish_dry_run=False)
 
     @pytest.fixture
-    def dry_run_data_event_handler(self, patch_checkpoint_size):
-        return DataEventHandler(register_dry_run=True, publish_dry_run=True)
+    def dry_run_data_event_handler(self, patch_checkpoint_size, producer):
+        return DataEventHandler(producer, register_dry_run=True, publish_dry_run=True)
 
     @pytest.fixture
     def schema_in_json(self):
@@ -157,14 +156,6 @@ class TestDataEventHandler(object):
         return producer
 
     @pytest.yield_fixture
-    def patch_producer(self, producer):
-        with mock.patch(
-            'replication_handler.components.data_event_handler.Producer'
-        ) as mock_producer:
-            mock_producer.return_value.__enter__.return_value = producer
-            yield mock_producer
-
-    @pytest.yield_fixture
     def patch_upsert_data_event_checkpoint(self):
         with mock.patch.object(
             DataEventCheckpoint,
@@ -212,7 +203,6 @@ class TestDataEventHandler(object):
         patch_upsert_data_event_checkpoint,
         patch_checkpoint_size,
         patch_upsert_global_event_state,
-        patch_producer,
     ):
         return DataHandlerExternalPatches(
             patch_get_schema_for_schema_cache=patch_get_schema_for_schema_cache,
@@ -221,7 +211,6 @@ class TestDataEventHandler(object):
             patch_upsert_data_event_checkpoint=patch_upsert_data_event_checkpoint,
             patch_checkpoint_size=patch_checkpoint_size,
             patch_upsert_global_event_state=patch_upsert_global_event_state,
-            patch_producer=patch_producer,
         )
 
     def test_call_to_populate_schema(
@@ -265,7 +254,6 @@ class TestDataEventHandler(object):
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
 
         assert producer.publish.call_count == 4
-        assert patches.patch_producer.call_args_list[1][1]['dry_run'] is False
         # We set the checkpoint size to 2, so 4 rows will checkpoint twice
         # and upsert GlobalEventState twice
         assert producer.get_checkpoint_position_data.call_count == 2
@@ -344,7 +332,6 @@ class TestDataEventHandler(object):
             position = LogPosition()
             dry_run_data_event_handler.handle_event(data_event, position)
         assert producer.publish.call_count == 4
-        assert patches.patch_producer.call_args_list[3][1]['dry_run'] is True
 
     def test_dry_run_schema(
         self,
@@ -353,7 +340,13 @@ class TestDataEventHandler(object):
         assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).topic == 'dry_run'
         assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).schema_id == 1
 
-    def test_skip_blacklist_schema(self, data_event_handler, patches, data_create_events):
+    def test_skip_blacklist_schema(
+        self,
+        producer,
+        data_event_handler,
+        patches,
+        data_create_events
+    ):
         with mock.patch.object(
             config.EnvConfig,
             'schema_blacklist',
@@ -363,7 +356,7 @@ class TestDataEventHandler(object):
             for data_event in data_create_events:
                 position = mock.Mock()
                 data_event_handler.handle_event(data_event, position)
-                assert patches.patch_producer.publish.call_count == 0
+                assert producer.publish.call_count == 0
                 assert patches.patch_upsert_data_event_checkpoint.call_count == 0
 
     def _assert_messages_as_expected(self, expected, actual):
