@@ -4,6 +4,8 @@ import signal
 import sys
 from collections import namedtuple
 
+from kazoo.exceptions import LockTimeout
+from kazoo.retry import KazooRetry
 from pymysqlreplication.event import QueryEvent
 
 from yelp_batch import Batch
@@ -16,6 +18,7 @@ from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.components.stubs.stub_schemas import StubSchemaClient
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
+from replication_handler.util.misc import get_kazoo_client
 from replication_handler.util.misc import save_position
 
 
@@ -38,6 +41,7 @@ class ParseReplicationStream(Batch):
     current_event_type = None
 
     def __init__(self):
+        self._lock_replication_handler()
         super(ParseReplicationStream, self).__init__()
         self.dp_client = DPClientlib()
         self.schema_store_client = StubSchemaClient()
@@ -101,6 +105,20 @@ class ParseReplicationStream(Batch):
             save_position(position_data, is_clean_shutdown=True)
         log.info("Gracefully shutting down.")
         sys.exit()
+
+    def _lock_replication_handler(self):
+        """ Use zookeeper to make sure only one instance of replication handler
+        is running against one source. see DATAPIPE-309.
+        """
+        retry_policy = KazooRetry(max_tries=3)
+        zk_client = get_kazoo_client()
+        zk_client.start()
+        lock = zk_client.Lock("/replication_hanlder", config.env_config.rbr_source_cluster)
+        try:
+            lock.acquire(timeout=10)
+        except LockTimeout:
+            print "already one instance running against this source! exit..."
+            sys.exit()
 
 
 if __name__ == '__main__':
