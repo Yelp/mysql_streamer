@@ -30,16 +30,13 @@ class SchemaEventHandler(BaseEventHandler):
         self.schematizer_client = kwargs.pop('schematizer_client')
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
 
-    @property
-    def schema_tracker_cursor(self):
-        return ConnectionSet.schema_tracker_rw().repltracker.cursor()
-
-    @property
-    def rbr_source_cursor(self):
-        return ConnectionSet.rbr_source_ro().refresh_primary.cursor()
+    def setup_cursor(self):
+        self.schema_tracker_cursor = ConnectionSet.schema_tracker_rw().repltracker.cursor()
+        self.rbr_source_cursor = ConnectionSet.rbr_source_ro().refresh_primary.cursor()
 
     def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
+        self.setup_cursor()
         # Filter out blacklisted schemas
         if self.is_blacklisted(event):
             return

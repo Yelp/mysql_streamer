@@ -504,9 +504,10 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         show_create_query,
         test_table,
-        table_with_schema_changes
+        table_with_schema_changes,
     ):
         mock_rbr_source_cursor.fetchone.return_value = [test_table, show_create_query]
+        schema_event_handler.setup_cursor()
         schema_event_handler._get_show_create_statement(table_with_schema_changes)
         assert mock_rbr_source_cursor.execute.call_count == 1
         assert mock_rbr_source_cursor.execute.call_args_list == [
