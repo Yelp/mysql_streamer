@@ -2,7 +2,6 @@
 import copy
 import logging
 
-from data_pipeline.producer import Producer
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.base_event_handler import BaseEventHandler
@@ -13,7 +12,6 @@ from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
 
 
 log = logging.getLogger('replication_handler.component.schema_event_handler')
@@ -26,7 +24,6 @@ class SchemaEventHandler(BaseEventHandler):
 
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
-        self.publish_dry_run = kwargs.pop('publish_dry_run')
         self.schematizer_client = kwargs.pop('schematizer_client')
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
 
@@ -47,11 +44,7 @@ class SchemaEventHandler(BaseEventHandler):
             # we will encounter 'BEGIN' or 'END'.
             # We might flush multiple times consecutively if schema events
             # show up in a row, but it will be fast.
-            with Producer(
-                REPLICATION_HANDLER_PRODUCER_NAME,
-                dry_run=self.publish_dry_run
-            ) as producer:
-                producer.flush()
+            self.producer.flush()
 
             query, table = self._parse_query(event)
             # DDL statements are commited implicitly, and can't be rollback.

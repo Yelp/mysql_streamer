@@ -27,7 +27,6 @@ SchemaHandlerExternalPatches = namedtuple(
         'create_schema_event_state',
         'update_schema_event_state',
         'upsert_global_event_state',
-        'patch_producer'
     )
 )
 
@@ -43,19 +42,19 @@ class TestSchemaEventHandler(object):
         return mock.Mock()
 
     @pytest.fixture
-    def schema_event_handler(self, schematizer_client):
+    def schema_event_handler(self, schematizer_client, producer):
         return SchemaEventHandler(
+            producer=producer,
             schematizer_client=schematizer_client,
             register_dry_run=False,
-            publish_dry_run=False,
         )
 
     @pytest.fixture
-    def dry_run_schema_event_handler(self, schematizer_client):
+    def dry_run_schema_event_handler(self, schematizer_client, producer):
         return SchemaEventHandler(
+            producer=producer,
             schematizer_client=schematizer_client,
             register_dry_run=True,
-            publish_dry_run=True
         )
 
     @pytest.fixture
@@ -223,13 +222,6 @@ class TestSchemaEventHandler(object):
         ) as mock_show_create:
             yield mock_show_create
 
-    @pytest.yield_fixture
-    def patch_producer(self, producer):
-        with mock.patch(
-            'replication_handler.components.schema_event_handler.Producer'
-        ) as mock_producer:
-            mock_producer.return_value.__enter__.return_value = producer
-            yield mock_producer
 
     @pytest.yield_fixture
     def patch_populate_schema_cache(self, schema_event_handler):
@@ -273,7 +265,6 @@ class TestSchemaEventHandler(object):
         patch_create_schema_event_state,
         patch_update_schema_event_state,
         patch_upsert_global_event_state,
-        patch_producer,
     ):
         return SchemaHandlerExternalPatches(
             schema_tracking_db_conn=patch_schema_tracker_rw,
@@ -285,7 +276,6 @@ class TestSchemaEventHandler(object):
             create_schema_event_state=patch_create_schema_event_state,
             update_schema_event_state=patch_update_schema_event_state,
             upsert_global_event_state=patch_upsert_global_event_state,
-            patch_producer=patch_producer,
         )
 
     def test_handle_event_create_table(
