@@ -10,11 +10,12 @@ from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
 from pymysqlreplication.constants.BINLOG import UPDATE_ROWS_EVENT_V2
 from pymysqlreplication.constants.BINLOG import DELETE_ROWS_EVENT_V2
 
-from replication_handler import config
-from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from data_pipeline.message import CreateMessage
 from data_pipeline.message import DeleteMessage
 from data_pipeline.message import UpdateMessage
+
+from replication_handler import config
+from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.util.misc import DataEvent
 
 
