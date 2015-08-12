@@ -33,6 +33,7 @@ class BaseEventHandler(object):
         self.cluster_name = source_database_config.cluster_name
 
     def handle_event(self, event, position):
+        """ All subclasses need to define how they want to handle an evnet."""
         raise NotImplementedError
 
     def get_schema_for_schema_cache(self, table):

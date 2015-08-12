@@ -20,6 +20,8 @@ table_whitelist:
     - business
     - replication_heartbeat
 
+producer_name: replication_handler
+
 module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml

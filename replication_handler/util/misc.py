@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+from replication_handler.config import env_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 
 
-REPLICATION_HANDLER_PRODUCER_NAME = "replication_handler"
+REPLICATION_HANDLER_PRODUCER_NAME = env_config.producer_name
 
 
 class ReplicationHandlerEvent(object):

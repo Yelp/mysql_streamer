@@ -34,7 +34,6 @@ class MessageBuilder(object):
         }
 
         if self.event.message_type == UpdateMessage:
-            assert "before_values" in self.event.row.keys()
             message_params["previous_payload_data"] = self.event.row["before_values"]
 
         return self.event.message_type(**message_params)
