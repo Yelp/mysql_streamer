@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from data_pipeline.producer import Producer
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.base_event_handler import SchemaCacheEntry
@@ -12,7 +11,6 @@ from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import DataEvent
-from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
 from replication_handler.util.misc import save_position
 
 
@@ -41,12 +39,14 @@ class RecoveryHandler(object):
     def __init__(
         self,
         stream,
+        producer,
         is_clean_shutdown=False,
         pending_schema_event=None,
         register_dry_run=False,
         publish_dry_run=False,
     ):
         self.stream = stream
+        self.producer = producer
         self.is_clean_shutdown = is_clean_shutdown
         self.pending_schema_event = pending_schema_event
         self.cluster_name = source_database_config.cluster_name
@@ -83,12 +83,8 @@ class RecoveryHandler(object):
         if events:
             topic_offsets = self._get_topic_offsets_map_for_cluster()
             messages = self._build_messages(events)
-            with Producer(
-                REPLICATION_HANDLER_PRODUCER_NAME,
-                dry_run=self.publish_dry_run
-            ) as producer:
-                position_data = producer.ensure_messages_published(messages, topic_offsets)
-                save_position(position_data)
+            position_data = self.producer.ensure_messages_published(messages, topic_offsets)
+            save_position(position_data)
 
     def _assert_event_state_status(self, event_state, status):
         if event_state.status != status:

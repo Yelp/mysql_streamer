@@ -146,19 +146,10 @@ class TestRecoveryHandler(object):
         ) as mock_global_upsert:
             yield mock_global_upsert
 
-    @pytest.yield_fixture
-    def patch_producer(self, producer):
-        with mock.patch(
-            'replication_handler.components.recovery_handler.Producer'
-        ) as mock_producer:
-            mock_producer.return_value.__enter__.return_value = producer
-            yield mock_producer
-
     def test_recovery_when_there_is_pending_alter_state(
         self,
         stream,
         producer,
-        patch_producer,
         create_table_statement,
         pending_alter_schema_event_state,
         patch_delete,
@@ -169,6 +160,7 @@ class TestRecoveryHandler(object):
     ):
         recovery_handler = RecoveryHandler(
             stream,
+            producer,
             is_clean_shutdown=True,
             pending_schema_event=pending_alter_schema_event_state
         )
@@ -185,7 +177,6 @@ class TestRecoveryHandler(object):
         self,
         stream,
         producer,
-        patch_producer,
         create_table_statement,
         pending_create_schema_event_state,
         patch_delete,
@@ -196,6 +187,7 @@ class TestRecoveryHandler(object):
     ):
         recovery_handler = RecoveryHandler(
             stream,
+            producer,
             is_clean_shutdown=True,
             pending_schema_event=pending_create_schema_event_state
         )
@@ -211,7 +203,6 @@ class TestRecoveryHandler(object):
         self,
         stream,
         producer,
-        patch_producer,
         session,
         pending_alter_schema_event_state,
         patch_delete,
@@ -242,6 +233,7 @@ class TestRecoveryHandler(object):
         producer.ensure_messages_published.return_value = position_data
         recovery_handler = RecoveryHandler(
             stream,
+            producer,
             is_clean_shutdown=False,
             pending_schema_event=None
         )
@@ -284,6 +276,7 @@ class TestRecoveryHandler(object):
         stream.peek.return_value = mock.Mock(spec=QueryEvent)
         recovery_handler = RecoveryHandler(
             stream,
+            producer,
             is_clean_shutdown=True,
             pending_schema_event=bad_schema_event_state
         )
@@ -298,6 +291,7 @@ class TestRecoveryHandler(object):
     ):
         recovery_handler = RecoveryHandler(
             stream,
+            producer,
             is_clean_shutdown=True,
             pending_schema_event=None
         )
