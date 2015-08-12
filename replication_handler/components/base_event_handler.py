@@ -28,9 +28,10 @@ log = logging.getLogger('replication_handler.component.base_event_handler')
 class BaseEventHandler(object):
     """Base class for handling binlog events for the Replication Handler"""
 
-    def __init__(self):
+    def __init__(self, producer):
         self.schema_cache = {}
         self.cluster_name = source_database_config.cluster_name
+        self.producer = producer
 
     def handle_event(self, event, position):
         """ All subclasses need to define how they want to handle an evnet."""

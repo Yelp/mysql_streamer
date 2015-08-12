@@ -10,8 +10,12 @@ from replication_handler.components.base_event_handler import Table
 class TestBaseEventHandler(object):
 
     @pytest.fixture(scope="class")
-    def base_event_handler(self):
-        return BaseEventHandler()
+    def producer(self):
+        return mock.Mock()
+
+    @pytest.fixture(scope="class")
+    def base_event_handler(self, producer):
+        return BaseEventHandler(producer)
 
     @pytest.fixture
     def table(self):
