@@ -203,6 +203,7 @@ class TestParseReplicationStream(object):
         patch_exit,
     ):
         replication_stream = ParseReplicationStream()
+        replication_stream.producer = producer
         replication_stream.current_event_type = EventType.DATA_EVENT
         replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
         assert producer.get_checkpoint_position_data.call_count == 1

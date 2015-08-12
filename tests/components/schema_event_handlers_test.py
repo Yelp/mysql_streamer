@@ -222,7 +222,6 @@ class TestSchemaEventHandler(object):
         ) as mock_show_create:
             yield mock_show_create
 
-
     @pytest.yield_fixture
     def patch_populate_schema_cache(self, schema_event_handler):
         with mock.patch.object(

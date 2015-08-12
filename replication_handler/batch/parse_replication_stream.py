@@ -42,36 +42,44 @@ class ParseReplicationStream(Batch):
         self.schematizer_client = get_schema_cache().schematizer_client
         self.register_dry_run = config.env_config.register_dry_run
         self.publish_dry_run = config.env_config.publish_dry_run
+
+    def setup(self):
         self.handler_map = self._build_handler_map()
         self.stream = self._get_stream()
         self._register_signal_handler()
 
     def run(self):
-        for replication_handler_event in self.stream:
-            event_class = replication_handler_event.event.__class__
-            self.current_event_type = self.handler_map[event_class].event_type
-            self.handler_map[event_class].handler.handle_event(
-                replication_handler_event.event,
-                replication_handler_event.position
-            )
+        with Producer(
+            REPLICATION_HANDLER_PRODUCER_NAME,
+            dry_run=self.publish_dry_run
+        ) as self.producer:
+            self.setup()
+            for replication_handler_event in self.stream:
+                event_class = replication_handler_event.event.__class__
+                self.current_event_type = self.handler_map[event_class].event_type
+                self.handler_map[event_class].handler.handle_event(
+                    replication_handler_event.event,
+                    replication_handler_event.position
+                )
 
     def _get_stream(self):
         replication_stream_restarter = ReplicationStreamRestarter()
         replication_stream_restarter.restart(
-            publish_dry_run=self.publish_dry_run,
+            self.producer,
             register_dry_run=self.register_dry_run,
         )
         return replication_stream_restarter.get_stream()
 
     def _build_handler_map(self):
         data_event_handler = DataEventHandler(
+            producer=self.producer,
             register_dry_run=self.register_dry_run,
             publish_dry_run=self.publish_dry_run
         )
         schema_event_handler = SchemaEventHandler(
             schematizer_client=self.schematizer_client,
+            producer=self.producer,
             register_dry_run=self.register_dry_run,
-            publish_dry_run=self.publish_dry_run
         )
         handler_map = {
             DataEvent: HandlerInfo(
@@ -97,10 +105,9 @@ class ParseReplicationStream(Batch):
         # We will not do anything for SchemaEvent, because we have
         # a good way to recover it.
         if self.current_event_type == EventType.DATA_EVENT:
-            with Producer(REPLICATION_HANDLER_PRODUCER_NAME) as producer:
-                producer.flush()
-                position_data = producer.get_checkpoint_position_data()
-                save_position(position_data, is_clean_shutdown=True)
+            self.producer.flush()
+            position_data = self.producer.get_checkpoint_position_data()
+            save_position(position_data, is_clean_shutdown=True)
         log.info("Gracefully shutting down.")
         sys.exit()
 
