@@ -113,7 +113,7 @@ class ParseReplicationStream(Batch):
         is running against one source. see DATAPIPE-309.
         """
         retry_policy = KazooRetry(max_tries=3)
-        self.zk_client = get_kazoo_client()
+        self.zk_client = get_kazoo_client(command_retry=retry_policy)
         self.zk_client.start()
         self.lock = self.zk_client.Lock("/replication_hanlder", config.env_config.rbr_source_cluster)
         try:

@@ -57,10 +57,12 @@ def save_position(position_data, is_clean_shutdown=False):
             cluster_name=position_info["cluster_name"]
         )
 
+
 def get_local_zk():
     path = env_config.zookeeper_path
     """Get (with caching) the local zookeeper cluster definition."""
     return yelp_lib.config_loader.load(path, '/')
+
 
 def get_kazoo_client_for_cluster_def(cluster_def, **kwargs):
     """Get a KazooClient for a list of host-port pairs `cluster_def`."""
@@ -71,6 +73,7 @@ def get_kazoo_client_for_cluster_def(cluster_def, **kwargs):
             kwargs[default_kwarg] = default_value
 
     return kazoo.client.KazooClient(host_string, **kwargs)
+
 
 def get_kazoo_client(**kwargs):
     """Get a KazooClient for a local zookeeper cluster."""
