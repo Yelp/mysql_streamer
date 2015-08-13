@@ -265,11 +265,8 @@ class TestParseReplicationStream(object):
     def test_close_zk_when_exception(
         self,
         zk_client,
-        patch_config,
         patch_restarter,
         patch_rbr_state_rw,
-        patch_data_handle_event,
-        patch_schema_handle_event,
     ):
         patch_restarter.return_value.get_stream.return_value.__iter__.side_effect = Exception
         with pytest.raises(Exception):
