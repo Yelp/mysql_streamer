@@ -4,6 +4,8 @@ import pytest
 
 from pymysqlreplication.event import QueryEvent
 
+from data_pipeline.message import CreateMessage
+from data_pipeline.producer import Producer
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
@@ -16,6 +18,7 @@ from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import DataEvent
+from replication_handler.util.position import LogPosition
 
 
 class TestRecoveryHandler(object):
@@ -33,8 +36,8 @@ class TestRecoveryHandler(object):
         return mock.Mock()
 
     @pytest.fixture
-    def dp_client(self):
-        return mock.Mock()
+    def producer(self):
+        return mock.Mock(autospect=Producer)
 
     @pytest.fixture
     def session(self):
@@ -54,11 +57,21 @@ class TestRecoveryHandler(object):
         return mock.Mock()
 
     @pytest.fixture
-    def pending_schema_event_state(self, create_table_statement, alter_table_statement):
+    def pending_alter_schema_event_state(self, create_table_statement, alter_table_statement):
         return SchemaEventState(
             position={"gtid": "sid:12"},
             status=SchemaEventStatus.PENDING,
             query=alter_table_statement,
+            table_name="Business",
+            create_table_statement=create_table_statement,
+        )
+
+    @pytest.fixture
+    def pending_create_schema_event_state(self, create_table_statement):
+        return SchemaEventState(
+            position={"gtid": "sid:12"},
+            status=SchemaEventStatus.PENDING,
+            query=create_table_statement,
             table_name="Business",
             create_table_statement=create_table_statement,
         )
@@ -134,12 +147,12 @@ class TestRecoveryHandler(object):
         ) as mock_global_upsert:
             yield mock_global_upsert
 
-    def test_recovery_when_there_is_pending_state(
+    def test_recovery_when_there_is_pending_alter_state(
         self,
         stream,
-        dp_client,
+        producer,
         create_table_statement,
-        pending_schema_event_state,
+        pending_alter_schema_event_state,
         patch_delete,
         patch_session_connect_begin,
         patch_schema_tracker_connection,
@@ -148,9 +161,9 @@ class TestRecoveryHandler(object):
     ):
         recovery_handler = RecoveryHandler(
             stream,
-            dp_client,
+            producer,
             is_clean_shutdown=True,
-            pending_schema_event=pending_schema_event_state
+            pending_schema_event=pending_alter_schema_event_state
         )
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
@@ -161,12 +174,38 @@ class TestRecoveryHandler(object):
         ]
         assert patch_delete.call_count == 1
 
+    def test_recovery_when_there_is_pending_create_state(
+        self,
+        stream,
+        producer,
+        create_table_statement,
+        pending_create_schema_event_state,
+        patch_delete,
+        patch_session_connect_begin,
+        patch_schema_tracker_connection,
+        patch_config,
+        mock_cursor
+    ):
+        recovery_handler = RecoveryHandler(
+            stream,
+            producer,
+            is_clean_shutdown=True,
+            pending_schema_event=pending_create_schema_event_state
+        )
+        assert recovery_handler.need_recovery is True
+        recovery_handler.recover()
+        assert mock_cursor.execute.call_count == 1
+        assert mock_cursor.execute.call_args_list == [
+            mock.call("DROP TABLE `Business`"),
+        ]
+        assert patch_delete.call_count == 1
+
     def test_recovery_when_unclean_shutdown_with_no_pending_state(
         self,
         stream,
-        dp_client,
+        producer,
         session,
-        pending_schema_event_state,
+        pending_alter_schema_event_state,
         patch_delete,
         patch_session_connect_begin,
         patch_schema_tracker_connection,
@@ -176,7 +215,12 @@ class TestRecoveryHandler(object):
         patch_upsert_data_event_checkpoint,
         patch_upsert_global_event,
     ):
-        stream.peek.return_value.event = mock.Mock(DataEvent)
+        data_event = mock.Mock(DataEvent)
+        data_event.row = {"values": {'a': 1}}
+        data_event.message_type = CreateMessage
+        stream.peek.return_value.event = data_event
+        stream.next.return_value.event = data_event
+        stream.next.return_value.position = LogPosition()
         position_data = mock.Mock()
         position_data.last_published_message_position_info = {
             "upstream_offset": {
@@ -187,16 +231,16 @@ class TestRecoveryHandler(object):
             },
         }
         position_data.topic_to_kafka_offset_map = {"topic": 1}
-        dp_client.ensure_messages_published.return_value = position_data
+        producer.ensure_messages_published.return_value = position_data
         recovery_handler = RecoveryHandler(
             stream,
-            dp_client,
+            producer,
             is_clean_shutdown=False,
             pending_schema_event=None
         )
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
-        assert dp_client.ensure_messages_published.call_count == 1
+        assert producer.ensure_messages_published.call_count == 1
         assert patch_get_topic_to_kafka_offset_map.call_count == 1
         assert patch_upsert_data_event_checkpoint.call_count == 1
         assert patch_upsert_global_event.call_count == 1
@@ -222,7 +266,7 @@ class TestRecoveryHandler(object):
     def test_bad_schema_event_state(
         self,
         stream,
-        dp_client,
+        producer,
         create_table_statement,
         bad_schema_event_state,
         patch_delete,
@@ -233,7 +277,7 @@ class TestRecoveryHandler(object):
         stream.peek.return_value = mock.Mock(spec=QueryEvent)
         recovery_handler = RecoveryHandler(
             stream,
-            dp_client,
+            producer,
             is_clean_shutdown=True,
             pending_schema_event=bad_schema_event_state
         )
@@ -244,11 +288,11 @@ class TestRecoveryHandler(object):
     def test_no_recovery_is_needed(
         self,
         stream,
-        dp_client,
+        producer,
     ):
         recovery_handler = RecoveryHandler(
             stream,
-            dp_client,
+            producer,
             is_clean_shutdown=True,
             pending_schema_event=None
         )

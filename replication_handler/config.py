@@ -61,6 +61,10 @@ class EnvConfig(BaseConfig):
     def zookeeper_path(self):
         return staticconf.get('zookeeper_path').value
 
+    @property
+    def producer_name(self):
+        return staticconf.get('producer_name').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

@@ -2,6 +2,8 @@
 import mock
 import pytest
 
+from data_pipeline.producer import Producer
+
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
@@ -14,8 +16,8 @@ from replication_handler.models.schema_event_state import SchemaEventState
 class TestReplicationStreamRestarter(object):
 
     @pytest.fixture
-    def dp_client(self):
-        return mock.Mock()
+    def producer(self):
+        return mock.Mock(autospect=Producer)
 
     @pytest.yield_fixture
     def patch_session_connect_begin(self):
@@ -70,7 +72,7 @@ class TestReplicationStreamRestarter(object):
 
     def test_restart_with_clean_shutdown_and_no_pending_schema_event(
         self,
-        dp_client,
+        producer,
         patch_session_connect_begin,
         patch_get_global_event_state,
         patch_get_pending_schema_event_state,
@@ -85,15 +87,15 @@ class TestReplicationStreamRestarter(object):
             is_clean_shutdown=True
         )
         patch_get_pending_schema_event_state.return_value = None
-        restarter = ReplicationStreamRestarter(dp_client)
-        restarter.restart()
+        restarter = ReplicationStreamRestarter()
+        restarter.restart(producer)
         assert restarter.get_stream().next() == next_event
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
         assert patch_recover.call_count == 0
 
     def test_restart_with_unclean_shutdown_and_no_pending_schema_event(
         self,
-        dp_client,
+        producer,
         patch_session_connect_begin,
         patch_get_global_event_state,
         patch_get_pending_schema_event_state,
@@ -106,14 +108,14 @@ class TestReplicationStreamRestarter(object):
             is_clean_shutdown=False
         )
         patch_get_pending_schema_event_state.return_value = None
-        restarter = ReplicationStreamRestarter(dp_client)
-        restarter.restart()
+        restarter = ReplicationStreamRestarter()
+        restarter.restart(producer)
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
         assert patch_recover.call_count == 1
 
     def test_restart_with_clean_shutdown_and_pending_schema_event(
         self,
-        dp_client,
+        producer,
         patch_session_connect_begin,
         patch_get_global_event_state,
         patch_get_pending_schema_event_state,
@@ -126,7 +128,7 @@ class TestReplicationStreamRestarter(object):
             is_clean_shutdown=True
         )
         patch_get_pending_schema_event_state.return_value = mock.Mock()
-        restarter = ReplicationStreamRestarter(dp_client)
-        restarter.restart()
+        restarter = ReplicationStreamRestarter()
+        restarter.restart(producer)
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
         assert patch_recover.call_count == 1

@@ -7,10 +7,11 @@ import sys
 from kazoo.client import KazooClient
 from pymysqlreplication.event import QueryEvent
 
+from data_pipeline.producer import Producer
+
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
-from replication_handler.components.stubs.stub_dp_clientlib import DPClientlib
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
@@ -62,21 +63,17 @@ class TestParseReplicationStream(object):
         ) as mock_handle_event:
             yield mock_handle_event
 
-    @pytest.yield_fixture
-    def patch_get_checkpoint_position_data(self):
-        with mock.patch.object(
-            DPClientlib,
-            'get_checkpoint_position_data'
-        ) as mock_get_latest_published_offset:
-            yield mock_get_latest_published_offset
+    @pytest.fixture
+    def producer(self):
+        return mock.Mock(autospect=Producer)
 
     @pytest.yield_fixture
-    def patch_flush(self):
-        with mock.patch.object(
-            DPClientlib,
-            'flush'
-        ) as mock_get_latest_published_offset:
-            yield mock_get_latest_published_offset
+    def patch_producer(self, producer):
+        with mock.patch(
+            'replication_handler.batch.parse_replication_stream.Producer'
+        ) as mock_producer:
+            mock_producer.return_value.__enter__.return_value = producer
+            yield mock_producer
 
     @pytest.yield_fixture
     def patch_rbr_state_rw(self, mock_rbr_state_session):
@@ -222,39 +219,40 @@ class TestParseReplicationStream(object):
     def test_handle_graceful_termination_data_event(
         self,
         zk_client,
+        producer,
+        patch_producer,
         patch_config,
         patch_restarter,
         patch_data_handle_event,
-        patch_get_checkpoint_position_data,
         patch_save_position,
-        patch_flush,
         patch_exit,
         patch_zk,
     ):
         replication_stream = ParseReplicationStream()
+        replication_stream.producer = producer
         replication_stream.current_event_type = EventType.DATA_EVENT
         replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
-        assert patch_get_checkpoint_position_data.call_count == 1
-        assert patch_flush.call_count == 1
+        assert producer.get_checkpoint_position_data.call_count == 1
+        assert producer.flush.call_count == 1
         assert patch_exit.call_count == 1
         self._check_zk(zk_client)
 
     def test_handle_graceful_termination_schema_event(
         self,
         zk_client,
+        producer,
+        patch_producer,
         patch_config,
         patch_restarter,
         patch_data_handle_event,
-        patch_get_checkpoint_position_data,
-        patch_flush,
         patch_exit,
         patch_zk
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.current_event_type = EventType.SCHEMA_EVENT
         replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
-        assert patch_get_checkpoint_position_data.call_count == 0
-        assert patch_flush.call_count == 0
+        assert producer.get_checkpoint_position_data.call_count == 0
+        assert producer.flush.call_count == 0
         assert patch_exit.call_count == 1
         self._check_zk(zk_client)
 
