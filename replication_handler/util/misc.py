@@ -60,7 +60,7 @@ def save_position(position_data, is_clean_shutdown=False):
 
 
 def get_local_zk():
-    path = env_config.zookeeper_path
+    path = env_config.zookeeper_discovery_path
     """Get (with caching) the local zookeeper cluster definition."""
     return yelp_lib.config_loader.load(path, '/')
 

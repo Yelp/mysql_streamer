@@ -131,7 +131,7 @@ class ParseReplicationStream(Batch):
         except LockTimeout:
             print "Already one instance running against this source! exit..."
             self._close_zk()
-            sys.exit()
+            sys.exit(1)
 
     def _close_zk(self):
         """ Clean up the zookeeper client."""

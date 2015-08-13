@@ -19,6 +19,7 @@ from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
 
 
+@pytest.mark.usefixtures("patch_zk")
 class TestParseReplicationStream(object):
 
     @pytest.fixture
@@ -142,7 +143,6 @@ class TestParseReplicationStream(object):
         patch_rbr_state_rw,
         patch_data_handle_event,
         patch_schema_handle_event,
-        patch_zk,
     ):
         schema_event_with_gtid = ReplicationHandlerEvent(
             position=position_gtid_1,
@@ -156,7 +156,7 @@ class TestParseReplicationStream(object):
             schema_event_with_gtid,
             data_event_with_gtid
         ]
-        stream = self._init_and_run_batch(patch_zk)
+        stream = self._init_and_run_batch()
         assert patch_schema_handle_event.call_args_list == \
             [mock.call(schema_event, position_gtid_1)]
         assert patch_data_handle_event.call_args_list == \
@@ -177,7 +177,6 @@ class TestParseReplicationStream(object):
         patch_restarter,
         patch_rbr_state_rw,
         patch_data_handle_event,
-        patch_zk
     ):
         data_event_with_gtid_1 = ReplicationHandlerEvent(
             position=position_gtid_1,
@@ -191,7 +190,7 @@ class TestParseReplicationStream(object):
             data_event_with_gtid_1,
             data_event_with_gtid_2
         ]
-        self._init_and_run_batch(patch_zk)
+        self._init_and_run_batch()
         assert patch_data_handle_event.call_args_list == [
             mock.call(data_event, position_gtid_1),
             mock.call(data_event, position_gtid_2)
@@ -206,9 +205,8 @@ class TestParseReplicationStream(object):
         patch_rbr_state_rw,
         patch_restarter,
         patch_signal,
-        patch_zk
     ):
-        replication_stream = self._init_and_run_batch(patch_zk)
+        replication_stream = self._init_and_run_batch()
         assert patch_signal.call_count == 2
         assert patch_signal.call_args_list == [
             mock.call(signal.SIGINT, replication_stream._handle_graceful_termination),
@@ -226,7 +224,6 @@ class TestParseReplicationStream(object):
         patch_data_handle_event,
         patch_save_position,
         patch_exit,
-        patch_zk,
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.producer = producer
@@ -246,7 +243,6 @@ class TestParseReplicationStream(object):
         patch_restarter,
         patch_data_handle_event,
         patch_exit,
-        patch_zk
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.current_event_type = EventType.SCHEMA_EVENT
@@ -256,7 +252,7 @@ class TestParseReplicationStream(object):
         assert patch_exit.call_count == 1
         self._check_zk(zk_client)
 
-    def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter, patch_zk):
+    def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter):
         with mock.patch(
             'replication_handler.batch.parse_replication_stream.config.env_config'
         ) as mock_config:
@@ -266,7 +262,7 @@ class TestParseReplicationStream(object):
             assert replication_stream.register_dry_run is True
             assert replication_stream.publish_dry_run is False
 
-    def _init_and_run_batch(self, patch_zk):
+    def _init_and_run_batch(self):
         replication_stream = ParseReplicationStream()
         replication_stream.run()
         return replication_stream

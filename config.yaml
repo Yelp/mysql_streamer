@@ -22,7 +22,7 @@ table_whitelist:
 
 producer_name: replication_handler
 
-zookeeper_path: '/nail/etc/zookeeper_discovery/generic/local.yaml'
+zookeeper_discovery_path: '/nail/etc/zookeeper_discovery/generic/local.yaml'
 
 module_config:
     -   namespace: yelp_conn
