@@ -59,7 +59,7 @@ class EnvConfig(BaseConfig):
 
     @property
     def zookeeper_discovery_path(self):
-        return staticconf.get('zookeeper_path').value
+        return staticconf.get('zookeeper_discovery_path').value
 
     @property
     def producer_name(self):
