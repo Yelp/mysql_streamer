@@ -262,6 +262,20 @@ class TestParseReplicationStream(object):
             assert replication_stream.register_dry_run is True
             assert replication_stream.publish_dry_run is False
 
+    def test_close_zk_when_exception(
+        self,
+        zk_client,
+        patch_config,
+        patch_restarter,
+        patch_rbr_state_rw,
+        patch_data_handle_event,
+        patch_schema_handle_event,
+    ):
+        patch_restarter.return_value.get_stream.return_value.__iter__.side_effect = Exception
+        with pytest.raises(Exception):
+            self._init_and_run_batch()
+            self._check_zk(zk_client)
+
     def _init_and_run_batch(self):
         replication_stream = ParseReplicationStream()
         replication_stream.run()

@@ -54,19 +54,21 @@ class ParseReplicationStream(Batch):
         self._register_signal_handler()
 
     def run(self):
-        with Producer(
-            REPLICATION_HANDLER_PRODUCER_NAME,
-            dry_run=self.publish_dry_run
-        ) as self.producer:
-            self._post_producer_setup()
-            for replication_handler_event in self.stream:
-                event_class = replication_handler_event.event.__class__
-                self.current_event_type = self.handler_map[event_class].event_type
-                self.handler_map[event_class].handler.handle_event(
-                    replication_handler_event.event,
-                    replication_handler_event.position
-                )
-        self._close_zk()
+        try:
+            with Producer(
+                REPLICATION_HANDLER_PRODUCER_NAME,
+                dry_run=self.publish_dry_run
+            ) as self.producer:
+                self._post_producer_setup()
+                for replication_handler_event in self.stream:
+                    event_class = replication_handler_event.event.__class__
+                    self.current_event_type = self.handler_map[event_class].event_type
+                    self.handler_map[event_class].handler.handle_event(
+                        replication_handler_event.event,
+                        replication_handler_event.position
+                    )
+        finally:
+            self._close_zk()
 
     def _get_stream(self):
         replication_stream_restarter = ReplicationStreamRestarter()
