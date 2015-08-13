@@ -3,6 +3,7 @@ import kazoo.client
 
 import yelp_lib.config_loader
 
+from replication_handler.config import env_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import EventType
@@ -57,8 +58,8 @@ def save_position(position_data, is_clean_shutdown=False):
         )
 
 def get_local_zk():
+    path = env_config.zookeeper_path
     """Get (with caching) the local zookeeper cluster definition."""
-    path = '/nail/etc/zookeeper_discovery/generic/local.yaml'
     return yelp_lib.config_loader.load(path, '/')
 
 def get_kazoo_client_for_cluster_def(cluster_def, **kwargs):

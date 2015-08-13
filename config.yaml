@@ -19,6 +19,8 @@ schema_blacklist:
 table_whitelist:
     - business
 
+zookeeper_path: '/nail/etc/zookeeper_discovery/generic/local.yaml'
+
 module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml

@@ -41,7 +41,7 @@ class ParseReplicationStream(Batch):
     current_event_type = None
 
     def __init__(self):
-        self._lock_replication_handler()
+        self._init_zk_and_lock_replication_handler()
         super(ParseReplicationStream, self).__init__()
         self.dp_client = DPClientlib()
         self.schema_store_client = StubSchemaClient()
@@ -59,6 +59,7 @@ class ParseReplicationStream(Batch):
                 replication_handler_event.event,
                 replication_handler_event.position
             )
+        self._close_zk()
 
     def _get_stream(self):
         replication_stream_restarter = ReplicationStreamRestarter(self.dp_client)
@@ -103,22 +104,34 @@ class ParseReplicationStream(Batch):
             self.dp_client.flush()
             position_data = self.dp_client.get_checkpoint_position_data()
             save_position(position_data, is_clean_shutdown=True)
+        self._close_zk()
         log.info("Gracefully shutting down.")
         sys.exit()
 
-    def _lock_replication_handler(self):
+    def _init_zk_and_lock_replication_handler(self):
         """ Use zookeeper to make sure only one instance of replication handler
         is running against one source. see DATAPIPE-309.
         """
         retry_policy = KazooRetry(max_tries=3)
-        zk_client = get_kazoo_client()
-        zk_client.start()
-        self.lock = zk_client.Lock("/replication_hanlder", config.env_config.rbr_source_cluster)
+        self.zk_client = get_kazoo_client()
+        self.zk_client.start()
+        self.lock = self.zk_client.Lock("/replication_hanlder", config.env_config.rbr_source_cluster)
         try:
             self.lock.acquire(timeout=10)
         except LockTimeout:
             print "Already one instance running against this source! exit..."
+            self._close_zk()
             sys.exit()
+
+    def _close_zk(self):
+        """ Clean up the zookeeper client."""
+        if self.lock.is_acquired:
+            log.info("Releasing the lock...")
+            self.lock.release()
+        log.info("Stopping zookeeper...")
+        self.zk_client.stop()
+        log.info("Closing zookeeper...")
+        self.zk_client.close()
 
 
 if __name__ == '__main__':

@@ -57,6 +57,10 @@ class EnvConfig(BaseConfig):
     def table_whitelist(self):
         return staticconf.get('table_whitelist').value
 
+    @property
+    def zookeeper_path(self):
+        return staticconf.get('zookeeper_path').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

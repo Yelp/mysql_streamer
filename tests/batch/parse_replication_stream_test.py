@@ -4,6 +4,7 @@ import pytest
 import signal
 import sys
 
+from kazoo.client import KazooClient
 from pymysqlreplication.event import QueryEvent
 
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
@@ -18,6 +19,10 @@ from replication_handler.util.position import GtidPosition
 
 
 class TestParseReplicationStream(object):
+
+    @pytest.fixture
+    def zk_client(self):
+        return mock.Mock(autospec=KazooClient)
 
     @pytest.fixture
     def schema_event(self):
@@ -120,8 +125,17 @@ class TestParseReplicationStream(object):
             mock_config.publish_dry_run = False
             yield mock_config
 
+    @pytest.yield_fixture
+    def patch_zk(self, zk_client):
+        with mock.patch(
+            'replication_handler.batch.parse_replication_stream.get_kazoo_client'
+        ) as mock_zk:
+            mock_zk.return_value = zk_client
+            yield mock_zk
+
     def test_replication_stream_different_events(
         self,
+        zk_client,
         schema_event,
         data_event,
         patch_config,
@@ -130,7 +144,8 @@ class TestParseReplicationStream(object):
         patch_restarter,
         patch_rbr_state_rw,
         patch_data_handle_event,
-        patch_schema_handle_event
+        patch_schema_handle_event,
+        patch_zk,
     ):
         schema_event_with_gtid = ReplicationHandlerEvent(
             position=position_gtid_1,
@@ -144,7 +159,7 @@ class TestParseReplicationStream(object):
             schema_event_with_gtid,
             data_event_with_gtid
         ]
-        stream = self._init_and_run_batch()
+        stream = self._init_and_run_batch(patch_zk)
         assert patch_schema_handle_event.call_args_list == \
             [mock.call(schema_event, position_gtid_1)]
         assert patch_data_handle_event.call_args_list == \
@@ -153,9 +168,11 @@ class TestParseReplicationStream(object):
         assert patch_data_handle_event.call_count == 1
         assert stream.register_dry_run is False
         assert stream.publish_dry_run is False
+        self._check_zk(zk_client)
 
     def test_replication_stream_same_events(
         self,
+        zk_client,
         data_event,
         patch_config,
         position_gtid_1,
@@ -163,6 +180,7 @@ class TestParseReplicationStream(object):
         patch_restarter,
         patch_rbr_state_rw,
         patch_data_handle_event,
+        patch_zk
     ):
         data_event_with_gtid_1 = ReplicationHandlerEvent(
             position=position_gtid_1,
@@ -176,29 +194,34 @@ class TestParseReplicationStream(object):
             data_event_with_gtid_1,
             data_event_with_gtid_2
         ]
-        self._init_and_run_batch()
+        self._init_and_run_batch(patch_zk)
         assert patch_data_handle_event.call_args_list == [
             mock.call(data_event, position_gtid_1),
             mock.call(data_event, position_gtid_2)
         ]
         assert patch_data_handle_event.call_count == 2
+        self._check_zk(zk_client)
 
     def test_register_signal_handler(
         self,
+        zk_client,
         patch_config,
         patch_rbr_state_rw,
         patch_restarter,
-        patch_signal
+        patch_signal,
+        patch_zk
     ):
-        replication_stream = self._init_and_run_batch()
+        replication_stream = self._init_and_run_batch(patch_zk)
         assert patch_signal.call_count == 2
         assert patch_signal.call_args_list == [
             mock.call(signal.SIGINT, replication_stream._handle_graceful_termination),
             mock.call(signal.SIGTERM, replication_stream._handle_graceful_termination),
         ]
+        self._check_zk(zk_client)
 
     def test_handle_graceful_termination_data_event(
         self,
+        zk_client,
         patch_config,
         patch_restarter,
         patch_data_handle_event,
@@ -206,6 +229,7 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_flush,
         patch_exit,
+        patch_zk,
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.current_event_type = EventType.DATA_EVENT
@@ -213,15 +237,18 @@ class TestParseReplicationStream(object):
         assert patch_get_checkpoint_position_data.call_count == 1
         assert patch_flush.call_count == 1
         assert patch_exit.call_count == 1
+        self._check_zk(zk_client)
 
     def test_handle_graceful_termination_schema_event(
         self,
+        zk_client,
         patch_config,
         patch_restarter,
         patch_data_handle_event,
         patch_get_checkpoint_position_data,
         patch_flush,
         patch_exit,
+        patch_zk
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.current_event_type = EventType.SCHEMA_EVENT
@@ -229,8 +256,9 @@ class TestParseReplicationStream(object):
         assert patch_get_checkpoint_position_data.call_count == 0
         assert patch_flush.call_count == 0
         assert patch_exit.call_count == 1
+        self._check_zk(zk_client)
 
-    def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter):
+    def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter, patch_zk):
         with mock.patch(
             'replication_handler.batch.parse_replication_stream.config.env_config'
         ) as mock_config:
@@ -240,7 +268,13 @@ class TestParseReplicationStream(object):
             assert replication_stream.register_dry_run is True
             assert replication_stream.publish_dry_run is False
 
-    def _init_and_run_batch(self):
+    def _init_and_run_batch(self, patch_zk):
         replication_stream = ParseReplicationStream()
         replication_stream.run()
         return replication_stream
+
+    def _check_zk(self, zk_client):
+        assert zk_client.start.call_count == 1
+        assert zk_client.Lock.call_count == 1
+        assert zk_client.stop.call_count == 1
+        assert zk_client.close.call_count == 1
