@@ -23,13 +23,17 @@ class SchemaEventHandler(BaseEventHandler):
     notify_email = "bam+replication+handler@yelp.com"
 
     def __init__(self, *args, **kwargs):
-        self._register_dry_run = kwargs.pop('register_dry_run')
+        self.register_dry_run = kwargs.pop('register_dry_run')
+        self.schematizer_client = kwargs.pop('schematizer_client')
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
+
+    def setup_cursor(self):
         self.schema_tracker_cursor = ConnectionSet.schema_tracker_rw().repltracker.cursor()
         self.rbr_source_cursor = ConnectionSet.rbr_source_ro().refresh_primary.cursor()
 
     def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
+        self.setup_cursor()
         # Filter out blacklisted schemas
         if self.is_blacklisted(event):
             return
@@ -40,7 +44,7 @@ class SchemaEventHandler(BaseEventHandler):
             # we will encounter 'BEGIN' or 'END'.
             # We might flush multiple times consecutively if schema events
             # show up in a row, but it will be fast.
-            self.dp_client.flush()
+            self.producer.flush()
 
             query, table = self._parse_query(event)
             # DDL statements are commited implicitly, and can't be rollback.
@@ -136,10 +140,10 @@ class SchemaEventHandler(BaseEventHandler):
             event,
             table
         )
-        if not self._register_dry_run:
+        if not self.register_dry_run:
             schema_store_response = self._register_with_schema_store(
                 table,
-                [show_create_result.query]
+                {"new_create_table_stmt": show_create_result.query}
             )
             self._populate_schema_cache(table, schema_store_response)
 
@@ -152,16 +156,17 @@ class SchemaEventHandler(BaseEventHandler):
             event,
             table
         )
-        mysql_statements = [
-            event.query,
-            show_create_result_before.query,
-            show_create_result_after.query
-        ]
-        schema_store_response = self._register_with_schema_store(
-            table,
-            mysql_statements
-        )
-        self._populate_schema_cache(table, schema_store_response)
+        mysql_statements = {
+            "old_create_table_stmt": show_create_result_before.query,
+            "new_create_table_stmt": show_create_result_after.query,
+            "alter_table_stmt": event.query,
+        }
+        if not self.register_dry_run:
+            schema_store_response = self._register_with_schema_store(
+                table,
+                mysql_statements
+            )
+            self._populate_schema_cache(table, schema_store_response)
 
     def _exec_query_and_get_show_create_statement(self, event, table):
         use_db_query = "USE {0}".format(table.database_name)
@@ -185,12 +190,18 @@ class SchemaEventHandler(BaseEventHandler):
         """Register with schema store and populate cache
            with response, one interface for both create and alter
            statements.
+        TODO(cheng|DATAPIPE-337): get owner_email for tables.
+        TODO(cheng|DATAPIPE-255): set pii flag once pii_generator is shipped.
         """
-        resp = self.schema_store_client.register_avro_schema_from_mysql_statements(
-            namespace="{0}.{1}".format(table.cluster_name, table.database_name),
-            source=table.table_name,
-            source_owner_email=self.notify_email,
-            mysql_statements=mysql_statements
-        )
+        request_body = {
+            "namespace": "{0}.{1}".format(table.cluster_name, table.database_name),
+            "source": table.table_name,
+            "source_owner_email": self.notify_email,
+            "contains_pii": False,
+        }
+        request_body.update(mysql_statements)
+        resp = self.schematizer_client.schemas.register_schema_from_mysql_stmts(
+            body=request_body
+        ).result()
         resp = self._format_register_response(resp)
         return resp

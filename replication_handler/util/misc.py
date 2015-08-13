@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+from replication_handler.config import env_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
+
+
+REPLICATION_HANDLER_PRODUCER_NAME = env_config.producer_name
 
 
 class ReplicationHandlerEvent(object):
@@ -18,13 +22,13 @@ class DataEvent(object):
     row per event.
     """
 
-    def __init__(self, schema, table, log_pos, log_file, row, event_type):
+    def __init__(self, schema, table, log_pos, log_file, row, message_type):
         self.schema = schema
         self.table = table
         self.log_pos = log_pos
         self.log_file = log_file
         self.row = row
-        self.event_type = event_type
+        self.message_type = message_type
 
 
 def save_position(position_data, is_clean_shutdown=False):

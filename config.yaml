@@ -18,6 +18,9 @@ schema_blacklist:
 
 table_whitelist:
     - business
+    - replication_heartbeat
+
+producer_name: replication_handler
 
 module_config:
     -   namespace: yelp_conn
@@ -37,3 +40,13 @@ module_config:
             enable_query_logging: True
             # Print queries to stdout
             enable_query_printing: True
+
+    - namespace: smartstack_services
+      file: /nail/etc/services/services.yaml
+
+    - namespace: data_pipeline
+      config:
+        load_schematizer_host_and_port_from_smartstack: True
+        kafka_cluster_type: datapipe
+        kafka_cluster_name: uswest2-devc
+        skip_messages_with_pii: True
