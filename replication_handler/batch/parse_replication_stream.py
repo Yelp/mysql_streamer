@@ -113,11 +113,11 @@ class ParseReplicationStream(Batch):
         retry_policy = KazooRetry(max_tries=3)
         zk_client = get_kazoo_client()
         zk_client.start()
-        lock = zk_client.Lock("/replication_hanlder", config.env_config.rbr_source_cluster)
+        self.lock = zk_client.Lock("/replication_hanlder", config.env_config.rbr_source_cluster)
         try:
-            lock.acquire(timeout=10)
+            self.lock.acquire(timeout=10)
         except LockTimeout:
-            print "already one instance running against this source! exit..."
+            print "Already one instance running against this source! exit..."
             sys.exit()
 
 
