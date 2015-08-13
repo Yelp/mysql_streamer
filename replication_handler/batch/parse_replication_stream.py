@@ -43,7 +43,8 @@ class ParseReplicationStream(Batch):
         self.register_dry_run = config.env_config.register_dry_run
         self.publish_dry_run = config.env_config.publish_dry_run
 
-    def setup(self):
+    def _post_producer_setup(self):
+        """ All these setups would need producer to be initialized."""
         self.handler_map = self._build_handler_map()
         self.stream = self._get_stream()
         self._register_signal_handler()
@@ -53,7 +54,7 @@ class ParseReplicationStream(Batch):
             REPLICATION_HANDLER_PRODUCER_NAME,
             dry_run=self.publish_dry_run
         ) as self.producer:
-            self.setup()
+            self._post_producer_setup()
             for replication_handler_event in self.stream:
                 event_class = replication_handler_event.event.__class__
                 self.current_event_type = self.handler_map[event_class].event_type

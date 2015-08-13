@@ -5,6 +5,7 @@ import pytest
 from pymysqlreplication.event import QueryEvent
 
 from data_pipeline.message import CreateMessage
+from data_pipeline.producer import Producer
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
@@ -36,7 +37,7 @@ class TestRecoveryHandler(object):
 
     @pytest.fixture
     def producer(self):
-        return mock.Mock()
+        return mock.Mock(autospect=Producer)
 
     @pytest.fixture
     def session(self):

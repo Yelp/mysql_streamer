@@ -10,6 +10,7 @@ import pytest
 from data_pipeline.message import CreateMessage
 from data_pipeline.message import UpdateMessage
 from data_pipeline.position_data import PositionData
+from data_pipeline.producer import Producer
 
 from replication_handler import config
 from replication_handler.components.base_event_handler import SchemaCacheEntry
@@ -148,7 +149,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def producer(self, first_position_info, second_position_info):
-        producer = mock.Mock()
+        producer = mock.Mock(autospect=Producer)
         producer.get_checkpoint_position_data.side_effect = [
             first_position_info,
             second_position_info

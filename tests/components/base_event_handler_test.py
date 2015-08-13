@@ -2,6 +2,8 @@
 import mock
 import pytest
 
+from data_pipeline.producer import Producer
+
 from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
@@ -11,7 +13,7 @@ class TestBaseEventHandler(object):
 
     @pytest.fixture(scope="class")
     def producer(self):
-        return mock.Mock()
+        return mock.Mock(autospect=Producer)
 
     @pytest.fixture(scope="class")
     def base_event_handler(self, producer):

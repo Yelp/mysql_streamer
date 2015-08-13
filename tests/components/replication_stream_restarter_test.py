@@ -2,6 +2,8 @@
 import mock
 import pytest
 
+from data_pipeline.producer import Producer
+
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
@@ -15,7 +17,7 @@ class TestReplicationStreamRestarter(object):
 
     @pytest.fixture
     def producer(self):
-        return mock.Mock()
+        return mock.Mock(autospect=Producer)
 
     @pytest.yield_fixture
     def patch_session_connect_begin(self):

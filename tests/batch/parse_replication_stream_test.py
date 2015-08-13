@@ -6,6 +6,8 @@ import sys
 
 from pymysqlreplication.event import QueryEvent
 
+from data_pipeline.producer import Producer
+
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
@@ -58,7 +60,7 @@ class TestParseReplicationStream(object):
 
     @pytest.fixture
     def producer(self):
-        return mock.Mock()
+        return mock.Mock(autospect=Producer)
 
     @pytest.yield_fixture
     def patch_producer(self, producer):
