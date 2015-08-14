@@ -2,11 +2,13 @@
 import copy
 import logging
 
+from pii_generator.components.pii_identifier import PIIIdentifier
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import ShowCreateResult
 from replication_handler.components.base_event_handler import Table
+from replication_handler.config import env_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
@@ -26,6 +28,7 @@ class SchemaEventHandler(BaseEventHandler):
         self.register_dry_run = kwargs.pop('register_dry_run')
         self.schematizer_client = kwargs.pop('schematizer_client')
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
+        self.pii_identifier = PIIIdentifier(yaml_path=env_config.pii_yaml_path)
 
     def setup_cursor(self):
         self.schema_tracker_cursor = ConnectionSet.schema_tracker_rw().repltracker.cursor()
@@ -191,13 +194,12 @@ class SchemaEventHandler(BaseEventHandler):
            with response, one interface for both create and alter
            statements.
         TODO(cheng|DATAPIPE-337): get owner_email for tables.
-        TODO(cheng|DATAPIPE-255): set pii flag once pii_generator is shipped.
         """
         request_body = {
             "namespace": "{0}.{1}".format(table.cluster_name, table.database_name),
             "source": table.table_name,
             "source_owner_email": self.notify_email,
-            "contains_pii": False,
+            "contains_pii": self.pii_identifier.table_has_pii(table.table_name),
         }
         request_body.update(mysql_statements)
         resp = self.schematizer_client.schemas.register_schema_from_mysql_stmts(

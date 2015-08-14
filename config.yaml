@@ -24,6 +24,8 @@ producer_name: replication_handler
 
 zookeeper_discovery_path: '/nail/etc/zookeeper_discovery/generic/local.yaml'
 
+pii_yaml_path: '/nail/home/cheng/pii_generator/script_yamls'
+
 module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml

@@ -65,6 +65,10 @@ class EnvConfig(BaseConfig):
     def producer_name(self):
         return staticconf.get('producer_name').value
 
+    @property
+    def pii_yaml_path(self):
+        return staticconf.get('pii_yaml_path').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

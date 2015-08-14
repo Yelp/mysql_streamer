@@ -6,6 +6,7 @@ from pymysqlreplication.event import QueryEvent
 
 from data_pipeline.message import CreateMessage
 from data_pipeline.producer import Producer
+from pii_generator.components.pii_identifier import PIIIdentifier
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
@@ -147,6 +148,15 @@ class TestRecoveryHandler(object):
         ) as mock_global_upsert:
             yield mock_global_upsert
 
+    @pytest.yield_fixture
+    def patch_table_has_pii(self):
+        with mock.patch.object(
+            PIIIdentifier,
+            'table_has_pii'
+        ) as mock_table_has_pii:
+            mock_table_has_pii.return_value = True
+            yield mock_table_has_pii
+
     def test_recovery_when_there_is_pending_alter_state(
         self,
         stream,
@@ -214,10 +224,12 @@ class TestRecoveryHandler(object):
         mock_cursor,
         patch_upsert_data_event_checkpoint,
         patch_upsert_global_event,
+        patch_table_has_pii
     ):
         data_event = mock.Mock(DataEvent)
         data_event.row = {"values": {'a': 1}}
         data_event.message_type = CreateMessage
+        data_event.table = 'business'
         stream.peek.return_value.event = data_event
         stream.next.return_value.event = data_event
         stream.next.return_value.position = LogPosition()
@@ -262,6 +274,7 @@ class TestRecoveryHandler(object):
                 cluster_name="yelp_main",
             ),
         ]
+        assert patch_table_has_pii.call_args == mock.call('business')
 
     def test_bad_schema_event_state(
         self,

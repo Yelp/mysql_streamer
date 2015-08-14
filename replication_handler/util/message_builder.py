@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from pii_generator.components.pii_identifier import PIIIdentifier
 from data_pipeline.message import UpdateMessage
+
+from replication_handler.config import env_config
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -20,9 +23,9 @@ class MessageBuilder(object):
         self.event = event
         self.position = position
         self.register_dry_run = register_dry_run
+        self.pii_identifier = PIIIdentifier(yaml_path=env_config.pii_yaml_path)
 
     def build_message(self):
-        # TODO(cheng|DATAPIPE-255): set pii flag once pii_generator is shipped.
         message_params = {
             "topic": self.schema_info.topic,
             "schema_id": self.schema_info.schema_id,
@@ -30,7 +33,7 @@ class MessageBuilder(object):
             "payload_data": self._get_values(self.event.row),
             "upstream_position_info": self.position.to_dict(),
             "dry_run": self.register_dry_run,
-            "contains_pii": False,
+            "contains_pii": self.pii_identifier.table_has_pii(self.event.table),
         }
 
         if self.event.message_type == UpdateMessage:

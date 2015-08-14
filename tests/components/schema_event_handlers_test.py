@@ -4,6 +4,7 @@ import mock
 import pytest
 
 from data_pipeline.producer import Producer
+from pii_generator.components.pii_identifier import PIIIdentifier
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
@@ -28,6 +29,7 @@ SchemaHandlerExternalPatches = namedtuple(
         'create_schema_event_state',
         'update_schema_event_state',
         'upsert_global_event_state',
+        'table_has_pii',
     )
 )
 
@@ -253,6 +255,15 @@ class TestSchemaEventHandler(object):
         ) as mock_upsert_global_event_state:
             yield mock_upsert_global_event_state
 
+    @pytest.yield_fixture
+    def patch_table_has_pii(self):
+        with mock.patch.object(
+            PIIIdentifier,
+            'table_has_pii'
+        ) as mock_table_has_pii:
+            mock_table_has_pii.return_value = True
+            yield mock_table_has_pii
+
     @pytest.fixture
     def external_patches(
         self,
@@ -265,6 +276,7 @@ class TestSchemaEventHandler(object):
         patch_create_schema_event_state,
         patch_update_schema_event_state,
         patch_upsert_global_event_state,
+        patch_table_has_pii,
     ):
         return SchemaHandlerExternalPatches(
             schema_tracking_db_conn=patch_schema_tracker_rw,
@@ -276,6 +288,7 @@ class TestSchemaEventHandler(object):
             create_schema_event_state=patch_create_schema_event_state,
             update_schema_event_state=patch_update_schema_event_state,
             upsert_global_event_state=patch_upsert_global_event_state,
+            table_has_pii=patch_table_has_pii,
         )
 
     def test_handle_event_create_table(
@@ -452,7 +465,7 @@ class TestSchemaEventHandler(object):
             "namespace": "{0}.{1}".format(table.cluster_name, table.database_name),
             "source": table.table_name,
             "source_owner_email": 'bam+replication+handler@yelp.com',
-            "contains_pii": False
+            "contains_pii": True
         }
         body.update(mysql_statements)
         assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_args_list == [
@@ -470,6 +483,7 @@ class TestSchemaEventHandler(object):
         assert external_patches.create_schema_event_state.call_count == 1
         assert external_patches.update_schema_event_state.call_count == 1
         assert external_patches.upsert_global_event_state.call_count == 1
+        assert external_patches.table_has_pii.call_count == 1
 
         assert producer.flush.call_count == 1
 

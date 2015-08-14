@@ -11,6 +11,7 @@ from data_pipeline.message import CreateMessage
 from data_pipeline.message import UpdateMessage
 from data_pipeline.position_data import PositionData
 from data_pipeline.producer import Producer
+from pii_generator.components.pii_identifier import PIIIdentifier
 
 from replication_handler import config
 from replication_handler.components.base_event_handler import SchemaCacheEntry
@@ -31,7 +32,8 @@ DataHandlerExternalPatches = namedtuple(
         "mock_rbr_state_session",
         "patch_upsert_data_event_checkpoint",
         "patch_checkpoint_size",
-        "patch_upsert_global_event_state"
+        "patch_upsert_global_event_state",
+        'table_has_pii',
     )
 )
 
@@ -195,6 +197,15 @@ class TestDataEventHandler(object):
         ) as mock_upsert_global_event_state:
             yield mock_upsert_global_event_state
 
+    @pytest.yield_fixture
+    def patch_table_has_pii(self):
+        with mock.patch.object(
+            PIIIdentifier,
+            'table_has_pii'
+        ) as mock_table_has_pii:
+            mock_table_has_pii.return_value = True
+            yield mock_table_has_pii
+
     @pytest.fixture
     def patches(
         self,
@@ -204,6 +215,7 @@ class TestDataEventHandler(object):
         patch_upsert_data_event_checkpoint,
         patch_checkpoint_size,
         patch_upsert_global_event_state,
+        patch_table_has_pii,
     ):
         return DataHandlerExternalPatches(
             patch_get_schema_for_schema_cache=patch_get_schema_for_schema_cache,
@@ -212,6 +224,7 @@ class TestDataEventHandler(object):
             patch_upsert_data_event_checkpoint=patch_upsert_data_event_checkpoint,
             patch_checkpoint_size=patch_checkpoint_size,
             patch_upsert_global_event_state=patch_upsert_global_event_state,
+            table_has_pii=patch_table_has_pii,
         )
 
     def test_call_to_populate_schema(
@@ -249,7 +262,8 @@ class TestDataEventHandler(object):
                 payload_data=data_event.row["values"],
                 schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position.to_dict(),
-                keys=['primary_key']
+                keys=['primary_key'],
+                contains_pii=True,
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
@@ -292,6 +306,8 @@ class TestDataEventHandler(object):
                 is_clean_shutdown=False,
             ),
         ]
+        assert patches.table_has_pii.call_count == 4
+        assert patches.table_has_pii.call_args == mock.call('fake_table')
 
     def test_handle_data_update_event(
         self,
@@ -317,7 +333,8 @@ class TestDataEventHandler(object):
                 schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position.to_dict(),
                 previous_payload_data=data_event.row["before_values"],
-                keys=['primary_key']
+                keys=['primary_key'],
+                contains_pii=True,
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
@@ -367,6 +384,7 @@ class TestDataEventHandler(object):
             assert expected_message.payload_data == actual_message.payload_data
             assert expected_message.message_type == actual_message.message_type
             assert expected_message.upstream_position_info == actual_message.upstream_position_info
+            assert expected_message.contains_pii == actual_message.contains_pii
             # TODO(DATAPIPE-350): keys are inaccessible right now.
             # assert expected_message.keys == actual_message.keys
             if type(expected_message) == UpdateMessage:
