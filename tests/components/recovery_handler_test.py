@@ -154,7 +154,6 @@ class TestRecoveryHandler(object):
             PIIIdentifier,
             'table_has_pii'
         ) as mock_table_has_pii:
-            mock_table_has_pii.return_value = True
             yield mock_table_has_pii
 
     def test_recovery_when_there_is_pending_alter_state(
