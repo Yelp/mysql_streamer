@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
+import json
 from collections import namedtuple
 
-import avro.schema
 import avro.io
-import json
+import avro.schema
 import mock
 import pytest
-
 from data_pipeline.message import CreateMessage
 from data_pipeline.message import UpdateMessage
 from data_pipeline.position_data import PositionData
@@ -14,13 +16,13 @@ from data_pipeline.producer import Producer
 from pii_generator.components.pii_identifier import PIIIdentifier
 
 from replication_handler import config
-from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.models.database import rbr_state_session
+from replication_handler.components.schema_cache import SchemaCacheEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
-from replication_handler.models.global_event_state import GlobalEventState
+from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
+from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.util.position import LogPosition
 from testing.events import DataEvent
 

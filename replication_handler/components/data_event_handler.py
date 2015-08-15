@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
 from yelp_lib import iteration
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
-from replication_handler.components.base_event_handler import SchemaCacheEntry
+from replication_handler.components.schema_cache import SchemaCacheEntry
 from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import save_position
 

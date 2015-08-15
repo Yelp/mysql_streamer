@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
 from yelp_conn.connection_set import ConnectionSet
 
-from replication_handler.components.base_event_handler import SchemaCacheEntry
+from replication_handler.components.schema_cache import SchemaCacheEntry
 from replication_handler.config import source_database_config
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
+from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.message_builder import MessageBuilder
