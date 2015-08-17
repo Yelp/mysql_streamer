@@ -5,6 +5,7 @@ from pii_generator.components.pii_identifier import PIIIdentifier
 from data_pipeline.message import UpdateMessage
 
 from replication_handler.config import env_config
+from replication_handler.config import source_database_config
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -33,7 +34,11 @@ class MessageBuilder(object):
             "payload_data": self._get_values(self.event.row),
             "upstream_position_info": self.position.to_dict(),
             "dry_run": self.register_dry_run,
-            "contains_pii": self.pii_identifier.table_has_pii(self.event.table),
+            "contains_pii": self.pii_identifier.table_has_pii(
+                cluster_name=source_database_config.cluster_name,
+                database_name=self.event.schema,
+                table_name=self.event.table
+            ),
         }
 
         if self.event.message_type == UpdateMessage:

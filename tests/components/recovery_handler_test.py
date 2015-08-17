@@ -229,6 +229,7 @@ class TestRecoveryHandler(object):
         data_event.row = {"values": {'a': 1}}
         data_event.message_type = CreateMessage
         data_event.table = 'business'
+        data_event.schema = 'yelp'
         stream.peek.return_value.event = data_event
         stream.next.return_value.event = data_event
         stream.next.return_value.position = LogPosition()
@@ -273,7 +274,11 @@ class TestRecoveryHandler(object):
                 cluster_name="yelp_main",
             ),
         ]
-        assert patch_table_has_pii.call_args == mock.call('business')
+        assert patch_table_has_pii.call_args == mock.call(
+            cluster_name='yelp_main',
+            database_name='yelp',
+            table_name='business',
+        )
 
     def test_bad_schema_event_state(
         self,

@@ -199,7 +199,11 @@ class SchemaEventHandler(BaseEventHandler):
             "namespace": "{0}.{1}".format(table.cluster_name, table.database_name),
             "source": table.table_name,
             "source_owner_email": self.notify_email,
-            "contains_pii": self.pii_identifier.table_has_pii(table.table_name),
+            "contains_pii": self.pii_identifier.table_has_pii(
+                table.cluster_name,
+                table.database_name,
+                table.table_name
+            ),
         }
         request_body.update(mysql_statements)
         resp = self.schematizer_client.schemas.register_schema_from_mysql_stmts(
