@@ -152,7 +152,8 @@ class TestRecoveryHandler(object):
     def patch_table_has_pii(self):
         with mock.patch.object(
             PIIIdentifier,
-            'table_has_pii'
+            'table_has_pii',
+            autospec=True
         ) as mock_table_has_pii:
             yield mock_table_has_pii
 

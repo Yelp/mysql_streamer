@@ -259,7 +259,8 @@ class TestSchemaEventHandler(object):
     def patch_table_has_pii(self):
         with mock.patch.object(
             PIIIdentifier,
-            'table_has_pii'
+            'table_has_pii',
+            autospec=True
         ) as mock_table_has_pii:
             mock_table_has_pii.return_value = True
             yield mock_table_has_pii

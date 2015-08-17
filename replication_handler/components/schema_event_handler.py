@@ -200,9 +200,9 @@ class SchemaEventHandler(BaseEventHandler):
             "source": table.table_name,
             "source_owner_email": self.notify_email,
             "contains_pii": self.pii_identifier.table_has_pii(
-                table.cluster_name,
-                table.database_name,
-                table.table_name
+                cluster_name=table.cluster_name,
+                database_name=table.database_name,
+                table_name=table.table_name
             ),
         }
         request_body.update(mysql_statements)
