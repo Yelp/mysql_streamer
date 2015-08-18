@@ -275,11 +275,10 @@ class TestRecoveryHandler(object):
                 cluster_name="yelp_main",
             ),
         ]
-        assert patch_table_has_pii.call_args == mock.call(
-            cluster_name='yelp_main',
-            database_name='yelp',
-            table_name='business',
-        )
+        assert patch_table_has_pii.call_args[1] == {
+            'database_name': 'yelp',
+            'table_name': 'business'
+        }
 
     def test_bad_schema_event_state(
         self,

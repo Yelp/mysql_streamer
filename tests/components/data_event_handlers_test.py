@@ -308,11 +308,10 @@ class TestDataEventHandler(object):
             ),
         ]
         assert patches.table_has_pii.call_count == 4
-        assert patches.table_has_pii.call_args == mock.call(
-            cluster_name="refresh_primary",
-            database_name="fake_database",
-            table_name="fake_table"
-        )
+        assert patches.table_has_pii.call_args[1] == {
+            'database_name': 'fake_database',
+            'table_name': 'fake_table'
+        }
 
     def test_handle_data_update_event(
         self,

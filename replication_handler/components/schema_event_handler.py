@@ -28,7 +28,7 @@ class SchemaEventHandler(BaseEventHandler):
         self.register_dry_run = kwargs.pop('register_dry_run')
         self.schematizer_client = kwargs.pop('schematizer_client')
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
-        self.pii_identifier = PIIIdentifier(yaml_path=env_config.pii_yaml_path)
+        self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
     def setup_cursor(self):
         self.schema_tracker_cursor = ConnectionSet.schema_tracker_rw().repltracker.cursor()
@@ -200,7 +200,6 @@ class SchemaEventHandler(BaseEventHandler):
             "source": table.table_name,
             "source_owner_email": self.notify_email,
             "contains_pii": self.pii_identifier.table_has_pii(
-                cluster_name=table.cluster_name,
                 database_name=table.database_name,
                 table_name=table.table_name
             ),
