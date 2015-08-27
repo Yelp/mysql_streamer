@@ -28,11 +28,6 @@ class BaseEventHandler(object):
         """ All subclasses need to define how they want to handle an evnet."""
         raise NotImplementedError
 
-    def get_schema_for_schema_cache(self, table):
-        """Gets the SchemaCacheEntry for the table from the cache.
-        """
-        return self.schema_cache[table]
-
     def is_blacklisted(self, event):
         if event.schema in env_config.schema_blacklist:
             self.log_blacklisted_schema(event)

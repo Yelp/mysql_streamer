@@ -63,8 +63,6 @@ class DataEventHandler(BaseEventHandler):
         """Get payload avro schema from cache or from schema store"""
         if self.publish_dry_run:
             return self._dry_run_schema
-        if table not in self.schema_cache.cache:
-            self.schema_cache.cache[table] = self.get_schema_for_schema_cache(table)
         return self.schema_cache[table]
 
     def _checkpoint_latest_published_offset(self, rows):

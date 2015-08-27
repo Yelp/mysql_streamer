@@ -29,7 +29,6 @@ from testing.events import DataEvent
 
 DataHandlerExternalPatches = namedtuple(
     "DataHandlerExternalPatches", (
-        "patch_get_schema_for_schema_cache",
         "patch_rbr_state_rw",
         "mock_rbr_state_session",
         "patch_upsert_data_event_checkpoint",
@@ -142,15 +141,6 @@ class TestDataEventHandler(object):
             topic_to_kafka_offset_map={test_topic: second_test_kafka_offset}
         )
 
-    @pytest.yield_fixture
-    def patch_get_schema_for_schema_cache(self, data_event_handler, schema_cache_entry):
-        with mock.patch.object(
-            DataEventHandler,
-            'get_schema_for_schema_cache',
-            return_value=schema_cache_entry
-        ) as mock_get_schema:
-            yield mock_get_schema
-
     @pytest.fixture
     def producer(self, first_position_info, second_position_info):
         producer = mock.Mock(autospect=Producer)
@@ -212,7 +202,6 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def patches(
         self,
-        patch_get_schema_for_schema_cache,
         patch_rbr_state_rw,
         mock_rbr_state_session,
         patch_upsert_data_event_checkpoint,
@@ -221,7 +210,6 @@ class TestDataEventHandler(object):
         patch_table_has_pii,
     ):
         return DataHandlerExternalPatches(
-            patch_get_schema_for_schema_cache=patch_get_schema_for_schema_cache,
             patch_rbr_state_rw=patch_rbr_state_rw,
             mock_rbr_state_session=mock_rbr_state_session,
             patch_upsert_data_event_checkpoint=patch_upsert_data_event_checkpoint,
@@ -230,17 +218,14 @@ class TestDataEventHandler(object):
             table_has_pii=patch_table_has_pii,
         )
 
-    def test_call_to_populate_schema(
-        self,
-        data_event_handler,
-        data_create_events,
-        patch_get_schema_for_schema_cache
-    ):
-        event = data_create_events[0]
-        assert event.table not in data_event_handler.schema_cache.cache
-        data_event_handler._get_payload_schema(event.table)
-        patch_get_schema_for_schema_cache.assert_called_once_with(event.table)
-        assert event.table in data_event_handler.schema_cache.cache
+    @pytest.yield_fixture
+    def patch_get_payload_schema(self, schema_cache_entry):
+        with mock.patch.object(
+            DataEventHandler,
+            '_get_payload_schema',
+            return_value=schema_cache_entry
+        ) as mock_get_payload_schema:
+            yield mock_get_payload_schema
 
     def test_handle_data_create_event_to_publish_call(
         self,
@@ -254,7 +239,8 @@ class TestDataEventHandler(object):
         data_event_handler,
         data_create_events,
         schema_cache_entry,
-        patches
+        patches,
+        patch_get_payload_schema,
     ):
         expected_call_args = []
         for data_event in data_create_events:
@@ -327,7 +313,8 @@ class TestDataEventHandler(object):
         data_event_handler,
         data_update_events,
         schema_cache_entry,
-        patches
+        patches,
+        patch_get_payload_schema,
     ):
         expected_call_args = []
         for data_event in data_update_events:
