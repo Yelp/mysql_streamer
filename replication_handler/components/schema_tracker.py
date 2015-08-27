@@ -5,8 +5,6 @@ from __future__ import unicode_literals
 import logging
 from collections import namedtuple
 
-from yelp_conn.connection_set import ConnectionSet
-
 
 log = logging.getLogger('replication_handler.component.schema_tracker')
 
@@ -15,8 +13,8 @@ ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 
 
 class SchemaTracker(object):
-    def __init__(self):
-        self.schema_tracker_cursor = ConnectionSet.schema_tracker_rw().repltracker.cursor()
+    def __init__(self, schema_cursor):
+        self.schema_tracker_cursor = schema_cursor
 
     def _use_db(self, database_name):
         use_db_query = "USE {0}".format(database_name)

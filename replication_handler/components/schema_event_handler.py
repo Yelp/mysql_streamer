@@ -16,6 +16,7 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
+from yelp_conn.connection_set import ConnectionSet
 
 
 log = logging.getLogger('replication_handler.component.schema_event_handler')
@@ -29,7 +30,9 @@ class SchemaEventHandler(BaseEventHandler):
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
         self.schematizer_client = kwargs.pop('schematizer_client')
-        self.schema_tracker = SchemaTracker()
+        self.schema_tracker = SchemaTracker(
+            ConnectionSet.schema_tracker_rw().repltracker.cursor()
+        )
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
         self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
@@ -150,7 +153,7 @@ class SchemaEventHandler(BaseEventHandler):
         """This method contains the core logic for handling an *alter* event
            and occurs within a transaction in case of failure
         """
-        show_create_result_before = self._get_show_create_statement(table)
+        show_create_result_before = self.schema_tracker.get_show_create_statement(table)
         show_create_result_after = self._exec_query_and_get_show_create_statement(
             event,
             table

@@ -69,7 +69,7 @@ class TestDataEventHandler(object):
         avro_obj = avro.schema.parse(schema_in_json)
         return SchemaCacheEntry(
             schema_obj=avro_obj,
-            topic="fake_topic",
+            topic=str("fake_topic"),
             schema_id=0,
             primary_keys=['primary_key'],
         )
@@ -88,7 +88,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def test_topic(self):
-        return "test_topic"
+        return str("test_topic")
 
     @pytest.fixture
     def first_test_kafka_offset(self):
@@ -237,10 +237,10 @@ class TestDataEventHandler(object):
         patch_get_schema_for_schema_cache
     ):
         event = data_create_events[0]
-        assert event.table not in data_event_handler.schema_cache
+        assert event.table not in data_event_handler.schema_cache.cache
         data_event_handler._get_payload_schema(event.table)
         patch_get_schema_for_schema_cache.assert_called_once_with(event.table)
-        assert event.table in data_event_handler.schema_cache
+        assert event.table in data_event_handler.schema_cache.cache
 
     def test_handle_data_create_event_to_publish_call(
         self,

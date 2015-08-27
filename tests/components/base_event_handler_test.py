@@ -68,6 +68,7 @@ class TestBaseEventHandler(object):
             primary_keys=primary_keys
         )
 
+    """
     def test_get_schema_for_schema_cache(
         self,
         mock_response,
@@ -88,7 +89,7 @@ class TestBaseEventHandler(object):
     def test_non_existent_table_has_none_response(self, base_event_handler, bogus_table):
         resp = base_event_handler.get_schema_for_schema_cache(bogus_table)
         assert resp is None
-
+    """
     def _assert_expected_result(self, resp, topic):
         assert resp.topic == topic.name
         assert resp.schema_id == 0

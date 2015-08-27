@@ -138,7 +138,7 @@ class RecoveryHandler(object):
         # TODO(DATAPIPE-222) get real schema info.
         schema_cache_entry = SchemaCacheEntry(
             schema_obj=None,
-            topic="test_topic",
+            topic=str("test_topic"),
             schema_id=1,
             primary_keys=['key']
         )

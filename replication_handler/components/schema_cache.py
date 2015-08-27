@@ -9,6 +9,7 @@ import avro.schema
 
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.config import env_config
+from yelp_conn.connection_set import ConnectionSet
 
 
 log = logging.getLogger('replication_handler.component.schema_cache')
@@ -26,22 +27,28 @@ SchemaStoreRegisterResponse = namedtuple(
 )
 
 
-class SchemaCache(object):
-    @classmethod
-    def instance(cls):
-        """Returns a single shared instance of the schema cache"""
-        if not hasattr(cls, '_instance'):
-            cls._instance = SchemaCache()
+class SchemaCacheMeta(type):
+    _instance = None
+
+    def __call__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(SchemaCacheMeta, cls).__call__(*args, **kwargs)
         return cls._instance
+
+
+class SchemaCache(object):
+    __metaclass__ = SchemaCacheMeta
 
     def __init__(self):
         """This shouldn't be called directly, instead get the shared instance
         using :meth:`instance`.
         """
         self.cache = {}
-        self.schema_tracker = SchemaTracker()
+        self.schema_tracker = SchemaTracker(
+            ConnectionSet.schema_tracker_rw().repltracker.cursor()
+        )
 
-    def __get_item__(self, table):
+    def __getitem__(self, table):
         if table not in self.cache:
             self._fetch_schema_for_table(table)
         return self.cache[table]
@@ -99,7 +106,7 @@ class SchemaCache(object):
         return SchemaStoreRegisterResponse(
             schema_id=resp.schema_id,
             schema=resp.schema,
-            topic=resp.topic.name,
+            topic=str(resp.topic.name),
             namespace=resp.topic.source.namespace,
             source=resp.topic.source.source,
             primary_keys=resp.primary_keys,

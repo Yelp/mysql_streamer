@@ -20,7 +20,7 @@ class BaseEventHandler(object):
     """Base class for handling binlog events for the Replication Handler"""
 
     def __init__(self, producer):
-        self.schema_cache = SchemaCache.instance()
+        self.schema_cache = SchemaCache()
         self.cluster_name = source_database_config.cluster_name
         self.producer = producer
 
