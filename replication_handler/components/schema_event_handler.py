@@ -25,11 +25,8 @@ log = logging.getLogger('replication_handler.component.schema_event_handler')
 class SchemaEventHandler(BaseEventHandler):
     """Handles schema change events: create table and alter table"""
 
-    notify_email = "bam+replication+handler@yelp.com"
-
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
-        self.schematizer_client = kwargs.pop('schematizer_client')
         self.schema_tracker = SchemaTracker(
             ConnectionSet.schema_tracker_rw().repltracker.cursor()
         )

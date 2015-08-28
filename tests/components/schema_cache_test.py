@@ -11,9 +11,13 @@ from replication_handler.components.schema_cache import SchemaCache
 
 class TestSchemaCache(object):
 
-    @pytest.fixture(scope="class")
-    def base_schema_cache(self):
-        return SchemaCache()
+    @pytest.fixture
+    def schematizer_client(self):
+        return mock.Mock()
+
+    @pytest.fixture
+    def base_schema_cache(self, schematizer_client):
+        return SchemaCache(schematizer_client=schematizer_client)
 
     @pytest.fixture
     def table(self):

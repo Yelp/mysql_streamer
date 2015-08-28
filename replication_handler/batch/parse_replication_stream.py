@@ -9,7 +9,6 @@ from kazoo.retry import KazooRetry
 from pymysqlreplication.event import QueryEvent
 
 from data_pipeline.producer import Producer
-from data_pipeline.schema_cache import get_schema_cache
 from yelp_batch import Batch
 
 from replication_handler import config
@@ -43,7 +42,6 @@ class ParseReplicationStream(Batch):
     def __init__(self):
         self._init_zk_and_lock_replication_handler()
         super(ParseReplicationStream, self).__init__()
-        self.schematizer_client = get_schema_cache().schematizer_client
         self.register_dry_run = config.env_config.register_dry_run
         self.publish_dry_run = config.env_config.publish_dry_run
 
@@ -85,7 +83,6 @@ class ParseReplicationStream(Batch):
             publish_dry_run=self.publish_dry_run
         )
         schema_event_handler = SchemaEventHandler(
-            schematizer_client=self.schematizer_client,
             producer=self.producer,
             register_dry_run=self.register_dry_run,
         )

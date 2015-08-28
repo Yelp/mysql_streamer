@@ -42,16 +42,40 @@ DataHandlerExternalPatches = namedtuple(
 class TestDataEventHandler(object):
 
     @pytest.fixture
+    def schematizer_client(self):
+        return mock.Mock()
+
+    @pytest.fixture
     def test_gtid(self):
         return "93fd11e6-cf7c-11e4-912d-0242a9fe01db:12"
 
     @pytest.fixture
-    def data_event_handler(self, patch_checkpoint_size, producer):
-        return DataEventHandler(producer, register_dry_run=False, publish_dry_run=False)
+    def data_event_handler(
+        self,
+        schematizer_client,
+        patch_checkpoint_size,
+        producer
+    ):
+        return DataEventHandler(
+            producer,
+            schematizer_client=schematizer_client,
+            register_dry_run=False,
+            publish_dry_run=False
+        )
 
     @pytest.fixture
-    def dry_run_data_event_handler(self, patch_checkpoint_size, producer):
-        return DataEventHandler(producer, register_dry_run=True, publish_dry_run=True)
+    def dry_run_data_event_handler(
+        self,
+        schematizer_client,
+        patch_checkpoint_size,
+        producer
+    ):
+        return DataEventHandler(
+            producer,
+            schematizer_client=schematizer_client,
+            register_dry_run=True,
+            publish_dry_run=True
+        )
 
     @pytest.fixture
     def schema_in_json(self):

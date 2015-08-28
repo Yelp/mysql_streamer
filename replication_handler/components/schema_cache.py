@@ -7,6 +7,7 @@ from collections import namedtuple
 
 import avro.schema
 
+from data_pipeline.schema_cache import get_schema_cache
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.config import env_config
 from yelp_conn.connection_set import ConnectionSet
@@ -38,15 +39,18 @@ class SchemaCacheMeta(type):
 
 class SchemaCache(object):
     __metaclass__ = SchemaCacheMeta
+    notify_email = "bam+replication+handler@yelp.com"
 
-    def __init__(self):
+    def __init__(self, register_dry_run=False):
         """This shouldn't be called directly, instead get the shared instance
         using :meth:`instance`.
         """
         self.cache = {}
+        self.schematizer_client = get_schema_cache().schematizer_client
         self.schema_tracker = SchemaTracker(
             ConnectionSet.schema_tracker_rw().repltracker.cursor()
         )
+        self.register_dry_run = register_dry_run
 
     def __getitem__(self, table):
         if table not in self.cache:
@@ -85,7 +89,7 @@ class SchemaCache(object):
             "source_owner_email": self.notify_email,
             "contains_pii": False,
         }
-        request_body.update(mysql_statements)
+        request_body.update({(key, str(value)) for key, value in mysql_statements.iteritems()})
         resp = self.schematizer_client.schemas.register_schema_from_mysql_stmts(
             body=request_body
         ).result()
