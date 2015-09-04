@@ -38,12 +38,9 @@ class SchemaWrapperMeta(type):
 
 class SchemaWrapper(object):
     __metaclass__ = SchemaWrapperMeta
-    notify_email = "bam+replication+handler@yelp.com"
+    _notify_email = "bam+replication+handler@yelp.com"
 
     def __init__(self, schematizer_client):
-        """This shouldn't be called directly, instead get the shared instance
-        using :meth:`instance`.
-        """
         self.cache = {}
         self.schematizer_client = schematizer_client
         self.schema_tracker = SchemaTracker(
@@ -84,7 +81,7 @@ class SchemaWrapper(object):
         request_body = {
             "namespace": "{0}.{1}".format(table.cluster_name, table.database_name),
             "source": table.table_name,
-            "source_owner_email": self.notify_email,
+            "source_owner_email": self._notify_email,
             "contains_pii": False,
         }
         request_body.update({(key, str(value)) for key, value in mysql_statements.iteritems()})
