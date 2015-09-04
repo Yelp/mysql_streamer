@@ -18,6 +18,7 @@ from pii_generator.components.pii_identifier import PIIIdentifier
 from replication_handler import config
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.schema_cache import SchemaCache
 from replication_handler.components.schema_cache import SchemaCacheEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
@@ -42,8 +43,12 @@ DataHandlerExternalPatches = namedtuple(
 class TestDataEventHandler(object):
 
     @pytest.fixture
-    def schematizer_client(self):
+    def mock_schematizer_client(self):
         return mock.Mock()
+
+    @pytest.fixture
+    def schema_cache(self, mock_schematizer_client):
+        return SchemaCache(schematizer_client=mock_schematizer_client)
 
     @pytest.fixture
     def test_gtid(self):
@@ -52,13 +57,13 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def data_event_handler(
         self,
-        schematizer_client,
+        schema_cache,
         patch_checkpoint_size,
         producer
     ):
         return DataEventHandler(
             producer,
-            schematizer_client=schematizer_client,
+            schema_cache=schema_cache,
             register_dry_run=False,
             publish_dry_run=False
         )
@@ -66,13 +71,13 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def dry_run_data_event_handler(
         self,
-        schematizer_client,
+        schema_cache,
         patch_checkpoint_size,
         producer
     ):
         return DataEventHandler(
             producer,
-            schematizer_client=schematizer_client,
+            schema_cache=schema_cache,
             register_dry_run=True,
             publish_dry_run=True
         )

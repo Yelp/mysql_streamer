@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 import logging
 from collections import namedtuple
 
-from replication_handler.components.schema_cache import SchemaCache
 from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 
@@ -19,8 +18,8 @@ log = logging.getLogger('replication_handler.component.base_event_handler')
 class BaseEventHandler(object):
     """Base class for handling binlog events for the Replication Handler"""
 
-    def __init__(self, producer, **kwargs):
-        self.schema_cache = SchemaCache(**kwargs)
+    def __init__(self, producer, schema_cache):
+        self.schema_cache = schema_cache
         self.cluster_name = source_database_config.cluster_name
         self.producer = producer
 

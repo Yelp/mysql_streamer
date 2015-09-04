@@ -6,6 +6,7 @@ from data_pipeline.producer import Producer
 
 from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
+from replication_handler.components.schema_cache import SchemaCache
 
 
 class TestBaseEventHandler(object):
@@ -15,8 +16,16 @@ class TestBaseEventHandler(object):
         return mock.Mock(autospect=Producer)
 
     @pytest.fixture(scope="class")
-    def base_event_handler(self, producer):
-        return BaseEventHandler(producer)
+    def mock_schematizer_client(self):
+        return mock.Mock()
+
+    @pytest.fixture(scope="class")
+    def schema_cache(self, mock_schematizer_client):
+        return SchemaCache(schematizer_client=mock_schematizer_client)
+
+    @pytest.fixture(scope="class")
+    def base_event_handler(self, producer, schema_cache):
+        return BaseEventHandler(producer, schema_cache)
 
     @pytest.yield_fixture
     def patch_config(self):

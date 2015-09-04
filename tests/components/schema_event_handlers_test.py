@@ -48,18 +48,26 @@ class TestSchemaEventHandler(object):
         return mock.Mock(autospect=Producer)
 
     @pytest.fixture
-    def schema_event_handler(self, producer):
+    def schematizer_client(self):
+        return mock.Mock()
+
+    @pytest.fixture
+    def schema_cache(self, schematizer_client):
+        return SchemaCache(schematizer_client=schematizer_client)
+
+    @pytest.fixture
+    def schema_event_handler(self, producer, schema_cache):
         return SchemaEventHandler(
             producer=producer,
-            schematizer_client=mock.Mock(),
+            schema_cache=schema_cache,
             register_dry_run=False,
         )
 
     @pytest.fixture
-    def dry_run_schema_event_handler(self, producer):
+    def dry_run_schema_event_handler(self, producer, schema_cache):
         return SchemaEventHandler(
             producer=producer,
-            schematizer_client=mock.Mock(),
+            schema_cache=schema_cache,
             register_dry_run=True,
         )
 
@@ -337,7 +345,6 @@ class TestSchemaEventHandler(object):
         table_with_schema_changes,
         mock_schema_tracker_cursor,
         create_table_schema_store_response,
-        patch_schematizer_client,
     ):
         """Integration test the things that need to be called during a handle
            create table event hence many mocks
@@ -377,8 +384,7 @@ class TestSchemaEventHandler(object):
            event with an alter table hence many mocks.
         """
 
-        external_patches.mock_schematizer_client.schemas.register_schema_from_mysql_stmts.return_value.\
-            result.return_value = alter_table_schema_store_response
+        external_patches.mock_schematizer_client.schemas.register_schema_from_mysql_stmts.return_value.result.return_value = alter_table_schema_store_response
 
         mysql_statements = {
             "old_create_table_stmt": show_create_result_initial.query,
