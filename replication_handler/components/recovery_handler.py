@@ -6,7 +6,7 @@ import logging
 
 from yelp_conn.connection_set import ConnectionSet
 
-from replication_handler.components.schema_cache import SchemaCacheEntry
+from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
@@ -136,7 +136,7 @@ class RecoveryHandler(object):
     def _build_messages(self, events):
         messages = []
         # TODO(DATAPIPE-222) get real schema info.
-        schema_cache_entry = SchemaCacheEntry(
+        schema_wrapper_entry = SchemaWrapperEntry(
             schema_obj=None,
             topic=str("test_topic"),
             schema_id=1,
@@ -144,7 +144,7 @@ class RecoveryHandler(object):
         )
         for event in events:
             builder = MessageBuilder(
-                schema_cache_entry,
+                schema_wrapper_entry,
                 event.event,
                 event.position,
                 self.register_dry_run

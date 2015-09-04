@@ -12,7 +12,7 @@ from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
 from replication_handler.components.base_event_handler import Table
-from replication_handler.components.schema_cache import SchemaCache
+from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_tracker import ShowCreateResult
@@ -52,22 +52,22 @@ class TestSchemaEventHandler(object):
         return mock.Mock()
 
     @pytest.fixture
-    def schema_cache(self, schematizer_client):
-        return SchemaCache(schematizer_client=schematizer_client)
+    def schema_wrapper(self, schematizer_client):
+        return SchemaWrapper(schematizer_client=schematizer_client)
 
     @pytest.fixture
-    def schema_event_handler(self, producer, schema_cache):
+    def schema_event_handler(self, producer, schema_wrapper):
         return SchemaEventHandler(
             producer=producer,
-            schema_cache=schema_cache,
+            schema_wrapper=schema_wrapper,
             register_dry_run=False,
         )
 
     @pytest.fixture
-    def dry_run_schema_event_handler(self, producer, schema_cache):
+    def dry_run_schema_event_handler(self, producer, schema_wrapper):
         return SchemaEventHandler(
             producer=producer,
-            schema_cache=schema_cache,
+            schema_wrapper=schema_wrapper,
             register_dry_run=True,
         )
 
@@ -193,7 +193,7 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def patch_schematizer_client(self):
         with mock.patch.object(
-            SchemaCache._instance,
+            SchemaWrapper._instance,
             'schematizer_client',
             new_callable=mock.Mock()
         ) as mock_schema_client:
@@ -264,7 +264,7 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def patch_populate_schema_cache(self, schema_event_handler):
         with mock.patch.object(
-            SchemaCache, '_populate_schema_cache'
+            SchemaWrapper, '_populate_schema_cache'
         ) as mock_populate_schema_cache:
             yield mock_populate_schema_cache
 
@@ -511,7 +511,7 @@ class TestSchemaEventHandler(object):
         assert external_patches.populate_schema_cache.call_args_list == \
             [mock.call(
                 table,
-                schema_event_handler.schema_cache._format_register_response(schema_store_response)
+                schema_event_handler.schema_wrapper._format_register_response(schema_store_response)
             )]
 
         assert external_patches.create_schema_event_state.call_count == 1

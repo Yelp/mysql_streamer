@@ -18,8 +18,8 @@ from pii_generator.components.pii_identifier import PIIIdentifier
 from replication_handler import config
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.components.schema_cache import SchemaCache
-from replication_handler.components.schema_cache import SchemaCacheEntry
+from replication_handler.components.schema_wrapper import SchemaWrapper
+from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -47,8 +47,8 @@ class TestDataEventHandler(object):
         return mock.Mock()
 
     @pytest.fixture
-    def schema_cache(self, mock_schematizer_client):
-        return SchemaCache(schematizer_client=mock_schematizer_client)
+    def schema_wrapper(self, mock_schematizer_client):
+        return SchemaWrapper(schematizer_client=mock_schematizer_client)
 
     @pytest.fixture
     def test_gtid(self):
@@ -57,13 +57,13 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def data_event_handler(
         self,
-        schema_cache,
+        schema_wrapper,
         patch_checkpoint_size,
         producer
     ):
         return DataEventHandler(
             producer,
-            schema_cache=schema_cache,
+            schema_wrapper=schema_wrapper,
             register_dry_run=False,
             publish_dry_run=False
         )
@@ -71,13 +71,13 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def dry_run_data_event_handler(
         self,
-        schema_cache,
+        schema_wrapper,
         patch_checkpoint_size,
         producer
     ):
         return DataEventHandler(
             producer,
-            schema_cache=schema_cache,
+            schema_wrapper=schema_wrapper,
             register_dry_run=True,
             publish_dry_run=True
         )
@@ -93,9 +93,9 @@ class TestDataEventHandler(object):
         )
 
     @pytest.fixture
-    def schema_cache_entry(self, schema_in_json):
+    def schema_wrapper_entry(self, schema_in_json):
         avro_obj = avro.schema.parse(schema_in_json)
-        return SchemaCacheEntry(
+        return SchemaWrapperEntry(
             schema_obj=avro_obj,
             topic=str("fake_topic"),
             schema_id=0,
@@ -248,11 +248,11 @@ class TestDataEventHandler(object):
         )
 
     @pytest.yield_fixture
-    def patch_get_payload_schema(self, schema_cache_entry):
+    def patch_get_payload_schema(self, schema_wrapper_entry):
         with mock.patch.object(
             DataEventHandler,
             '_get_payload_schema',
-            return_value=schema_cache_entry
+            return_value=schema_wrapper_entry
         ) as mock_get_payload_schema:
             yield mock_get_payload_schema
 
@@ -267,7 +267,7 @@ class TestDataEventHandler(object):
         second_test_kafka_offset,
         data_event_handler,
         data_create_events,
-        schema_cache_entry,
+        schema_wrapper_entry,
         patches,
         patch_get_payload_schema,
     ):
@@ -276,9 +276,9 @@ class TestDataEventHandler(object):
             position = LogPosition()
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(CreateMessage(
-                topic=schema_cache_entry.topic,
+                topic=schema_wrapper_entry.topic,
                 payload_data=data_event.row["values"],
-                schema_id=schema_cache_entry.schema_id,
+                schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=position.to_dict(),
                 keys=['primary_key'],
                 contains_pii=True,
@@ -341,7 +341,7 @@ class TestDataEventHandler(object):
         second_test_kafka_offset,
         data_event_handler,
         data_update_events,
-        schema_cache_entry,
+        schema_wrapper_entry,
         patches,
         patch_get_payload_schema,
     ):
@@ -350,9 +350,9 @@ class TestDataEventHandler(object):
             position = LogPosition()
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(UpdateMessage(
-                topic=schema_cache_entry.topic,
+                topic=schema_wrapper_entry.topic,
                 payload_data=data_event.row['after_values'],
-                schema_id=schema_cache_entry.schema_id,
+                schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=position.to_dict(),
                 previous_payload_data=data_event.row["before_values"],
                 keys=['primary_key'],

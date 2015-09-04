@@ -6,18 +6,18 @@ import mock
 import pytest
 
 from replication_handler.components.base_event_handler import Table
-from replication_handler.components.schema_cache import SchemaCache
+from replication_handler.components.schema_wrapper import SchemaWrapper
 
 
-class TestSchemaCache(object):
+class TestSchemaWrapper(object):
 
     @pytest.fixture
     def schematizer_client(self):
         return mock.Mock()
 
     @pytest.fixture
-    def base_schema_cache(self, schematizer_client):
-        return SchemaCache(schematizer_client=schematizer_client)
+    def base_schema_wrapper(self, schematizer_client):
+        return SchemaWrapper(schematizer_client=schematizer_client)
 
     @pytest.fixture
     def table(self):
@@ -58,23 +58,23 @@ class TestSchemaCache(object):
             primary_keys=primary_keys
         )
 
-    def test_schema_cache_singleton(self, base_schema_cache):
-        new_schema_cache = SchemaCache()
-        assert new_schema_cache is base_schema_cache
+    def test_schema_wrapper_singleton(self, base_schema_wrapper):
+        new_schema_wrapper = SchemaWrapper()
+        assert new_schema_wrapper is base_schema_wrapper
 
-    def test_get_schema_for_schema_cache(
+    def test_get_schema_for_schema_wrapper(
         self,
-        base_schema_cache,
+        base_schema_wrapper,
         mock_response,
         table,
         topic,
     ):
-        base_schema_cache._populate_schema_cache(table, mock_response)
-        resp = base_schema_cache[table]
+        base_schema_wrapper._populate_schema_cache(table, mock_response)
+        resp = base_schema_wrapper[table]
         self._assert_expected_result(resp, topic)
 
-    def test_schema_already_in_cache(self, base_schema_cache, table, topic):
-        resp = base_schema_cache[table]
+    def test_schema_already_in_wrapper(self, base_schema_wrapper, table, topic):
+        resp = base_schema_wrapper[table]
         self._assert_expected_result(resp, topic)
 
     def _assert_expected_result(self, resp, topic):
@@ -87,10 +87,10 @@ class TestSchemaCache(object):
 
     def test_call_to_populate_schema(
         self,
-        base_schema_cache,
+        base_schema_wrapper,
         bogus_table,
         mock_response,
     ):
-        assert bogus_table not in base_schema_cache.cache
-        base_schema_cache._populate_schema_cache(bogus_table, mock_response)
-        assert bogus_table in base_schema_cache.cache
+        assert bogus_table not in base_schema_wrapper.cache
+        base_schema_wrapper._populate_schema_cache(bogus_table, mock_response)
+        assert bogus_table in base_schema_wrapper.cache

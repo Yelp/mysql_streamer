@@ -12,11 +12,11 @@ from replication_handler.config import env_config
 from yelp_conn.connection_set import ConnectionSet
 
 
-log = logging.getLogger('replication_handler.component.schema_cache')
+log = logging.getLogger('replication_handler.component.schema_wrapper')
 
 
-SchemaCacheEntry = namedtuple(
-    'SchemaCacheEntry',
+SchemaWrapperEntry = namedtuple(
+    'SchemaWrapperEntry',
     ('schema_obj', 'topic', 'schema_id', 'primary_keys')
 )
 
@@ -27,17 +27,17 @@ SchemaStoreRegisterResponse = namedtuple(
 )
 
 
-class SchemaCacheMeta(type):
+class SchemaWrapperMeta(type):
     _instance = None
 
     def __call__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super(SchemaCacheMeta, cls).__call__(*args, **kwargs)
+            cls._instance = super(SchemaWrapperMeta, cls).__call__(*args, **kwargs)
         return cls._instance
 
 
-class SchemaCache(object):
-    __metaclass__ = SchemaCacheMeta
+class SchemaWrapper(object):
+    __metaclass__ = SchemaWrapperMeta
     notify_email = "bam+replication+handler@yelp.com"
 
     def __init__(self, schematizer_client):
@@ -95,7 +95,7 @@ class SchemaCache(object):
         self._populate_schema_cache(table, resp)
 
     def _populate_schema_cache(self, table, resp):
-        self.cache[table] = SchemaCacheEntry(
+        self.cache[table] = SchemaWrapperEntry(
             schema_obj=avro.schema.parse(resp.schema),
             topic=resp.topic,
             schema_id=resp.schema_id,
