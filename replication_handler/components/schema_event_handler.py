@@ -190,7 +190,6 @@ class SchemaEventHandler(BaseEventHandler):
         """Register with schema store and populate cache
            with response, one interface for both create and alter
            statements.
-        TODO(cheng|DATAPIPE-337): get owner_email for tables.
         TODO(cheng|DATAPIPE-255): set pii flag once pii_generator is shipped.
         """
         request_body = {
