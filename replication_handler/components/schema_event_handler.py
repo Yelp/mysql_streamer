@@ -5,11 +5,8 @@ from __future__ import unicode_literals
 import copy
 import logging
 
-from pii_generator.components.pii_identifier import PIIIdentifier
-
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
-from replication_handler.config import env_config
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -31,7 +28,6 @@ class SchemaEventHandler(BaseEventHandler):
             ConnectionSet.schema_tracker_rw().repltracker.cursor()
         )
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
-        self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
     def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
@@ -54,7 +50,7 @@ class SchemaEventHandler(BaseEventHandler):
             handle_method(event, table)
             self._update_journaling_record(record, table)
         else:
-            self._execute_non_schema_store_relevant_query(event)
+            self._execute_non_schema_store_relevant_query(event, event.schema)
 
     def _get_handle_method(self, query):
         handle_method = None
@@ -127,11 +123,11 @@ class SchemaEventHandler(BaseEventHandler):
             table_name=table_name,
         )
 
-    def _execute_non_schema_store_relevant_query(self, event):
+    def _execute_non_schema_store_relevant_query(self, event, database_name):
         """ Execute query that is not relevant to replication handler schema.
             Some queries are comments, or just BEGIN
         """
-        self.schema_tracker.execute_query(event.query)
+        self.schema_tracker.execute_query(event.query, database_name)
 
     def _handle_create_table_event(self, event, table):
         """This method contains the core logic for handling a *create* event

@@ -6,24 +6,19 @@ import logging
 from collections import namedtuple
 
 import avro.schema
+from pii_generator.components.pii_identifier import PIIIdentifier
+from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.config import env_config
-from yelp_conn.connection_set import ConnectionSet
 
 
-log = logging.getLogger('replication_handler.component.schema_wrapper')
+log = logging.getLogger('replication_handler.components.schema_wrapper')
 
 
 SchemaWrapperEntry = namedtuple(
     'SchemaWrapperEntry',
     ('schema_obj', 'topic', 'schema_id', 'primary_keys')
-)
-
-
-SchemaStoreRegisterResponse = namedtuple(
-    'SchemaStoreRegisterResponse',
-    ('schema_id', 'schema', 'topic', 'namespace', 'source', 'primary_keys')
 )
 
 
@@ -46,6 +41,7 @@ class SchemaWrapper(object):
         self.schema_tracker = SchemaTracker(
             ConnectionSet.schema_tracker_rw().repltracker.cursor()
         )
+        self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
     def __getitem__(self, table):
         if table not in self.cache:
@@ -73,7 +69,6 @@ class SchemaWrapper(object):
         """Register with schema store and populate cache
            with response, one interface for both create and alter
            statements.
-        TODO(cheng|DATAPIPE-255): set pii flag once pii_generator is shipped.
         """
         if env_config.register_dry_run:
             self.cache[table] = self._dry_run_schema
@@ -83,7 +78,10 @@ class SchemaWrapper(object):
             "namespace": "{0}.{1}".format(table.cluster_name, table.database_name),
             "source": table.table_name,
             "source_owner_email": self._notify_email,
-            "contains_pii": False,
+            "contains_pii": self.pii_identifier.table_has_pii(
+                database_name=table.database_name,
+                table_name=table.table_name
+            ),
             "new_create_table_stmt": new_create_table_stmt
         }
         if old_create_table_stmt:
@@ -94,25 +92,13 @@ class SchemaWrapper(object):
         resp = self.schematizer_client.schemas.register_schema_from_mysql_stmts(
             body=request_body
         ).result()
-        self._populate_schema_cache(table, self._format_register_response(resp))
+        self._populate_schema_cache(table, resp)
 
     def _populate_schema_cache(self, table, resp):
         self.cache[table] = SchemaWrapperEntry(
             schema_obj=avro.schema.parse(resp.schema),
-            topic=resp.topic,
-            schema_id=resp.schema_id,
-            primary_keys=resp.primary_keys,
-        )
-
-    def _format_register_response(self, resp):
-        """ source is table, and namespace is cluster_name.database_name
-        """
-        return SchemaStoreRegisterResponse(
-            schema_id=resp.schema_id,
-            schema=resp.schema,
             topic=str(resp.topic.name),
-            namespace=resp.topic.source.namespace,
-            source=resp.topic.source.source,
+            schema_id=resp.schema_id,
             primary_keys=resp.primary_keys,
         )
 

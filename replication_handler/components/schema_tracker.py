@@ -6,7 +6,7 @@ import logging
 from collections import namedtuple
 
 
-log = logging.getLogger('replication_handler.component.schema_tracker')
+log = logging.getLogger('replication_handler.components.schema_tracker')
 
 
 ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
@@ -20,7 +20,7 @@ class SchemaTracker(object):
         use_db_query = "USE {0}".format(database_name)
         self.schema_tracker_cursor.execute(use_db_query)
 
-    def execute_query(self, query, database_name=None):
+    def execute_query(self, query, database_name):
         if database_name:
             self._use_db(database_name)
         self.schema_tracker_cursor.execute(query)

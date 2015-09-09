@@ -135,7 +135,7 @@ class RecoveryHandler(object):
 
     def _build_messages(self, events):
         messages = []
-        # TODO(DATAPIPE-222) get real schema info.
+        # TODO(DATAPIPE-408) Fix schema retrieval in recovery handler.
         schema_wrapper_entry = SchemaWrapperEntry(
             schema_obj=None,
             topic=str("test_topic"),

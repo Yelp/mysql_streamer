@@ -105,7 +105,8 @@ class TestSchemaEventHandler(object):
     @pytest.fixture
     def non_schema_relevant_query_event(self, test_schema):
         query = "BEGIN"
-        return QueryEvent(schema=test_schema, query=query)
+        schema = test_schema
+        return QueryEvent(schema=schema, query=query)
 
     @pytest.fixture
     def show_create_result_initial(self, test_table, create_table_schema_event):
@@ -447,7 +448,10 @@ class TestSchemaEventHandler(object):
         schema_event_handler.handle_event(non_schema_relevant_query_event, test_position)
         assert external_patches.execute_query.call_count == 1
         assert external_patches.execute_query.call_args_list == [
-            mock.call(non_schema_relevant_query_event.query)
+            mock.call(
+                non_schema_relevant_query_event.query,
+                non_schema_relevant_query_event.schema,
+            )
         ]
         assert producer.flush.call_count == 0
 
@@ -511,7 +515,7 @@ class TestSchemaEventHandler(object):
         assert external_patches.populate_schema_cache.call_args_list == \
             [mock.call(
                 table,
-                schema_event_handler.schema_wrapper._format_register_response(schema_store_response)
+                schema_store_response
             )]
 
         assert external_patches.create_schema_event_state.call_count == 1
