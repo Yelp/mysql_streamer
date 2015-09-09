@@ -8,7 +8,6 @@ from yelp_lib import iteration
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
-from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import save_position
 
@@ -24,7 +23,6 @@ class DataEventHandler(BaseEventHandler):
 
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
-        self.publish_dry_run = kwargs.pop('publish_dry_run')
         super(DataEventHandler, self).__init__(*args, **kwargs)
         # self._checkpoint_latest_published_offset will be invoked every time
         # we process self.checkpoint_size number of rows, For More info on SegmentProcessor,
@@ -61,15 +59,8 @@ class DataEventHandler(BaseEventHandler):
 
     def _get_payload_schema(self, table):
         """Get payload avro schema from schema wrapper or from schema store"""
-        if self.publish_dry_run:
-            return self._dry_run_schema
         return self.schema_wrapper[table]
 
     def _checkpoint_latest_published_offset(self, rows):
         position_data = self.producer.get_checkpoint_position_data()
         save_position(position_data)
-
-    @property
-    def _dry_run_schema(self):
-        """A schema wrapper to go with dry run mode."""
-        return SchemaWrapperEntry(schema_obj=None, topic=str('dry_run'), schema_id=1, primary_keys=[])

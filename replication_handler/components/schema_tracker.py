@@ -21,7 +21,7 @@ class SchemaTracker(object):
         self.schema_tracker_cursor.execute(use_db_query)
 
     def execute_query(self, query, database_name=None):
-        if database_name is not None:
+        if database_name:
             self._use_db(database_name)
         self.schema_tracker_cursor.execute(query)
 

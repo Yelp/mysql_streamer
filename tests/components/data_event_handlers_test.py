@@ -18,6 +18,7 @@ from pii_generator.components.pii_identifier import PIIIdentifier
 from replication_handler import config
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
@@ -36,6 +37,9 @@ DataHandlerExternalPatches = namedtuple(
         "patch_checkpoint_size",
         "patch_upsert_global_event_state",
         'table_has_pii',
+        "patch_dry_run_config",
+        "patch_get_show_create_statement",
+        "patch_execute_query",
     )
 )
 
@@ -65,7 +69,6 @@ class TestDataEventHandler(object):
             producer,
             schema_wrapper=schema_wrapper,
             register_dry_run=False,
-            publish_dry_run=False
         )
 
     @pytest.fixture
@@ -79,7 +82,6 @@ class TestDataEventHandler(object):
             producer,
             schema_wrapper=schema_wrapper,
             register_dry_run=True,
-            publish_dry_run=True
         )
 
     @pytest.fixture
@@ -228,6 +230,32 @@ class TestDataEventHandler(object):
             mock_table_has_pii.return_value = True
             yield mock_table_has_pii
 
+    @pytest.yield_fixture
+    def patch_config_register_dry_run(self):
+        with mock.patch.object(
+            config.EnvConfig,
+            'register_dry_run',
+            new_callable=mock.PropertyMock
+        ) as mock_register_dry_run:
+            mock_register_dry_run.return_value = False
+            yield mock_register_dry_run
+
+    @pytest.yield_fixture
+    def patch_get_show_create_statement(self):
+        with mock.patch.object(
+            SchemaTracker,
+            'get_show_create_statement'
+        ) as mock_show_create:
+            yield mock_show_create
+
+    @pytest.yield_fixture
+    def patch_execute_query(self):
+        with mock.patch.object(
+            SchemaTracker,
+            'execute_query'
+        ) as mock_execute_query:
+            yield mock_execute_query
+
     @pytest.fixture
     def patches(
         self,
@@ -237,6 +265,9 @@ class TestDataEventHandler(object):
         patch_checkpoint_size,
         patch_upsert_global_event_state,
         patch_table_has_pii,
+        patch_config_register_dry_run,
+        patch_get_show_create_statement,
+        patch_execute_query,
     ):
         return DataHandlerExternalPatches(
             patch_rbr_state_rw=patch_rbr_state_rw,
@@ -245,6 +276,9 @@ class TestDataEventHandler(object):
             patch_checkpoint_size=patch_checkpoint_size,
             patch_upsert_global_event_state=patch_upsert_global_event_state,
             table_has_pii=patch_table_has_pii,
+            patch_dry_run_config=patch_config_register_dry_run,
+            patch_get_show_create_statement=patch_get_show_create_statement,
+            patch_execute_query=patch_execute_query,
         )
 
     @pytest.yield_fixture
@@ -368,6 +402,7 @@ class TestDataEventHandler(object):
         data_create_events,
         patches,
     ):
+        patches.patch_dry_run_config.return_value = True
         for data_event in data_create_events:
             position = LogPosition()
             dry_run_data_event_handler.handle_event(data_event, position)
@@ -376,7 +411,9 @@ class TestDataEventHandler(object):
     def test_dry_run_schema(
         self,
         dry_run_data_event_handler,
+        patches,
     ):
+        patches.patch_dry_run_config.return_value = True
         assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).topic == 'dry_run'
         assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).schema_id == 1
 

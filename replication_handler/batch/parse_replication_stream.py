@@ -15,8 +15,8 @@ from yelp_batch import Batch
 from replication_handler import config
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
-from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.schema_event_handler import SchemaEventHandler
+from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
 from replication_handler.util.misc import DataEvent
@@ -86,7 +86,6 @@ class ParseReplicationStream(Batch):
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
             register_dry_run=self.register_dry_run,
-            publish_dry_run=self.publish_dry_run
         )
         schema_event_handler = SchemaEventHandler(
             producer=self.producer,

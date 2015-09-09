@@ -60,22 +60,23 @@ class SchemaWrapper(object):
         show_create_result = self.schema_tracker.get_show_create_statement(table)
         self.register_with_schema_store(
             table,
-            {"new_create_table_stmt": show_create_result.query}
+            new_create_table_stmt=show_create_result.query
         )
 
     def register_with_schema_store(
         self,
         table,
-        mysql_statements
+        new_create_table_stmt,
+        old_create_table_stmt=None,
+        alter_table_stmt=None
     ):
         """Register with schema store and populate cache
            with response, one interface for both create and alter
            statements.
-        TODO(cheng|DATAPIPE-337): get owner_email for tables.
         TODO(cheng|DATAPIPE-255): set pii flag once pii_generator is shipped.
         """
         if env_config.register_dry_run:
-            self.cache[table] = None
+            self.cache[table] = self._dry_run_schema
             return
 
         request_body = {
@@ -83,13 +84,17 @@ class SchemaWrapper(object):
             "source": table.table_name,
             "source_owner_email": self._notify_email,
             "contains_pii": False,
+            "new_create_table_stmt": new_create_table_stmt
         }
-        request_body.update({(key, str(value)) for key, value in mysql_statements.iteritems()})
+        if old_create_table_stmt:
+            request_body["old_create_table_stmt"] = old_create_table_stmt
+        if alter_table_stmt:
+            request_body["alter_table_stmt"] = alter_table_stmt
+
         resp = self.schematizer_client.schemas.register_schema_from_mysql_stmts(
             body=request_body
         ).result()
-        resp = self._format_register_response(resp)
-        self._populate_schema_cache(table, resp)
+        self._populate_schema_cache(table, self._format_register_response(resp))
 
     def _populate_schema_cache(self, table, resp):
         self.cache[table] = SchemaWrapperEntry(
@@ -110,3 +115,8 @@ class SchemaWrapper(object):
             source=resp.topic.source.source,
             primary_keys=resp.primary_keys,
         )
+
+    @property
+    def _dry_run_schema(self):
+        """A schema wrapper to go with dry run mode."""
+        return SchemaWrapperEntry(schema_obj=None, topic=str('dry_run'), schema_id=1, primary_keys=[])

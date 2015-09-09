@@ -12,10 +12,10 @@ from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
 from replication_handler.components.base_event_handler import Table
-from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_tracker import ShowCreateResult
+from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.util.position import GtidPosition
@@ -246,7 +246,7 @@ class TestSchemaEventHandler(object):
             yield mock_cluster_name
 
     @pytest.yield_fixture
-    def patch_get_show_create_statement(self, schema_event_handler):
+    def patch_get_show_create_statement(self):
         with mock.patch.object(
             SchemaTracker,
             'get_show_create_statement'
@@ -254,7 +254,7 @@ class TestSchemaEventHandler(object):
             yield mock_show_create
 
     @pytest.yield_fixture
-    def patch_execute_query(self, schema_event_handler):
+    def patch_execute_query(self):
         with mock.patch.object(
             SchemaTracker,
             'execute_query'
@@ -262,7 +262,7 @@ class TestSchemaEventHandler(object):
             yield mock_execute_query
 
     @pytest.yield_fixture
-    def patch_populate_schema_cache(self, schema_event_handler):
+    def patch_populate_schema_cache(self):
         with mock.patch.object(
             SchemaWrapper, '_populate_schema_cache'
         ) as mock_populate_schema_cache:

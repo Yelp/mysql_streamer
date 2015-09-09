@@ -29,8 +29,8 @@ class TestSchemaWrapper(object):
 
     @pytest.fixture
     def avro_schema(self):
-        return '{"type": "record", "namespace": "yelp", "name": "business", "fields": [ \
-            {"pkey": true, "type": "int", "name": "id"}, \
+        return '{"type": "record", "namespace": "yelp", "name": "business", "pkey": ["id"], \
+            "fields": [ {"pkey": 1, "type": "int", "name": "id"}, \
             {"default": null, "maxlen": 64, "type": ["null", "string"], "name": "name"}]}'
 
     @pytest.fixture
@@ -62,7 +62,7 @@ class TestSchemaWrapper(object):
         new_schema_wrapper = SchemaWrapper()
         assert new_schema_wrapper is base_schema_wrapper
 
-    def test_get_schema_for_schema_wrapper(
+    def test_get_schema_schema_not_cached(
         self,
         base_schema_wrapper,
         mock_response,
@@ -73,7 +73,7 @@ class TestSchemaWrapper(object):
         resp = base_schema_wrapper[table]
         self._assert_expected_result(resp, topic)
 
-    def test_schema_already_in_wrapper(self, base_schema_wrapper, table, topic):
+    def test_get_schema_already_cached(self, base_schema_wrapper, table, topic):
         resp = base_schema_wrapper[table]
         self._assert_expected_result(resp, topic)
 

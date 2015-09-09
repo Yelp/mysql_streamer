@@ -143,7 +143,7 @@ class SchemaEventHandler(BaseEventHandler):
         )
         self.schema_wrapper.register_with_schema_store(
             table,
-            {"new_create_table_stmt": show_create_result.query}
+            new_create_table_stmt=show_create_result.query
         )
 
     def _handle_alter_table_event(self, event, table):
@@ -155,12 +155,12 @@ class SchemaEventHandler(BaseEventHandler):
             event,
             table
         )
-        mysql_statements = {
-            "old_create_table_stmt": show_create_result_before.query,
-            "new_create_table_stmt": show_create_result_after.query,
-            "alter_table_stmt": event.query,
-        }
-        self.schema_wrapper.register_with_schema_store(table, mysql_statements)
+        self.schema_wrapper.register_with_schema_store(
+            table,
+            new_create_table_stmt=show_create_result_after.query,
+            old_create_table_stmt=show_create_result_before.query,
+            alter_table_stmt=event.query,
+        )
 
     def _exec_query_and_get_show_create_statement(self, event, table):
         self.schema_tracker.execute_query(event.query, table.database_name)
