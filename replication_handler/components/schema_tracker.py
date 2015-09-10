@@ -21,12 +21,23 @@ class SchemaTracker(object):
         self.schema_tracker_cursor.execute(use_db_query)
 
     def execute_query(self, query, database_name):
-        if database_name:
-            self._use_db(database_name)
+        self._use_db(database_name)
         self.schema_tracker_cursor.execute(query)
 
     def get_show_create_statement(self, table):
         self._use_db(table.database_name)
+
+        if not self.schema_tracker_cursor.execute(
+            'SHOW TABLES LIKE \'{table}\''.format(table=table.table_name)
+        ):
+            log.info(
+                "Table {table} doesn't exist in database {database}".format(
+                    table=table.table_name,
+                    database=table.database_name
+                )
+            )
+            return None
+
         query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(table.database_name, table.table_name)
         self.schema_tracker_cursor.execute(query_str)
         res = self.schema_tracker_cursor.fetchone()

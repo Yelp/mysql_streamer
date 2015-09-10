@@ -53,9 +53,10 @@ class TestSchemaTracker(object):
     ):
         base_schema_tracker.schema_tracker_cursor.fetchone.return_value = [test_table, show_create_query]
         base_schema_tracker.get_show_create_statement(table_with_schema_changes)
-        assert mock_schema_tracker_cursor.execute.call_count == 2
+        assert mock_schema_tracker_cursor.execute.call_count == 3
         assert mock_schema_tracker_cursor.execute.call_args_list == [
             mock.call("USE {0}".format(table_with_schema_changes.database_name)),
+            mock.call("SHOW TABLES LIKE \'{0}\'".format(table_with_schema_changes.table_name)),
             mock.call(show_create_query)
         ]
         assert mock_schema_tracker_cursor.fetchone.call_count == 1
