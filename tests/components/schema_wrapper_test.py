@@ -62,7 +62,7 @@ class TestSchemaWrapper(object):
         new_schema_wrapper = SchemaWrapper()
         assert new_schema_wrapper is base_schema_wrapper
 
-    def test_get_schema_schema_already_cached(
+    def test_get_schema_schema_not_cached(
         self,
         base_schema_wrapper,
         mock_response,
@@ -73,7 +73,7 @@ class TestSchemaWrapper(object):
         resp = base_schema_wrapper[table]
         self._assert_expected_result(resp, topic)
 
-    def test_get_schema_not_cached(self, base_schema_wrapper, table, topic):
+    def test_get_schema_already_cached(self, base_schema_wrapper, table, topic):
         resp = base_schema_wrapper[table]
         self._assert_expected_result(resp, topic)
 
