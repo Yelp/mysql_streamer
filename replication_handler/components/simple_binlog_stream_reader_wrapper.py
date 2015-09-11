@@ -2,6 +2,7 @@
 import logging
 
 from pymysqlreplication.event import GtidEvent
+from pymysqlreplication.constants.BINLOG import QUERY_EVENT
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
@@ -71,7 +72,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             self._upstream_position = GtidPosition(
                 gtid=event.gtid
             )
-        elif (not self.gtid_enabled) and event.schema == HEARTBEAT_DB:
+        elif (not self.gtid_enabled) and event.schema == HEARTBEAT_DB and hasattr(event, 'row'):
             # This should be an update event, so a row will look like
             # {"previous_values": {"serial": 123, "timestamp": "2015/07/22"},
             # "after_values": {"serial": 456, "timestamp": "2015/07/23"}}
@@ -82,7 +83,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 hb_serial=event.row["after_values"]["serial"],
                 hb_timestamp=event.row["after_values"]["timestamp"],
             )
-        self._offset = 0
+        self._offset = 1
 
     def _refill_current_events_if_empty(self):
         if not self.current_events:
