@@ -36,7 +36,7 @@ class SchemaTracker(object):
                     database=table.database_name
                 )
             )
-            return None
+            return ShowCreateResult(table=table.table_name, query='')
 
         query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(table.database_name, table.table_name)
         self.schema_tracker_cursor.execute(query_str)
