@@ -21,7 +21,7 @@ class ReplicationStreamRestarter(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, schema_wrapper):
         # Both global_event_state and pending_schema_event are information about
         # last shutdown, we need them to do recovery process.
         cluster_name = source_database_config.cluster_name
@@ -35,6 +35,7 @@ class ReplicationStreamRestarter(object):
             self.global_event_state,
             self.pending_schema_event
         )
+        self.schema_wrapper = schema_wrapper
 
     def restart(self, producer, register_dry_run=True):
         """ This function retrive the saved position from database, and init
@@ -47,6 +48,7 @@ class ReplicationStreamRestarter(object):
             recovery_handler = RecoveryHandler(
                 stream=self.stream,
                 producer=producer,
+                schema_wrapper=self.schema_wrapper,
                 is_clean_shutdown=self.global_event_state.is_clean_shutdown,
                 pending_schema_event=self.pending_schema_event,
                 register_dry_run=register_dry_run,

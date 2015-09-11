@@ -6,7 +6,6 @@ import logging
 
 from yelp_conn.connection_set import ConnectionSet
 
-from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
@@ -43,6 +42,7 @@ class RecoveryHandler(object):
         self,
         stream,
         producer,
+        schema_wrapper,
         is_clean_shutdown=False,
         pending_schema_event=None,
         register_dry_run=False,
@@ -55,6 +55,7 @@ class RecoveryHandler(object):
         self.cluster_name = source_database_config.cluster_name
         self.register_dry_run = register_dry_run
         self.publish_dry_run = publish_dry_run
+        self.schema_wrapper = schema_wrapper
 
     @property
     def need_recovery(self):
@@ -135,16 +136,10 @@ class RecoveryHandler(object):
 
     def _build_messages(self, events):
         messages = []
-        # TODO(DATAPIPE-408) Fix schema retrieval in recovery handler.
-        schema_wrapper_entry = SchemaWrapperEntry(
-            schema_obj=None,
-            topic=str("test_topic"),
-            schema_id=1,
-            primary_keys=['key']
-        )
+        import pdb; pdb.set_trace()
         for event in events:
             builder = MessageBuilder(
-                schema_wrapper_entry,
+                self.schema_wrapper[event.table],
                 event.event,
                 event.position,
                 self.register_dry_run

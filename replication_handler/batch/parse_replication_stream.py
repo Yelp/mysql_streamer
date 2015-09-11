@@ -74,7 +74,7 @@ class ParseReplicationStream(Batch):
             self._close_zk()
 
     def _get_stream(self):
-        replication_stream_restarter = ReplicationStreamRestarter()
+        replication_stream_restarter = ReplicationStreamRestarter(self.schema_wrapper)
         replication_stream_restarter.restart(
             self.producer,
             register_dry_run=self.register_dry_run,
