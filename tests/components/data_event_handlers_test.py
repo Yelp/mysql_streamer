@@ -256,14 +256,14 @@ class TestDataEventHandler(object):
     ):
         expected_call_args = []
         for data_event in data_create_events:
-            position = LogPosition()
+            position = LogPosition(log_file='binlog', log_pos=100)
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(CreateMessage(
                 topic=schema_cache_entry.topic,
                 payload_data=data_event.row["values"],
                 schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position.to_dict(),
-                keys=['primary_key'],
+                keys=(u'primary_key', ),
                 contains_pii=True,
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
@@ -329,7 +329,7 @@ class TestDataEventHandler(object):
     ):
         expected_call_args = []
         for data_event in data_update_events:
-            position = LogPosition()
+            position = LogPosition(log_file='binlog', log_pos=100)
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(UpdateMessage(
                 topic=schema_cache_entry.topic,
@@ -337,7 +337,7 @@ class TestDataEventHandler(object):
                 schema_id=schema_cache_entry.schema_id,
                 upstream_position_info=position.to_dict(),
                 previous_payload_data=data_event.row["before_values"],
-                keys=['primary_key'],
+                keys=(u'primary_key', ),
                 contains_pii=True,
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
@@ -351,7 +351,7 @@ class TestDataEventHandler(object):
         patches,
     ):
         for data_event in data_create_events:
-            position = LogPosition()
+            position = LogPosition(log_file='binlog', log_pos=100)
             dry_run_data_event_handler.handle_event(data_event, position)
         assert producer.publish.call_count == 4
 

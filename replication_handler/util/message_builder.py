@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
 from pii_generator.components.pii_identifier import PIIIdentifier
@@ -29,7 +32,7 @@ class MessageBuilder(object):
         message_params = {
             "topic": self.schema_info.topic,
             "schema_id": self.schema_info.schema_id,
-            "keys": self.schema_info.primary_keys,
+            "keys": tuple([unicode(x) for x in self.schema_info.primary_keys]),
             "payload_data": self._get_values(self.event.row),
             "upstream_position_info": self.position.to_dict(),
             "dry_run": self.register_dry_run,
@@ -37,6 +40,7 @@ class MessageBuilder(object):
                 database_name=self.event.schema,
                 table_name=self.event.table
             ),
+            "transaction_id": self.position.get_transaction_id(),
         }
 
         if self.event.message_type == UpdateMessage:

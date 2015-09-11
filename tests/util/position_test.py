@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import datetime
 import pytest
 
+from replication_handler.config import source_database_config
 from replication_handler.util.position import InvalidPositionDictException
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import HeartbeatPosition
@@ -86,6 +90,13 @@ class TestLogPosition(object):
             "hb_timestamp": '2011-10-21 00:01:00',
         }
         assert p.to_dict() == expected_dict
+
+    def test_get_transaction_id(self):
+        p = LogPosition(log_pos=100, log_file="binlog")
+        assert p.get_transaction_id() == ':'.join([
+            source_database_config.cluster_name,
+            'binlog:100'
+        ])
 
 
 class TestConstructPosition(object):

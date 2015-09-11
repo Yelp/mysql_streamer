@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
+from replication_handler.config import source_database_config
+
+
 class InvalidPositionDictException(Exception):
     pass
 
@@ -103,6 +109,7 @@ class LogPosition(Position):
         self.offset = offset
         self.hb_serial = hb_serial
         self.hb_timestamp = hb_timestamp
+        self.cluster_name = source_database_config.cluster_name
 
     def to_dict(self):
         position_dict = {}
@@ -122,6 +129,9 @@ class LogPosition(Position):
             position_dict["log_pos"] = self.log_pos
             position_dict["log_file"] = self.log_file
         return position_dict
+
+    def get_transaction_id(self):
+        return ':'.join([self.cluster_name, self.log_file, str(self.log_pos)])
 
 
 def construct_position(position_dict):
