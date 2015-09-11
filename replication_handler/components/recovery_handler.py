@@ -136,7 +136,6 @@ class RecoveryHandler(object):
 
     def _build_messages(self, events):
         messages = []
-        import pdb; pdb.set_trace()
         for event in events:
             builder = MessageBuilder(
                 self.schema_wrapper[event.table],
