@@ -59,7 +59,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         if self.gtid_enabled:
             return isinstance(event, GtidEvent)
         else:
-            return event.schema == HEARTBEAT_DB
+            return event.schema == HEARTBEAT_DB and hasattr(event, 'row')
 
     def _update_upstream_position(self, event):
         """If gtid_enabled and the next event is GtidEvent,
@@ -83,7 +83,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 hb_serial=event.row["after_values"]["serial"],
                 hb_timestamp=event.row["after_values"]["timestamp"],
             )
-        self._offset = 1
+        self._offset = 0
 
     def _refill_current_events_if_empty(self):
         if not self.current_events:
