@@ -314,7 +314,7 @@ class TestDataEventHandler(object):
                 payload_data=data_event.row["values"],
                 schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=position.to_dict(),
-                keys=['primary_key'],
+                keys=(u'primary_key', ),
                 contains_pii=True,
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
@@ -389,7 +389,7 @@ class TestDataEventHandler(object):
                 schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=position.to_dict(),
                 previous_payload_data=data_event.row["before_values"],
-                keys=['primary_key'],
+                keys=(u'primary_key', ),
                 contains_pii=True,
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]

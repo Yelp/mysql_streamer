@@ -8,6 +8,7 @@ from kazoo.exceptions import LockTimeout
 from kazoo.retry import KazooRetry
 from pymysqlreplication.event import QueryEvent
 
+from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.producer import Producer
 from data_pipeline.schema_cache import get_schema_cache
 from yelp_batch import Batch
@@ -59,7 +60,9 @@ class ParseReplicationStream(Batch):
     def run(self):
         try:
             with Producer(
-                REPLICATION_HANDLER_PRODUCER_NAME,
+                producer_name=REPLICATION_HANDLER_PRODUCER_NAME,
+                team_name='bam',
+                expected_frequency_seconds=ExpectedFrequency.constantly,
                 dry_run=self.publish_dry_run
             ) as self.producer:
                 self._post_producer_setup()

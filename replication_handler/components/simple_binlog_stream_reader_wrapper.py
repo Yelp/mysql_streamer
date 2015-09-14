@@ -2,7 +2,6 @@
 import logging
 
 from pymysqlreplication.event import GtidEvent
-from pymysqlreplication.constants.BINLOG import QUERY_EVENT
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
