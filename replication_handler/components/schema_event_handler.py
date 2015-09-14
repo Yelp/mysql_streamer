@@ -16,7 +16,7 @@ from replication_handler.models.schema_event_state import SchemaEventStatus
 from yelp_conn.connection_set import ConnectionSet
 
 
-log = logging.getLogger('replication_handler.component.schema_event_handler')
+log = logging.getLogger('replication_handler.components.schema_event_handler')
 
 
 class SchemaEventHandler(BaseEventHandler):
