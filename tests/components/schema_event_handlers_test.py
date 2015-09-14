@@ -36,7 +36,6 @@ SchemaHandlerExternalPatches = namedtuple(
         'update_schema_event_state',
         'upsert_global_event_state',
         'table_has_pii',
-        'mock_schematizer_client',
     )
 )
 
@@ -103,8 +102,13 @@ class TestSchemaEventHandler(object):
         return QueryEvent(schema=test_schema, query=query)
 
     @pytest.fixture
-    def non_schema_relevant_query_event(self, test_schema):
+    def begin_query_event(self, test_schema):
         query = "BEGIN"
+        return QueryEvent(schema=test_schema, query=query)
+
+    @pytest.fixture
+    def non_schema_relevant_query_event(self, test_schema):
+        query = "use yelp"
         schema = test_schema
         return QueryEvent(schema=schema, query=query)
 
@@ -190,15 +194,6 @@ class TestSchemaEventHandler(object):
     @pytest.fixture
     def mock_rbr_source_cursor(self):
         return mock.Mock()
-
-    @pytest.yield_fixture
-    def patch_schematizer_client(self):
-        with mock.patch.object(
-            SchemaWrapper._instance,
-            'schematizer_client',
-            new_callable=mock.Mock()
-        ) as mock_schema_client:
-            yield mock_schema_client
 
     @pytest.yield_fixture
     def patch_schema_tracker_rw(self, mock_schema_tracker_cursor):
@@ -317,7 +312,6 @@ class TestSchemaEventHandler(object):
         patch_update_schema_event_state,
         patch_upsert_global_event_state,
         patch_table_has_pii,
-        patch_schematizer_client,
     ):
         return SchemaHandlerExternalPatches(
             schema_tracking_db_conn=patch_schema_tracker_rw,
@@ -332,11 +326,11 @@ class TestSchemaEventHandler(object):
             update_schema_event_state=patch_update_schema_event_state,
             upsert_global_event_state=patch_upsert_global_event_state,
             table_has_pii=patch_table_has_pii,
-            mock_schematizer_client=patch_schematizer_client,
         )
 
     def test_handle_event_create_table(
         self,
+        schematizer_client,
         producer,
         test_position,
         external_patches,
@@ -350,7 +344,8 @@ class TestSchemaEventHandler(object):
         """Integration test the things that need to be called during a handle
            create table event hence many mocks
         """
-        external_patches.mock_schematizer_client.schemas.register_schema_from_mysql_stmts.return_value.\
+        schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
+        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value.\
             result.return_value = create_table_schema_store_response
         external_patches.get_show_create_statement.return_value = show_create_result_initial
         mysql_statements = {"new_create_table_stmt": show_create_result_initial.query}
@@ -358,6 +353,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler.handle_event(create_table_schema_event, test_position)
 
         self.check_external_calls(
+            schematizer_client,
             producer,
             create_table_schema_event,
             mock_schema_tracker_cursor,
@@ -374,6 +370,7 @@ class TestSchemaEventHandler(object):
         test_position,
         external_patches,
         schema_event_handler,
+        schematizer_client,
         alter_table_schema_event,
         show_create_result_initial,
         show_create_result_after_alter,
@@ -384,8 +381,9 @@ class TestSchemaEventHandler(object):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
         """
-
-        external_patches.mock_schematizer_client.schemas.register_schema_from_mysql_stmts.return_value.result.return_value = alter_table_schema_store_response
+        schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
+        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value.\
+            result.return_value = alter_table_schema_store_response
 
         mysql_statements = {
             "old_create_table_stmt": show_create_result_initial.query,
@@ -400,6 +398,7 @@ class TestSchemaEventHandler(object):
 
         schema_event_handler.handle_event(alter_table_schema_event, test_position)
         self.check_external_calls(
+            schematizer_client,
             producer,
             alter_table_schema_event,
             mock_schema_tracker_cursor,
@@ -435,6 +434,18 @@ class TestSchemaEventHandler(object):
     ):
         with pytest.raises(Exception):
             schema_event_handler.handle_event(bad_query_event, test_position)
+
+    def test_begin_query(
+        self,
+        producer,
+        test_position,
+        external_patches,
+        schema_event_handler,
+        begin_query_event
+    ):
+        schema_event_handler.handle_event(begin_query_event, test_position)
+        assert external_patches.execute_query.call_count == 0
+        assert producer.flush.call_count == 0
 
     def test_non_schema_relevant_query(
         self,
@@ -477,6 +488,7 @@ class TestSchemaEventHandler(object):
 
     def check_external_calls(
         self,
+        schematizer_client,
         producer,
         event,
         mock_schema_tracker_cursor,
@@ -496,8 +508,7 @@ class TestSchemaEventHandler(object):
         assert external_patches.execute_query.call_args_list == [
             mock.call(event.query, event.schema)
         ]
-
-        assert external_patches.mock_schematizer_client.schemas.register_schema_from_mysql_stmts.call_count == 1
+        assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_count == 1
 
         body = {
             "namespace": "{0}.{1}".format(table.cluster_name, table.database_name),
@@ -506,7 +517,7 @@ class TestSchemaEventHandler(object):
             "contains_pii": True
         }
         body.update(mysql_statements)
-        assert external_patches.mock_schematizer_client.schemas.register_schema_from_mysql_stmts.call_args_list == [
+        assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_args_list == [
             mock.call(
                 body=body
             )
@@ -527,6 +538,7 @@ class TestSchemaEventHandler(object):
 
     def test_dry_run_handle_event(
         self,
+        schematizer_client,
         external_patches,
         dry_run_schema_event_handler,
         test_position,
@@ -536,4 +548,4 @@ class TestSchemaEventHandler(object):
         external_patches.dry_run_config.return_value = True
         dry_run_schema_event_handler.handle_event(create_table_schema_event, test_position)
         assert external_patches.execute_query.call_count == 1
-        assert external_patches.mock_schematizer_client.schemas.register_schema_from_mysql_stmts.call_count == 0
+        assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_count == 0

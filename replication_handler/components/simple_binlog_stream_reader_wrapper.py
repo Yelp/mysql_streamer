@@ -2,7 +2,6 @@
 import logging
 
 from pymysqlreplication.event import GtidEvent
-from pymysqlreplication.constants.BINLOG import QUERY_EVENT
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
@@ -48,12 +47,12 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         """This method advances the internal dequeue to provided offset.
         """
         original_offset = offset
-        while offset > 0:
+        while offset >= 0:
             self.pop()
             offset -= 1
 
         # Make sure that we skipped correct number of events.
-        assert self._offset == original_offset
+        assert self._offset == original_offset + 1
 
     def _is_position_update(self, event):
         if self.gtid_enabled:

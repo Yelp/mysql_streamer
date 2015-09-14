@@ -34,6 +34,8 @@ class SchemaEventHandler(BaseEventHandler):
         # Filter out blacklisted schemas
         if self.is_blacklisted(event):
             return
+        if event.query == 'BEGIN':
+            return
         handle_method = self._get_handle_method(self._reformat_query(event.query))
         if handle_method is not None:
             # Flush before executing a schema event to make sure
