@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
 from yelp_conn.connection_set import ConnectionSet
 
-from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.config import source_database_config
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
+from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.message_builder import MessageBuilder
@@ -40,6 +42,7 @@ class RecoveryHandler(object):
         self,
         stream,
         producer,
+        schema_wrapper,
         is_clean_shutdown=False,
         pending_schema_event=None,
         register_dry_run=False,
@@ -52,6 +55,7 @@ class RecoveryHandler(object):
         self.cluster_name = source_database_config.cluster_name
         self.register_dry_run = register_dry_run
         self.publish_dry_run = publish_dry_run
+        self.schema_wrapper = schema_wrapper
 
     @property
     def need_recovery(self):
@@ -132,16 +136,9 @@ class RecoveryHandler(object):
 
     def _build_messages(self, events):
         messages = []
-        # TODO(DATAPIPE-222) get real schema info.
-        schema_cache_entry = SchemaCacheEntry(
-            schema_obj=None,
-            topic="test_topic",
-            schema_id=1,
-            primary_keys=['key']
-        )
         for event in events:
             builder = MessageBuilder(
-                schema_cache_entry,
+                self.schema_wrapper[event.table],
                 event.event,
                 event.position,
                 self.register_dry_run

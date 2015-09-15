@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
+import json
 from collections import namedtuple
 
-import avro.schema
 import avro.io
-import json
+import avro.schema
 import mock
 import pytest
-
 from data_pipeline.message import CreateMessage
 from data_pipeline.message import UpdateMessage
 from data_pipeline.position_data import PositionData
@@ -14,26 +16,30 @@ from data_pipeline.producer import Producer
 from pii_generator.components.pii_identifier import PIIIdentifier
 
 from replication_handler import config
-from replication_handler.components.base_event_handler import SchemaCacheEntry
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.models.database import rbr_state_session
+from replication_handler.components.schema_tracker import SchemaTracker
+from replication_handler.components.schema_wrapper import SchemaWrapper
+from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
-from replication_handler.models.global_event_state import GlobalEventState
+from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
+from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.util.position import LogPosition
 from testing.events import DataEvent
 
 
 DataHandlerExternalPatches = namedtuple(
     "DataHandlerExternalPatches", (
-        "patch_get_schema_for_schema_cache",
         "patch_rbr_state_rw",
         "mock_rbr_state_session",
         "patch_upsert_data_event_checkpoint",
         "patch_checkpoint_size",
         "patch_upsert_global_event_state",
         'table_has_pii',
+        "patch_dry_run_config",
+        "patch_get_show_create_statement",
+        "patch_execute_query",
     )
 )
 
@@ -41,16 +47,42 @@ DataHandlerExternalPatches = namedtuple(
 class TestDataEventHandler(object):
 
     @pytest.fixture
+    def mock_schematizer_client(self):
+        return mock.Mock()
+
+    @pytest.fixture
+    def schema_wrapper(self, mock_schematizer_client):
+        return SchemaWrapper(schematizer_client=mock_schematizer_client)
+
+    @pytest.fixture
     def test_gtid(self):
         return "93fd11e6-cf7c-11e4-912d-0242a9fe01db:12"
 
     @pytest.fixture
-    def data_event_handler(self, patch_checkpoint_size, producer):
-        return DataEventHandler(producer, register_dry_run=False, publish_dry_run=False)
+    def data_event_handler(
+        self,
+        schema_wrapper,
+        patch_checkpoint_size,
+        producer
+    ):
+        return DataEventHandler(
+            producer,
+            schema_wrapper=schema_wrapper,
+            register_dry_run=False,
+        )
 
     @pytest.fixture
-    def dry_run_data_event_handler(self, patch_checkpoint_size, producer):
-        return DataEventHandler(producer, register_dry_run=True, publish_dry_run=True)
+    def dry_run_data_event_handler(
+        self,
+        schema_wrapper,
+        patch_checkpoint_size,
+        producer
+    ):
+        return DataEventHandler(
+            producer,
+            schema_wrapper=schema_wrapper,
+            register_dry_run=True,
+        )
 
     @pytest.fixture
     def schema_in_json(self):
@@ -63,11 +95,11 @@ class TestDataEventHandler(object):
         )
 
     @pytest.fixture
-    def schema_cache_entry(self, schema_in_json):
+    def schema_wrapper_entry(self, schema_in_json):
         avro_obj = avro.schema.parse(schema_in_json)
-        return SchemaCacheEntry(
+        return SchemaWrapperEntry(
             schema_obj=avro_obj,
-            topic="fake_topic",
+            topic=str("fake_topic"),
             schema_id=0,
             primary_keys=['primary_key'],
         )
@@ -86,7 +118,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def test_topic(self):
-        return "test_topic"
+        return str("test_topic")
 
     @pytest.fixture
     def first_test_kafka_offset(self):
@@ -139,15 +171,6 @@ class TestDataEventHandler(object):
             topic_to_last_position_info_map={test_topic: {'upstream_offset': second_test_position}},
             topic_to_kafka_offset_map={test_topic: second_test_kafka_offset}
         )
-
-    @pytest.yield_fixture
-    def patch_get_schema_for_schema_cache(self, data_event_handler, schema_cache_entry):
-        with mock.patch.object(
-            DataEventHandler,
-            'get_schema_for_schema_cache',
-            return_value=schema_cache_entry
-        ) as mock_get_schema:
-            yield mock_get_schema
 
     @pytest.fixture
     def producer(self, first_position_info, second_position_info):
@@ -207,38 +230,65 @@ class TestDataEventHandler(object):
             mock_table_has_pii.return_value = True
             yield mock_table_has_pii
 
+    @pytest.yield_fixture
+    def patch_config_register_dry_run(self):
+        with mock.patch.object(
+            config.EnvConfig,
+            'register_dry_run',
+            new_callable=mock.PropertyMock
+        ) as mock_register_dry_run:
+            mock_register_dry_run.return_value = False
+            yield mock_register_dry_run
+
+    @pytest.yield_fixture
+    def patch_get_show_create_statement(self):
+        with mock.patch.object(
+            SchemaTracker,
+            'get_show_create_statement'
+        ) as mock_show_create:
+            yield mock_show_create
+
+    @pytest.yield_fixture
+    def patch_execute_query(self):
+        with mock.patch.object(
+            SchemaTracker,
+            'execute_query'
+        ) as mock_execute_query:
+            yield mock_execute_query
+
     @pytest.fixture
     def patches(
         self,
-        patch_get_schema_for_schema_cache,
         patch_rbr_state_rw,
         mock_rbr_state_session,
         patch_upsert_data_event_checkpoint,
         patch_checkpoint_size,
         patch_upsert_global_event_state,
         patch_table_has_pii,
+        patch_config_register_dry_run,
+        patch_get_show_create_statement,
+        patch_execute_query,
     ):
         return DataHandlerExternalPatches(
-            patch_get_schema_for_schema_cache=patch_get_schema_for_schema_cache,
             patch_rbr_state_rw=patch_rbr_state_rw,
             mock_rbr_state_session=mock_rbr_state_session,
             patch_upsert_data_event_checkpoint=patch_upsert_data_event_checkpoint,
             patch_checkpoint_size=patch_checkpoint_size,
             patch_upsert_global_event_state=patch_upsert_global_event_state,
             table_has_pii=patch_table_has_pii,
+            patch_dry_run_config=patch_config_register_dry_run,
+            patch_get_show_create_statement=patch_get_show_create_statement,
+            patch_execute_query=patch_execute_query,
         )
 
-    def test_call_to_populate_schema(
-        self,
-        data_event_handler,
-        data_create_events,
-        patch_get_schema_for_schema_cache
-    ):
-        event = data_create_events[0]
-        assert event.table not in data_event_handler.schema_cache
-        data_event_handler._get_payload_schema(event.table)
-        patch_get_schema_for_schema_cache.assert_called_once_with(event.table)
-        assert event.table in data_event_handler.schema_cache
+    @pytest.yield_fixture
+    def patch_get_payload_schema(self, schema_wrapper_entry):
+        with mock.patch.object(
+            DataEventHandler,
+            '_get_payload_schema',
+            return_value=schema_wrapper_entry
+        ) as mock_get_payload_schema:
+            yield mock_get_payload_schema
 
     def test_handle_data_create_event_to_publish_call(
         self,
@@ -251,17 +301,18 @@ class TestDataEventHandler(object):
         second_test_kafka_offset,
         data_event_handler,
         data_create_events,
-        schema_cache_entry,
-        patches
+        schema_wrapper_entry,
+        patches,
+        patch_get_payload_schema,
     ):
         expected_call_args = []
         for data_event in data_create_events:
             position = LogPosition(log_file='binlog', log_pos=100)
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(CreateMessage(
-                topic=schema_cache_entry.topic,
+                topic=schema_wrapper_entry.topic,
                 payload_data=data_event.row["values"],
-                schema_id=schema_cache_entry.schema_id,
+                schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=position.to_dict(),
                 keys=(u'primary_key', ),
                 contains_pii=True,
@@ -324,17 +375,18 @@ class TestDataEventHandler(object):
         second_test_kafka_offset,
         data_event_handler,
         data_update_events,
-        schema_cache_entry,
-        patches
+        schema_wrapper_entry,
+        patches,
+        patch_get_payload_schema,
     ):
         expected_call_args = []
         for data_event in data_update_events:
             position = LogPosition(log_file='binlog', log_pos=100)
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(UpdateMessage(
-                topic=schema_cache_entry.topic,
+                topic=schema_wrapper_entry.topic,
                 payload_data=data_event.row['after_values'],
-                schema_id=schema_cache_entry.schema_id,
+                schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=position.to_dict(),
                 previous_payload_data=data_event.row["before_values"],
                 keys=(u'primary_key', ),
@@ -350,6 +402,7 @@ class TestDataEventHandler(object):
         data_create_events,
         patches,
     ):
+        patches.patch_dry_run_config.return_value = True
         for data_event in data_create_events:
             position = LogPosition(log_file='binlog', log_pos=100)
             dry_run_data_event_handler.handle_event(data_event, position)
@@ -358,7 +411,9 @@ class TestDataEventHandler(object):
     def test_dry_run_schema(
         self,
         dry_run_data_event_handler,
+        patches,
     ):
+        patches.patch_dry_run_config.return_value = True
         assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).topic == 'dry_run'
         assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).schema_id == 1
 

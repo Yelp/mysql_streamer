@@ -14,7 +14,8 @@ RUN apt-get install -y \
         libpq5 \
         libpq-dev \
         wget \
-        language-pack-en-base
+        language-pack-en-base \
+        uuid-dev
 
 run locale-gen en_US en_US.UTF-8 && dpkg-reconfigure locales
 

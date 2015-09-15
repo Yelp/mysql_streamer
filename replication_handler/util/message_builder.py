@@ -32,7 +32,7 @@ class MessageBuilder(object):
         message_params = {
             "topic": self.schema_info.topic,
             "schema_id": self.schema_info.schema_id,
-            "keys": tuple([unicode(x) for x in self.schema_info.primary_keys]),
+            "keys": tuple(self.schema_info.primary_keys),
             "payload_data": self._get_values(self.event.row),
             "upstream_position_info": self.position.to_dict(),
             "dry_run": self.register_dry_run,

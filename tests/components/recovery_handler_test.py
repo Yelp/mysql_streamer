@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import mock
 import pytest
 
@@ -12,6 +15,7 @@ from yelp_conn.connection_set import ConnectionSet
 from replication_handler import config
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.recovery_handler import BadSchemaEventStateException
+from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -39,6 +43,17 @@ class TestRecoveryHandler(object):
     @pytest.fixture
     def producer(self):
         return mock.Mock(autospect=Producer)
+
+    @pytest.fixture
+    def mock_schema_wrapper(self):
+        mock_schema_wrapper = mock.MagicMock()
+        mock_schema_wrapper.__getitem__.return_value = SchemaWrapperEntry(
+            schema_obj=None,
+            topic=str("test_topic"),
+            schema_id=1,
+            primary_keys=['key']
+        )
+        return mock_schema_wrapper
 
     @pytest.fixture
     def session(self):
@@ -161,6 +176,7 @@ class TestRecoveryHandler(object):
         self,
         stream,
         producer,
+        mock_schema_wrapper,
         create_table_statement,
         pending_alter_schema_event_state,
         patch_delete,
@@ -172,6 +188,7 @@ class TestRecoveryHandler(object):
         recovery_handler = RecoveryHandler(
             stream,
             producer,
+            mock_schema_wrapper,
             is_clean_shutdown=True,
             pending_schema_event=pending_alter_schema_event_state
         )
@@ -188,6 +205,7 @@ class TestRecoveryHandler(object):
         self,
         stream,
         producer,
+        mock_schema_wrapper,
         create_table_statement,
         pending_create_schema_event_state,
         patch_delete,
@@ -199,6 +217,7 @@ class TestRecoveryHandler(object):
         recovery_handler = RecoveryHandler(
             stream,
             producer,
+            mock_schema_wrapper,
             is_clean_shutdown=True,
             pending_schema_event=pending_create_schema_event_state
         )
@@ -214,6 +233,7 @@ class TestRecoveryHandler(object):
         self,
         stream,
         producer,
+        mock_schema_wrapper,
         session,
         pending_alter_schema_event_state,
         patch_delete,
@@ -248,6 +268,7 @@ class TestRecoveryHandler(object):
         recovery_handler = RecoveryHandler(
             stream,
             producer,
+            mock_schema_wrapper,
             is_clean_shutdown=False,
             pending_schema_event=None
         )
@@ -284,6 +305,7 @@ class TestRecoveryHandler(object):
         self,
         stream,
         producer,
+        mock_schema_wrapper,
         create_table_statement,
         bad_schema_event_state,
         patch_delete,
@@ -295,6 +317,7 @@ class TestRecoveryHandler(object):
         recovery_handler = RecoveryHandler(
             stream,
             producer,
+            mock_schema_wrapper,
             is_clean_shutdown=True,
             pending_schema_event=bad_schema_event_state
         )
@@ -306,10 +329,12 @@ class TestRecoveryHandler(object):
         self,
         stream,
         producer,
+        mock_schema_wrapper,
     ):
         recovery_handler = RecoveryHandler(
             stream,
             producer,
+            mock_schema_wrapper,
             is_clean_shutdown=True,
             pending_schema_event=None
         )

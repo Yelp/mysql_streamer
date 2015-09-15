@@ -17,8 +17,10 @@ from replication_handler import config
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
+from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
+from replication_handler.util.misc import REPLICATION_HANDLER_TEAM_NAME
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import get_kazoo_client
 from replication_handler.util.misc import save_position
@@ -44,7 +46,9 @@ class ParseReplicationStream(Batch):
     def __init__(self):
         self._init_zk_and_lock_replication_handler()
         super(ParseReplicationStream, self).__init__()
-        self.schematizer_client = get_schema_cache().schematizer_client
+        self.schema_wrapper = SchemaWrapper(
+            schematizer_client=get_schema_cache().schematizer_client
+        )
         self.register_dry_run = config.env_config.register_dry_run
         self.publish_dry_run = config.env_config.publish_dry_run
 
@@ -57,8 +61,8 @@ class ParseReplicationStream(Batch):
     def run(self):
         try:
             with Producer(
-                REPLICATION_HANDLER_PRODUCER_NAME,
-                team_name='bam',
+                producer_name=REPLICATION_HANDLER_PRODUCER_NAME,
+                team_name=REPLICATION_HANDLER_TEAM_NAME,
                 expected_frequency_seconds=ExpectedFrequency.constantly,
                 dry_run=self.publish_dry_run
             ) as self.producer:
@@ -74,7 +78,7 @@ class ParseReplicationStream(Batch):
             self._close_zk()
 
     def _get_stream(self):
-        replication_stream_restarter = ReplicationStreamRestarter()
+        replication_stream_restarter = ReplicationStreamRestarter(self.schema_wrapper)
         replication_stream_restarter.restart(
             self.producer,
             register_dry_run=self.register_dry_run,
@@ -84,12 +88,12 @@ class ParseReplicationStream(Batch):
     def _build_handler_map(self):
         data_event_handler = DataEventHandler(
             producer=self.producer,
+            schema_wrapper=self.schema_wrapper,
             register_dry_run=self.register_dry_run,
-            publish_dry_run=self.publish_dry_run
         )
         schema_event_handler = SchemaEventHandler(
-            schematizer_client=self.schematizer_client,
             producer=self.producer,
+            schema_wrapper=self.schema_wrapper,
             register_dry_run=self.register_dry_run,
         )
         handler_map = {

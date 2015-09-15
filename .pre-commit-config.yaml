@@ -1,0 +1,40 @@
+-   repo: git@git.yelpcorp.com:mirrors/pre-commit/pre-commit-hooks
+    sha: 516cc9fa72ad09699f2c03ffbd0aa7f60d75b59a
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: autopep8-wrapper
+        args:
+        - -i
+        - --ignore=E265,E309,E501
+    -   id: check-yaml
+    -   id: debug-statements
+        language_version: python2.7
+    -   id: flake8
+        language_version: python2.7
+    -   id: check-yaml
+    -   id: check-json
+    -   id: check-merge-conflict
+    -   id: name-tests-test
+        exclude: tests/helpers/(.+).py
+-   repo: git@git.yelpcorp.com:yelp_pre_commit_hooks
+    sha: cff7fc91c367ea75e2a38e34a4aafb025cf02781
+    hooks:
+    -   id: stop-dollar-html
+    -   id: httplib-https-connection
+    -   id: use-except-as
+    -   id: check_mock_methods
+        language_version: python2.7
+    -   id: byte_order_mark
+    -   id: fix-encoding-pragma
+    -   id: check-added-large-files
+-   repo: git@git.yelpcorp.com:mirrors/asottile/reorder_python_imports
+    sha: 3d86483455ab5bd06cc1069fdd5ac57be5463f10
+    hooks:
+    -   id: reorder-python-imports
+        language_version: python2.7
+        args:
+        - --add-import
+        - from __future__ import absolute_import
+        - --add-import
+        - from __future__ import unicode_literals
