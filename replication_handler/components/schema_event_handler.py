@@ -17,7 +17,7 @@ from yelp_conn.connection_set import ConnectionSet
 
 
 log = logging.getLogger('replication_handler.components.schema_event_handler')
-SKIP_QUERIES = ['BEGIN']
+SKIP_QUERIES = ['BEGIN', 'COMMIT']
 
 
 class SchemaEventHandler(BaseEventHandler):

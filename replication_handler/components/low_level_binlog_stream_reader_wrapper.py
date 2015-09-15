@@ -61,15 +61,19 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             self.current_events.extend(self._prepare_event(self.stream.fetchone()))
 
     def _prepare_event(self, event):
-        if isinstance(event, (QueryEvent, GtidEvent)):
-            # TODO(cheng|DATAPIPE-173): log_pos and log_file is useful information
-            # to have on events, we will decide if we want to remove this when gtid is
-            # enabled if the future.
-            event.log_pos = self.stream.log_pos
-            event.log_file = self.stream.log_file
-            return [event]
+        """ event can be None, see http://bit.ly/1JaLW9G."""
+        if event:
+            if isinstance(event, (QueryEvent, GtidEvent)):
+                # TODO(cheng|DATAPIPE-173): log_pos and log_file is useful information
+                # to have on events, we will decide if we want to remove this when gtid is
+                # enabled if the future.
+                event.log_pos = self.stream.log_pos
+                event.log_file = self.stream.log_file
+                return [event]
+            else:
+                return self._get_data_events_from_row_event(event)
         else:
-            return self._get_data_events_from_row_event(event)
+            return []
 
     def _get_data_events_from_row_event(self, row_event):
         """ Convert the rows into events."""

@@ -69,3 +69,18 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         assert stream.pop().row == data_events.rows[0]
         assert stream.pop().row == data_events.rows[1]
         assert stream.pop().row == data_events.rows[2]
+
+    def test_none_events(self, patch_stream):
+        query_event = mock.Mock(spec=QueryEvent)
+        patch_stream.return_value.fetchone.side_effect = [
+            None,
+            query_event,
+        ]
+        stream = LowLevelBinlogStreamReaderWrapper(
+            LogPosition(
+                log_pos=100,
+                log_file="binlog.001",
+            )
+        )
+        assert stream.peek() == query_event
+        assert stream.pop() == query_event
