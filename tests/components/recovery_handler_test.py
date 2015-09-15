@@ -256,12 +256,10 @@ class TestRecoveryHandler(object):
         stream.next.return_value.position = LogPosition()
         position_data = mock.Mock()
         position_data.last_published_message_position_info = {
-            "upstream_offset": {
-                "position": {"gtid": "sid:10"},
-                "cluster_name": "yelp_main",
-                "database_name": "yelp",
-                "table_name": "business"
-            },
+            "position": {"gtid": "sid:10"},
+            "cluster_name": "yelp_main",
+            "database_name": "yelp",
+            "table_name": "business"
         }
         position_data.topic_to_kafka_offset_map = {"topic": 1}
         producer.ensure_messages_published.return_value = position_data

@@ -40,6 +40,7 @@ DataHandlerExternalPatches = namedtuple(
         "patch_dry_run_config",
         "patch_get_show_create_statement",
         "patch_execute_query",
+        "patch_cluster_name",
     )
 )
 
@@ -154,8 +155,8 @@ class TestDataEventHandler(object):
         first_test_kafka_offset
     ):
         return PositionData(
-            last_published_message_position_info={'upstream_offset': first_test_position},
-            topic_to_last_position_info_map={test_topic: {'upstream_offset': first_test_position}},
+            last_published_message_position_info=first_test_position,
+            topic_to_last_position_info_map={test_topic: first_test_position},
             topic_to_kafka_offset_map={test_topic: first_test_kafka_offset}
         )
 
@@ -167,8 +168,8 @@ class TestDataEventHandler(object):
         second_test_kafka_offset
     ):
         return PositionData(
-            last_published_message_position_info={'upstream_offset': second_test_position},
-            topic_to_last_position_info_map={test_topic: {'upstream_offset': second_test_position}},
+            last_published_message_position_info=second_test_position,
+            topic_to_last_position_info_map={test_topic: second_test_position},
             topic_to_kafka_offset_map={test_topic: second_test_kafka_offset}
         )
 
@@ -256,6 +257,16 @@ class TestDataEventHandler(object):
         ) as mock_execute_query:
             yield mock_execute_query
 
+    @pytest.yield_fixture
+    def patch_cluster_name(self):
+        with mock.patch.object(
+            config.DatabaseConfig,
+            'cluster_name',
+            new_callable=mock.PropertyMock
+        ) as mock_cluster_name:
+            mock_cluster_name.return_value = "yelp_main"
+            yield mock_cluster_name
+
     @pytest.fixture
     def patches(
         self,
@@ -268,6 +279,7 @@ class TestDataEventHandler(object):
         patch_config_register_dry_run,
         patch_get_show_create_statement,
         patch_execute_query,
+        patch_cluster_name,
     ):
         return DataHandlerExternalPatches(
             patch_rbr_state_rw=patch_rbr_state_rw,
@@ -279,6 +291,7 @@ class TestDataEventHandler(object):
             patch_dry_run_config=patch_config_register_dry_run,
             patch_get_show_create_statement=patch_get_show_create_statement,
             patch_execute_query=patch_execute_query,
+            patch_cluster_name=patch_cluster_name,
         )
 
     @pytest.yield_fixture
@@ -308,12 +321,18 @@ class TestDataEventHandler(object):
         expected_call_args = []
         for data_event in data_create_events:
             position = LogPosition()
+            upstream_position_info = {
+                "position": position.to_dict(),
+                "cluster_name": "yelp_main",
+                "database_name": "fake_database",
+                "table_name": "fake_table"
+            }
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(CreateMessage(
                 topic=schema_wrapper_entry.topic,
                 payload_data=data_event.row["values"],
                 schema_id=schema_wrapper_entry.schema_id,
-                upstream_position_info=position.to_dict(),
+                upstream_position_info=upstream_position_info,
                 keys=(u'primary_key', ),
                 contains_pii=True,
             ))
@@ -382,12 +401,18 @@ class TestDataEventHandler(object):
         expected_call_args = []
         for data_event in data_update_events:
             position = LogPosition()
+            upstream_position_info = {
+                "position": position.to_dict(),
+                "cluster_name": "yelp_main",
+                "database_name": "fake_database",
+                "table_name": "fake_table"
+            }
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(UpdateMessage(
                 topic=schema_wrapper_entry.topic,
                 payload_data=data_event.row['after_values'],
                 schema_id=schema_wrapper_entry.schema_id,
-                upstream_position_info=position.to_dict(),
+                upstream_position_info=upstream_position_info,
                 previous_payload_data=data_event.row["before_values"],
                 keys=(u'primary_key', ),
                 contains_pii=True,

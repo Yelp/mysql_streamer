@@ -19,7 +19,7 @@ class DataEventHandler(BaseEventHandler):
     """Handles data change events: add, update and delete"""
 
     # Checkpoint everytime when we process 500 rows.
-    checkpoint_size = 500
+    checkpoint_size = 1
 
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')

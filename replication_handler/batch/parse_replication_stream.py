@@ -64,6 +64,7 @@ class ParseReplicationStream(Batch):
                 producer_name=REPLICATION_HANDLER_PRODUCER_NAME,
                 team_name=REPLICATION_HANDLER_TEAM_NAME,
                 expected_frequency_seconds=ExpectedFrequency.constantly,
+                monitoring_enabled=False,
                 dry_run=self.publish_dry_run
             ) as self.producer:
                 self._post_producer_setup()

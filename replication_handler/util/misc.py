@@ -41,8 +41,7 @@ class DataEvent(object):
 
 
 def save_position(position_data, is_clean_shutdown=False):
-    position_info = \
-        position_data.last_published_message_position_info["upstream_offset"]
+    position_info = position_data.last_published_message_position_info
     topic_to_kafka_offset_map = position_data.topic_to_kafka_offset_map
     with rbr_state_session.connect_begin(ro=False) as session:
         GlobalEventState.upsert(
