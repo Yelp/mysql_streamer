@@ -66,6 +66,10 @@ class EnvConfig(BaseConfig):
         return staticconf.get('producer_name').value
 
     @property
+    def team_name(self):
+        return staticconf.get('team_name').value
+
+    @property
     def pii_yaml_path(self):
         return staticconf.get('pii_yaml_path').value
 

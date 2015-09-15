@@ -20,6 +20,7 @@ from replication_handler.components.schema_event_handler import SchemaEventHandl
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
+from replication_handler.util.misc import REPLICATION_HANDLER_TEAM_NAME
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import get_kazoo_client
 from replication_handler.util.misc import save_position
@@ -61,7 +62,7 @@ class ParseReplicationStream(Batch):
         try:
             with Producer(
                 producer_name=REPLICATION_HANDLER_PRODUCER_NAME,
-                team_name='bam',
+                team_name=REPLICATION_HANDLER_TEAM_NAME,
                 expected_frequency_seconds=ExpectedFrequency.constantly,
                 dry_run=self.publish_dry_run
             ) as self.producer:
