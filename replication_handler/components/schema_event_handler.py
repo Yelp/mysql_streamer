@@ -17,6 +17,7 @@ from yelp_conn.connection_set import ConnectionSet
 
 
 log = logging.getLogger('replication_handler.components.schema_event_handler')
+SKIP_QUERIES = ['BEGIN']
 
 
 class SchemaEventHandler(BaseEventHandler):
@@ -34,7 +35,7 @@ class SchemaEventHandler(BaseEventHandler):
         # Filter out blacklisted schemas
         if self.is_blacklisted(event):
             return
-        if event.query == 'BEGIN':
+        if event.query in SKIP_QUERIES:
             return
         handle_method = self._get_handle_method(self._reformat_query(event.query))
         if handle_method is not None:
