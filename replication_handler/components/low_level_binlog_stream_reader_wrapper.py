@@ -70,7 +70,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 event.log_pos = self.stream.log_pos
                 event.log_file = self.stream.log_file
                 return [event]
-            else:
+            elif isinstance(event, DataEvent):
                 return self._get_data_events_from_row_event(event)
         else:
             return []
