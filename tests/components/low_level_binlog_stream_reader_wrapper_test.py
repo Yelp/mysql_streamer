@@ -2,8 +2,10 @@
 import mock
 import pytest
 
+from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
 from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
+from pymysqlreplication.row_event import WriteRowsEvent
 
 from replication_handler import config
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
@@ -46,17 +48,15 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         assert stream.pop() == schema_event
 
     def test_flattern_data_events(self, patch_stream):
-        data_events = RowsEvent.make_add_rows_event()
-        data_events.log_pos = 100
-        data_events.log_file = "binglog.001"
+        data_event = self._prepare_data_event()
         gtid_event = mock.Mock(spec=GtidEvent)
         query_event = mock.Mock(spec=QueryEvent)
         patch_stream.return_value.fetchone.side_effect = [
             gtid_event,
             query_event,
-            data_events,
+            data_event,
         ]
-        assert len(data_events.rows) == 3
+        assert len(data_event.rows) == 3
         stream = LowLevelBinlogStreamReaderWrapper(
             LogPosition(
                 log_pos=100,
@@ -66,9 +66,19 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         assert stream.peek() == gtid_event
         assert stream.pop() == gtid_event
         assert stream.pop() == query_event
-        assert stream.pop().row == data_events.rows[0]
-        assert stream.pop().row == data_events.rows[1]
-        assert stream.pop().row == data_events.rows[2]
+        assert stream.pop().row == data_event.rows[0]
+        assert stream.pop().row == data_event.rows[1]
+        assert stream.pop().row == data_event.rows[2]
+
+    def _prepare_data_event(self):
+        data_event = mock.Mock(spec=WriteRowsEvent)
+        data_event.rows = RowsEvent.make_add_rows_event().rows
+        data_event.schema = 'fake_schema'
+        data_event.table = 'fake_table'
+        data_event.event_type = WRITE_ROWS_EVENT_V2
+        data_event.log_pos = 100
+        data_event.log_file = "binglog.001"
+        return data_event
 
     def test_none_events(self, patch_stream):
         query_event = mock.Mock(spec=QueryEvent)
