@@ -6,6 +6,7 @@ import logging
 
 from yelp_conn.connection_set import ConnectionSet
 
+from replication_handler.components.base_event_handler import Table
 from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
@@ -137,8 +138,14 @@ class RecoveryHandler(object):
     def _build_messages(self, events):
         messages = []
         for event in events:
+            # event here is ReplicationHandlerEvent
+            table = Table(
+                cluster_name=self.cluster_name,
+                table_name=event.event.table,
+                database_name=event.event.schema
+            )
             builder = MessageBuilder(
-                self.schema_wrapper[event.table],
+                self.schema_wrapper[table],
                 event.event,
                 event.position,
                 self.register_dry_run

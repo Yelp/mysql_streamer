@@ -76,6 +76,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             # {"previous_values": {"serial": 123, "timestamp": "2015/07/22"},
             # "after_values": {"serial": 456, "timestamp": "2015/07/23"}}
             # for more details, check out python-mysql-replication docs.
+            log.info("Processing timestamp {timestamp}".format(timestamp=event.row["after_values"]["timestamp"]))
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
                 log_file=event.log_file,

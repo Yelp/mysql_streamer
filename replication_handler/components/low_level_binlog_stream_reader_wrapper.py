@@ -4,6 +4,7 @@ import logging
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
+from pymysqlreplication.row_event import DeleteRowsEvent
 from pymysqlreplication.row_event import UpdateRowsEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
@@ -51,7 +52,8 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             GtidEvent,
             QueryEvent,
             WriteRowsEvent,
-            UpdateRowsEvent
+            UpdateRowsEvent,
+            DeleteRowsEvent,
         ]
 
         self._seek(connection_config, allowed_event_types, position, only_tables)
@@ -70,10 +72,9 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 event.log_pos = self.stream.log_pos
                 event.log_file = self.stream.log_file
                 return [event]
-            elif isinstance(event, DataEvent):
+            elif isinstance(event, (WriteRowsEvent, UpdateRowsEvent, DeleteRowsEvent)):
                 return self._get_data_events_from_row_event(event)
-        else:
-            return []
+        return []
 
     def _get_data_events_from_row_event(self, row_event):
         """ Convert the rows into events."""
