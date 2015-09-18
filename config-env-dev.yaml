@@ -4,9 +4,9 @@ schema_tracker_cluster: repltracker
 
 rbr_state_cluster: replhandler
 
-register_dry_run: False
+register_dry_run: True
 
-publish_dry_run: False
+publish_dry_run: True
 
 topology_path: /nail/srv/configs/topology.yaml
 
