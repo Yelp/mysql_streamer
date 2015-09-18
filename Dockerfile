@@ -17,6 +17,8 @@ RUN apt-get install -y \
         language-pack-en-base \
         uuid-dev
 
+RUN apt-get install -y git-core
+
 run locale-gen en_US en_US.UTF-8 && dpkg-reconfigure locales
 
 # Setup pypy
