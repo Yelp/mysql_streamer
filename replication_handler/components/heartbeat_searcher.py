@@ -159,7 +159,9 @@ class HeartbeatSearcher(object):
         for event in stream:
             if not self._is_heartbeat(event):
                 continue
-            timestamp = (event.rows[0]["values"]["timestamp"] - datetime(1970, 1, 1)).total_seconds()
+            timestamp = (
+                event.rows[0]["values"]["timestamp"] - datetime(1970, 1, 1)
+            ).total_seconds()
             if timestamp > target_hb:
                 break
             if timestamp == target_hb:
