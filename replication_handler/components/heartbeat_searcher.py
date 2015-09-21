@@ -1,9 +1,11 @@
+from datetime import datetime
 
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import WriteRowsEvent
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
+from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.position import HeartbeatPosition
 
 
@@ -37,16 +39,16 @@ class HeartbeatSearcher(object):
         # Log_pos integer which corresponds to the final log_pos in the final log_file
         self.final_log_pos = self._get_last_log_position(self.all_logs[-1])
 
-    def get_position(self, target_hb):
+    def get_position(self, hb_timestamp):
         """Entry method for using the class from other python modules, which
         returns the HeartbeatPosition object.
         """
-        filen = self._binary_search_log_files(target_hb, 0, len(self.all_logs))
-        return self._full_search_log_file(filen, target_hb)
+        filen = self._binary_search_log_files(hb_timestamp, 0, len(self.all_logs))
+        return self._full_search_log_file(filen, hb_timestamp)
 
     def _is_heartbeat(self, event):
         """Returns whether or not a binlog event is a heartbeat event"""
-        return isinstance(event, WriteRowsEvent) and event.table == "heartbeat"
+        return isinstance(event, WriteRowsEvent) and event.schema == HEARTBEAT_DB
 
     def _get_log_file_list(self):
         """Returns a list of all the log files names on the configured
@@ -135,7 +137,7 @@ class HeartbeatSearcher(object):
             return self._binary_search_log_files(target_hb, left_bound, mid)
 
         # otherwise, we can do a typical binary search with the result we found
-        found_serial = first_in_file.hb_serial
+        found_serial = (first_in_file.hb_timestamp - datetime(1970, 1, 1)).total_seconds()
         actual_file = self.all_logs.index(first_in_file.log_file)
         if found_serial == target_hb:
             return self.all_logs[actual_file]
@@ -157,13 +159,13 @@ class HeartbeatSearcher(object):
         for event in stream:
             if not self._is_heartbeat(event):
                 continue
-            serial = event.rows[0]["values"]["serial"]
-            if serial > target_hb:
+            timestamp = (event.rows[0]["values"]["timestamp"] - datetime(1970, 1, 1)).total_seconds()
+            if timestamp > target_hb:
                 break
-            if serial == target_hb:
+            if timestamp == target_hb:
                 stream.close()
                 return HeartbeatPosition(
-                    hb_serial=serial,
+                    hb_serial=event.rows[0]["values"]["serial"],
                     hb_timestamp=event.rows[0]["values"]["timestamp"],
                     log_file=stream.log_file,
                     log_pos=stream.log_pos

@@ -20,13 +20,13 @@ class MySQLHeartbeatSearchBatch(Batch):
         "bam+replication+handler@yelp.com"
     ]
 
-    def __init__(self, hb_seq_num):
+    def __init__(self, hb_timestamp):
         super(MySQLHeartbeatSearchBatch, self).__init__()
-        self.hb_seq_num = hb_seq_num
+        self.hb_timestamp = hb_timestamp
 
     def run(self):
         """Runs the batch by calling out to the heartbeat searcher component"""
-        print HeartbeatSearcher().get_position(self.hb_seq_num)
+        print HeartbeatSearcher().get_position(self.hb_timestamp)
 
 
 if __name__ == '__main__':

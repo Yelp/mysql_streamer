@@ -5,12 +5,12 @@ from pymysqlreplication.event import GtidEvent
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
+from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
 
 
-HEARTBEAT_DB = "yelp_heartbeat"
 log = logging.getLogger('replication_handler.components.simple_binlog_stream_reader_wrapper')
 
 

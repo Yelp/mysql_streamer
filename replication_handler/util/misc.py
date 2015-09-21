@@ -17,6 +17,8 @@ REPLICATION_HANDLER_PRODUCER_NAME = env_config.producer_name
 
 REPLICATION_HANDLER_TEAM_NAME = env_config.team_name
 
+HEARTBEAT_DB = "yelp_heartbeat"
+
 
 class ReplicationHandlerEvent(object):
     """ Class to associate an event and its position."""
