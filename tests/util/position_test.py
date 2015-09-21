@@ -12,6 +12,7 @@ from replication_handler.util.position import HeartbeatPosition
 from replication_handler.util.position import LogPosition
 from replication_handler.util.position import Position
 from replication_handler.util.position import construct_position
+from replication_handler.util.transaction_id import TransactionId
 
 
 class TestPostion(object):
@@ -91,12 +92,13 @@ class TestLogPosition(object):
         }
         assert p.to_dict() == expected_dict
 
-    def test_get_transaction_id(self):
+    def test_transaction_id(self):
         p = LogPosition(log_pos=100, log_file="binlog")
-        assert p.get_transaction_id() == ':'.join([
-            source_database_config.cluster_name,
-            'binlog:100'
-        ])
+        assert p.transaction_id == TransactionId(
+            unicode(source_database_config.cluster_name),
+            "binlog",
+            100
+        )
 
 
 class TestConstructPosition(object):
