@@ -52,6 +52,12 @@ module_config:
             # Print queries to stdout
             enable_query_printing: True
 
+    -   namespace: clog
+        initialize: yelp_servlib.clog_util.initialize
+        config:
+            log_stream_name: tmp_replication_handler_logs
+        file: /nail/srv/configs/clog.yaml
+
     - namespace: smartstack_services
       file: /nail/etc/services/services.yaml
 
