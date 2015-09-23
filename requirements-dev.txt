@@ -2,6 +2,7 @@
 # Unit testing tools, mocking frameworks, debuggers, proxies, ...
 # These will be used for tox and other testing environments.
 -r requirements.txt
+docker-compose==1.3.3
 coverage
 ipdb
 ipython
