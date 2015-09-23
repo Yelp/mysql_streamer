@@ -88,7 +88,8 @@ class RecoveryHandler(object):
         if events:
             topic_offsets = self._get_topic_offsets_map_for_cluster()
             messages = self._build_messages(events)
-            position_data = self.producer.ensure_messages_published(messages, topic_offsets)
+            self.producer.ensure_messages_published(messages, topic_offsets)
+            position_data = self.producer.get_checkpoint_position_data()
             save_position(position_data)
 
     def _assert_event_state_status(self, event_state, status):
