@@ -93,6 +93,8 @@ class GtidPosition(Position):
 
 class LogPosition(Position):
     """ This class uses log_pos, log_file and offset to represent a position.
+    It also returns transaction_id as a meta_attribute which is a combination
+    of cluster_name, log_pos and log_file.
 
     Args:
       log_pos(int): the log position on binlog.
@@ -105,7 +107,14 @@ class LogPosition(Position):
     TODO(DATAPIPE-315|cheng): create a data struture for hb_serial and hb_timestamp.
     """
 
-    def __init__(self, log_pos=None, log_file=None, offset=None, hb_serial=None, hb_timestamp=None):
+    def __init__(
+        self,
+        log_pos=None,
+        log_file=None,
+        offset=None,
+        hb_serial=None,
+        hb_timestamp=None
+    ):
         self.log_pos = log_pos
         self.log_file = log_file
         self.offset = offset

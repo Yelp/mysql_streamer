@@ -7,10 +7,20 @@ import simplejson
 
 import avro.schema
 
-from data_pipeline.meta_attribute import MetaAttribute
+from data_pipeline.base_meta_attribute import BaseMetaAttribute
 
 
-class TransactionId(MetaAttribute):
+class TransactionId(BaseMetaAttribute):
+    """Transaction is a MetaAttribute to be added in a data pipeline message.
+    This allows us to reconstruct the order of messages in replication by
+    specifying a statement's exact position in the binlog file. It has to
+    register its avro schema with the schematizer first to get a schema_id.
+    Its payload consists a dict of cluster_name, log_file name and log_position.
+    Since it inherits from BaseMetaAttribute in data_pipeline clientlib, we
+    need to implement all the fields and methods abstracted in it. These are
+    primarily required to specify the avro schema and all other information
+    required to register it with schematizer.
+    """
 
     @property
     def owner_email(self):
@@ -49,12 +59,10 @@ class TransactionId(MetaAttribute):
         self.log_pos = log_pos
 
     def _verify_init_params(self, cluster_name, log_file, log_pos):
-        if not all([cluster_name, log_file, log_pos]):
-            raise ValueError('Cluster name, log file and log position must be specified')
         if not isinstance(cluster_name, unicode) or not isinstance(log_file, unicode):
-            raise ValueError('Cluster name and log file must be unicode strings')
+            raise TypeError('Cluster name and log file must be unicode strings')
         if not isinstance(log_pos, int):
-            raise ValueError('Log position must be an integer')
+            raise TypeError('Log position must be an integer')
 
     def to_dict(self):
         return {

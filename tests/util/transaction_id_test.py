@@ -22,7 +22,7 @@ class TestTransactionId(object):
         return request.param
 
     def test_transaction_id_rejects_invalid_params(self, invalid_params):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             TransactionId(*invalid_params)
 
     @pytest.fixture(params=[

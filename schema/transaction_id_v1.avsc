@@ -1,12 +1,23 @@
 {
   "type": "record",
-  "namespace": "yelp.data_pipeline",
+  "namespace": "yelp.replication_handler",
   "name": "transaction_id",
   "doc": "Serializes a TransactionId object.",
-  "fields":
-  [
-  	{"name": "cluster_name", "type": "string", "doc": "Schema identifier for the payload."},
-  	{"name": "log_file", "type": "string", "doc": "Avro-encoded data encoded with the schema corresponding to schema_id"},
-  	{"name": "log_pos", "type": "int", "doc": "Schema identifier for the payload."}
+  "fields": [
+  	{
+  	  "name": "cluster_name",
+  	  "type": "string",
+  	  "doc": "Name of the database cluster."
+  	},
+  	{
+  	  "name": "log_file",
+  	  "type": "string",
+  	  "doc": "Name of the binlog file."
+  	},
+  	{
+  	  "name": "log_pos",
+  	  "type": "int",
+  	  "doc": "Position of the statement withing the binlog file."
+  	}
   ]
 }
