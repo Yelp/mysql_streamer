@@ -256,15 +256,13 @@ class TestRecoveryHandler(object):
         stream.next.return_value.position = LogPosition(log_file='binlog', log_pos=100)
         position_data = mock.Mock()
         position_data.last_published_message_position_info = {
-            "upstream_offset": {
-                "position": {"gtid": "sid:10"},
-                "cluster_name": "yelp_main",
-                "database_name": "yelp",
-                "table_name": "business"
-            },
+            "position": {"gtid": "sid:10"},
+            "cluster_name": "yelp_main",
+            "database_name": "yelp",
+            "table_name": "business"
         }
         position_data.topic_to_kafka_offset_map = {"topic": 1}
-        producer.ensure_messages_published.return_value = position_data
+        producer.get_checkpoint_position_data.return_value = position_data
         recovery_handler = RecoveryHandler(
             stream,
             producer,
@@ -275,6 +273,7 @@ class TestRecoveryHandler(object):
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
         assert producer.ensure_messages_published.call_count == 1
+        assert producer.get_checkpoint_position_data.call_count == 1
         assert patch_get_topic_to_kafka_offset_map.call_count == 1
         assert patch_upsert_data_event_checkpoint.call_count == 1
         assert patch_upsert_global_event.call_count == 1

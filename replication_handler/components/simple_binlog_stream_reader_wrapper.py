@@ -47,12 +47,12 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         """This method advances the internal dequeue to provided offset.
         """
         original_offset = offset
-        while offset > 0:
+        while offset >= 0:
             self.pop()
             offset -= 1
 
         # Make sure that we skipped correct number of events.
-        assert self._offset == original_offset
+        assert self._offset == original_offset + 1
 
     def _is_position_update(self, event):
         if self.gtid_enabled:
@@ -76,6 +76,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             # {"previous_values": {"serial": 123, "timestamp": "2015/07/22"},
             # "after_values": {"serial": 456, "timestamp": "2015/07/23"}}
             # for more details, check out python-mysql-replication docs.
+            log.info("Processing timestamp {timestamp}".format(timestamp=event.row["after_values"]["timestamp"]))
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
                 log_file=event.log_file,

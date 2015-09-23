@@ -2,20 +2,20 @@ FROM ubuntu:14.04.1
 
 ENV DEBIAN_FRONTEND noninteractive
 
-run apt-get update && apt-get upgrade -y
-RUN apt-get install -y \
-        build-essential \
-        python-dev \
-        libmysqlclient-dev \
-        python-pkg-resources \
-        python-setuptools \
-        python-virtualenv \
-        python-pip \
-        libpq5 \
-        libpq-dev \
-        wget \
-        language-pack-en-base \
-        uuid-dev
+run apt-get update && apt-get upgrade -y && apt-get install -y \
+   build-essential \
+   python-dev \
+   libmysqlclient-dev \
+   python-pkg-resources \
+   python-setuptools \
+   python-virtualenv \
+   python-pip \
+   libpq5 \
+   libpq-dev \
+   wget \
+   language-pack-en-base \
+   uuid-dev \
+   git-core
 
 run locale-gen en_US en_US.UTF-8 && dpkg-reconfigure locales
 

@@ -16,7 +16,8 @@ from replication_handler.models.schema_event_state import SchemaEventStatus
 from yelp_conn.connection_set import ConnectionSet
 
 
-log = logging.getLogger('replication_handler.component.schema_event_handler')
+log = logging.getLogger('replication_handler.components.schema_event_handler')
+SKIP_QUERIES = ['BEGIN', 'COMMIT']
 
 
 class SchemaEventHandler(BaseEventHandler):
@@ -33,6 +34,8 @@ class SchemaEventHandler(BaseEventHandler):
         """Handle queries related to schema change, schema registration."""
         # Filter out blacklisted schemas
         if self.is_blacklisted(event):
+            return
+        if event.query in SKIP_QUERIES:
             return
         handle_method = self._get_handle_method(self._reformat_query(event.query))
         if handle_method is not None:

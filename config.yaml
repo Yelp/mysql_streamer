@@ -17,7 +17,12 @@ schema_blacklist:
     - test
 
 table_whitelist:
-    - business
+    - advertiser
+    - payment_program
+    - payment_feature
+    - business_payment_account_entity
+    - payment_account_entity
+    - salesperson
     - replication_heartbeat
 
 producer_name: replication_handler
@@ -26,7 +31,7 @@ team_name: bam
 
 zookeeper_discovery_path: '/nail/etc/zookeeper_discovery/generic/local.yaml'
 
-pii_yaml_path: '/nail/home/cheng/pii_generator/script_yamls'
+pii_yaml_path: '/nail/etc/services/database_pii'
 
 module_config:
     -   namespace: yelp_conn
@@ -46,6 +51,12 @@ module_config:
             enable_query_logging: True
             # Print queries to stdout
             enable_query_printing: True
+
+    -   namespace: clog
+        initialize: yelp_servlib.clog_util.initialize
+        config:
+            log_stream_name: tmp_replication_handler_logs
+        file: /nail/srv/configs/clog.yaml
 
     - namespace: smartstack_services
       file: /nail/etc/services/services.yaml

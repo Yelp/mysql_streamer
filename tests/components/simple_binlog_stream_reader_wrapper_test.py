@@ -44,7 +44,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         stream = SimpleBinlogStreamReaderWrapper(
             GtidPosition(
                 gtid="sid:10",
-                offset=2
+                offset=1
             ),
             gtid_enabled=True
         )
@@ -93,11 +93,11 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             LogPosition(
                 log_pos=log_pos,
                 log_file=log_file,
-                offset=1
+                offset=0
             ),
             gtid_enabled=False,
         )
-        # Since the offset is 1, so the result should start offset 1, and skip
+        # Since the offset is 0, so the result should start offset 1, and skip
         # data_event_0 which is at offset 0.
         results = [
             ReplicationHandlerEvent(

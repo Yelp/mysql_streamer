@@ -8,6 +8,7 @@ from pii_generator.components.pii_identifier import PIIIdentifier
 from data_pipeline.message import UpdateMessage
 
 from replication_handler.config import env_config
+from replication_handler.config import source_database_config
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -29,12 +30,18 @@ class MessageBuilder(object):
         self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
     def build_message(self):
+        upstream_position_info = {
+            "position": self.position.to_dict(),
+            "cluster_name": source_database_config.cluster_name,
+            "database_name": self.event.schema,
+            "table_name": self.event.table,
+        }
         message_params = {
             "topic": self.schema_info.topic,
             "schema_id": self.schema_info.schema_id,
             "keys": tuple(self.schema_info.primary_keys),
             "payload_data": self._get_values(self.event.row),
-            "upstream_position_info": self.position.to_dict(),
+            "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
             "contains_pii": self.pii_identifier.table_has_pii(
                 database_name=self.event.schema,
