@@ -46,6 +46,9 @@ VOLUME  /tmp/logs
 
 ADD     . /code
 
+RUN useradd batch
+RUN chown -R batch /code
+USER batch
 WORKDIR /code
 ENV     BASEPATH /code
 CMD /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -v --no-notification
