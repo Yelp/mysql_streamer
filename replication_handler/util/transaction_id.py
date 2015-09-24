@@ -47,7 +47,7 @@ class TransactionId(BaseMetaAttribute):
             'schema/transaction_id_v1.avsc'
         )
         with open(schema_path, 'r') as f:
-            return simplejson.loads(f.read())
+            return simplejson.dumps(simplejson.loads(f.read()))
 
     def __init__(self, cluster_name, log_file, log_pos):
         self._verify_init_params(cluster_name, log_file, log_pos)
