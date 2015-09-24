@@ -5,8 +5,6 @@ from __future__ import unicode_literals
 import os
 import simplejson
 
-import avro.schema
-
 from data_pipeline.base_meta_attribute import BaseMetaAttribute
 
 
