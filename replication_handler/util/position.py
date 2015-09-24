@@ -2,9 +2,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from replication_handler.util.transaction_id import TransactionId
-
 from replication_handler.config import source_database_config
+from replication_handler.util.transaction_id import TransactionId
 
 
 class InvalidPositionDictException(Exception):

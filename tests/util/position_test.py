@@ -96,7 +96,7 @@ class TestLogPosition(object):
         p = LogPosition(log_pos=100, log_file="binlog")
         assert p.transaction_id == TransactionId(
             unicode(source_database_config.cluster_name),
-            "binlog",
+            u"binlog",
             100
         )
 

@@ -46,11 +46,8 @@ class TransactionId(BaseMetaAttribute):
             os.pardir,
             'schema/transaction_id_v1.avsc'
         )
-        return simplejson.dumps(
-            avro.schema.parse(
-                open(schema_path).read()
-            ).to_json()
-        )
+        with open(schema_path, 'r') as f:
+            return simplejson.loads(f.read())
 
     def __init__(self, cluster_name, log_file, log_pos):
         self._verify_init_params(cluster_name, log_file, log_pos)
@@ -76,10 +73,10 @@ class TransactionId(BaseMetaAttribute):
         return self.to_dict()
 
     def __eq__(self, other):
-        return self.to_dict() == other.to_dict()
+        return type(self) is type(other) and self.to_dict() == other.to_dict()
 
     def __ne__(self, other):
-        return self.to_dict() != other.to_dict()
+        return not self. __eq__(other)
 
     def __hash__(self):
         return hash(self.__str__())
