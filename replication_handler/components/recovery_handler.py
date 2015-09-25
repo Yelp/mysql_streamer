@@ -82,9 +82,13 @@ class RecoveryHandler(object):
 
     def _recover_from_unclean_shutdown(self, stream):
         events = []
-        while(len(events) < self.MAX_EVENT_SIZE and
-                isinstance(stream.peek().event, DataEvent)):
+        while(len(events) < self.MAX_EVENT_SIZE):
+            if not isinstance(stream.peek().event, DataEvent):
+                log.debug("Recovery halted for data event: %s" % repr(stream.peek().event))
+                break
+            log.debug("Recovery event for %s" % stream.peek().event.table)
             events.append(stream.next())
+        log.info("Recovering with %s events" % len(events))
         if events:
             topic_offsets = self._get_topic_offsets_map_for_cluster()
             messages = self._build_messages(events)
