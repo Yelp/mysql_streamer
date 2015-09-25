@@ -84,7 +84,7 @@ class RecoveryHandler(object):
         events = []
         while(len(events) < self.MAX_EVENT_SIZE):
             if not isinstance(stream.peek().event, DataEvent):
-                log.debug("Recovery halted for data event: %s" % repr(stream.peek().event))
+                log.debug("Recovery halted for non-data event: %s" % repr(stream.peek().event))
                 break
             log.debug("Recovery event for %s" % stream.peek().event.table)
             events.append(stream.next())
