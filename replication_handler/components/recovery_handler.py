@@ -88,6 +88,7 @@ class RecoveryHandler(object):
             if not isinstance(stream.peek().event, DataEvent):
                 if isinstance(stream.peek().event, QueryEvent) and should_filter_query_event(stream.peek().event):
                     log.info("Filtered query event: %s" % repr(stream.peek().event))
+                    stream.next()
                     continue
                 log.info("Recovery halted for non-data event: %s" % repr(stream.peek().event))
                 break
