@@ -5,6 +5,8 @@ from __future__ import unicode_literals
 import copy
 import logging
 
+from yelp_conn.connection_set import ConnectionSet
+
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.schema_tracker import SchemaTracker
@@ -13,11 +15,14 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from yelp_conn.connection_set import ConnectionSet
 
 
 log = logging.getLogger('replication_handler.components.schema_event_handler')
 SKIP_QUERIES = ['BEGIN', 'COMMIT']
+
+
+def should_filter_query_event(event):
+    return event.query in SKIP_QUERIES
 
 
 class SchemaEventHandler(BaseEventHandler):
@@ -35,7 +40,7 @@ class SchemaEventHandler(BaseEventHandler):
         # Filter out blacklisted schemas
         if self.is_blacklisted(event):
             return
-        if event.query in SKIP_QUERIES:
+        if should_filter_query_event(event):
             return
         handle_method = self._get_handle_method(self._reformat_query(event.query))
         if handle_method is not None:

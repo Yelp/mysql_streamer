@@ -4,9 +4,11 @@ from __future__ import unicode_literals
 
 import logging
 
+from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.base_event_handler import Table
+from replication_handler.components.schema_event_handler import should_filter_query_event
 from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
@@ -84,9 +86,12 @@ class RecoveryHandler(object):
         events = []
         while(len(events) < self.MAX_EVENT_SIZE):
             if not isinstance(stream.peek().event, DataEvent):
-                log.debug("Recovery halted for non-data event: %s" % repr(stream.peek().event))
+                if isinstance(stream.peek().event, QueryEvent) and should_filter_query_event(stream.peek().event):
+                    log.info("Filtered query event: %s" % repr(stream.peek().event))
+                    continue
+                log.info("Recovery halted for non-data event: %s" % repr(stream.peek().event))
                 break
-            log.debug("Recovery event for %s" % stream.peek().event.table)
+            log.info("Recovery event for %s" % stream.peek().event.table)
             events.append(stream.next())
         log.info("Recovering with %s events" % len(events))
         if events:
