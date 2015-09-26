@@ -18,11 +18,11 @@ from replication_handler.models.schema_event_state import SchemaEventStatus
 
 
 log = logging.getLogger('replication_handler.components.schema_event_handler')
-SKIP_QUERIES = ['BEGIN', 'COMMIT']
+SKIP_QUERIES = ['BEGIN', 'COMMIT', 'SAVEPOINT']
 
 
 def should_filter_query_event(event):
-    return event.query in SKIP_QUERIES
+    return any(event.query.startswith(skip_query) for skip_query in SKIP_QUERIES)
 
 
 class SchemaEventHandler(BaseEventHandler):
