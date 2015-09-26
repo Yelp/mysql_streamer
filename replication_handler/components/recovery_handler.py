@@ -90,7 +90,7 @@ class RecoveryHandler(object):
                     log.info("Filtered query event: %s" % repr(stream.peek().event))
                     stream.next()
                     continue
-                log.info("Recovery halted for non-data event: %s" % repr(stream.peek().event))
+                log.info("Recovery halted for non-data event: %s %s" % (repr(stream.peek().event), stream.peek().event.query))
                 break
             log.info("Recovery event for %s" % stream.peek().event.table)
             events.append(stream.next())
