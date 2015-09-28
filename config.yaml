@@ -39,7 +39,7 @@ module_config:
         initialize: yelp_conn.initialize
         config:
             connection_set_file: connection_sets.yaml
-
+            topology: my.yaml
             connection_wrappers:
                 - yelp_conn.sqllogger.LoggingConnectionWrapper
                 - yelp_conn.wrappers.AnnotatingConnectionWrapper

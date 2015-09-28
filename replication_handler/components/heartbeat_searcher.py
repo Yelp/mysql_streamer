@@ -43,7 +43,7 @@ class HeartbeatSearcher(object):
         """Entry method for using the class from other python modules, which
         returns the HeartbeatPosition object.
         """
-        hb_timestamp = datetime.fromtimestamp(hb_timestamp_epoch)
+        hb_timestamp = datetime.utcfromtimestamp(hb_timestamp_epoch)
         start_index = self._binary_search_log_files(hb_timestamp, 0, len(self.all_logs))
         return self._full_search_log_file(start_index, hb_timestamp, hb_serial)
 
@@ -80,11 +80,7 @@ class HeartbeatSearcher(object):
         and needs to be manually closed.
         current_position should be the end_log_pos of the event being executed
         """
-        if current_log != self.all_logs[-1]:
-            return False
-        if current_position == self.final_log_pos:
-            return True
-        return False
+        return current_log == self.all_logs[-1] and current_position == self.final_log_pos
 
     def _open_stream(self, start_file="mysql-bin.000001", start_pos=4):
         """Returns a binary log stream starting at the given file and directly
@@ -107,8 +103,8 @@ class HeartbeatSearcher(object):
         and start_position -> HeartbeatPosition or None if there are no
         heartbeats after.
         """
+        stream = self._open_stream(start_file, start_pos)
         try:
-            stream = self._open_stream(start_file, start_pos)
             for event in stream:
                 if self._reaches_bound(stream.log_file, stream.log_pos) and not self._is_heartbeat(event):
                     return None
@@ -121,7 +117,8 @@ class HeartbeatSearcher(object):
                     log_pos=stream.log_pos,
                 )
         finally:
-            stream.close()
+            if stream:
+                stream.close()
 
     def _binary_search_log_files(self, target_timestamp, left_bound, right_bound):
         """Recursive binary search to determine the log file in which timestamp matches
@@ -166,7 +163,7 @@ class HeartbeatSearcher(object):
         )
         file_index = start_index - 1
         while file_index >= 0 and hb_position is None:
-            found_hb, hb_position = self._search_last_hb_in_previous_file(
+            found_hb, hb_position = self._search_hb_in_previous_file(
                 self.all_logs[file_index],
                 hb_timestamp,
                 hb_serial
@@ -178,8 +175,8 @@ class HeartbeatSearcher(object):
 
     def _search_heartbeat_sequentially(self, start_file, hb_timestamp, hb_serial, start_pos=4):
         """ Search the heartbeat sequentially from given location."""
+        stream = self._open_stream(start_file, start_pos)
         try:
-            stream = self._open_stream(start_file, start_pos)
             for event in stream:
                 # break if it is end of binlog
                 if self._reaches_bound(stream.log_file, stream.log_pos) and not self._is_heartbeat(event):
@@ -203,9 +200,10 @@ class HeartbeatSearcher(object):
                 )
             return None
         finally:
-            stream.close()
+            if stream:
+                stream.close()
 
-    def _search_last_hb_in_previous_file(
+    def _search_hb_in_previous_file(
         self,
         start_file,
         hb_timestamp,
@@ -214,8 +212,8 @@ class HeartbeatSearcher(object):
     ):
         # found the hb in previous log file. If any hb is found, found_hb is true.
         # If hb with given time stamp and serial is found, target_hb holds it.
+        stream = self._open_stream(start_file, start_pos)
         try:
-            stream = self._open_stream(start_file, start_pos)
             found_hb = False
             for event in stream:
                 if stream.log_file != start_file:
@@ -224,14 +222,16 @@ class HeartbeatSearcher(object):
                     continue
 
                 found_hb = True
-                if event.rows[0]["after_values"]["timestamp"] == hb_timestamp and \
-                    event.rows[0]["after_values"]["serial"] == hb_serial:
+                event_timestamp = event.rows[0]["after_values"]["timestamp"]
+                event_serial = event.rows[0]["after_values"]["serial"]
+                if event_timestamp == hb_timestamp and event_serial == hb_serial:
                     return found_hb, HeartbeatPosition(
-                        hb_serial=event.rows[0]["after_values"]["serial"],
-                        hb_timestamp=event.rows[0]["after_values"]["timestamp"],
+                        hb_serial=event_serial,
+                        hb_timestamp=event_timestamp,
                         log_file=stream.log_file,
                         log_pos=stream.log_pos,
                     )
             return found_hb, None
         finally:
-            stream.close()
+            if stream:
+                stream.close()
