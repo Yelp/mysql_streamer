@@ -523,4 +523,4 @@ class TestHeartbeatSearcher(object):
             target_hb.timestamp,
             target_hb.serial
         )
-        assert actual == None
+        assert actual is None
