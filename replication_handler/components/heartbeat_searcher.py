@@ -48,7 +48,7 @@ class HeartbeatSearcher(object):
         return self._full_search_log_file(start_index, hb_timestamp, hb_serial)
 
     def _is_heartbeat(self, event):
-        """Returns whether or not a binlog event is a heartbeat event. A hearbeat
+        """Returns whether or not a binlog event is a heartbeat event. A heartbeat
         event can only be a update row event.
         """
         return isinstance(event, UpdateRowsEvent) and event.schema == HEARTBEAT_DB
