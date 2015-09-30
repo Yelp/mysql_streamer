@@ -135,6 +135,7 @@ class SchemaEventHandler(BaseEventHandler):
         """ Execute query that is not relevant to replication handler schema.
             Some queries are comments, or just BEGIN
         """
+        log.info("Executing non-schema-store query: %s" % event.query)
         self.schema_tracker.execute_query(event.query, database_name)
 
     def _handle_create_table_event(self, event, table):
