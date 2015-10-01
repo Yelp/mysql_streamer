@@ -147,7 +147,7 @@ class SchemaEventHandler(BaseEventHandler):
                 table_name=table.table_name,
             )
 
-    # TODO(justinc|DATAPIPE-): `_is_table_rename_query`,
+    # TODO(justinc|DATAPIPE-493): `_is_table_rename_query`,
     # `_is_alter_rename_statement`, `_is_rename_table_statement`, and
     # `_token_match` should be refactored into a separate class, providing some
     # high level query parsing helpers like `is_alter_table`, `is_rename_table`
