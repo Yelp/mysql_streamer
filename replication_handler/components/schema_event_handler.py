@@ -165,6 +165,7 @@ class SchemaEventHandler(BaseEventHandler):
 
     def _is_alter_rename_statement(self, keyword_tokens):
         return (
+            len(keyword_tokens) >= 3 and
             self._token_match(keyword_tokens[0], 'alter') and
             self._token_match(keyword_tokens[1], 'table') and
             any(self._token_match(token, 'rename') for token in keyword_tokens[2:])
@@ -172,6 +173,7 @@ class SchemaEventHandler(BaseEventHandler):
 
     def _is_rename_table_statement(self, keyword_tokens):
         return (
+            len(keyword_tokens) >= 2 and
             self._token_match(keyword_tokens[0], 'rename') and
             self._token_match(keyword_tokens[1], 'table')
         )

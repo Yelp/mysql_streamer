@@ -42,9 +42,6 @@ SchemaHandlerExternalPatches = namedtuple(
 
 
 class TestSchemaEventHandler(object):
-    # TODO(justinc|DATAPIPE-492): We should explicity test table rename schema
-    # events.
-
     @pytest.fixture
     def producer(self):
         return mock.Mock(autospect=Producer)
@@ -81,6 +78,14 @@ class TestSchemaEventHandler(object):
         ) as save_position_mock:
             yield save_position_mock
 
+    @pytest.yield_fixture
+    def schema_wrapper_mock(self):
+        with mock.patch.object(
+            replication_handler.components.schema_event_handler,
+            'SchemaWrapper'
+        ) as schema_wrapper_mock:
+            yield schema_wrapper_mock
+
     @pytest.fixture
     def test_table(self):
         return "fake_table"
@@ -105,6 +110,14 @@ class TestSchemaEventHandler(object):
     @pytest.fixture
     def alter_table_schema_event(self, test_schema, test_table):
         query = "ALTER TABLE `{0}` ADD (`another_number` int)".format(test_table)
+        return QueryEvent(schema=test_schema, query=query)
+
+    @pytest.fixture(params=[
+        "ALTER TABLE `{0}` RENAME `some_new_name`",
+        "RENAME TABLE `{0}` TO `some_new_name`"
+    ])
+    def rename_table_schema_event(self, request, test_schema, test_table):
+        query = request.param.format(test_table)
         return QueryEvent(schema=test_schema, query=query)
 
     @pytest.fixture
@@ -427,6 +440,33 @@ class TestSchemaEventHandler(object):
 
         assert producer.flush.call_count == 1
         assert save_position.call_count == 1
+
+    def test_handle_event_rename_table(
+        self,
+        producer,
+        test_position,
+        save_position,
+        external_patches,
+        schema_event_handler,
+        rename_table_schema_event,
+        schema_wrapper_mock
+    ):
+        schema_event_handler.handle_event(rename_table_schema_event, test_position)
+
+        assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
+
+        assert schema_wrapper_mock().reset_cache.call_count == 1
+
+        assert external_patches.execute_query.call_count == 1
+        assert external_patches.execute_query.call_args_list == [
+            mock.call(
+                rename_table_schema_event.query,
+                rename_table_schema_event.schema,
+            )
+        ]
+
+        assert external_patches.upsert_global_event_state.call_count == 1
 
     def test_filter_out_wrong_schema(
         self,

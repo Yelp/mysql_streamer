@@ -22,18 +22,18 @@ SchemaWrapperEntry = namedtuple(
 )
 
 
-class SchemaWrapperMeta(type):
+class SchemaWrapperSingleton(type):
     """This metaclass is used to turn SchemaWrapper into a singleton"""
     _instance = None
 
     def __call__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super(SchemaWrapperMeta, cls).__call__(*args, **kwargs)
+            cls._instance = super(SchemaWrapperSingleton, cls).__call__(*args, **kwargs)
         return cls._instance
 
 
 class SchemaWrapper(object):
-    __metaclass__ = SchemaWrapperMeta
+    __metaclass__ = SchemaWrapperSingleton
     _notify_email = "bam+replication+handler@yelp.com"
 
     def __init__(self, schematizer_client):
