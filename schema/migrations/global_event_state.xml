@@ -31,4 +31,14 @@
       <append value=" ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci"/>
     </modifySql>
   </changeSet>
+  <changeSet author="justinc" id="1443649459">
+      <dropNotNullConstraint
+          columnName="table_name"
+          tableName="global_event_state"
+          columnDataType="VARCHAR(255)"/>
+      <dropNotNullConstraint
+          columnName="database_name"
+          tableName="global_event_state"
+          columnDataType="VARCHAR(255)"/>
+  </changeSet>
 </databaseChangeLog>

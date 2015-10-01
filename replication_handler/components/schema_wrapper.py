@@ -23,6 +23,7 @@ SchemaWrapperEntry = namedtuple(
 
 
 class SchemaWrapperMeta(type):
+    """This metaclass is used to turn SchemaWrapper into a singleton"""
     _instance = None
 
     def __call__(cls, *args, **kwargs):
@@ -36,7 +37,7 @@ class SchemaWrapper(object):
     _notify_email = "bam+replication+handler@yelp.com"
 
     def __init__(self, schematizer_client):
-        self.cache = {}
+        self.reset_cache()
         self.schematizer_client = schematizer_client
         self.schema_tracker = SchemaTracker(
             ConnectionSet.schema_tracker_rw().repltracker.cursor()
@@ -93,6 +94,9 @@ class SchemaWrapper(object):
             body=request_body
         ).result()
         self._populate_schema_cache(table, resp)
+
+    def reset_cache(self):
+        self.cache = {}
 
     def _populate_schema_cache(self, table, resp):
         self.cache[table] = SchemaWrapperEntry(

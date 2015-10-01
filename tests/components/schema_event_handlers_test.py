@@ -10,6 +10,7 @@ from data_pipeline.producer import Producer
 from pii_generator.components.pii_identifier import PIIIdentifier
 from yelp_conn.connection_set import ConnectionSet
 
+import replication_handler.components.schema_event_handler
 from replication_handler import config
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.schema_event_handler import SchemaEventHandler
@@ -41,6 +42,8 @@ SchemaHandlerExternalPatches = namedtuple(
 
 
 class TestSchemaEventHandler(object):
+    # TODO(justinc|DATAPIPE-492): We should explicity test table rename schema
+    # events.
 
     @pytest.fixture
     def producer(self):
@@ -69,6 +72,14 @@ class TestSchemaEventHandler(object):
             schema_wrapper=schema_wrapper,
             register_dry_run=True,
         )
+
+    @pytest.yield_fixture
+    def save_position(self):
+        with mock.patch.object(
+            replication_handler.components.schema_event_handler,
+            'save_position'
+        ) as save_position_mock:
+            yield save_position_mock
 
     @pytest.fixture
     def test_table(self):
@@ -333,6 +344,7 @@ class TestSchemaEventHandler(object):
         schematizer_client,
         producer,
         test_position,
+        save_position,
         external_patches,
         schema_event_handler,
         create_table_schema_event,
@@ -364,10 +376,14 @@ class TestSchemaEventHandler(object):
             external_patches
         )
 
+        assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
+
     def test_handle_event_alter_table(
         self,
         producer,
         test_position,
+        save_position,
         external_patches,
         schema_event_handler,
         schematizer_client,
@@ -408,6 +424,9 @@ class TestSchemaEventHandler(object):
             alter_table_schema_store_response,
             external_patches
         )
+
+        assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
 
     def test_filter_out_wrong_schema(
         self,
@@ -451,6 +470,7 @@ class TestSchemaEventHandler(object):
         self,
         producer,
         test_position,
+        save_position,
         external_patches,
         schema_event_handler,
         mock_schema_tracker_cursor,
@@ -464,11 +484,16 @@ class TestSchemaEventHandler(object):
                 non_schema_relevant_query_event.schema,
             )
         ]
-        assert producer.flush.call_count == 0
+        # We should flush and save state before
+        assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
+        # And after
+        assert external_patches.upsert_global_event_state.call_count == 1
 
     def test_incomplete_transaction(
         self,
         producer,
+        save_position,
         test_position,
         external_patches,
         schema_event_handler,
@@ -485,6 +510,7 @@ class TestSchemaEventHandler(object):
         assert external_patches.update_schema_event_state.call_count == 0
         assert external_patches.upsert_global_event_state.call_count == 0
         assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
 
     def check_external_calls(
         self,
@@ -541,6 +567,7 @@ class TestSchemaEventHandler(object):
         schematizer_client,
         external_patches,
         dry_run_schema_event_handler,
+        save_position,
         test_position,
         create_table_schema_event,
         mock_schema_tracker_cursor,
@@ -549,3 +576,4 @@ class TestSchemaEventHandler(object):
         dry_run_schema_event_handler.handle_event(create_table_schema_event, test_position)
         assert external_patches.execute_query.call_count == 1
         assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_count == 0
+        assert save_position.call_count == 1
