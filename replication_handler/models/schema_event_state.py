@@ -54,18 +54,13 @@ class SchemaEventState(Base):
     time_updated = Column(UnixTimeStampType, default=default_now, onupdate=default_now)
 
     @classmethod
-    def get_pending_schema_event_state(cls, session, cluster_name, database_name):
-        log.info(
-            "Getting pending schema events.  Cluster: '%s', DB: '%s'" % (
-                cluster_name, database_name
-            )
-        )
+    def get_pending_schema_event_state(cls, session, cluster_name):
+        log.info("Getting pending schema events for cluster: '%s'" % cluster_name)
         result = session.query(
             SchemaEventState
         ).filter(
             SchemaEventState.status == SchemaEventStatus.PENDING,
             SchemaEventState.cluster_name == cluster_name,
-            SchemaEventState.database_name == database_name
         ).all()
         log.info("Retrieved events: %s" % result)
         # There should be at most one event with Pending status, so we are using

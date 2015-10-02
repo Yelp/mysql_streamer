@@ -28,11 +28,9 @@ class ReplicationStreamRestarter(object):
         # Both global_event_state and pending_schema_event are information about
         # last shutdown, we need them to do recovery process.
         cluster_name = source_database_config.cluster_name
-        database_name = source_database_config.database_name
-        self.global_event_state = self._get_global_event_state(cluster_name, database_name)
+        self.global_event_state = self._get_global_event_state(cluster_name)
         self.pending_schema_event = self._get_pending_schema_event_state(
             cluster_name,
-            database_name
         )
         self.position_finder = PositionFinder(
             self.global_event_state,
@@ -66,7 +64,7 @@ class ReplicationStreamRestarter(object):
         """ This function returns the replication stream"""
         return self.stream
 
-    def _get_global_event_state(self, cluster_name, database_name):
+    def _get_global_event_state(self, cluster_name):
         with rbr_state_session.connect_begin(ro=True) as session:
             return copy.copy(
                 GlobalEventState.get(
@@ -75,7 +73,7 @@ class ReplicationStreamRestarter(object):
                 )
             )
 
-    def _get_pending_schema_event_state(self, cluster_name, database_name):
+    def _get_pending_schema_event_state(self, cluster_name):
         with rbr_state_session.connect_begin(ro=True) as session:
             # In services we cant do expire_on_commit=False, so
             # if we want to use the object after the session commits, we
@@ -85,6 +83,5 @@ class ReplicationStreamRestarter(object):
                 SchemaEventState.get_pending_schema_event_state(
                     session,
                     cluster_name=cluster_name,
-                    database_name=database_name
                 )
             )
