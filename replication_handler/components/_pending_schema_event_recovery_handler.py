@@ -12,7 +12,7 @@ from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 
 
-log = logging.getLogger('replication_handler.components.recvoery_handler')
+log = logging.getLogger('replication_handler.components.pending_schema_event_recovery_handler')
 
 
 class BadSchemaEventStateException(Exception):
