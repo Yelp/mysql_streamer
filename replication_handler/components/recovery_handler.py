@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import logging
 
+import simplejson as json
 from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
 
@@ -51,6 +52,14 @@ class RecoveryHandler(object):
         register_dry_run=False,
         publish_dry_run=False,
     ):
+        log.info("Recovery Handler Starting: %s" % json.dumps(dict(
+            is_clean_shutdown=is_clean_shutdown,
+            pending_schema_event=repr(pending_schema_event),
+            cluster_name=source_database_config.cluster_name,
+            register_dry_run=register_dry_run,
+            publish_dry_run=publish_dry_run
+        )))
+
         self.stream = stream
         self.producer = producer
         self.is_clean_shutdown = is_clean_shutdown
@@ -72,6 +81,7 @@ class RecoveryHandler(object):
 
     def _handle_pending_schema_event(self):
         if self.pending_schema_event:
+            log.info("Recovering from pending schema event: %s" % repr(self.pending_schema_event))
             self._assert_event_state_status(
                 self.pending_schema_event,
                 SchemaEventStatus.PENDING
@@ -84,6 +94,7 @@ class RecoveryHandler(object):
 
     def _recover_from_unclean_shutdown(self, stream):
         events = []
+        log.info("Recovering from unclean shutdown")
         while(len(events) < self.MAX_EVENT_SIZE):
             if not isinstance(stream.peek().event, DataEvent):
                 if isinstance(stream.peek().event, QueryEvent) and should_filter_query_event(stream.peek().event):
@@ -123,10 +134,12 @@ class RecoveryHandler(object):
                 pending_event_state.create_table_statement,
             )
         with rbr_state_session.connect_begin(ro=False) as session:
+            log.info("Removing schema event: %s" % pending_event_state.id)
             SchemaEventState.delete_schema_event_state_by_id(session, pending_event_state.id)
             session.commit()
 
     def _drop_table(self, table_name):
+        log.info("Dropping table: %s" % table_name)
         cursor = ConnectionSet.schema_tracker_rw().repltracker.cursor()
         drop_table_query = "DROP TABLE `{0}`".format(
             table_name
@@ -134,6 +147,7 @@ class RecoveryHandler(object):
         cursor.execute(drop_table_query)
 
     def _create_table(self, create_table_statement):
+        log.info("Creating table: %s" % create_table_statement)
         cursor = ConnectionSet.schema_tracker_rw().repltracker.cursor()
         cursor.execute(create_table_statement)
 

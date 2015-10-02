@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import copy
 import logging
 
-from replication_handler.config import source_database_config
-from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
+import simplejson as json
+
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
+from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
+from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
@@ -43,6 +48,7 @@ class ReplicationStreamRestarter(object):
         tables, or publish unpublished messages.
         """
         position = self.position_finder.get_position_to_resume_tailing_from()
+        log.info("Restarting replication: %s" % json.dumps(position))
         self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=False)
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
@@ -55,6 +61,7 @@ class ReplicationStreamRestarter(object):
             )
 
             if recovery_handler.need_recovery:
+                log.info("Recovery required, starting recovery process")
                 recovery_handler.recover()
 
     def get_stream(self):
