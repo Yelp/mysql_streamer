@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 import signal
 import sys
 from collections import namedtuple
 
-from kazoo.exceptions import LockTimeout
-from kazoo.retry import KazooRetry
-from pymysqlreplication.event import QueryEvent
-
 from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.producer import Producer
 from data_pipeline.schema_cache import get_schema_cache
+from kazoo.exceptions import LockTimeout
+from kazoo.retry import KazooRetry
+from pymysqlreplication.event import QueryEvent
 from yelp_batch import Batch
 
 from replication_handler import config
@@ -19,10 +21,10 @@ from replication_handler.components.replication_stream_restarter import Replicat
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.models.global_event_state import EventType
-from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
-from replication_handler.util.misc import REPLICATION_HANDLER_TEAM_NAME
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import get_kazoo_client
+from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
+from replication_handler.util.misc import REPLICATION_HANDLER_TEAM_NAME
 from replication_handler.util.misc import save_position
 
 
@@ -135,7 +137,7 @@ class ParseReplicationStream(Batch):
         retry_policy = KazooRetry(max_tries=3)
         self.zk_client = get_kazoo_client(command_retry=retry_policy)
         self.zk_client.start()
-        self.lock = self.zk_client.Lock("/replication_hanlder", config.env_config.rbr_source_cluster)
+        self.lock = self.zk_client.Lock("/replication_handler", config.env_config.rbr_source_cluster)
         try:
             self.lock.acquire(timeout=10)
         except LockTimeout:

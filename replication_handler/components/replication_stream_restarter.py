@@ -5,8 +5,6 @@ from __future__ import unicode_literals
 import copy
 import logging
 
-import simplejson as json
-
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
@@ -48,7 +46,7 @@ class ReplicationStreamRestarter(object):
         tables, or publish unpublished messages.
         """
         position = self.position_finder.get_position_to_resume_tailing_from()
-        log.info("Restarting replication: %s" % json.dumps(position))
+        log.info("Restarting replication: %s" % repr(position))
         self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=False)
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
