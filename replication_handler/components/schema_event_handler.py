@@ -194,9 +194,7 @@ class SchemaEventHandler(BaseEventHandler):
             mysql_ignore_words = set(('if', 'not', 'exists'))
             while split_query[table_idx] in mysql_ignore_words:
                 table_idx += 1
-            table_name = ''.join(
-                c for c in split_query[table_idx] if c.isalnum() or c == '_'
-            )
+            table_name = self._extract_table_name(split_query[table_idx])
         except:
             raise Exception("Cannot parse query table from {0}".format(event.query))
 
@@ -205,6 +203,18 @@ class SchemaEventHandler(BaseEventHandler):
             database_name=event.schema,
             table_name=table_name,
         )
+
+    def _extract_table_name(self, token):
+        # useful info: https://dev.mysql.com/doc/refman/5.0/en/identifiers.html
+        table_name = token.split('.')[-1]
+        if (table_name[0] == '"' and table_name[-1] == '"'):
+            table_name = self._remove_identifier(table_name, '"')
+        elif (table_name[0] == '`' and table_name[-1] == '`'):
+            table_name = self._remove_identifier(table_name, '`')
+        return table_name
+
+    def _remove_identifier(self, table_name, identifier):
+        return table_name[1:-1].replace(identifier + identifier, identifier)
 
     def _execute_non_schema_store_relevant_query(self, event, database_name):
         """ Execute query that is not relevant to replication handler schema.
