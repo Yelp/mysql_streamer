@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import copy
 import logging
+import re
 
 import sqlparse
 from sqlparse import tokens as Token
@@ -87,8 +88,17 @@ class SchemaEventHandler(BaseEventHandler):
             # We may eventually want to add some kind of journaling here, where
             # we could manually mark a statement as complete to get things
             # moving again, if we hit this edge case frequently.
+            if self._is_create_trigger(event.query):
+                log.info("Skipping create trigger query. Query: %s" % event.query)
+                return
             self._execute_non_schema_store_relevant_query(event, event.schema)
             self._mark_schema_event_complete(event, position)
+
+    def _is_create_trigger(self, query):
+        return re.search(
+            "create.*trigger.*(before|after).*(insert|update|delete).*",
+            query.lower()
+        )
 
     def _mark_schema_event_complete(self, event, position):
         with rbr_state_session.connect_begin(ro=False) as session:

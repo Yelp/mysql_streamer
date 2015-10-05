@@ -137,6 +137,14 @@ class TestSchemaEventHandler(object):
         return QueryEvent(schema=schema, query=query)
 
     @pytest.fixture
+    def create_trigger_query_event(self, test_schema):
+        query = "CREATE DEFINER=`root`@`127.0.0.1` TRIGGER `pt_osc_yelp_ad_asset_del` \
+            AFTER DELETE ON `yelp`.`ad_asset` FOR EACH ROW DELETE IGNORE FR \
+            OM `yelp`.`__ad_asset_new` WHERE `yelp`.`__ad_asset_new`.`id` <=> OLD.`id`"
+        schema = test_schema
+        return QueryEvent(schema=schema, query=query)
+
+    @pytest.fixture
     def show_create_result_initial(self, test_table, create_table_schema_event):
         return ShowCreateResult(
             table=test_table,
@@ -529,6 +537,24 @@ class TestSchemaEventHandler(object):
         assert save_position.call_count == 1
         # And after
         assert external_patches.upsert_global_event_state.call_count == 1
+
+    def test_skip_create_trigger_query(
+        self,
+        producer,
+        test_position,
+        save_position,
+        external_patches,
+        schema_event_handler,
+        mock_schema_tracker_cursor,
+        create_trigger_query_event,
+    ):
+        schema_event_handler.handle_event(create_trigger_query_event, test_position)
+        assert external_patches.execute_query.call_count == 0
+        # We should flush and save state before
+        assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
+        # no save state after
+        assert external_patches.upsert_global_event_state.call_count == 0
 
     def test_incomplete_transaction(
         self,
