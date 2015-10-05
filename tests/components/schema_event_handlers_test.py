@@ -571,7 +571,7 @@ class TestSchemaEventHandler(object):
         assert extract_func('`yelp`.`user``permission`') == 'user`permission'
         assert extract_func('`yelp`.`user``permission control`') == 'user`permission control'
 
-        # backticks
+        # double quotes
         assert extract_func('"yelp"."user"') == 'user'
         assert extract_func('"yelp"."user"') == 'user'
         assert extract_func('"yelp"."user""permission"') == 'user"permission'
