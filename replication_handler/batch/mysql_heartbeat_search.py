@@ -11,7 +11,8 @@ class MySQLHeartbeatSearchBatch(Batch):
     Useful for manual testing.
 
     To use from the command line:
-        python -m replication_handler.batch.mysql_heartbeat_search {heartbeat_sequence_num}
+        python -m replication_handler.batch.mysql_heartbeat_search \
+            {heartbeat_time_stamp} {heartbeat_serial}
     Prints information about the heartbeat or None if the heartbeat could
     not be found.
     """
