@@ -96,7 +96,7 @@ class SchemaEventHandler(BaseEventHandler):
 
     def _is_create_trigger(self, query):
         return re.search(
-            "create.*trigger.*(before|after).*(insert|update|delete).*",
+            "create\s+(.*\s+)?trigger\s+.+\s+(before|after)\s+(insert|update|delete)",
             query.lower()
         )
 
