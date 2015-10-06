@@ -14,6 +14,8 @@ from replication_handler.components.sql_handler import DropIndexStatement
 from replication_handler.components.sql_handler import DropTableStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.components.sql_handler import RenameTableStatement
+from replication_handler.components.sql_handler import TableStatementBase
+from replication_handler.components.sql_handler import UnsupportedStatement
 
 
 class MysqlStatementBaseTest(object):
@@ -41,8 +43,39 @@ class MysqlTableStatementBaseTest(MysqlStatementBaseTest):
     def temporary(self, request):
         return request.param
 
-    def test_get_table(statement):
-        assert statement.get_table() == 'business'
+    def test_table(self, statement):
+        assert statement.table == 'business'
+
+
+class TestSharedTableStatement(object):
+    @pytest.fixture
+    def extract_func(self):
+        return TableStatementBase.extract_table_name
+
+    def test_table_name_extract(self, extract_func):
+        assert extract_func('user') == 'user'
+        assert extract_func('"user"') == 'user'
+        assert extract_func('`user`') == 'user'
+        assert extract_func('yelp.user') == 'user'
+        assert extract_func('yelp.user permission') == 'user permission'
+
+        # backticks
+        assert extract_func('`yelp`.user') == 'user'
+        assert extract_func('`yelp`.`user`') == 'user'
+        assert extract_func('`yelp`.`user``permission`') == 'user`permission'
+        assert extract_func('`yelp`.`user``permission control`') == 'user`permission control'
+
+        # double quotes
+        assert extract_func('"yelp"."user"') == 'user'
+        assert extract_func('"yelp"."user"') == 'user'
+        assert extract_func('"yelp"."user""permission"') == 'user"permission'
+        assert extract_func('`yelp`."user""permission control"') == 'user"permission control'
+
+        # mix
+        assert extract_func('`yelp`.`user"permission"control`') == 'user"permission"control'
+        assert extract_func('"yelp"."user`permission`control"') == 'user`permission`control'
+        assert extract_func('`yelp`.`user""permission`') == 'user""permission'
+        assert extract_func('"yelp"."user``permission"') == 'user``permission'
 
 
 class TestCreateTableStatement(MysqlTableStatementBaseTest):
@@ -59,11 +92,11 @@ class TestCreateTableStatement(MysqlTableStatementBaseTest):
 
     # 5.5, 5.6, 5.7: CREATE [TEMPORARY] TABLE [IF NOT EXISTS] tbl_name
     @pytest.fixture
-    def query(self, temporary, table, if_not_exists):
-        return "CREATE {} TABLE {} {} test_col VARCHAR(255)".format(
-            temporary,
-            table,
-            if_not_exists
+    def query(self, temporary, if_not_exists, table):
+        return "CREATE {temporary} TABLE {if_not_exists} {table} test_col VARCHAR(255)".format(
+            temporary=temporary,
+            if_not_exists=if_not_exists,
+            table=table,
         )
 
 
@@ -91,10 +124,10 @@ class TestAlterTableStatement(MysqlTableStatementBaseTest):
     # 5.7: ALTER [IGNORE] TABLE tbl_name
     @pytest.fixture
     def query(self, online_offline, ignore, table):
-        return "ALTER {} {} TABLE {} DROP test_col".format(
-            online_offline,
-            ignore,
-            table
+        return "ALTER {online_offline} {ignore} TABLE {table} DROP test_col".format(
+            online_offline=online_offline,
+            ignore=ignore,
+            table=table
         )
 
 
@@ -103,12 +136,20 @@ class TestDropTableStatement(MysqlTableStatementBaseTest):
     def statement_type(self):
         return DropTableStatement
 
+    @pytest.fixture(params=[
+        'IF EXISTS',
+        ''
+    ])
+    def if_exists(self, request):
+        return request.param
+
     # 5.5, 5.6, 5.7: DROP [TEMPORARY] TABLE [IF EXISTS] tbl_name
     @pytest.fixture
-    def query(self, temporary, table):
-        return "DROP {} TABLE {}".format(
-            temporary,
-            table
+    def query(self, temporary, if_exists, table):
+        return "DROP {temporary} TABLE {if_exists} {table}".format(
+            temporary=temporary,
+            if_exists=if_exists,
+            table=table
         )
 
 
@@ -229,3 +270,13 @@ class TestRenameTableStatement(MysqlStatementBaseTest):
     @pytest.fixture
     def query(self):
         return "RENAME TABLE `a` TO `b`"
+
+
+class TestUnsupportedStatement(MysqlStatementBaseTest):
+    @pytest.fixture
+    def statement_type(self):
+        return UnsupportedStatement
+
+    @pytest.fixture
+    def query(self):
+        return "SOME CRAZY UNSUPPORTED STATEMENT"

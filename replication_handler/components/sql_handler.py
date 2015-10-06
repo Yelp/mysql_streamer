@@ -47,6 +47,7 @@ class IncompatibleStatementError(ValueError):
 class MysqlStatement(object):
     def __init__(self, statement):
         self.statement = statement
+        self.token_matcher = TokenMatcher(self.tokens)
 
         if not self.token_matcher.matches(*self.matchers):
             raise IncompatibleStatementError()
@@ -65,10 +66,6 @@ class MysqlStatement(object):
             if not token.is_whitespace() and not isinstance(token, Comment)
         ]
 
-    @property
-    def token_matcher(self):
-        return TokenMatcher(self.tokens)
-
 
 class TokenMatcher(object):
     def __init__(self, tokens):
@@ -85,23 +82,42 @@ class TokenMatcher(object):
             return self._required_match(match_vals)
 
     def _optional_match(self, match_vals):
-        if not self.has_next():
-            return True
-
-        if self._has_next_token_match(match_vals):
-            self.pop()
-
+        self._required_match(match_vals)
         return True
 
     def _required_match(self, match_vals):
-        if self.has_next() and self._has_next_token_match(match_vals):
-            self.pop()
+        for match_val in match_vals:
+            if isinstance(match_val, Compound):
+                return self._compound_match(match_val)
+            elif self.has_next() and self._has_next_token_match(match_vals):
+                self.pop()
+                return True
+        return False
+
+    def _compound_match(self, compound_matcher):
+        if (
+            self.has_next(len(compound_matcher)) and
+            self._has_compound_token_match(compound_matcher)
+        ):
+            for _ in xrange(len(compound_matcher)):
+                self.pop()
             return True
         else:
             return False
 
     def _has_next_token_match(self, match_vals):
-        normed_value = self.peek().value.upper()
+        return self._has_token_match(self.peek(), match_vals)
+
+    def _has_compound_token_match(self, compound_matcher):
+        tokens = self.peek(len(compound_matcher))
+        for token, match_vals in zip(tokens, compound_matcher):
+            match_vals = self._listify(match_vals)
+            if not self._has_token_match(token, match_vals):
+                return False
+        return True
+
+    def _has_token_match(self, token, match_vals):
+        normed_value = token.value.upper()
         return any(normed_value == value.upper() for value in match_vals)
 
     def _listify(self, match):
@@ -114,23 +130,38 @@ class TokenMatcher(object):
         self.index += 1
         return next_val
 
-    def peek(self):
-        return self.tokens[self.index]
+    def peek(self, length=1):
+        if length == 1:
+            return self.tokens[self.index]
+        else:
+            return self.tokens[self.index:(self.index + length)]
 
-    def has_next(self):
-        return self.index < len(self.tokens)
+    def has_next(self, length=1):
+        return (self.index + length - 1) < len(self.tokens)
 
 
 class Optional(list):
     pass
 
 
-class TableStatementBase(MysqlStatement):
-    def __init__(self, statement):
-        self.statement = statement
+class Compound(list):
+    pass
 
-        if not self.token_matcher.matches(*self.matchers):
-            raise IncompatibleStatementError()
+
+class TableStatementBase(MysqlStatement):
+    @classmethod
+    def extract_table_name(cls, token):
+        # useful info: https://dev.mysql.com/doc/refman/5.5/en/identifiers.html
+        table_name = token.split('.')[-1]
+        if (table_name[0] == '"' and table_name[-1] == '"'):
+            table_name = cls._remove_identifier(table_name, '"')
+        elif (table_name[0] == '`' and table_name[-1] == '`'):
+            table_name = cls._remove_identifier(table_name, '`')
+        return table_name
+
+    @classmethod
+    def _remove_identifier(cls, table_name, identifier):
+        return table_name[1:-1].replace(identifier + identifier, identifier)
 
 
 class CreateTableStatement(TableStatementBase):
@@ -139,6 +170,18 @@ class CreateTableStatement(TableStatementBase):
         Optional(['temporary']),
         'table'
     ]
+
+    def __init__(self, statement):
+        super(CreateTableStatement, self).__init__(statement)
+        if (
+            self.token_matcher.matches(Optional([Compound(['if', 'not', 'exists'])])) and
+            self.token_matcher.has_next()
+        ):
+            self.table = TableStatementBase.extract_table_name(
+                self.token_matcher.pop().value
+            )
+        else:
+            raise IncompatibleStatementError()
 
 
 class AlterTableStatement(TableStatementBase):
@@ -149,6 +192,15 @@ class AlterTableStatement(TableStatementBase):
         'table'
     ]
 
+    def __init__(self, statement):
+        super(AlterTableStatement, self).__init__(statement)
+        if self.token_matcher.has_next():
+            self.table = TableStatementBase.extract_table_name(
+                self.token_matcher.pop().value
+            )
+        else:
+            raise IncompatibleStatementError()
+
 
 class DropTableStatement(TableStatementBase):
     matchers = [
@@ -156,6 +208,18 @@ class DropTableStatement(TableStatementBase):
         Optional(['temporary']),
         'table'
     ]
+
+    def __init__(self, statement):
+        super(DropTableStatement, self).__init__(statement)
+        if (
+            self.token_matcher.matches(Optional([Compound(['if', 'exists'])])) and
+            self.token_matcher.has_next()
+        ):
+            self.table = TableStatementBase.extract_table_name(
+                self.token_matcher.pop().value
+            )
+        else:
+            raise IncompatibleStatementError()
 
 
 class DatabaseStatementBase(MysqlStatement):
@@ -214,4 +278,4 @@ class RenameTableStatement(MysqlStatement):
 
 
 class UnsupportedStatement(MysqlStatement):
-    pass
+    matchers = []
