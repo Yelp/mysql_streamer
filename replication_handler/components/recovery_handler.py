@@ -9,7 +9,7 @@ from pymysqlreplication.event import QueryEvent
 
 from replication_handler.components._pending_schema_event_recovery_handler import PendingSchemaEventRecoveryHandler
 from replication_handler.components.base_event_handler import Table
-from replication_handler.components.schema_event_handler import should_filter_query_event
+from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
@@ -87,8 +87,14 @@ class RecoveryHandler(object):
         log.info("Recovering from unclean shutdown")
         while(len(events) < self.MAX_EVENT_SIZE):
             if not isinstance(stream.peek().event, DataEvent):
-                if isinstance(stream.peek().event, QueryEvent) and should_filter_query_event(stream.peek().event):
-                    log.info("Filtered query event: %s" % repr(stream.peek().event))
+                if (
+                    isinstance(stream.peek().event, QueryEvent) and
+                    not mysql_statement_factory(stream.peek().event.query).is_supported()
+                ):
+                    log.info("Filtered query event: {} {}".format(
+                        repr(stream.peek().event),
+                        stream.peek().event.query
+                    ))
                     stream.next()
                     continue
                 log.info("Recovery halted for non-data event: %s %s" % (repr(stream.peek().event), stream.peek().event.query))

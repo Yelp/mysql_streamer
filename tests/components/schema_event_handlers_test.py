@@ -120,33 +120,19 @@ class TestSchemaEventHandler(object):
         query = request.param.format(test_table)
         return QueryEvent(schema=test_schema, query=query)
 
-    @pytest.fixture
-    def bad_query_event(self, test_schema):
-        query = "CREATE TABLEthisisabadquery"
-        return QueryEvent(schema=test_schema, query=query)
-
-    @pytest.fixture
-    def begin_query_event(self, test_schema):
-        query = "BEGIN"
+    @pytest.fixture(params=[
+        "DROP TRIGGER `yelp`.`pt_osc_yelp_ad_asset_del`",
+        "BEGIN",
+        "COMMIT",
+        "USE YELP"
+    ])
+    def unsupported_query_event(self, test_schema, request):
+        query = request.param
         return QueryEvent(schema=test_schema, query=query)
 
     @pytest.fixture
     def non_schema_relevant_query_event(self, test_schema):
-        query = "use yelp"
-        schema = test_schema
-        return QueryEvent(schema=schema, query=query)
-
-    @pytest.fixture
-    def create_trigger_query_event(self, test_schema):
-        query = "CREATE DEFINER=`root`@`127.0.0.1` TRIGGER `pt_osc_yelp_ad_asset_del` \
-            AFTER DELETE ON `yelp`.`ad_asset` FOR EACH ROW DELETE IGNORE FR \
-            OM `yelp`.`__ad_asset_new` WHERE `yelp`.`__ad_asset_new`.`id` <=> OLD.`id`"
-        schema = test_schema
-        return QueryEvent(schema=schema, query=query)
-
-    @pytest.fixture
-    def drop_trigger_query_event(self, test_schema):
-        query = "DROP TRIGGER `yelp`.`pt_osc_yelp_ad_asset_del`"
+        query = "CREATE DATABASE weird_new_db"
         schema = test_schema
         return QueryEvent(schema=schema, query=query)
 
@@ -498,28 +484,6 @@ class TestSchemaEventHandler(object):
         assert external_patches.upsert_global_event_state.call_count == 0
         assert producer.flush.call_count == 0
 
-    def test_bad_query(
-        self,
-        test_position,
-        external_patches,
-        schema_event_handler,
-        bad_query_event,
-    ):
-        with pytest.raises(Exception):
-            schema_event_handler.handle_event(bad_query_event, test_position)
-
-    def test_begin_query(
-        self,
-        producer,
-        test_position,
-        external_patches,
-        schema_event_handler,
-        begin_query_event
-    ):
-        schema_event_handler.handle_event(begin_query_event, test_position)
-        assert external_patches.execute_query.call_count == 0
-        assert producer.flush.call_count == 0
-
     def test_non_schema_relevant_query(
         self,
         producer,
@@ -544,7 +508,7 @@ class TestSchemaEventHandler(object):
         # And after
         assert external_patches.upsert_global_event_state.call_count == 1
 
-    def test_skip_create_trigger_query(
+    def test_unsupported_query(
         self,
         producer,
         test_position,
@@ -552,33 +516,15 @@ class TestSchemaEventHandler(object):
         external_patches,
         schema_event_handler,
         mock_schema_tracker_cursor,
-        create_trigger_query_event,
+        unsupported_query_event,
     ):
-        schema_event_handler.handle_event(create_trigger_query_event, test_position)
-        assert external_patches.execute_query.call_count == 0
-        # We should flush and save state before
-        assert producer.flush.call_count == 1
-        assert save_position.call_count == 1
-        # no save state after
-        assert external_patches.upsert_global_event_state.call_count == 0
-
-    def test_skip_drop_trigger_query(
-        self,
-        producer,
-        test_position,
-        save_position,
-        external_patches,
-        schema_event_handler,
-        mock_schema_tracker_cursor,
-        drop_trigger_query_event,
-    ):
-        schema_event_handler.handle_event(drop_trigger_query_event, test_position)
-        assert external_patches.execute_query.call_count == 0
-        # We should flush and save state before
-        assert producer.flush.call_count == 1
-        assert save_position.call_count == 1
-        # no save state after
-        assert external_patches.upsert_global_event_state.call_count == 0
+        self._assert_query_skipped(
+            schema_event_handler,
+            unsupported_query_event,
+            test_position,
+            external_patches,
+            producer
+        )
 
     def test_incomplete_transaction(
         self,
@@ -601,37 +547,6 @@ class TestSchemaEventHandler(object):
         assert external_patches.upsert_global_event_state.call_count == 0
         assert producer.flush.call_count == 1
         assert save_position.call_count == 1
-
-    def test_table_name_extraction(
-        self,
-        producer,
-        external_patches,
-        schema_event_handler,
-    ):
-        extract_func = schema_event_handler._extract_table_name
-        assert extract_func('user') == 'user'
-        assert extract_func('"user"') == 'user'
-        assert extract_func('`user`') == 'user'
-        assert extract_func('yelp.user') == 'user'
-        assert extract_func('yelp.user permission') == 'user permission'
-
-        # backticks
-        assert extract_func('`yelp`.user') == 'user'
-        assert extract_func('`yelp`.`user`') == 'user'
-        assert extract_func('`yelp`.`user``permission`') == 'user`permission'
-        assert extract_func('`yelp`.`user``permission control`') == 'user`permission control'
-
-        # double quotes
-        assert extract_func('"yelp"."user"') == 'user'
-        assert extract_func('"yelp"."user"') == 'user'
-        assert extract_func('"yelp"."user""permission"') == 'user"permission'
-        assert extract_func('`yelp`."user""permission control"') == 'user"permission control'
-
-        # mix
-        assert extract_func('`yelp`.`user"permission"control`') == 'user"permission"control'
-        assert extract_func('"yelp"."user`permission`control"') == 'user`permission`control'
-        assert extract_func('`yelp`.`user""permission`') == 'user""permission'
-        assert extract_func('"yelp"."user``permission"') == 'user``permission'
 
     def check_external_calls(
         self,
@@ -698,3 +613,15 @@ class TestSchemaEventHandler(object):
         assert external_patches.execute_query.call_count == 1
         assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_count == 0
         assert save_position.call_count == 1
+
+    def _assert_query_skipped(
+        self,
+        schema_event_handler,
+        query_event,
+        test_position,
+        external_patches,
+        producer
+    ):
+        schema_event_handler.handle_event(query_event, test_position)
+        assert external_patches.execute_query.call_count == 0
+        assert producer.flush.call_count == 0

@@ -13,7 +13,7 @@ log = logging.getLogger('replication_handler.components.sql_handler')
 
 
 def mysql_statement_factory(query):
-    parsed_query = sqlparse.parse(query)
+    parsed_query = sqlparse.parse(query, dialect='mysql')
     assert len(parsed_query) == 1
     statement = parsed_query[0]
 
@@ -66,6 +66,9 @@ class MysqlStatement(object):
             if not token.is_whitespace() and not isinstance(token, Comment)
         ]
 
+    def is_supported(self):
+        return True
+
 
 class TokenMatcher(object):
     def __init__(self, tokens):
@@ -117,6 +120,8 @@ class TokenMatcher(object):
         return True
 
     def _has_token_match(self, token, match_vals):
+        if isinstance(match_vals, Any):
+            return True
         normed_value = token.value.upper()
         return any(normed_value == value.upper() for value in match_vals)
 
@@ -139,12 +144,19 @@ class TokenMatcher(object):
     def has_next(self, length=1):
         return (self.index + length - 1) < len(self.tokens)
 
+    def get_remaining_tokens(self):
+        return self.tokens[self.index:]
+
 
 class Optional(list):
     pass
 
 
 class Compound(list):
+    pass
+
+
+class Any(list):
     pass
 
 
@@ -174,12 +186,14 @@ class CreateTableStatement(TableStatementBase):
     def __init__(self, statement):
         super(CreateTableStatement, self).__init__(statement)
         if (
-            self.token_matcher.matches(Optional([Compound(['if', 'not', 'exists'])])) and
+            self.token_matcher.matches(
+                Optional([Compound(['if', 'not', 'exists'])]),
+                Optional([Compound([Any(), '.'])])
+            ) and
             self.token_matcher.has_next()
         ):
-            self.table = TableStatementBase.extract_table_name(
-                self.token_matcher.pop().value
-            )
+            table = self.token_matcher.pop().value
+            self.table = TableStatementBase.extract_table_name(table)
         else:
             raise IncompatibleStatementError()
 
@@ -200,6 +214,12 @@ class AlterTableStatement(TableStatementBase):
             )
         else:
             raise IncompatibleStatementError()
+
+    def does_rename_table(self):
+        return any(
+            token.match(Token.Keyword, 'rename')
+            for token in self.token_matcher.get_remaining_tokens()
+        )
 
 
 class DropTableStatement(TableStatementBase):
@@ -279,3 +299,6 @@ class RenameTableStatement(MysqlStatement):
 
 class UnsupportedStatement(MysqlStatement):
     matchers = []
+
+    def is_supported(self):
+        return False

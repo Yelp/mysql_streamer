@@ -26,6 +26,9 @@ class MysqlStatementBaseTest(object):
     def test_statement_detection(self, statement, statement_type):
         assert isinstance(statement, statement_type)
 
+    def test_is_supported(self, statement):
+        assert statement.is_supported()
+
 
 class MysqlTableStatementBaseTest(MysqlStatementBaseTest):
     @pytest.fixture(params=[
@@ -93,7 +96,7 @@ class TestCreateTableStatement(MysqlTableStatementBaseTest):
     # 5.5, 5.6, 5.7: CREATE [TEMPORARY] TABLE [IF NOT EXISTS] tbl_name
     @pytest.fixture
     def query(self, temporary, if_not_exists, table):
-        return "CREATE {temporary} TABLE {if_not_exists} {table} test_col VARCHAR(255)".format(
+        return "CREATE {temporary} TABLE {if_not_exists} {table} (test_col VARCHAR(255))".format(
             temporary=temporary,
             if_not_exists=if_not_exists,
             table=table,
@@ -120,6 +123,14 @@ class TestAlterTableStatement(MysqlTableStatementBaseTest):
     def ignore(self, request):
         return request.param
 
+    @pytest.fixture(params=[
+        'TO',
+        'AS',
+        ''
+    ])
+    def to(self, request):
+        return request.param
+
     # 5.5, 5.6: ALTER [ONLINE|OFFLINE] [IGNORE] TABLE tbl_name
     # 5.7: ALTER [IGNORE] TABLE tbl_name
     @pytest.fixture
@@ -129,6 +140,19 @@ class TestAlterTableStatement(MysqlTableStatementBaseTest):
             ignore=ignore,
             table=table
         )
+
+    @pytest.fixture
+    def rename_query(self, to):
+        return "ALTER TABLE business RENAME {to} new_business".format(
+            to=to
+        )
+
+    def test_does_not_rename_table(self, statement):
+        assert not statement.does_rename_table()
+
+    def test_does_rename_table(self, rename_query):
+        statement = mysql_statement_factory(rename_query)
+        assert statement.does_rename_table()
 
 
 class TestDropTableStatement(MysqlTableStatementBaseTest):
@@ -280,3 +304,6 @@ class TestUnsupportedStatement(MysqlStatementBaseTest):
     @pytest.fixture
     def query(self):
         return "SOME CRAZY UNSUPPORTED STATEMENT"
+
+    def test_is_supported(self, statement):
+        assert not statement.is_supported()
