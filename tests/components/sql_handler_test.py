@@ -41,18 +41,29 @@ class MysqlTableStatementBaseTest(MysqlStatementBaseTest):
     def temporary(self, request):
         return request.param
 
+    def test_get_table(statement):
+        assert statement.get_table() == 'business'
+
 
 class TestCreateTableStatement(MysqlTableStatementBaseTest):
     @pytest.fixture
     def statement_type(self):
         return CreateTableStatement
 
+    @pytest.fixture(params=[
+        'IF NOT EXISTS',
+        ''
+    ])
+    def if_not_exists(self, request):
+        return request.param
+
     # 5.5, 5.6, 5.7: CREATE [TEMPORARY] TABLE [IF NOT EXISTS] tbl_name
     @pytest.fixture
-    def query(self, temporary, table):
-        return "CREATE {} TABLE {} test_col VARCHAR(255)".format(
+    def query(self, temporary, table, if_not_exists):
+        return "CREATE {} TABLE {} {} test_col VARCHAR(255)".format(
             temporary,
-            table
+            table,
+            if_not_exists
         )
 
 
