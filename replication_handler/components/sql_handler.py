@@ -89,7 +89,7 @@ class TokenMatcher(object):
         for match_val in match_vals:
             if isinstance(match_val, Compound):
                 return self._compound_match(match_val)
-            elif self.has_next() and self._has_next_token_match(match_vals):
+            elif self.has_next() and self._has_next_token_match([match_val]):
                 self.pop()
                 return True
         return False
