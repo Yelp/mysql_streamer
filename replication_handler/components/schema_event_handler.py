@@ -91,12 +91,21 @@ class SchemaEventHandler(BaseEventHandler):
             if self._is_create_trigger(event.query):
                 log.info("Skipping create trigger query. Query: %s" % event.query)
                 return
+            elif self._is_drop_trigger(event.query):
+                log.info("Skipping drop trigger query. Query: %s" % event.query)
+                return
             self._execute_non_schema_store_relevant_query(event, event.schema)
             self._mark_schema_event_complete(event, position)
 
     def _is_create_trigger(self, query):
         return re.search(
             "create\s+(.*\s+)?trigger\s+.+\s+(before|after)\s+(insert|update|delete)",
+            query.lower()
+        )
+
+    def _is_drop_trigger(self, query):
+        return re.search(
+            "drop\strigger\s(if\sexists\s)?.+",
             query.lower()
         )
 
