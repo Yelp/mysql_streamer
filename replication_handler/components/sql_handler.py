@@ -46,7 +46,10 @@ class IncompatibleStatementError(ValueError):
 
 class MysqlStatement(object):
     def __init__(self, statement):
-        raise IncompatibleStatementError()
+        self.statement = statement
+
+        if not self.token_matcher.matches(*self.matchers):
+            raise IncompatibleStatementError()
 
     @property
     def keyword_tokens(self):
@@ -91,27 +94,20 @@ class TokenMatcher(object):
         return True
 
     def _required_match(self, match_vals):
-        if not self.has_next():
-            return False
-
-        if self._has_next_token_match(match_vals):
-            print match_vals
+        if self.has_next() and self._has_next_token_match(match_vals):
             self.pop()
             return True
         else:
             return False
 
     def _has_next_token_match(self, match_vals):
-        return self._next_token_matches(match_vals)
+        normed_value = self.peek().value.upper()
+        return any(normed_value == value.upper() for value in match_vals)
 
     def _listify(self, match):
         if not isinstance(match, list):
             match = [match]
         return match
-
-    def _next_token_matches(self, values):
-        normed_value = self.peek().value.upper()
-        return any(normed_value == value.upper() for value in values)
 
     def pop(self):
         next_val = self.peek()
@@ -163,34 +159,33 @@ class DropTableStatement(TableStatementBase):
 
 
 class DatabaseStatementBase(MysqlStatement):
-    def __init__(self, statement):
-        self.statement = statement
-
-        if not self.token_matcher.matches(
-            self.first_keyword,
-            ['database', 'schema']
-        ):
-            raise IncompatibleStatementError()
+    pass
 
 
 class CreateDatabaseStatement(DatabaseStatementBase):
-    first_keyword = 'create'
+    matchers = [
+        'create',
+        ['database', 'schema']
+    ]
 
 
 class AlterDatabaseStatement(DatabaseStatementBase):
+    matchers = [
+        'alter',
+        ['database', 'schema']
+    ]
     first_keyword = 'alter'
 
 
 class DropDatabaseStatement(DatabaseStatementBase):
-    first_keyword = 'drop'
+    matchers = [
+        'drop',
+        ['database', 'schema']
+    ]
 
 
 class IndexStatementBase(MysqlStatement):
-    def __init__(self, statement):
-        self.statement = statement
-
-        if not self.token_matcher.matches(*self.matchers):
-            raise IncompatibleStatementError()
+    pass
 
 
 class CreateIndexStatement(IndexStatementBase):
@@ -212,17 +207,11 @@ class DropIndexStatement(IndexStatementBase):
 
 
 class RenameTableStatement(MysqlStatement):
-    def __init__(self, statement):
-        self.statement = statement
-
-        if not self.token_matcher.matches(
-            'rename',
-            'table'
-        ):
-            raise IncompatibleStatementError()
+    matchers = [
+        'rename',
+        'table'
+    ]
 
 
 class UnsupportedStatement(MysqlStatement):
-    def __init__(self, statement):
-        # This statement will match everything
-        pass
+    pass

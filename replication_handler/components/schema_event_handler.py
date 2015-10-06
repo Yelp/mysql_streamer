@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import copy
 import logging
+import re
 
 import sqlparse
 from sqlparse import tokens as Token
@@ -87,8 +88,26 @@ class SchemaEventHandler(BaseEventHandler):
             # We may eventually want to add some kind of journaling here, where
             # we could manually mark a statement as complete to get things
             # moving again, if we hit this edge case frequently.
+            if self._is_create_trigger(event.query):
+                log.info("Skipping create trigger query. Query: %s" % event.query)
+                return
+            elif self._is_drop_trigger(event.query):
+                log.info("Skipping drop trigger query. Query: %s" % event.query)
+                return
             self._execute_non_schema_store_relevant_query(event, event.schema)
             self._mark_schema_event_complete(event, position)
+
+    def _is_create_trigger(self, query):
+        return re.search(
+            "create\s+(.*\s+)?trigger\s+.+\s+(before|after)\s+(insert|update|delete)",
+            query.lower()
+        )
+
+    def _is_drop_trigger(self, query):
+        return re.search(
+            "drop\strigger\s(if\sexists\s)?.+",
+            query.lower()
+        )
 
     def _mark_schema_event_complete(self, event, position):
         with rbr_state_session.connect_begin(ro=False) as session:
@@ -194,9 +213,7 @@ class SchemaEventHandler(BaseEventHandler):
             mysql_ignore_words = set(('if', 'not', 'exists'))
             while split_query[table_idx] in mysql_ignore_words:
                 table_idx += 1
-            table_name = ''.join(
-                c for c in split_query[table_idx] if c.isalnum() or c == '_'
-            )
+            table_name = self._extract_table_name(split_query[table_idx])
         except:
             raise Exception("Cannot parse query table from {0}".format(event.query))
 
@@ -205,6 +222,18 @@ class SchemaEventHandler(BaseEventHandler):
             database_name=event.schema,
             table_name=table_name,
         )
+
+    def _extract_table_name(self, token):
+        # useful info: https://dev.mysql.com/doc/refman/5.5/en/identifiers.html
+        table_name = token.split('.')[-1]
+        if (table_name[0] == '"' and table_name[-1] == '"'):
+            table_name = self._remove_identifier(table_name, '"')
+        elif (table_name[0] == '`' and table_name[-1] == '`'):
+            table_name = self._remove_identifier(table_name, '`')
+        return table_name
+
+    def _remove_identifier(self, table_name, identifier):
+        return table_name[1:-1].replace(identifier + identifier, identifier)
 
     def _execute_non_schema_store_relevant_query(self, event, database_name):
         """ Execute query that is not relevant to replication handler schema.
