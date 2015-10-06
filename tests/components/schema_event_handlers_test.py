@@ -578,6 +578,37 @@ class TestSchemaEventHandler(object):
         assert producer.flush.call_count == 1
         assert save_position.call_count == 1
 
+    def test_table_name_extraction(
+        self,
+        producer,
+        external_patches,
+        schema_event_handler,
+    ):
+        extract_func = schema_event_handler._extract_table_name
+        assert extract_func('user') == 'user'
+        assert extract_func('"user"') == 'user'
+        assert extract_func('`user`') == 'user'
+        assert extract_func('yelp.user') == 'user'
+        assert extract_func('yelp.user permission') == 'user permission'
+
+        # backticks
+        assert extract_func('`yelp`.user') == 'user'
+        assert extract_func('`yelp`.`user`') == 'user'
+        assert extract_func('`yelp`.`user``permission`') == 'user`permission'
+        assert extract_func('`yelp`.`user``permission control`') == 'user`permission control'
+
+        # double quotes
+        assert extract_func('"yelp"."user"') == 'user'
+        assert extract_func('"yelp"."user"') == 'user'
+        assert extract_func('"yelp"."user""permission"') == 'user"permission'
+        assert extract_func('`yelp`."user""permission control"') == 'user"permission control'
+
+        # mix
+        assert extract_func('`yelp`.`user"permission"control`') == 'user"permission"control'
+        assert extract_func('"yelp"."user`permission`control"') == 'user`permission`control'
+        assert extract_func('`yelp`.`user""permission`') == 'user""permission'
+        assert extract_func('"yelp"."user``permission"') == 'user``permission'
+
     def check_external_calls(
         self,
         schematizer_client,
