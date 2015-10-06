@@ -29,7 +29,6 @@ def mysql_statement_factory(query):
         CreateIndexStatement,
         DropIndexStatement,
         RenameTableStatement,
-        UnsupportedStatement
     ]
 
     for statement_type in statement_types:
@@ -37,7 +36,7 @@ def mysql_statement_factory(query):
             return statement_type(statement)
         except IncompatibleStatementError:
             pass
-    raise IncompatibleStatementError()
+    return UnsupportedStatement(statement)
 
 
 class IncompatibleStatementError(ValueError):
