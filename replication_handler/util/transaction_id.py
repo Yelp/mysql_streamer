@@ -42,7 +42,7 @@ class TransactionId(BaseMetaAttribute):
             os.path.dirname(__file__),
             os.pardir,
             os.pardir,
-            'schema/transaction_id_v1.avsc'
+            'schema/avro_schema/transaction_id_v1.avsc'
         )
         with open(schema_path, 'r') as f:
             return simplejson.dumps(simplejson.loads(f.read()))

@@ -173,7 +173,7 @@ class TestDataEventHandler(object):
             last_published_message_position_info=second_test_position,
             topic_to_last_position_info_map={test_topic: second_test_position},
             topic_to_kafka_offset_map={test_topic: second_test_kafka_offset},
-            merged_upstream_position_info_map={test_topic: {0, first_test_kafka_offset}}
+            merged_upstream_position_info_map={0, first_test_kafka_offset}
         )
 
     @pytest.fixture
