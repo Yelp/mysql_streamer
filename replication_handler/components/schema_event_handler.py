@@ -205,7 +205,7 @@ class SchemaEventHandler(BaseEventHandler):
         )
 
     def _extract_table_name(self, token):
-        # useful info: https://dev.mysql.com/doc/refman/5.0/en/identifiers.html
+        # useful info: https://dev.mysql.com/doc/refman/5.5/en/identifiers.html
         table_name = token.split('.')[-1]
         if (table_name[0] == '"' and table_name[-1] == '"'):
             table_name = self._remove_identifier(table_name, '"')
