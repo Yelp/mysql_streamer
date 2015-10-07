@@ -1,0 +1,7 @@
+
+# This file is generated from y/sensu-teams.  To add a team, add a team with
+# a notification_email to sense_handlers::teams
+---
+  teams:
+    bam:
+      email: "bam+replication+handler+testing@yelp.com"

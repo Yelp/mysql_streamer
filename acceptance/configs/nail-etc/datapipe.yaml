@@ -1,0 +1,8 @@
+--- 
+  clusters: 
+    uswest2-devc: 
+      broker_list: 
+        - "kafka:9092"
+      zookeeper: "zk:2181"
+  local_config: 
+    cluster: uswest2-devc

@@ -40,15 +40,16 @@ RUN     /code/virtualenv_run/bin/pip install \
             -i https://pypi-dev.yelpcorp.com/simple \
             -r /code/requirements.txt
 
-# Share the logging directory as a volume
-RUN     mkdir /tmp/logs
-VOLUME  /tmp/logs
-
 ADD     . /code
 
 RUN useradd batch
 RUN chown -R batch /code
 USER batch
+
+# Share the logging directory as a volume
+RUN     mkdir /tmp/logs
+VOLUME  /tmp/logs
+
 WORKDIR /code
 ENV     BASEPATH /code
 CMD /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -v --no-notification

@@ -1,0 +1,4 @@
+---
+schematizer.main:
+  host: schematizer
+  port: 8888
