@@ -7,8 +7,6 @@ replicationhandler:
     - schematracker
     - rbrstate
     - schematizer
-  volumes:
-    - .:/data
   volumes_from:
     - replicationhandlerconfigs
 replicationhandlerconfigs:
