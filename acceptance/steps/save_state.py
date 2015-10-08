@@ -25,13 +25,13 @@ def create_table_statement_step(context, table_name):
 
 @when(u'we execute the statement in {db_name} database')
 def execute_create_table_statement_step(context, db_name):
-    # wait a bit time for containers to be ready
+    # Wait a bit time for containers to be ready
     time.sleep(SETUP_WAIT_TIME)
     result = execute_query(db_name, context.data['statements'])
 
 @then(u'{db_name} should have correct schema information')
 def check_schema_tracker_has_correct_info(context, db_name):
-    # wait a bit time for change to happen in schema tracker db
+    # Wait a bit time for change to happen in schema tracker db
     time.sleep(DB_WAIT_TIME)
     table_name = context.data['table_name']
     query_list = ['show create table {table_name}'.format(table_name=table_name)]
@@ -44,7 +44,7 @@ def check_schema_tracker_has_correct_info(context, db_name):
 
 @then(u'{db_name} should have correct state information')
 def check_state_db_has_correct_info(context, db_name):
-    # wait a bit time for change to happen in rbr state db
+    # Wait a bit time for change to happen in rbr state db
     time.sleep(DB_WAIT_TIME)
     query_list = ['select * from schema_event_state;']
     result = execute_query(db_name, query_list)
@@ -56,9 +56,10 @@ def check_state_db_has_correct_info(context, db_name):
     assert_result_correctness(result, expected)
 
     position = json.loads(result['position'])
+    # Heartbeat serial and offset uniquely identifies a position.
     expected_position = {
+        'hb_serial': context.data['heartbeat_serial'],
         'offset': 0,
-        'hb_serial': context.data['heartbeat_serial']
     }
     assert_result_correctness(position, expected_position)
 
