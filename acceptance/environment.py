@@ -38,8 +38,17 @@ def execute_query(db_name, query_list):
     return result
 
 def before_scenario(context, _):
-    # Clear out context between each scenario
-    context.data = {}
+    # Clear out context and add a heartbeat event between each scenario
+    heartbeat_serial = 123
+    context.data = {
+        'statements': [
+            'update yelp_heartbeat.replication_heartbeat set \
+            serial={serial} where serial=0'.format(
+                serial=heartbeat_serial
+            )
+        ],
+        'heartbeat_serial': heartbeat_serial
+    }
 
 BEHAVE_DEBUG_ON_ERROR = bool_(os.environ.get("BEHAVE_DEBUG_ON_ERROR", "no"))
 
