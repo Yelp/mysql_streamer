@@ -3,7 +3,7 @@ import json
 import sys
 import time
 
-from behave import given, then
+from behave import given, then, when
 
 sys.path.append('../../environment.py')
 from environment import get_db_connection
