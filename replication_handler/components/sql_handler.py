@@ -43,6 +43,10 @@ class IncompatibleStatementError(ValueError):
     pass
 
 
+class UnparseableTableNameError(ValueError):
+    pass
+
+
 class MysqlStatement(object):
     def __init__(self, statement):
         self.statement = statement
@@ -77,6 +81,15 @@ class TokenMatcher(object):
     def matches(self, *args):
         return all(self._match(self._listify(match)) for match in args)
 
+    def would_have_matches(self, *args):
+        """Checks if there would be matches, without advancing the index
+        of the matcher.
+        """
+        current_index = self.index
+        has_matches = self.matches(*args)
+        self.index = current_index
+        return has_matches
+
     def _match(self, match_vals):
         if isinstance(match_vals, Optional):
             return self._optional_match(match_vals)
@@ -88,6 +101,9 @@ class TokenMatcher(object):
         return True
 
     def _required_match(self, match_vals):
+        if isinstance(match_vals, Compound):
+            return self._compound_match(match_vals)
+
         for match_val in match_vals:
             if isinstance(match_val, Compound):
                 return self._compound_match(match_val)
@@ -161,18 +177,31 @@ class Any(list):
 
 class TableStatementBase(MysqlStatement):
     @classmethod
-    def extract_table_name(cls, token):
-        # useful info: https://dev.mysql.com/doc/refman/5.5/en/identifiers.html
-        table_name = token.split('.')[-1]
-        if (table_name[0] == '"' and table_name[-1] == '"'):
-            table_name = cls._remove_identifier(table_name, '"')
-        elif (table_name[0] == '`' and table_name[-1] == '`'):
-            table_name = cls._remove_identifier(table_name, '`')
-        return table_name
+    def unquote_name(cls, token):
+        if (token[0] == '"' and token[-1] == '"'):
+            token = cls._remove_identifier(token, '"')
+        elif (token[0] == '`' and token[-1] == '`'):
+            token = cls._remove_identifier(token, '`')
+        return token
 
     @classmethod
-    def _remove_identifier(cls, table_name, identifier):
-        return table_name[1:-1].replace(identifier + identifier, identifier)
+    def extract_table_name(cls, token):
+        # useful info: https://dev.mysql.com/doc/refman/5.5/en/identifiers.html
+        tokens = token.split('.')
+        if len(tokens) == 2:
+            database_name = cls.unquote_name(tokens[0])
+            table_name = cls.unquote_name(tokens[1])
+        elif len(tokens) == 1:
+            database_name = None
+            table_name = cls.unquote_name(tokens[0])
+        else:
+            raise UnparseableTableNameError()
+
+        return database_name, table_name
+
+    @classmethod
+    def _remove_identifier(cls, token, identifier):
+        return token[1:-1].replace(identifier + identifier, identifier)
 
 
 class CreateTableStatement(TableStatementBase):
@@ -187,12 +216,17 @@ class CreateTableStatement(TableStatementBase):
         if (
             self.token_matcher.matches(
                 Optional([Compound(['if', 'not', 'exists'])]),
-                Optional([Compound([Any(), '.'])])
             ) and
             self.token_matcher.has_next()
         ):
+            self.database_name = None
+            if self.token_matcher.would_have_matches(Compound([Any(), '.', Any()])):
+                db = self.token_matcher.pop().value
+                self.token_matcher.pop()
+                self.database_name = TableStatementBase.unquote_name(db)
+
             table = self.token_matcher.pop().value
-            self.table = TableStatementBase.extract_table_name(table)
+            self.table = TableStatementBase.unquote_name(table)
         else:
             raise IncompatibleStatementError()
 
@@ -208,7 +242,7 @@ class AlterTableStatement(TableStatementBase):
     def __init__(self, statement):
         super(AlterTableStatement, self).__init__(statement)
         if self.token_matcher.has_next():
-            self.table = TableStatementBase.extract_table_name(
+            self.database_name, self.table = TableStatementBase.extract_table_name(
                 self.token_matcher.pop().value
             )
         else:
@@ -234,7 +268,7 @@ class DropTableStatement(TableStatementBase):
             self.token_matcher.matches(Optional([Compound(['if', 'exists'])])) and
             self.token_matcher.has_next()
         ):
-            self.table = TableStatementBase.extract_table_name(
+            self.database_name, self.table = TableStatementBase.extract_table_name(
                 self.token_matcher.pop().value
             )
         else:

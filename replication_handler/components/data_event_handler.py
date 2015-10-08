@@ -35,7 +35,7 @@ class DataEventHandler(BaseEventHandler):
     def handle_event(self, event, position):
         """Make sure that the schema wrapper has the table, publish to Kafka.
         """
-        if self.is_blacklisted(event):
+        if self.is_blacklisted(event, event.schema):
             return
         schema_wrapper_entry = self._get_payload_schema(
             Table(

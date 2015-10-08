@@ -5,6 +5,8 @@ from __future__ import unicode_literals
 import logging
 from collections import namedtuple
 
+import simplejson as json
+
 
 log = logging.getLogger('replication_handler.components.schema_tracker')
 
@@ -17,11 +19,25 @@ class SchemaTracker(object):
         self.schema_tracker_cursor = schema_cursor
 
     def _use_db(self, database_name):
-        use_db_query = "USE {0}".format(database_name)
-        self.schema_tracker_cursor.execute(use_db_query)
+        if database_name is not None and len(database_name.strip()) > 0:
+            use_db_query = "USE {0}".format(database_name)
+            self.schema_tracker_cursor.execute(use_db_query)
 
     def execute_query(self, query, database_name):
+        """Executes the given query against the schema tracker database.
+
+        Warning: Either the query must be unambiguous (i.e containing both the
+            table and database names), or the database name must be given.
+            Some query events do not have a schema name, for example:  `RENAME
+            TABLE yelp.bad_business TO yelp_aux.bad_business;`.
+        """
+        log.info(json.dumps(dict(
+            message="Executing query",
+            query=query,
+            database_name=database_name
+        )))
         self._use_db(database_name)
+
         self.schema_tracker_cursor.execute(query)
 
     def get_show_create_statement(self, table):

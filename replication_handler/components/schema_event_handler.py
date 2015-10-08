@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import copy
 import logging
 
+import simplejson as json
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.base_event_handler import BaseEventHandler
@@ -39,7 +40,7 @@ class SchemaEventHandler(BaseEventHandler):
     def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
         # Filter out blacklisted schemas
-        if self.is_blacklisted(event):
+        if self.is_blacklisted(event, event.schema):
             return
 
         statement = mysql_statement_factory(event.query)
@@ -47,6 +48,7 @@ class SchemaEventHandler(BaseEventHandler):
         if not statement.is_supported():
             return
 
+        log.info("Processing Supported Statement: %s" % event.query)
         handle_method = self._get_handle_method(statement)
 
         # Schema events aren't necessarily idempotent, so we need to make sure
@@ -69,11 +71,29 @@ class SchemaEventHandler(BaseEventHandler):
             SchemaWrapper().reset_cache()
 
         if handle_method is not None:
+            if event.schema is None or len(event.schema.strip()) == 0:
+                database_name = statement.database_name
+            else:
+                database_name = event.schema
+
+            if self.is_blacklisted(event, database_name):
+                # This call has to be redone here, because if the statement
+                # doesn't have a concrete schema assigned, we won't know if
+                # it should be executed until this point.
+                return
+
             table = Table(
                 cluster_name=self.cluster_name,
-                database_name=event.schema,
+                database_name=database_name,
                 table_name=statement.table
             )
+
+            log.info(json.dumps(dict(
+                message="Using table info",
+                cluster_name=self.cluster_name,
+                database_name=database_name,
+                table_name=statement.table,
+            )))
             # DDL statements are commited implicitly, and can't be rollback.
             # so we need to implement journaling around.
             record = self._create_journaling_record(position, table, event)

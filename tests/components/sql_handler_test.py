@@ -49,6 +49,12 @@ class MysqlTableStatementBaseTest(MysqlStatementBaseTest):
     def test_table(self, statement):
         assert statement.table == 'business'
 
+    def test_database(self, statement, table):
+        if '.' in table:
+            assert statement.database_name == 'yelp'
+        else:
+            assert statement.database_name is None
+
 
 class TestSharedTableStatement(object):
     @pytest.fixture
@@ -56,29 +62,29 @@ class TestSharedTableStatement(object):
         return TableStatementBase.extract_table_name
 
     def test_table_name_extract(self, extract_func):
-        assert extract_func('user') == 'user'
-        assert extract_func('"user"') == 'user'
-        assert extract_func('`user`') == 'user'
-        assert extract_func('yelp.user') == 'user'
-        assert extract_func('yelp.user permission') == 'user permission'
+        assert extract_func('user') == (None, 'user')
+        assert extract_func('"user"') == (None, 'user')
+        assert extract_func('`user`') == (None, 'user')
+        assert extract_func('yelp.user') == ('yelp', 'user')
+        assert extract_func('yelp.user permission') == ('yelp', 'user permission')
 
         # backticks
-        assert extract_func('`yelp`.user') == 'user'
-        assert extract_func('`yelp`.`user`') == 'user'
-        assert extract_func('`yelp`.`user``permission`') == 'user`permission'
-        assert extract_func('`yelp`.`user``permission control`') == 'user`permission control'
+        assert extract_func('`yelp`.user') == ('yelp', 'user')
+        assert extract_func('`yelp`.`user`') == ('yelp', 'user')
+        assert extract_func('`yelp`.`user``permission`') == ('yelp', 'user`permission')
+        assert extract_func('`yelp`.`user``permission control`') == ('yelp', 'user`permission control')
 
         # double quotes
-        assert extract_func('"yelp"."user"') == 'user'
-        assert extract_func('"yelp"."user"') == 'user'
-        assert extract_func('"yelp"."user""permission"') == 'user"permission'
-        assert extract_func('`yelp`."user""permission control"') == 'user"permission control'
+        assert extract_func('"yelp"."user"') == ('yelp', 'user')
+        assert extract_func('"yelp"."user"') == ('yelp', 'user')
+        assert extract_func('"yelp"."user""permission"') == ('yelp', 'user"permission')
+        assert extract_func('`yelp`."user""permission control"') == ('yelp', 'user"permission control')
 
         # mix
-        assert extract_func('`yelp`.`user"permission"control`') == 'user"permission"control'
-        assert extract_func('"yelp"."user`permission`control"') == 'user`permission`control'
-        assert extract_func('`yelp`.`user""permission`') == 'user""permission'
-        assert extract_func('"yelp"."user``permission"') == 'user``permission'
+        assert extract_func('`yelp`.`user"permission"control`') == ('yelp', 'user"permission"control')
+        assert extract_func('"yelp"."user`permission`control"') == ('yelp', 'user`permission`control')
+        assert extract_func('`yelp`.`user""permission`') == ('yelp', 'user""permission')
+        assert extract_func('"yelp"."user``permission"') == ('yelp', 'user``permission')
 
 
 class TestCreateTableStatement(MysqlTableStatementBaseTest):
