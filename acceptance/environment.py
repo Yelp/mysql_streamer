@@ -18,7 +18,7 @@ def get_service_host(service_name):
 
 def get_db_connection(db_name):
     db_host = get_service_host(db_name)
-    connection = pymysql.connect(
+    return pymysql.connect(
         host=db_host,
         user='yelpdev',
         password='',
@@ -26,7 +26,16 @@ def get_db_connection(db_name):
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
     )
-    return connection
+
+def execute_query(db_name, query_list):
+    # TODO(SRV-2217|cheng): change this into a context manager
+    connection = get_db_connection(db_name)
+    cursor = connection.cursor()
+    for query in query_list:
+        cursor.execute(query)
+    result = cursor.fetchone()
+    connection.close()
+    return result
 
 def before_scenario(context, _):
     # Clear out context between each scenario

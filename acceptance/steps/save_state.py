@@ -3,10 +3,16 @@ import json
 import sys
 import time
 
-from behave import given, then, when
+from behave import given
+from behave import then
+from behave import when
 
 sys.path.append('../../environment.py')
-from environment import get_db_connection
+from environment import execute_query
+
+
+SETUP_WAIT_TIME = 10
+DB_WAIT_TIME = 1
 
 
 @given(u'a create table statement')
@@ -21,40 +27,30 @@ def create_table_statement_step(context):
         'statements': statements
     }
 
-@when(u'we execute the statement in rbr source database')
-def execute_create_table_statement_step(context):
+@when(u'we execute the statement in {db_name} database')
+def execute_create_table_statement_step(context, db_name):
     # wait a bit time for containers to be ready
-    time.sleep(10)
-    connection = get_db_connection('rbrsource')
-    cursor = connection.cursor()
-    for statement in context.data['statements']:
-        cursor.execute(statement)
-    connection.commit()
-    connection.close()
+    time.sleep(SETUP_WAIT_TIME)
+    result = execute_query(db_name, context.data['statements'])
 
-@then(u'schema tracker should have correct information')
-def check_schema_tracker_has_correct_info(context):
+@then(u'{db_name} should have correct schema information')
+def check_schema_tracker_has_correct_info(context, db_name):
     # wait a bit time for change to happen in schema tracker db
-    time.sleep(1)
-    connection = get_db_connection('schematracker')
-    cursor = connection.cursor()
-    cursor.execute('show create table biz')
-    result = cursor.fetchone()
+    time.sleep(DB_WAIT_TIME)
+    query_list = ['show create table biz']
+    result = execute_query(db_name, query_list)
     expected = {
         'Table': context.data['table_name'],
         'Create Table': context.data['create_table_statement']
     }
     assert_result_correctness(result, expected)
-    connection.close()
 
-@then(u'rbr state should have correct information')
-def check_state_db_has_correct_info(context):
+@then(u'{db_name} should have correct state information')
+def check_state_db_has_correct_info(context, db_name):
     # wait a bit time for change to happen in rbr state db
-    time.sleep(1)
-    connection = get_db_connection('rbrstate')
-    cursor = connection.cursor()
-    cursor.execute('select * from schema_event_state;')
-    result = cursor.fetchone()
+    time.sleep(DB_WAIT_TIME)
+    query_list = ['select * from schema_event_state;']
+    result = execute_query(db_name, query_list)
     expected = {
         'status': 'Completed',
         'table_name': context.data['table_name'],
@@ -69,7 +65,6 @@ def check_state_db_has_correct_info(context):
         'hb_serial': 123
     }
     assert_result_correctness(position, expected_position)
-    connection.close()
 
 def assert_result_correctness(result, expected):
     for key, value in expected.iteritems():
