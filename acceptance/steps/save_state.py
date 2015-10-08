@@ -14,11 +14,12 @@ def create_table_statement_step(context):
     update_hb_statement = 'update yelp_heartbeat.replication_heartbeat set serial=123 where serial=0'
     drop_table_statement = 'DROP TABLE IF EXISTS biz'
     create_table_statement = 'CREATE TABLE `biz` (\n  `id` int(11) DEFAULT NULL,\n  `name` varchar(64) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8'
-    context.table_name = 'biz'
-    context.create_table_statement = create_table_statement
-    context.statements.append(drop_table_statement)
-    context.statements.append(update_hb_statement)
-    context.statements.append(create_table_statement)
+    statements = [update_hb_statement, drop_table_statement, create_table_statement]
+    context.data = {
+        'table_name': 'biz',
+        'create_table_statement': create_table_statement,
+        'statements': statements
+    }
 
 @when(u'we execute the statement in rbr source database')
 def execute_create_table_statement_step(context):
@@ -26,7 +27,7 @@ def execute_create_table_statement_step(context):
     time.sleep(10)
     connection = get_db_connection('rbrsource')
     cursor = connection.cursor()
-    for statement in context.statements:
+    for statement in context.data['statements']:
         cursor.execute(statement)
     connection.commit()
     connection.close()
@@ -40,8 +41,8 @@ def check_schema_tracker_has_correct_info(context):
     cursor.execute('show create table biz')
     result = cursor.fetchone()
     expected = {
-        'Table': context.table_name,
-        'Create Table': context.create_table_statement
+        'Table': context.data['table_name'],
+        'Create Table': context.data['create_table_statement']
     }
     assert_result_correctness(result, expected)
     connection.close()
@@ -56,15 +57,15 @@ def check_state_db_has_correct_info(context):
     result = cursor.fetchone()
     expected = {
         'status': 'Completed',
-        'table_name': context.table_name,
-        'query': context.create_table_statement,
+        'table_name': context.data['table_name'],
+        'query': context.data['create_table_statement'],
     }
     assert_result_correctness(result, expected)
 
     position = json.loads(result['position'])
     expected_position = {
         'log_file': 'mysql-bin.000003',
-        'offset': 0,
+        'offset': 1,
         'hb_serial': 123
     }
     assert_result_correctness(position, expected_position)
