@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import re
 
 import sqlparse
 from sqlparse import tokens as Token
@@ -81,7 +82,7 @@ class TokenMatcher(object):
     def matches(self, *args):
         return all(self._match(self._listify(match)) for match in args)
 
-    def would_have_matches(self, *args):
+    def has_matches(self, *args):
         """Checks if there would be matches, without advancing the index
         of the matcher.
         """
@@ -175,33 +176,89 @@ class Any(list):
     pass
 
 
+class ParseError(Exception):
+    pass
+
+
+class MysqlQualifiedIdentifierParser(MysqlStatement):
+    def __init__(self, identifier, identifier_qualified=True):
+        self.index = 0
+        self.identifier = identifier.strip()
+        self.identifier_qualified = identifier_qualified
+
+    def parse(self):
+        if self.identifier_qualified:
+            identifiers = self._handle_qualified_identifier()
+        else:
+            identifiers = self._handle_identifier()
+
+        if self.index != len(self.identifier):
+            raise ParseError()
+
+        return identifiers
+
+    def _handle_qualified_identifier(self):
+        identifiers = []
+        identifiers.append(self._handle_identifier())
+        while self._peek() == '.':
+            self._pop()
+            identifiers.append(self._handle_identifier())
+        return identifiers
+
+    def _handle_identifier(self):
+        if self._peek() in ['`', '"']:
+            return self._handle_quoted_identifier(self._pop())
+
+        return self._handle_unquoted_identifier()
+
+    def _handle_quoted_identifier(self, quote_char):
+        start_index = self.index
+
+        while not (self._peek() == quote_char and self._peek(2) != (quote_char * 2)):
+            if self._peek(2) == (quote_char * 2):
+                self._pop()
+                self._pop()
+            else:
+                self._pop()
+
+        identifier = self.identifier[start_index:self.index]
+        identifier = identifier.replace(quote_char * 2, quote_char)
+        self._pop()
+
+        return identifier
+
+    def _handle_unquoted_identifier(self):
+        start_index = self.index
+        # This matches all the allowed unquoted identifier chars - see
+        # https://dev.mysql.com/doc/refman/5.6/en/identifiers.html
+        while re.match("[0-9a-zA-Z\$_\u0080-\uFFFF]", self._peek(), re.UNICODE) is not None:
+            self._pop()
+
+        return self.identifier[start_index:self.index]
+
+    def _pop(self):
+        next_char = self._peek()
+        self.index += 1
+        return next_char
+
+    def _peek(self, length=1):
+        return self.identifier[self.index:(self.index + length)]
+
+
 class TableStatementBase(MysqlStatement):
     @classmethod
-    def unquote_name(cls, token):
-        if (token[0] == '"' and token[-1] == '"'):
-            token = cls._remove_identifier(token, '"')
-        elif (token[0] == '`' and token[-1] == '`'):
-            token = cls._remove_identifier(token, '`')
-        return token
-
-    @classmethod
-    def extract_table_name(cls, token):
-        # useful info: https://dev.mysql.com/doc/refman/5.5/en/identifiers.html
-        tokens = token.split('.')
-        if len(tokens) == 2:
-            database_name = cls.unquote_name(tokens[0])
-            table_name = cls.unquote_name(tokens[1])
-        elif len(tokens) == 1:
+    def extract_db_and_table_name(cls, token):
+        identifiers = MysqlQualifiedIdentifierParser(token).parse()
+        if len(identifiers) == 2:
+            database_name = identifiers[0]
+            table_name = identifiers[1]
+        elif len(identifiers) == 1:
             database_name = None
-            table_name = cls.unquote_name(tokens[0])
+            table_name = identifiers[0]
         else:
             raise UnparseableTableNameError()
 
         return database_name, table_name
-
-    @classmethod
-    def _remove_identifier(cls, token, identifier):
-        return token[1:-1].replace(identifier + identifier, identifier)
 
 
 class CreateTableStatement(TableStatementBase):
@@ -220,13 +277,18 @@ class CreateTableStatement(TableStatementBase):
             self.token_matcher.has_next()
         ):
             self.database_name = None
-            if self.token_matcher.would_have_matches(Compound([Any(), '.', Any()])):
+            if self.token_matcher.has_matches(Compound([Any(), '.', Any()])):
                 db = self.token_matcher.pop().value
                 self.token_matcher.pop()
-                self.database_name = TableStatementBase.unquote_name(db)
+                self.database_name = MysqlQualifiedIdentifierParser(
+                    db,
+                    identifier_qualified=False
+                ).parse()
 
-            table = self.token_matcher.pop().value
-            self.table = TableStatementBase.unquote_name(table)
+            self.table = MysqlQualifiedIdentifierParser(
+                self.token_matcher.pop().value,
+                identifier_qualified=False
+            ).parse()
         else:
             raise IncompatibleStatementError()
 
@@ -242,7 +304,7 @@ class AlterTableStatement(TableStatementBase):
     def __init__(self, statement):
         super(AlterTableStatement, self).__init__(statement)
         if self.token_matcher.has_next():
-            self.database_name, self.table = TableStatementBase.extract_table_name(
+            self.database_name, self.table = TableStatementBase.extract_db_and_table_name(
                 self.token_matcher.pop().value
             )
         else:
@@ -268,7 +330,7 @@ class DropTableStatement(TableStatementBase):
             self.token_matcher.matches(Optional([Compound(['if', 'exists'])])) and
             self.token_matcher.has_next()
         ):
-            self.database_name, self.table = TableStatementBase.extract_table_name(
+            self.database_name, self.table = TableStatementBase.extract_db_and_table_name(
                 self.token_matcher.pop().value
             )
         else:

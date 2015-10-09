@@ -13,8 +13,9 @@ from replication_handler.components.sql_handler import DropDatabaseStatement
 from replication_handler.components.sql_handler import DropIndexStatement
 from replication_handler.components.sql_handler import DropTableStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
+from replication_handler.components.sql_handler import MysqlQualifiedIdentifierParser
+from replication_handler.components.sql_handler import ParseError
 from replication_handler.components.sql_handler import RenameTableStatement
-from replication_handler.components.sql_handler import TableStatementBase
 from replication_handler.components.sql_handler import UnsupportedStatement
 
 
@@ -56,35 +57,64 @@ class MysqlTableStatementBaseTest(MysqlStatementBaseTest):
             assert statement.database_name is None
 
 
-class TestSharedTableStatement(object):
+class TestMysqlQualifiedIdentifierParser(object):
     @pytest.fixture
     def extract_func(self):
-        return TableStatementBase.extract_table_name
+        # return TableStatementBase.extract_table_name
+        return self.extract
 
-    def test_table_name_extract(self, extract_func):
-        assert extract_func('user') == (None, 'user')
-        assert extract_func('"user"') == (None, 'user')
-        assert extract_func('`user`') == (None, 'user')
-        assert extract_func('yelp.user') == ('yelp', 'user')
-        assert extract_func('yelp.user permission') == ('yelp', 'user permission')
+    def extract(self, identifier):
+        return MysqlQualifiedIdentifierParser(identifier).parse()
+
+    def test_parsed_identifier(self, extract_func):
+        assert extract_func('user') == ['user']
+        assert extract_func('"user"') == ['user']
+        assert extract_func('`user`') == ['user']
+        assert extract_func('yelp.user') == ['yelp', 'user']
+        assert extract_func('yelp.user_permission') == ['yelp', 'user_permission']
 
         # backticks
-        assert extract_func('`yelp`.user') == ('yelp', 'user')
-        assert extract_func('`yelp`.`user`') == ('yelp', 'user')
-        assert extract_func('`yelp`.`user``permission`') == ('yelp', 'user`permission')
-        assert extract_func('`yelp`.`user``permission control`') == ('yelp', 'user`permission control')
+        assert extract_func('`yelp`.user') == ['yelp', 'user']
+        assert extract_func('`yelp`.`user`') == ['yelp', 'user']
+        assert extract_func('`yelp`.`user``permission`') == ['yelp', 'user`permission']
+        assert extract_func('`yelp`.`user``permission control`') == ['yelp', 'user`permission control']
 
         # double quotes
-        assert extract_func('"yelp"."user"') == ('yelp', 'user')
-        assert extract_func('"yelp"."user"') == ('yelp', 'user')
-        assert extract_func('"yelp"."user""permission"') == ('yelp', 'user"permission')
-        assert extract_func('`yelp`."user""permission control"') == ('yelp', 'user"permission control')
+        assert extract_func('"yelp"."user"') == ['yelp', 'user']
+        assert extract_func('"yelp"."user"') == ['yelp', 'user']
+        assert extract_func('"yelp"."user""permission"') == ['yelp', 'user"permission']
+        assert extract_func('`yelp`."user""permission control"') == ['yelp', 'user"permission control']
 
         # mix
-        assert extract_func('`yelp`.`user"permission"control`') == ('yelp', 'user"permission"control')
-        assert extract_func('"yelp"."user`permission`control"') == ('yelp', 'user`permission`control')
-        assert extract_func('`yelp`.`user""permission`') == ('yelp', 'user""permission')
-        assert extract_func('"yelp"."user``permission"') == ('yelp', 'user``permission')
+        assert extract_func('`yelp`.`user"permission"control`') == ['yelp', 'user"permission"control']
+        assert extract_func('"yelp"."user`permission`control"') == ['yelp', 'user`permission`control']
+        assert extract_func('`yelp`.`user""permission`') == ['yelp', 'user""permission']
+        assert extract_func('"yelp"."user``permission"') == ['yelp', 'user``permission']
+
+        # with periods
+        assert extract_func('`yelp`.`with.something`') == ['yelp', 'with.something']
+
+        # with unicode
+        assert extract_func("`yelp`.`Ä```") == ['yelp', "Ä`"]
+
+        # with parse error
+        with pytest.raises(ParseError):
+            extract_func("`yelp`'.test")
+
+    @pytest.mark.parametrize("input,expected", [
+        ('user', 'user'),
+        ('"user"', 'user'),
+        ('`user`', 'user'),
+        ('`user``test`', 'user`test'),
+        ('"user""test"', 'user"test'),
+        ('`user""test`', 'user""test')
+    ])
+    def test_unqualified_parsing(self, input, expected):
+        unqualified_parser = MysqlQualifiedIdentifierParser(
+            input,
+            identifier_qualified=False
+        )
+        assert unqualified_parser.parse() == expected
 
 
 class TestCreateTableStatement(MysqlTableStatementBaseTest):
