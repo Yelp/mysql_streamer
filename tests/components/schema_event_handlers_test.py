@@ -121,13 +121,13 @@ class TestSchemaEventHandler(object):
         False
     ])
     def alter_table_schema_event(self, test_schema, test_table, request):
-        include_db_in_schema = request.param
-        if include_db_in_schema:
-            query = "ALTER TABLE `{0}` ADD (`another_number` int)".format(test_table)
-            schema = test_schema
-        else:
-            query = "ALTER TABLE `{0}`.`{1}` ADD (`another_number` int)".format(test_schema, test_table)
-            schema = ''
+        include_db_in_event = request.param
+        schema = test_schema if include_db_in_event else ''
+        full_name = ('`{1}`' if include_db_in_event else '`{0}`.`{1}`').format(
+            test_schema,
+            test_table
+        )
+        query = "ALTER TABLE {0} ADD (`another_number` int)".format(full_name)
         return QueryEvent(schema=schema, query=query)
 
     @pytest.fixture(params=[
