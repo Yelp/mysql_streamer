@@ -4,10 +4,14 @@ from __future__ import unicode_literals
 
 from distutils.util import strtobool as bool_
 import os
+import time
 
 from compose.cli.command import Command
 import docker
 import pymysql
+
+
+SETUP_WAIT_TIME = 5
 
 
 def get_service_host(service_name):
@@ -27,30 +31,35 @@ def get_db_connection(db_name):
         cursorclass=pymysql.cursors.DictCursor
     )
 
-def execute_query(db_name, query_list):
+def execute_query(db_name, query):
     # TODO(SRV-2217|cheng): change this into a context manager
     connection = get_db_connection(db_name)
     cursor = connection.cursor()
-    for query in query_list:
-        cursor.execute(query)
+    cursor.execute(query)
     result = cursor.fetchone()
+    connection.commit()
     connection.close()
     return result
 
-def before_scenario(context, _):
-    # Clear out context and add a heartbeat event between each scenario
+def before_feature(context, _):
+    # Clear out context and add a heartbeat event.
+    time.sleep(SETUP_WAIT_TIME)
     heartbeat_serial = 123
+    heartbeat_query = 'update yelp_heartbeat.replication_heartbeat set \
+        serial={serial} where serial=0'.format(
+            serial=heartbeat_serial
+        )
+    execute_query('rbrsource', heartbeat_query)
     context.data = {
-        'statements': [
-            'update yelp_heartbeat.replication_heartbeat set \
-            serial={serial} where serial=0'.format(
-                serial=heartbeat_serial
-            )
-        ],
-        'heartbeat_serial': heartbeat_serial
+        'heartbeat_serial': heartbeat_serial,
+        'offset': 0,
     }
 
-BEHAVE_DEBUG_ON_ERROR = bool_(os.environ.get("BEHAVE_DEBUG_ON_ERROR", "no"))
+def after_scenario(context, _):
+    context.data['offset'] += 1
+    context.data['expected_create_table_statement'] = None
+
+BEHAVE_DEBUG_ON_ERROR = bool_(os.environ.get("BEHAVE_DEBUG_ON_ERROR", "yes"))
 
 def after_step(context, step):
     if BEHAVE_DEBUG_ON_ERROR and step.status == "failed":
