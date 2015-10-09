@@ -42,8 +42,9 @@ def execute_query(db_name, query):
     return result
 
 def before_feature(context, _):
-    # Clear out context and add a heartbeat event.
+    # Wait a bit time for containers to be ready
     time.sleep(SETUP_WAIT_TIME)
+    # Add a heartbeat event and clear out context.
     heartbeat_serial = 123
     heartbeat_query = 'update yelp_heartbeat.replication_heartbeat set \
         serial={serial} where serial=0'.format(

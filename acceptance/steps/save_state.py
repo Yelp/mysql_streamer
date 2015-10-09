@@ -29,8 +29,6 @@ def set_expected_create_table_statement_step(context, table_name):
 
 @when(u'we execute the statement in {db_name} database')
 def execute_statement_step(context, db_name):
-    # Wait a bit time for containers to be ready
-    time.sleep(DB_WAIT_TIME)
     result = execute_query(db_name, context.data['query'])
 
 @then(u'{db_name} should have correct schema information')
