@@ -11,9 +11,6 @@ import docker
 import pymysql
 
 
-SETUP_WAIT_TIME = 5
-
-
 def get_service_host(service_name):
     client = docker.Client()
     project = Command().get_project_name('replicationhandler')
@@ -42,8 +39,6 @@ def execute_query(db_name, query):
     return result
 
 def before_feature(context, _):
-    # Wait a bit time for containers to be ready
-    time.sleep(SETUP_WAIT_TIME)
     # Add a heartbeat event and clear out context.
     heartbeat_serial = 123
     heartbeat_query = 'update yelp_heartbeat.replication_heartbeat set \

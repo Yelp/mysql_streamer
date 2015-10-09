@@ -16,12 +16,12 @@ DB_WAIT_TIME = 1
 
 @given(u'a query to execute for table {table_name}')
 def prepare_query_step(context, table_name):
-    # context.text is the docstring follows the Given clause in feature file.
+    # context.text is the docstring that follows the Given clause in feature file.
     query = context.text
     context.data['table_name'] = table_name
     context.data['query'] = query
 
-@given(u'a expected create table statement for table {table_name}')
+@given(u'an expected create table statement for table {table_name}')
 def set_expected_create_table_statement_step(context, table_name):
     context.data['table_name'] = table_name
     context.data['expected_create_table_statement'] = context.text

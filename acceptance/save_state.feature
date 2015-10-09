@@ -8,7 +8,7 @@ Feature: Save States
           `name` varchar(64) DEFAULT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8
         """
-    Given a expected create table statement for table biz
+    Given an expected create table statement for table biz
         """
         CREATE TABLE `biz` (
           `id` int(11) DEFAULT NULL,
@@ -25,7 +25,7 @@ Feature: Save States
         """
         ALTER TABLE `biz` ADD `location` varchar(128) DEFAULT NULL
         """
-    Given a expected create table statement for table biz
+    Given an expected create table statement for table biz
         """
         CREATE TABLE `biz` (
           `id` int(11) DEFAULT NULL,
