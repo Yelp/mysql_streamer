@@ -180,7 +180,7 @@ class ParseError(Exception):
     pass
 
 
-class MysqlQualifiedIdentifierParser(MysqlStatement):
+class MysqlQualifiedIdentifierParser(object):
     def __init__(self, identifier, identifier_qualified=True):
         self.index = 0
         self.identifier = identifier.strip()
