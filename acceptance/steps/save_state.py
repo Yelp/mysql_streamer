@@ -7,6 +7,9 @@ from behave import given
 from behave import then
 from behave import when
 
+from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
+from yelp_lib.containers.lists import unlist
+
 sys.path.append('../../environment.py')
 from environment import execute_query
 
@@ -26,6 +29,11 @@ def set_expected_create_table_statement_step(context, table_name):
     context.data['table_name'] = table_name
     context.data['expected_create_table_statement'] = context.text
     context.data['event_type'] = 'schema_event'
+
+@given(u'an expected avro schema for for table {table_name}')
+def set_expected_avro_schema(context, table_name):
+    context.data['table_name'] = table_name
+    context.data['expected_avro_schema'] = json.loads(context.text)
 
 @when(u'we execute the statement in {db_name} database')
 def execute_statement_step(context, db_name):
@@ -75,6 +83,16 @@ def check_global_event_state_has_correct_info(context, db_name):
         'event_type': context.data['event_type'],
     }
     assert_result_correctness(result, expected)
+
+@then(u'schematizer should have correct source info')
+def check_schematizer_has_correct_source_info(context):
+    schematizer = get_schematizer()
+    source = unlist(schematizer.get_sources_by_namespace(context.data['namespace']))
+    topic = unlist(schematizer.get_topics_by_source_id(source.source_id))
+    schema = schematizer.get_latest_schema_by_topic_name(topic.name)
+    assert source.name == context.data['table_name']
+    assert source.namespace.name == context.data['namespace']
+    assert schema.schema_json == context.data['expected_avro_schema']
 
 def assert_result_correctness(result, expected):
     for key, value in expected.iteritems():

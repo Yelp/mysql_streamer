@@ -48,6 +48,7 @@ def before_feature(context, _):
     context.data = {
         'heartbeat_serial': heartbeat_serial,
         'offset': 0,
+        'namespace': 'refresh_primary.yelp',
     }
 
 def after_scenario(context, _):
