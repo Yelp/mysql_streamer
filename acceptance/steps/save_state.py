@@ -84,7 +84,7 @@ def check_global_event_state_has_correct_info(context, db_name):
     }
     assert_result_correctness(result, expected)
 
-@then(u'schematizer should have correct source info')
+@then(u'schematizer should have correct info')
 def check_schematizer_has_correct_source_info(context):
     schematizer = get_schematizer()
     source = unlist(schematizer.get_sources_by_namespace(context.data['namespace']))

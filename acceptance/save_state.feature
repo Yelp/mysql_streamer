@@ -23,7 +23,7 @@ Feature: Save States
     Then schematracker should have correct schema information
     And rbrstate.schema_event_state should have correct state information
     And rbrstate.global_event_state should have correct state information
-    And schematizer should have correct source info
+    And schematizer should have correct info
 
   Scenario: Execute an alter statement
     Given a query to execute for table biz
@@ -46,4 +46,4 @@ Feature: Save States
     Then schematracker should have correct schema information
     And rbrstate.schema_event_state should have correct state information
     And rbrstate.global_event_state should have correct state information
-    And schematizer should have correct source info
+    And schematizer should have correct info
