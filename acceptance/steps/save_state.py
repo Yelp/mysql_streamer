@@ -30,7 +30,7 @@ def set_expected_create_table_statement_step(context, table_name):
     context.data['expected_create_table_statement'] = context.text
     context.data['event_type'] = 'schema_event'
 
-@given(u'an expected avro schema for for table {table_name}')
+@given(u'an expected avro schema for table {table_name}')
 def set_expected_avro_schema(context, table_name):
     context.data['table_name'] = table_name
     context.data['expected_avro_schema'] = json.loads(context.text)
@@ -88,7 +88,7 @@ def check_global_event_state_has_correct_info(context, db_name):
 def check_schematizer_has_correct_source_info(context):
     schematizer = get_schematizer()
     sources = schematizer.get_sources_by_namespace(context.data['namespace'])
-    source = reduce(lambda s: s.name == context.data['table_name'], sources)
+    source = next(src for src in reversed(sources) if src.name == context.data['table_name'])
     topic = unlist(schematizer.get_topics_by_source_id(source.source_id))
     schema = schematizer.get_latest_schema_by_topic_name(topic.name)
     assert schema.topic.source.name == context.data['table_name']
