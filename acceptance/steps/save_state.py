@@ -66,7 +66,7 @@ def check_schema_event_state_has_correct_info(context, db_name):
         'table_name': context.data['table_name'],
         'query': context.data['query'],
     }
-    result = examine_db_state(db_name, query, expected)
+    result = assert_expected_db_state(db_name, query, expected)
 
     position = json.loads(result['position'])
     # Heartbeat serial and offset uniquely identifies a position.
@@ -83,7 +83,7 @@ def check_global_event_state_has_correct_info(context, db_name):
         'table_name': context.data['table_name'],
         'event_type': context.data['event_type'],
     }
-    examine_db_state(db_name, query, expected)
+    assert_expected_db_state(db_name, query, expected)
 
 @then(u'schematizer should have correct info')
 def check_schematizer_has_correct_source_info(context):
@@ -105,9 +105,9 @@ def check_data_event_checkpoint_has_correct_info(context, db_name):
         'kafka_offset': context.data['row_count'],
         'kafka_topic': context.data['kafka_topic'],
     }
-    examine_db_state(db_name, query, expected)
+    assert_expected_db_state(db_name, query, expected)
 
-def examine_db_state(db_name, query, expected):
+def assert_expected_db_state(db_name, query, expected):
     time.sleep(DB_WAIT_TIME)
     result = execute_query(db_name, query)
     assert_result_correctness(result, expected)

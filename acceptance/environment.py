@@ -2,15 +2,15 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from distutils.util import strtobool as bool_
 import os
+from distutils.util import strtobool as bool_
 
-from compose.cli.command import Command
 import docker
 import pymysql
+from compose.cli.command import Command
 
-from data_pipeline.testing_helpers.kafka_docker import KafkaDocker
 from data_pipeline.testing_helpers.kafka_docker import create_kafka_docker_topic
+from data_pipeline.testing_helpers.kafka_docker import KafkaDocker
 
 
 def get_service_host(service_name):
