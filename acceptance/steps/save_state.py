@@ -12,6 +12,7 @@ from yelp_lib.containers.lists import unlist
 
 sys.path.append('../../environment.py')
 from environment import execute_query
+from environment import setup_kafka_topic
 
 
 DB_WAIT_TIME = 1
@@ -20,9 +21,8 @@ DB_WAIT_TIME = 1
 @given(u'a query to execute for table {table_name}')
 def prepare_query_step(context, table_name):
     # context.text is the docstring that follows the Given clause in feature file.
-    query = context.text
     context.data['table_name'] = table_name
-    context.data['query'] = query
+    context.data['query'] = context.text
 
 @given(u'an expected create table statement for table {table_name}')
 def set_expected_create_table_statement_step(context, table_name):
@@ -34,6 +34,12 @@ def set_expected_create_table_statement_step(context, table_name):
 def set_expected_avro_schema(context, table_name):
     context.data['table_name'] = table_name
     context.data['expected_avro_schema'] = json.loads(context.text)
+
+@given(u'a query to insert data for table {table_name}')
+def add_data_step(context, table_name):
+    context.data['table_name'] = table_name
+    context.data['query'] = context.text
+    context.data['row_count'] = 1
 
 @when(u'we execute the statement in {db_name} database')
 def execute_statement_step(context, db_name):
@@ -54,16 +60,13 @@ def check_schema_tracker_has_correct_info(context, db_name):
 
 @then(u'{db_name}.schema_event_state should have correct state information')
 def check_schema_event_state_has_correct_info(context, db_name):
-    # Wait a bit time for change to happen in rbr state db
-    time.sleep(DB_WAIT_TIME)
     query = 'select * from schema_event_state order by time_created desc limit 1'
-    result = execute_query(db_name, query)
     expected = {
         'status': 'Completed',
         'table_name': context.data['table_name'],
         'query': context.data['query'],
     }
-    assert_result_correctness(result, expected)
+    result = examine_db_state(db_name, query, expected)
 
     position = json.loads(result['position'])
     # Heartbeat serial and offset uniquely identifies a position.
@@ -75,14 +78,12 @@ def check_schema_event_state_has_correct_info(context, db_name):
 
 @then(u'{db_name}.global_event_state should have correct state information')
 def check_global_event_state_has_correct_info(context, db_name):
-    time.sleep(DB_WAIT_TIME)
     query = 'select * from global_event_state'
-    result = execute_query(db_name, query)
     expected = {
         'table_name': context.data['table_name'],
         'event_type': context.data['event_type'],
     }
-    assert_result_correctness(result, expected)
+    examine_db_state(db_name, query, expected)
 
 @then(u'schematizer should have correct info')
 def check_schematizer_has_correct_source_info(context):
@@ -91,9 +92,26 @@ def check_schematizer_has_correct_source_info(context):
     source = next(src for src in reversed(sources) if src.name == context.data['table_name'])
     topic = unlist(schematizer.get_topics_by_source_id(source.source_id))
     schema = schematizer.get_latest_schema_by_topic_name(topic.name)
+    context.data['kafka_topic'] = topic.name
+    setup_kafka_topic(topic.name)
     assert schema.topic.source.name == context.data['table_name']
     assert schema.topic.source.namespace.name == context.data['namespace']
     assert schema.schema_json == context.data['expected_avro_schema']
+
+@then(u'{db_name}.data_event_checkpoint should have correct state information')
+def check_data_event_checkpoint_has_correct_info(context, db_name):
+    query = 'select * from data_event_checkpoint limit 1'
+    expected = {
+        'kafka_offset': context.data['row_count'],
+        'kafka_topic': context.data['kafka_topic'],
+    }
+    examine_db_state(db_name, query, expected)
+
+def examine_db_state(db_name, query, expected):
+    time.sleep(DB_WAIT_TIME)
+    result = execute_query(db_name, query)
+    assert_result_correctness(result, expected)
+    return result
 
 def assert_result_correctness(result, expected):
     for key, value in expected.iteritems():

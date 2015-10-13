@@ -47,3 +47,11 @@ Feature: Save States
     And rbrstate.schema_event_state should have correct state information
     And rbrstate.global_event_state should have correct state information
     And schematizer should have correct info
+
+  Scenario: add data
+    Given a query to insert data for table biz
+        """
+        INSERT INTO `biz` VALUES (1, 'yelp', 'SF')
+        """
+    When we execute the statement in rbrsource database
+    Then rbrstate.data_event_checkpoint should have correct state information

@@ -9,6 +9,9 @@ from compose.cli.command import Command
 import docker
 import pymysql
 
+from data_pipeline.testing_helpers.kafka_docker import KafkaDocker
+from data_pipeline.testing_helpers.kafka_docker import create_kafka_docker_topic
+
 
 def get_service_host(service_name):
     client = docker.Client()
@@ -36,6 +39,13 @@ def execute_query(db_name, query):
     connection.commit()
     connection.close()
     return result
+
+def setup_kafka_topic(topic_name):
+    create_kafka_docker_topic(
+        kafka_docker=KafkaDocker.get_connection(),
+        topic=str(topic_name),
+        project='replicationhandler'
+    )
 
 def before_feature(context, _):
     # Add a heartbeat event and clear out context.
