@@ -51,9 +51,7 @@ def before_feature(context, _):
     # Add a heartbeat event and clear out context.
     heartbeat_serial = 123
     heartbeat_query = 'update yelp_heartbeat.replication_heartbeat set \
-        serial={serial} where serial=0'.format(
-            serial=heartbeat_serial
-        )
+        serial={serial} where serial=0'.format(serial=heartbeat_serial)
     execute_query('rbrsource', heartbeat_query)
     context.data = {
         'heartbeat_serial': heartbeat_serial,

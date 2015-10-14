@@ -43,7 +43,7 @@ def add_data_step(context, table_name):
 
 @when(u'we execute the statement in {db_name} database')
 def execute_statement_step(context, db_name):
-    result = execute_query(db_name, context.data['query'])
+    execute_query(db_name, context.data['query'])
 
 @then(u'{db_name} should have correct schema information')
 def check_schema_tracker_has_correct_info(context, db_name):
