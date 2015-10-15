@@ -1,4 +1,4 @@
-Feature: Complext Statements
+Feature: Complex Statements
 
   Scenario: Apply a series of schema changing queries
     Given a query to execute for table employee
@@ -50,6 +50,6 @@ Feature: Complext Statements
     Given an expected avro schema for table employee_new
       """
       {"fields": [{"default": null, "type": ["null", "int"], "name": "id"}, {"default": null, "maxlen": "64", "type": ["null", "string"], "name": "name"}, {"default": 0, "type": "int", "name": "is_active"}, {"default": 0.0, "scale": "2", "type": "float", "name": "salary", "precision": "10"}, {"default": null, "type": ["null", "string"], "name": "job_description"}, {"default": null, "maxlen": "128", "type": ["null", "string"], "name": "office"}, {"type": "int", "name": "created_at"}, {"type": "int", "name": "update_at"}], "namespace": "", "name": "employee_new", "type": "record"}
-    """
+      """
     Then schematracker should have correct schema information
     And schematizer should have correct info
