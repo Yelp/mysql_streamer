@@ -26,7 +26,8 @@ from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.util.position import LogPosition
-from testing.events import DataEvent
+from testing.events import make_data_create_event
+from testing.events import make_data_update_event
 
 
 DataHandlerExternalPatches = namedtuple(
@@ -107,11 +108,11 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def data_create_events(self):
-        return DataEvent.make_data_create_event()
+        return make_data_create_event()
 
     @pytest.fixture
     def data_update_events(self):
-        return DataEvent.make_data_update_event()
+        return make_data_update_event()
 
     @pytest.fixture
     def test_table(self):

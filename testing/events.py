@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 import datetime
+import time
 
 from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
 from pymysqlreplication.constants.BINLOG import UPDATE_ROWS_EVENT_V2
 
 from data_pipeline.message import CreateMessage
 from data_pipeline.message import UpdateMessage
+
+from replication_handler.util.misc import DataEvent
 
 
 class GtidEvent(object):
@@ -22,47 +25,40 @@ class QueryEvent(object):
         self.query = query
 
 
-class DataEvent(object):
-    """Class to test Single Row Event"""
+def make_data_create_event():
+    rows = [
+        {'values': {'a_number': 100}},
+        {'values': {'a_number': 200}},
+        {'values': {'a_number': 300}},
+        {'values': {'a_number': 400}}
+    ]
+    return [DataEvent(
+        schema="fake_database",
+        table="fake_table",
+        log_pos=100,
+        log_file="binlog.0001",
+        row=row,
+        timestamp=time.mktime(datetime.datetime.now().timetuple()),
+        message_type=CreateMessage
+    ) for row in rows]
 
-    def __init__(self, schema, table, row, timestamp, message_type):
-        self.schema = schema
-        self.table = table
-        self.row = row
-        self.timestamp = timestamp
-        self.message_type = message_type
 
-    @classmethod
-    def make_data_create_event(cls):
-        rows = [
-            {'values': {'a_number': 100}},
-            {'values': {'a_number': 200}},
-            {'values': {'a_number': 300}},
-            {'values': {'a_number': 400}}
-        ]
-        return [cls(
-            table="fake_table",
-            schema="fake_database",
-            row=row,
-            timestamp=datetime.datetime.now(),
-            message_type=CreateMessage
-        ) for row in rows]
-
-    @classmethod
-    def make_data_update_event(cls):
-        rows = [
-            {'after_values': {'a_number': 100}, 'before_values': {'a_number': 110}},
-            {'after_values': {'a_number': 200}, 'before_values': {'a_number': 210}},
-            {'after_values': {'a_number': 300}, 'before_values': {'a_number': 310}},
-            {'after_values': {'a_number': 400}, 'before_values': {'a_number': 410}}
-        ]
-        return [cls(
-            table="fake_table",
-            schema="fake_database",
-            row=row,
-            timestamp=datetime.datetime.now(),
-            message_type=UpdateMessage
-        ) for row in rows]
+def make_data_update_event():
+    rows = [
+        {'after_values': {'a_number': 100}, 'before_values': {'a_number': 110}},
+        {'after_values': {'a_number': 200}, 'before_values': {'a_number': 210}},
+        {'after_values': {'a_number': 300}, 'before_values': {'a_number': 310}},
+        {'after_values': {'a_number': 400}, 'before_values': {'a_number': 410}}
+    ]
+    return [DataEvent(
+        table="fake_table",
+        schema="fake_database",
+        log_pos=100,
+        log_file="binlog.0001",
+        row=row,
+        timestamp=time.mktime(datetime.datetime.now().timetuple()),
+        message_type=UpdateMessage
+    ) for row in rows]
 
 
 class RowsEvent(object):

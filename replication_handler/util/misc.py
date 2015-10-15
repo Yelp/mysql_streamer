@@ -31,6 +31,16 @@ class ReplicationHandlerEvent(object):
 class DataEvent(object):
     """ Class to replace pymysqlreplication RowsEvent, since we want one
     row per event.
+
+    Args:
+        schema(string): schema/database name of event.
+        table(string): table name of event.
+        log_pos(int): binary log position of event.
+        log_file(string): binary log file name of event.
+        row(dict): a dictionary containing fields and values of the changed row.
+        timestamp(int): timestamp of event, in epoch time format.
+        message_type(data_pipeline.message_type): the type of event, can be CreateMessage,
+          UpdateMessage, DeleteMessage or RefreshMessage.
     """
 
     def __init__(
