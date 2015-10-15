@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import datetime
 import mock
 import pytest
 from data_pipeline.message import CreateMessage
@@ -269,6 +270,7 @@ class TestRecoveryHandler(object):
         data_event.message_type = CreateMessage
         data_event.table = 'business'
         data_event.schema = 'yelp'
+        data_event.timestamp = datetime.datetime.now()
         stream.peek.return_value.event = data_event
         stream.next.return_value.event = data_event
         stream.next.return_value.position = LogPosition()

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import datetime
+
 from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
 from pymysqlreplication.constants.BINLOG import UPDATE_ROWS_EVENT_V2
 
@@ -23,10 +25,11 @@ class QueryEvent(object):
 class DataEvent(object):
     """Class to test Single Row Event"""
 
-    def __init__(self, schema, table, row, message_type):
+    def __init__(self, schema, table, row, timestamp, message_type):
         self.schema = schema
         self.table = table
         self.row = row
+        self.timestamp = timestamp
         self.message_type = message_type
 
     @classmethod
@@ -41,6 +44,7 @@ class DataEvent(object):
             table="fake_table",
             schema="fake_database",
             row=row,
+            timestamp=datetime.datetime.now(),
             message_type=CreateMessage
         ) for row in rows]
 
@@ -56,6 +60,7 @@ class DataEvent(object):
             table="fake_table",
             schema="fake_database",
             row=row,
+            timestamp=datetime.datetime.now(),
             message_type=UpdateMessage
         ) for row in rows]
 

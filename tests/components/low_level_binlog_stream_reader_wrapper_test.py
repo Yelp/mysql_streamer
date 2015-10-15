@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import datetime
 import mock
 import pytest
 
@@ -78,6 +79,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         data_event.event_type = WRITE_ROWS_EVENT_V2
         data_event.log_pos = 100
         data_event.log_file = "binglog.001"
+        data_event.timestamp = datetime.datetime.now()
         return data_event
 
     def test_none_events(self, patch_stream):

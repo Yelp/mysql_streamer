@@ -44,6 +44,7 @@ class MessageBuilder(object):
                 database_name=self.event.schema,
                 table_name=self.event.table
             ),
+            "timestamp": self.event.timestamp
         }
 
         if self.event.message_type == UpdateMessage:

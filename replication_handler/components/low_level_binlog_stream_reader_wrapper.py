@@ -85,6 +85,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 log_pos=self.stream.log_pos,
                 log_file=self.stream.log_file,
                 row=row,
+                timestamp=row_event.timestamp,
                 message_type=message_type_map[row_event.event_type]
             ) for row in row_event.rows
         ]
