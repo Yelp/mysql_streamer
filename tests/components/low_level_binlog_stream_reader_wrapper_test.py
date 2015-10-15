@@ -7,6 +7,7 @@ from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 
+from data_pipeline.message import RefreshMessage
 from replication_handler import config
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
 from replication_handler.util.position import GtidPosition
@@ -48,7 +49,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         assert stream.pop() == schema_event
 
     def test_flattern_data_events(self, patch_stream):
-        data_event = self._prepare_data_event()
+        data_event = self._prepare_data_event('fake_table')
         gtid_event = mock.Mock(spec=GtidEvent)
         query_event = mock.Mock(spec=QueryEvent)
         patch_stream.return_value.fetchone.side_effect = [
@@ -70,11 +71,26 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         assert stream.pop().row == data_event.rows[1]
         assert stream.pop().row == data_event.rows[2]
 
-    def _prepare_data_event(self):
+    def test_get_data_events_refresh(self, patch_stream):
+        data_event = self._prepare_data_event(
+            'fake_table_data_pipeline_refresh'
+        )
+        patch_stream.return_value.fetchone.side_effect = [data_event]
+        assert len(data_event.rows) == 3
+        stream = LowLevelBinlogStreamReaderWrapper(
+            LogPosition(
+                log_pos=100,
+                log_file="binlog.001",
+            )
+        )
+        assert stream.pop().table == 'fake_table'
+        assert stream.pop().message_type == RefreshMessage
+
+    def _prepare_data_event(self, table):
         data_event = mock.Mock(spec=WriteRowsEvent)
         data_event.rows = RowsEvent.make_add_rows_event().rows
         data_event.schema = 'fake_schema'
-        data_event.table = 'fake_table'
+        data_event.table = table
         data_event.event_type = WRITE_ROWS_EVENT_V2
         data_event.log_pos = 100
         data_event.log_file = "binglog.001"
