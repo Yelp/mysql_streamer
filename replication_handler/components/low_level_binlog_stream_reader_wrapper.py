@@ -79,15 +79,15 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _get_data_events_from_row_event(self, row_event):
         """ Convert the rows into events."""
-        origin_table = row_event.table
+        target_table = row_event.table
         message_type = message_type_map[row_event.event_type]
         if '_data_pipeline_refresh' in row_event.table:
-            origin_table = row_event.table.replace('_data_pipeline_refresh', '')
+            target_table = row_event.table.replace('_data_pipeline_refresh', '')
             message_type = RefreshMessage
         return [
             DataEvent(
                 schema=row_event.schema,
-                table=origin_table,
+                table=target_table,
                 log_pos=self.stream.log_pos,
                 log_file=self.stream.log_file,
                 row=row,
