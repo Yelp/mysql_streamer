@@ -49,12 +49,9 @@ def setup_kafka_topic(topic_name):
 
 def before_feature(context, _):
     # Add a heartbeat event and clear out context.
-    heartbeat_serial = 123
-    heartbeat_query = 'update yelp_heartbeat.replication_heartbeat set \
-        serial={serial} where serial=0'.format(serial=heartbeat_serial)
-    execute_query('rbrsource', heartbeat_query)
+    _set_heartbeat(0, 123)
     context.data = {
-        'heartbeat_serial': heartbeat_serial,
+        'heartbeat_serial': 123,
         'offset': 0,
         'namespace': 'refresh_primary.yelp',
     }
@@ -62,6 +59,17 @@ def before_feature(context, _):
 def after_scenario(context, _):
     context.data['offset'] += 1
     context.data['expected_create_table_statement'] = None
+
+def after_feature(context, _):
+    # Revert the heartbeat.
+    _set_heartbeat(123, 0)
+
+def _set_heartbeat(before, after):
+    heartbeat_query = 'update yelp_heartbeat.replication_heartbeat set serial={after} where serial={before}'.format(
+        before=before,
+        after=after
+    )
+    execute_query('rbrsource', heartbeat_query)
 
 BEHAVE_DEBUG_ON_ERROR = bool_(os.environ.get("BEHAVE_DEBUG_ON_ERROR", "yes"))
 

@@ -15,7 +15,7 @@ from environment import execute_query
 from environment import setup_kafka_topic
 
 
-DB_WAIT_TIME = 1
+DB_WAIT_TIME = 1.5
 
 
 @given(u'a query to execute for table {table_name}')
