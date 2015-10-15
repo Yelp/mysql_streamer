@@ -337,6 +337,7 @@ class TestDataEventHandler(object):
                 schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=upstream_position_info,
                 keys=(u'primary_key', ),
+                timestamp=data_event.timestamp,
                 contains_pii=True,
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
@@ -418,6 +419,7 @@ class TestDataEventHandler(object):
                 upstream_position_info=upstream_position_info,
                 previous_payload_data=data_event.row["before_values"],
                 keys=(u'primary_key', ),
+                timestamp=data_event.timestamp,
                 contains_pii=True,
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
@@ -472,6 +474,7 @@ class TestDataEventHandler(object):
             assert expected_message.message_type == actual_message.message_type
             assert expected_message.upstream_position_info == actual_message.upstream_position_info
             assert expected_message.contains_pii == actual_message.contains_pii
+            assert expected_message.timestamp == actual_message.timestamp
             # TODO(DATAPIPE-350): keys are inaccessible right now.
             # assert expected_message.keys == actual_message.keys
             if type(expected_message) == UpdateMessage:
