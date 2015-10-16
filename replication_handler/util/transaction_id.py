@@ -4,11 +4,12 @@ from __future__ import unicode_literals
 
 import os
 import simplejson
+from cached_property import cached_property
 
-from data_pipeline.base_meta_attribute import BaseMetaAttribute
+from data_pipeline.meta_attribute import MetaAttribute
 
 
-class TransactionId(BaseMetaAttribute):
+class TransactionId(MetaAttribute):
     """Transaction is a MetaAttribute to be added in a data pipeline message.
     This allows us to reconstruct the order of messages in replication by
     specifying a statement's exact position in the binlog file. It has to
@@ -20,24 +21,28 @@ class TransactionId(BaseMetaAttribute):
     required to register it with schematizer.
     """
 
-    @property
+    @cached_property
     def owner_email(self):
         return 'bam+replication_handler@yelp.com'
 
-    @property
+    @cached_property
     def source(self):
         return 'transaction_id'
 
-    @property
+    @cached_property
     def namespace(self):
         return 'yelp.replication_handler'
 
-    @property
+    @cached_property
     def contains_pii(self):
         return False
 
-    @property
-    def schema(self):
+    @cached_property
+    def base_schema_id(self):
+        return 0
+
+    @cached_property
+    def avro_schema(self):
         schema_path = os.path.join(
             os.path.dirname(__file__),
             os.pardir,
@@ -45,7 +50,7 @@ class TransactionId(BaseMetaAttribute):
             'schema/avro_schema/transaction_id_v1.avsc'
         )
         with open(schema_path, 'r') as f:
-            return simplejson.dumps(simplejson.loads(f.read()))
+            return simplejson.loads(f.read())
 
     def __init__(self, cluster_name, log_file, log_pos):
         self._verify_init_params(cluster_name, log_file, log_pos)
@@ -66,7 +71,7 @@ class TransactionId(BaseMetaAttribute):
             'log_pos': self.log_pos
         }
 
-    @property
+    @cached_property
     def payload(self):
         return self.to_dict()
 
