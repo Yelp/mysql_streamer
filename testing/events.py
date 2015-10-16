@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import datetime
 import time
 
 from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
@@ -38,7 +37,7 @@ def make_data_create_event():
         log_pos=100,
         log_file="binlog.0001",
         row=row,
-        timestamp=time.mktime(datetime.datetime.now().timetuple()),
+        timestamp=int(time.time()),
         message_type=CreateMessage
     ) for row in rows]
 
@@ -56,7 +55,7 @@ def make_data_update_event():
         log_pos=100,
         log_file="binlog.0001",
         row=row,
-        timestamp=time.mktime(datetime.datetime.now().timetuple()),
+        timestamp=int(time.time()),
         message_type=UpdateMessage
     ) for row in rows]
 

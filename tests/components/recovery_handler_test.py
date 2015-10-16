@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import datetime
 import mock
 import pytest
 import time
@@ -272,7 +271,7 @@ class TestRecoveryHandler(object):
         data_event.message_type = CreateMessage
         data_event.table = 'business'
         data_event.schema = 'yelp'
-        data_event.timestamp = time.mktime(datetime.datetime.now().timetuple())
+        data_event.timestamp = int(time.time())
         stream.peek.return_value.event = data_event
         stream.next.return_value.event = data_event
         stream.next.return_value.position = LogPosition()
