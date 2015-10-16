@@ -4,17 +4,15 @@ from __future__ import unicode_literals
 
 import mock
 import pytest
-
-from pymysqlreplication.event import QueryEvent
-
 from data_pipeline.message import CreateMessage
 from data_pipeline.producer import Producer
 from pii_generator.components.pii_identifier import PIIIdentifier
+from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
+from replication_handler.components._pending_schema_event_recovery_handler import BadSchemaEventStateException
 from replication_handler.components.recovery_handler import RecoveryHandler
-from replication_handler.components.recovery_handler import BadSchemaEventStateException
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
@@ -73,23 +71,38 @@ class TestRecoveryHandler(object):
         return mock.Mock()
 
     @pytest.fixture
-    def pending_alter_schema_event_state(self, create_table_statement, alter_table_statement):
+    def database_name(self):
+        return "fake-db"
+
+    @pytest.fixture
+    def pending_alter_schema_event_state(
+        self,
+        create_table_statement,
+        alter_table_statement,
+        database_name
+    ):
         return SchemaEventState(
             position={"gtid": "sid:12"},
             status=SchemaEventStatus.PENDING,
             query=alter_table_statement,
             table_name="Business",
             create_table_statement=create_table_statement,
+            database_name=database_name
         )
 
     @pytest.fixture
-    def pending_create_schema_event_state(self, create_table_statement):
+    def pending_create_schema_event_state(
+        self,
+        create_table_statement,
+        database_name
+    ):
         return SchemaEventState(
             position={"gtid": "sid:12"},
             status=SchemaEventStatus.PENDING,
             query=create_table_statement,
             table_name="Business",
             create_table_statement=create_table_statement,
+            database_name=database_name
         )
 
     @pytest.fixture
@@ -183,7 +196,8 @@ class TestRecoveryHandler(object):
         patch_session_connect_begin,
         patch_schema_tracker_connection,
         patch_config,
-        mock_cursor
+        mock_cursor,
+        database_name
     ):
         recovery_handler = RecoveryHandler(
             stream,
@@ -194,9 +208,11 @@ class TestRecoveryHandler(object):
         )
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
-        assert mock_cursor.execute.call_count == 2
+        assert mock_cursor.execute.call_count == 4
         assert mock_cursor.execute.call_args_list == [
-            mock.call("DROP TABLE `Business`"),
+            mock.call("USE %s" % database_name),
+            mock.call("DROP TABLE IF EXISTS `Business`"),
+            mock.call("USE %s" % database_name),
             mock.call(create_table_statement)
         ]
         assert patch_delete.call_count == 1
@@ -212,7 +228,8 @@ class TestRecoveryHandler(object):
         patch_session_connect_begin,
         patch_schema_tracker_connection,
         patch_config,
-        mock_cursor
+        mock_cursor,
+        database_name
     ):
         recovery_handler = RecoveryHandler(
             stream,
@@ -223,9 +240,10 @@ class TestRecoveryHandler(object):
         )
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
-        assert mock_cursor.execute.call_count == 1
+        assert mock_cursor.execute.call_count == 2
         assert mock_cursor.execute.call_args_list == [
-            mock.call("DROP TABLE `Business`"),
+            mock.call("USE %s" % database_name),
+            mock.call("DROP TABLE IF EXISTS `Business`"),
         ]
         assert patch_delete.call_count == 1
 

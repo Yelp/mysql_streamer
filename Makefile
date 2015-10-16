@@ -5,9 +5,9 @@ DOCKER_TAG ?= replication-handler-dev-$(USER)
 test:
 	tox
 
-itest: build-image
+itest: cook-image
 
-build-image:
+cook-image:
 	docker build -t $(DOCKER_TAG) .
 
 clean:

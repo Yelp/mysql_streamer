@@ -1,9 +1,24 @@
-pypy:
+replicationhandler:
   build: .
   links:
     - kafka
-  volumes:
-      - .:/data
+    - zookeeper:zk
+    - rbrsource
+    - schematracker
+    - rbrstate
+    - schematizer
+  volumes_from:
+    - replicationhandlerconfigs
+replicationhandlerconfigs:
+  build: acceptance/configs/
+# Replication Handler databases
+rbrsource:
+    build: devdbs/rbr_source/
+schematracker:
+    build: devdbs/schema_tracker/
+rbrstate:
+    build: devdbs/rbr_state/
+
 zookeeper:
   image: wurstmeister/zookeeper
   ports:

@@ -10,6 +10,7 @@ from data_pipeline.producer import Producer
 from pii_generator.components.pii_identifier import PIIIdentifier
 from yelp_conn.connection_set import ConnectionSet
 
+import replication_handler.components.schema_event_handler
 from replication_handler import config
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.schema_event_handler import SchemaEventHandler
@@ -41,7 +42,6 @@ SchemaHandlerExternalPatches = namedtuple(
 
 
 class TestSchemaEventHandler(object):
-
     @pytest.fixture
     def producer(self):
         return mock.Mock(autospect=Producer)
@@ -70,6 +70,22 @@ class TestSchemaEventHandler(object):
             register_dry_run=True,
         )
 
+    @pytest.yield_fixture
+    def save_position(self):
+        with mock.patch.object(
+            replication_handler.components.schema_event_handler,
+            'save_position'
+        ) as save_position_mock:
+            yield save_position_mock
+
+    @pytest.yield_fixture
+    def schema_wrapper_mock(self):
+        with mock.patch.object(
+            replication_handler.components.schema_event_handler,
+            'SchemaWrapper'
+        ) as schema_wrapper_mock:
+            yield schema_wrapper_mock
+
     @pytest.fixture
     def test_table(self):
         return "fake_table"
@@ -86,29 +102,55 @@ class TestSchemaEventHandler(object):
     def test_position(self):
         return GtidPosition(gtid="3E11FA47-71CA-11E1-9E33-C80AA9429562:23")
 
-    @pytest.fixture
-    def create_table_schema_event(self, test_schema, test_table):
-        query = "CREATE TABLE `{0}` (`a_number` int)".format(test_table)
+    @pytest.fixture(params=[
+        True,
+        False
+    ])
+    def create_table_schema_event(self, test_schema, test_table, request):
+        include_db_in_event = request.param
+        schema = test_schema if include_db_in_event else ''
+        full_name = ('`{1}`' if include_db_in_event else '`{0}`.`{1}`').format(
+            test_schema,
+            test_table
+        )
+        query = "CREATE TABLE {0} (`a_number` int)".format(full_name)
+        return QueryEvent(schema=schema, query=query)
+
+    @pytest.fixture(params=[
+        True,
+        False
+    ])
+    def alter_table_schema_event(self, test_schema, test_table, request):
+        include_db_in_event = request.param
+        schema = test_schema if include_db_in_event else ''
+        full_name = ('`{1}`' if include_db_in_event else '`{0}`.`{1}`').format(
+            test_schema,
+            test_table
+        )
+        query = "ALTER TABLE {0} ADD (`another_number` int)".format(full_name)
+        return QueryEvent(schema=schema, query=query)
+
+    @pytest.fixture(params=[
+        "ALTER TABLE `{0}` RENAME `some_new_name`",
+        "RENAME TABLE `{0}` TO `some_new_name`"
+    ])
+    def rename_table_schema_event(self, request, test_schema, test_table):
+        query = request.param.format(test_table)
         return QueryEvent(schema=test_schema, query=query)
 
-    @pytest.fixture
-    def alter_table_schema_event(self, test_schema, test_table):
-        query = "ALTER TABLE `{0}` ADD (`another_number` int)".format(test_table)
-        return QueryEvent(schema=test_schema, query=query)
-
-    @pytest.fixture
-    def bad_query_event(self, test_schema):
-        query = "CREATE TABLEthisisabadquery"
-        return QueryEvent(schema=test_schema, query=query)
-
-    @pytest.fixture
-    def begin_query_event(self, test_schema):
-        query = "BEGIN"
+    @pytest.fixture(params=[
+        "DROP TRIGGER `yelp`.`pt_osc_yelp_ad_asset_del`",
+        "BEGIN",
+        "COMMIT",
+        "USE YELP"
+    ])
+    def unsupported_query_event(self, test_schema, request):
+        query = request.param
         return QueryEvent(schema=test_schema, query=query)
 
     @pytest.fixture
     def non_schema_relevant_query_event(self, test_schema):
-        query = "use yelp"
+        query = "CREATE DATABASE weird_new_db"
         schema = test_schema
         return QueryEvent(schema=schema, query=query)
 
@@ -117,6 +159,13 @@ class TestSchemaEventHandler(object):
         return ShowCreateResult(
             table=test_table,
             query=create_table_schema_event.query
+        )
+
+    @pytest.fixture
+    def show_schemaless_create_result_initial(self, test_table, schemaless_create_table_schema_event):
+        return ShowCreateResult(
+            table=test_table,
+            query=schemaless_create_table_schema_event.query
         )
 
     @pytest.fixture
@@ -333,6 +382,7 @@ class TestSchemaEventHandler(object):
         schematizer_client,
         producer,
         test_position,
+        save_position,
         external_patches,
         schema_event_handler,
         create_table_schema_event,
@@ -340,6 +390,7 @@ class TestSchemaEventHandler(object):
         table_with_schema_changes,
         mock_schema_tracker_cursor,
         create_table_schema_store_response,
+        test_schema
     ):
         """Integration test the things that need to be called during a handle
            create table event hence many mocks
@@ -361,13 +412,18 @@ class TestSchemaEventHandler(object):
             schema_event_handler,
             mysql_statements,
             create_table_schema_store_response,
-            external_patches
+            external_patches,
+            test_schema
         )
+
+        assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
 
     def test_handle_event_alter_table(
         self,
         producer,
         test_position,
+        save_position,
         external_patches,
         schema_event_handler,
         schematizer_client,
@@ -377,6 +433,7 @@ class TestSchemaEventHandler(object):
         mock_schema_tracker_cursor,
         table_with_schema_changes,
         alter_table_schema_store_response,
+        test_schema
     ):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
@@ -406,13 +463,45 @@ class TestSchemaEventHandler(object):
             schema_event_handler,
             mysql_statements,
             alter_table_schema_store_response,
-            external_patches
+            external_patches,
+            test_schema
         )
+
+        assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
+
+    def test_handle_event_rename_table(
+        self,
+        producer,
+        test_position,
+        save_position,
+        external_patches,
+        schema_event_handler,
+        rename_table_schema_event,
+        schema_wrapper_mock
+    ):
+        schema_event_handler.handle_event(rename_table_schema_event, test_position)
+
+        assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
+
+        assert schema_wrapper_mock().reset_cache.call_count == 1
+
+        assert external_patches.execute_query.call_count == 1
+        assert external_patches.execute_query.call_args_list == [
+            mock.call(
+                rename_table_schema_event.query,
+                rename_table_schema_event.schema,
+            )
+        ]
+
+        assert external_patches.upsert_global_event_state.call_count == 1
 
     def test_filter_out_wrong_schema(
         self,
         producer,
         test_position,
+        save_position,
         external_patches,
         schema_event_handler,
         create_table_schema_event,
@@ -423,34 +512,12 @@ class TestSchemaEventHandler(object):
         assert external_patches.create_schema_event_state.call_count == 0
         assert external_patches.update_schema_event_state.call_count == 0
         assert external_patches.upsert_global_event_state.call_count == 0
-        assert producer.flush.call_count == 0
-
-    def test_bad_query(
-        self,
-        test_position,
-        external_patches,
-        schema_event_handler,
-        bad_query_event,
-    ):
-        with pytest.raises(Exception):
-            schema_event_handler.handle_event(bad_query_event, test_position)
-
-    def test_begin_query(
-        self,
-        producer,
-        test_position,
-        external_patches,
-        schema_event_handler,
-        begin_query_event
-    ):
-        schema_event_handler.handle_event(begin_query_event, test_position)
-        assert external_patches.execute_query.call_count == 0
-        assert producer.flush.call_count == 0
 
     def test_non_schema_relevant_query(
         self,
         producer,
         test_position,
+        save_position,
         external_patches,
         schema_event_handler,
         mock_schema_tracker_cursor,
@@ -464,11 +531,34 @@ class TestSchemaEventHandler(object):
                 non_schema_relevant_query_event.schema,
             )
         ]
-        assert producer.flush.call_count == 0
+        # We should flush and save state before
+        assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
+        # And after
+        assert external_patches.upsert_global_event_state.call_count == 1
+
+    def test_unsupported_query(
+        self,
+        producer,
+        test_position,
+        save_position,
+        external_patches,
+        schema_event_handler,
+        mock_schema_tracker_cursor,
+        unsupported_query_event,
+    ):
+        self._assert_query_skipped(
+            schema_event_handler,
+            unsupported_query_event,
+            test_position,
+            external_patches,
+            producer
+        )
 
     def test_incomplete_transaction(
         self,
         producer,
+        save_position,
         test_position,
         external_patches,
         schema_event_handler,
@@ -485,6 +575,7 @@ class TestSchemaEventHandler(object):
         assert external_patches.update_schema_event_state.call_count == 0
         assert external_patches.upsert_global_event_state.call_count == 0
         assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
 
     def check_external_calls(
         self,
@@ -497,6 +588,7 @@ class TestSchemaEventHandler(object):
         mysql_statements,
         schema_store_response,
         external_patches,
+        test_schema
     ):
         """Test helper method that checks various things in a successful scenario
            of event handling
@@ -506,7 +598,7 @@ class TestSchemaEventHandler(object):
         # execute of show create is mocked out above
         assert external_patches.execute_query.call_count == 1
         assert external_patches.execute_query.call_args_list == [
-            mock.call(event.query, event.schema)
+            mock.call(event.query, test_schema)
         ]
         assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_count == 1
 
@@ -541,6 +633,7 @@ class TestSchemaEventHandler(object):
         schematizer_client,
         external_patches,
         dry_run_schema_event_handler,
+        save_position,
         test_position,
         create_table_schema_event,
         mock_schema_tracker_cursor,
@@ -549,3 +642,16 @@ class TestSchemaEventHandler(object):
         dry_run_schema_event_handler.handle_event(create_table_schema_event, test_position)
         assert external_patches.execute_query.call_count == 1
         assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_count == 0
+        assert save_position.call_count == 1
+
+    def _assert_query_skipped(
+        self,
+        schema_event_handler,
+        query_event,
+        test_position,
+        external_patches,
+        producer
+    ):
+        schema_event_handler.handle_event(query_event, test_position)
+        assert external_patches.execute_query.call_count == 0
+        assert producer.flush.call_count == 0

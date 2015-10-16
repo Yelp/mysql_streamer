@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import copy
+
 import pytest
 
 from replication_handler.models.schema_event_state import SchemaEventState
@@ -84,13 +88,11 @@ class TestSchemaEventState(object):
         self,
         pending_schema_event_state_obj,
         sandbox_session,
-        cluster_name,
-        database_name
+        cluster_name
     ):
         result = SchemaEventState.get_pending_schema_event_state(
             sandbox_session,
             cluster_name=cluster_name,
-            database_name=database_name
         )
         self.assert_equivalent_schema_events(result, pending_schema_event_state_obj)
 
@@ -99,7 +101,6 @@ class TestSchemaEventState(object):
         pending_schema_event_state_obj,
         sandbox_session,
         cluster_name,
-        database_name
     ):
         result = SchemaEventState.delete_schema_event_state_by_id(
             sandbox_session,
@@ -109,7 +110,6 @@ class TestSchemaEventState(object):
         result = SchemaEventState.get_pending_schema_event_state(
             sandbox_session,
             cluster_name=cluster_name,
-            database_name=database_name
         )
         assert result is None
 

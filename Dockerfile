@@ -40,11 +40,15 @@ RUN     /code/virtualenv_run/bin/pip install \
             -i https://pypi-dev.yelpcorp.com/simple \
             -r /code/requirements.txt
 
+ADD     . /code
+
+RUN useradd batch
+RUN chown -R batch /code
+USER batch
+
 # Share the logging directory as a volume
 RUN     mkdir /tmp/logs
 VOLUME  /tmp/logs
-
-ADD     . /code
 
 WORKDIR /code
 ENV     BASEPATH /code

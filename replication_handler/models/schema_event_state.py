@@ -1,17 +1,24 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
+import logging
+
 from sqlalchemy import Column
+from sqlalchemy import desc
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Text
-from sqlalchemy import desc
 from sqlalchemy.types import Enum
-
 from yelp_lib.containers.lists import unlist
 
 from replication_handler.models.database import Base
+from replication_handler.models.database import default_now
 from replication_handler.models.database import JSONType
 from replication_handler.models.database import UnixTimeStampType
-from replication_handler.models.database import default_now
+
+
+log = logging.getLogger('replication_handler.models.schema_event_state')
 
 
 class SchemaEventStatus(object):
@@ -47,14 +54,15 @@ class SchemaEventState(Base):
     time_updated = Column(UnixTimeStampType, default=default_now, onupdate=default_now)
 
     @classmethod
-    def get_pending_schema_event_state(cls, session, cluster_name, database_name):
+    def get_pending_schema_event_state(cls, session, cluster_name):
+        log.info("Getting pending schema events for cluster: '%s'" % cluster_name)
         result = session.query(
             SchemaEventState
         ).filter(
             SchemaEventState.status == SchemaEventStatus.PENDING,
             SchemaEventState.cluster_name == cluster_name,
-            SchemaEventState.database_name == database_name
         ).all()
+        log.info("Retrieved events: %s" % result)
         # There should be at most one event with Pending status, so we are using
         # unlist to verify
         return unlist(result)

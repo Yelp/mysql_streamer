@@ -27,16 +27,16 @@ class BaseEventHandler(object):
         """ All subclasses need to define how they want to handle an evnet."""
         raise NotImplementedError
 
-    def is_blacklisted(self, event):
-        if event.schema in env_config.schema_blacklist:
-            self.log_blacklisted_schema(event)
+    def is_blacklisted(self, event, schema):
+        if schema in env_config.schema_blacklist:
+            self.log_blacklisted_schema(event, schema)
             return True
         return False
 
-    def log_blacklisted_schema(self, event):
+    def log_blacklisted_schema(self, event, schema):
         log.info(
             "Skipping {event}, reason: schema: {schema} is blacklisted.".format(
                 event=str(type(event)),
-                schema=event.schema
+                schema=schema
             )
         )

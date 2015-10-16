@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-import os
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
+import os
 
 import staticconf
-
 from yelp_servlib.config_util import load_default_config
 
 
@@ -90,10 +92,6 @@ class DatabaseConfig(object):
     @property
     def entries(self):
         return self.cluster_config['entries']
-
-    @property
-    def database_name(self):
-        return self.entries[0]['db']
 
     @property
     def cluster_name(self):

@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import copy
 import logging
 
-from replication_handler.config import source_database_config
-from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
+from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
+from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
@@ -25,11 +28,9 @@ class ReplicationStreamRestarter(object):
         # Both global_event_state and pending_schema_event are information about
         # last shutdown, we need them to do recovery process.
         cluster_name = source_database_config.cluster_name
-        database_name = source_database_config.database_name
-        self.global_event_state = self._get_global_event_state(cluster_name, database_name)
+        self.global_event_state = self._get_global_event_state(cluster_name)
         self.pending_schema_event = self._get_pending_schema_event_state(
             cluster_name,
-            database_name
         )
         self.position_finder = PositionFinder(
             self.global_event_state,
@@ -43,6 +44,7 @@ class ReplicationStreamRestarter(object):
         tables, or publish unpublished messages.
         """
         position = self.position_finder.get_position_to_resume_tailing_from()
+        log.info("Restarting replication: %s" % repr(position))
         self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=False)
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
@@ -55,13 +57,14 @@ class ReplicationStreamRestarter(object):
             )
 
             if recovery_handler.need_recovery:
+                log.info("Recovery required, starting recovery process")
                 recovery_handler.recover()
 
     def get_stream(self):
         """ This function returns the replication stream"""
         return self.stream
 
-    def _get_global_event_state(self, cluster_name, database_name):
+    def _get_global_event_state(self, cluster_name):
         with rbr_state_session.connect_begin(ro=True) as session:
             return copy.copy(
                 GlobalEventState.get(
@@ -70,7 +73,7 @@ class ReplicationStreamRestarter(object):
                 )
             )
 
-    def _get_pending_schema_event_state(self, cluster_name, database_name):
+    def _get_pending_schema_event_state(self, cluster_name):
         with rbr_state_session.connect_begin(ro=True) as session:
             # In services we cant do expire_on_commit=False, so
             # if we want to use the object after the session commits, we
@@ -80,6 +83,5 @@ class ReplicationStreamRestarter(object):
                 SchemaEventState.get_pending_schema_event_state(
                     session,
                     cluster_name=cluster_name,
-                    database_name=database_name
                 )
             )
