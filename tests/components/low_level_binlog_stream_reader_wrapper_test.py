@@ -2,6 +2,7 @@
 import datetime
 import mock
 import pytest
+import time
 
 from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
 from pymysqlreplication.event import GtidEvent
@@ -79,7 +80,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         data_event.event_type = WRITE_ROWS_EVENT_V2
         data_event.log_pos = 100
         data_event.log_file = "binglog.001"
-        data_event.timestamp = datetime.datetime.now()
+        data_event.timestamp = time.mktime(datetime.datetime.now().timetuple())
         return data_event
 
     def test_none_events(self, patch_stream):
