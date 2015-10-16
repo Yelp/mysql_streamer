@@ -14,6 +14,7 @@ from pymysqlreplication.constants.BINLOG import DELETE_ROWS_EVENT_V2
 from data_pipeline.message import CreateMessage
 from data_pipeline.message import DeleteMessage
 from data_pipeline.message import UpdateMessage
+from data_pipeline.message import RefreshMessage
 
 from replication_handler import config
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
@@ -78,15 +79,20 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _get_data_events_from_row_event(self, row_event):
         """ Convert the rows into events."""
+        target_table = row_event.table
+        message_type = message_type_map[row_event.event_type]
+        if row_event.table.endswith('_data_pipeline_refresh'):
+            target_table = row_event.table.replace('_data_pipeline_refresh', '')
+            message_type = RefreshMessage
         return [
             DataEvent(
                 schema=row_event.schema,
-                table=row_event.table,
+                table=target_table,
                 log_pos=self.stream.log_pos,
                 log_file=self.stream.log_file,
                 row=row,
                 timestamp=row_event.timestamp,
-                message_type=message_type_map[row_event.event_type]
+                message_type=message_type
             ) for row in row_event.rows
         ]
 
