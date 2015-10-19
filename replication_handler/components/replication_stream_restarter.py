@@ -22,6 +22,8 @@ class ReplicationStreamRestarter(object):
     including put stream to a saved position, and perform recovery procedure
     if needed.
 
+    Args:
+      schema_wrapper(SchemaWrapper object): a wrapper for communication with schematizer.
     """
 
     def __init__(self, schema_wrapper):

@@ -33,6 +33,13 @@ class SchemaWrapperSingleton(type):
 
 
 class SchemaWrapper(object):
+    """ This class is a wrapper for interacting with schematizer.
+
+    Args:
+      schematizer_client(SchematizerClient object): a client that interacts with Schematizer
+      APIs with built-in caching features.
+    """
+
     __metaclass__ = SchemaWrapperSingleton
     _notify_email = "bam+replication+handler@yelp.com"
 

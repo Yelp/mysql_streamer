@@ -28,6 +28,9 @@ class RecoveryHandler(object):
 
     Args:
       stream(SimpleBinlogStreamReaderWrapper object): a stream reader
+      producer(data_pipe.producer.Producer object): producer object from data pipeline, since
+        we might need to publish unpublished messages.
+      schema_wrapper(SchemaWrapper object): a wrapper for communication with schematizer.
       is_clean_shutdown(boolean): whether the last operation was cleanly stopped.
       pending_schema_event(SchemaEventState object): schema event that has a pending state
       resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
