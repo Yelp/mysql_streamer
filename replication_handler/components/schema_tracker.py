@@ -15,7 +15,7 @@ ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 
 
 class SchemaTracker(object):
-    """ This class handles running queries agaist schema tracker database. We need to keep the
+    """ This class handles running queries against schema tracker database. We need to keep the
     schema tracker database in sync with the latest binlog stream reader position, and get
     current schemas for tables to register schema with schematizer or retrieve schema
     from schematizer.
