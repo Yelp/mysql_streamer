@@ -8,7 +8,6 @@ import time
 
 from data_pipeline.message import CreateMessage
 from data_pipeline.producer import Producer
-from pii_generator.components.pii_identifier import PIIIdentifier
 from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
 
@@ -18,11 +17,10 @@ from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
-from replication_handler.models.global_event_state import EventType
-from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import DataEvent
+from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import LogPosition
 
 
@@ -69,12 +67,66 @@ class TestRecoveryHandler(object):
             yield mock_session_connect_begin
 
     @pytest.fixture
-    def mock_cursor(self):
+    def mock_schema_tracker_cursor(self):
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_rbr_source_cursor(self):
         return mock.Mock()
 
     @pytest.fixture
     def database_name(self):
         return "fake-db"
+
+    @pytest.fixture
+    def position_before_master(self):
+        return LogPosition(log_file='binlog.001', log_pos=120)
+
+    @pytest.fixture
+    def position_after_master(self):
+        return LogPosition(log_file='binlog.001', log_pos=300)
+
+    @pytest.fixture
+    def data_event(self):
+        data_event = mock.Mock(DataEvent)
+        data_event.row = {"values": {'a': 1}}
+        data_event.message_type = CreateMessage
+        data_event.table = 'business'
+        data_event.schema = 'yelp'
+        data_event.timestamp = int(time.time())
+        return data_event
+
+    @pytest.fixture
+    def rh_data_event_before_master_log_pos(self, data_event, position_before_master):
+        return ReplicationHandlerEvent(
+            data_event,
+            position_before_master
+        )
+
+    @pytest.fixture
+    def rh_data_event_after_master_log_pos(self, data_event, position_after_master):
+        return ReplicationHandlerEvent(
+            data_event,
+            position_after_master
+        )
+
+    @pytest.fixture
+    def rh_unsupported_query_event(self):
+        unsupported_query_event = mock.Mock(spec=QueryEvent)
+        unsupported_query_event.query = 'BEGIN'
+        return ReplicationHandlerEvent(
+            unsupported_query_event,
+            LogPosition(log_file='binlog.001', log_pos=10)
+        )
+
+    @pytest.fixture
+    def rh_supported_query_event(self):
+        supported_query_event = mock.Mock(spec=QueryEvent)
+        supported_query_event.query = 'alter table biz add column name int(11)'
+        return ReplicationHandlerEvent(
+            supported_query_event,
+            LogPosition(log_file='binlog.001', log_pos=50)
+        )
 
     @pytest.fixture
     def pending_alter_schema_event_state(
@@ -118,6 +170,13 @@ class TestRecoveryHandler(object):
         )
 
     @pytest.yield_fixture
+    def patch_save_position(self):
+        with mock.patch(
+            'replication_handler.components.recovery_handler.save_position'
+        ) as mock_save_position:
+            yield mock_save_position
+
+    @pytest.yield_fixture
     def patch_get_pending_schema_event_state(
         self,
     ):
@@ -136,12 +195,22 @@ class TestRecoveryHandler(object):
             yield mock_delete
 
     @pytest.yield_fixture
-    def patch_schema_tracker_connection(self, mock_cursor):
+    def patch_schema_tracker_connection(self, mock_schema_tracker_cursor):
         with mock.patch.object(
             ConnectionSet,
             'schema_tracker_rw'
         ) as mock_connection:
-            mock_connection.return_value.repltracker.cursor.return_value = mock_cursor
+            mock_connection.return_value.repltracker.cursor.return_value = mock_schema_tracker_cursor
+            yield mock_connection
+
+    @pytest.yield_fixture
+    def patch_rbr_source_connection(self, mock_rbr_source_cursor):
+        with mock.patch.object(
+            ConnectionSet,
+            'rbr_source_ro'
+        ) as mock_connection:
+            mock_rbr_source_cursor.fetchone.return_value = ('binlog.001', 200)
+            mock_connection.return_value.refresh_primary.cursor.return_value = mock_rbr_source_cursor
             yield mock_connection
 
     @pytest.yield_fixture
@@ -162,31 +231,6 @@ class TestRecoveryHandler(object):
         ) as mock_get_topic_to_kafka_offset_map:
             yield mock_get_topic_to_kafka_offset_map
 
-    @pytest.yield_fixture
-    def patch_upsert_data_event_checkpoint(self):
-        with mock.patch.object(
-            DataEventCheckpoint,
-            'upsert_data_event_checkpoint'
-        ) as mock_upsert_data_event_checkpoint:
-            yield mock_upsert_data_event_checkpoint
-
-    @pytest.yield_fixture
-    def patch_upsert_global_event(self):
-        with mock.patch.object(
-            GlobalEventState,
-            'upsert'
-        ) as mock_global_upsert:
-            yield mock_global_upsert
-
-    @pytest.yield_fixture
-    def patch_table_has_pii(self):
-        with mock.patch.object(
-            PIIIdentifier,
-            'table_has_pii',
-            autospec=True
-        ) as mock_table_has_pii:
-            yield mock_table_has_pii
-
     def test_recovery_when_there_is_pending_alter_state(
         self,
         stream,
@@ -197,8 +241,9 @@ class TestRecoveryHandler(object):
         patch_delete,
         patch_session_connect_begin,
         patch_schema_tracker_connection,
+        patch_rbr_source_connection,
         patch_config,
-        mock_cursor,
+        mock_schema_tracker_cursor,
         database_name
     ):
         recovery_handler = RecoveryHandler(
@@ -210,8 +255,8 @@ class TestRecoveryHandler(object):
         )
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
-        assert mock_cursor.execute.call_count == 4
-        assert mock_cursor.execute.call_args_list == [
+        assert mock_schema_tracker_cursor.execute.call_count == 4
+        assert mock_schema_tracker_cursor.execute.call_args_list == [
             mock.call("USE %s" % database_name),
             mock.call("DROP TABLE IF EXISTS `Business`"),
             mock.call("USE %s" % database_name),
@@ -229,8 +274,9 @@ class TestRecoveryHandler(object):
         patch_delete,
         patch_session_connect_begin,
         patch_schema_tracker_connection,
+        patch_rbr_source_connection,
         patch_config,
-        mock_cursor,
+        mock_schema_tracker_cursor,
         database_name
     ):
         recovery_handler = RecoveryHandler(
@@ -242,8 +288,8 @@ class TestRecoveryHandler(object):
         )
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
-        assert mock_cursor.execute.call_count == 2
-        assert mock_cursor.execute.call_args_list == [
+        assert mock_schema_tracker_cursor.execute.call_count == 2
+        assert mock_schema_tracker_cursor.execute.call_args_list == [
             mock.call("USE %s" % database_name),
             mock.call("DROP TABLE IF EXISTS `Business`"),
         ]
@@ -253,37 +299,117 @@ class TestRecoveryHandler(object):
         self,
         stream,
         producer,
+        rh_data_event_before_master_log_pos,
+        rh_unsupported_query_event,
         mock_schema_wrapper,
-        session,
-        pending_alter_schema_event_state,
-        patch_delete,
-        patch_session_connect_begin,
-        patch_schema_tracker_connection,
-        patch_config,
+        mock_rbr_source_cursor,
         patch_get_topic_to_kafka_offset_map,
-        mock_cursor,
-        patch_upsert_data_event_checkpoint,
-        patch_upsert_global_event,
-        patch_table_has_pii
+        patch_rbr_source_connection,
+        patch_save_position,
     ):
-        data_event = mock.Mock(DataEvent)
-        data_event.row = {"values": {'a': 1}}
-        data_event.message_type = CreateMessage
-        data_event.table = 'business'
-        data_event.schema = 'yelp'
-        data_event.timestamp = int(time.time())
-        stream.peek.return_value.event = data_event
-        stream.next.return_value.event = data_event
-        stream.next.return_value.position = LogPosition()
-        position_data = mock.Mock()
-        position_data.last_published_message_position_info = {
-            "position": {"gtid": "sid:10"},
-            "cluster_name": "yelp_main",
-            "database_name": "yelp",
-            "table_name": "business"
-        }
-        position_data.topic_to_kafka_offset_map = {"topic": 1}
-        producer.get_checkpoint_position_data.return_value = position_data
+        event_list = [
+            rh_data_event_before_master_log_pos,
+            rh_unsupported_query_event,
+            rh_data_event_before_master_log_pos,
+            rh_data_event_before_master_log_pos,
+            rh_unsupported_query_event,
+            rh_data_event_before_master_log_pos,
+        ]
+        # Change the max_event_size from 1000 to 3 to make it easy for testing
+        max_message_size = 3
+        self._setup_stream_and_recover_for_unclean_shutdown(
+            event_list,
+            stream,
+            producer,
+            mock_schema_wrapper,
+            mock_rbr_source_cursor,
+            max_size=max_message_size,
+        )
+        # Even though we have 4 data events in the stream, the recovery process halted after
+        # we got max_message_size(3) events.
+        assert len(producer.ensure_messages_published.call_args[0][0]) == max_message_size
+        assert patch_get_topic_to_kafka_offset_map.call_count == 1
+        assert patch_save_position.call_count == 1
+
+    def test_recovery_process_catch_up_with_master(
+        self,
+        stream,
+        producer,
+        rh_unsupported_query_event,
+        rh_data_event_before_master_log_pos,
+        rh_data_event_after_master_log_pos,
+        mock_schema_wrapper,
+        mock_rbr_source_cursor,
+        patch_rbr_source_connection,
+        patch_get_topic_to_kafka_offset_map,
+        patch_save_position,
+    ):
+        event_list = [
+            rh_data_event_before_master_log_pos,
+            rh_unsupported_query_event,
+            rh_data_event_before_master_log_pos,
+            rh_data_event_before_master_log_pos,
+            rh_unsupported_query_event,
+            rh_data_event_after_master_log_pos,
+            rh_data_event_after_master_log_pos,
+        ]
+        self._setup_stream_and_recover_for_unclean_shutdown(
+            event_list,
+            stream,
+            producer,
+            mock_schema_wrapper,
+            mock_rbr_source_cursor,
+        )
+        # Even though we have 5 data events in the stream, the recovery process halted after
+        # we caught up to master
+        assert len(producer.ensure_messages_published.call_args[0][0]) == 4
+
+    def test_recovery_process_with_supported_query_event(
+        self,
+        stream,
+        producer,
+        rh_unsupported_query_event,
+        rh_supported_query_event,
+        rh_data_event_before_master_log_pos,
+        rh_data_event_after_master_log_pos,
+        mock_schema_wrapper,
+        mock_rbr_source_cursor,
+        patch_rbr_source_connection,
+        patch_get_topic_to_kafka_offset_map,
+        patch_save_position,
+    ):
+        event_list = [
+            rh_data_event_before_master_log_pos,
+            rh_unsupported_query_event,
+            rh_data_event_before_master_log_pos,
+            rh_data_event_before_master_log_pos,
+            rh_supported_query_event,
+            rh_data_event_after_master_log_pos,
+            rh_data_event_after_master_log_pos,
+        ]
+        self._setup_stream_and_recover_for_unclean_shutdown(
+            event_list,
+            stream,
+            producer,
+            mock_schema_wrapper,
+            mock_rbr_source_cursor,
+        )
+
+        # Even though we have 5 data events in the stream, the recovery process halted after
+        # we encounter a supported query event.
+        assert len(producer.ensure_messages_published.call_args[0][0]) == 3
+
+    def _setup_stream_and_recover_for_unclean_shutdown(
+        self,
+        event_list,
+        stream,
+        producer,
+        mock_schema_wrapper,
+        mock_rbr_source_cursor,
+        max_size=None,
+    ):
+        stream.peek.side_effect = event_list
+        stream.next.side_effect = event_list
         recovery_handler = RecoveryHandler(
             stream,
             producer,
@@ -291,35 +417,14 @@ class TestRecoveryHandler(object):
             is_clean_shutdown=False,
             pending_schema_event=None
         )
+        if max_size:
+            recovery_handler.MAX_EVENT_SIZE = max_size
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
+        assert mock_rbr_source_cursor.execute.call_count == 1
+        assert mock_rbr_source_cursor.fetchone.call_count == 1
         assert producer.ensure_messages_published.call_count == 1
         assert producer.get_checkpoint_position_data.call_count == 1
-        assert patch_get_topic_to_kafka_offset_map.call_count == 1
-        assert patch_upsert_data_event_checkpoint.call_count == 1
-        assert patch_upsert_global_event.call_count == 1
-        assert patch_upsert_global_event.call_args_list == [
-            mock.call(
-                session=session,
-                position={"gtid": "sid:10"},
-                event_type=EventType.DATA_EVENT,
-                cluster_name="yelp_main",
-                database_name="yelp",
-                table_name="business",
-                is_clean_shutdown=False
-            ),
-        ]
-        assert patch_upsert_data_event_checkpoint.call_args_list == [
-            mock.call(
-                session=session,
-                topic_to_kafka_offset_map={"topic": 1},
-                cluster_name="yelp_main",
-            ),
-        ]
-        assert patch_table_has_pii.call_args[1] == {
-            'database_name': 'yelp',
-            'table_name': 'business'
-        }
 
     def test_bad_schema_event_state(
         self,
@@ -331,7 +436,8 @@ class TestRecoveryHandler(object):
         patch_delete,
         patch_session_connect_begin,
         patch_schema_tracker_connection,
-        mock_cursor
+        patch_rbr_source_connection,
+        mock_schema_tracker_cursor
     ):
         stream.peek.return_value = mock.Mock(spec=QueryEvent)
         recovery_handler = RecoveryHandler(
@@ -350,6 +456,7 @@ class TestRecoveryHandler(object):
         stream,
         producer,
         mock_schema_wrapper,
+        patch_rbr_source_connection,
     ):
         recovery_handler = RecoveryHandler(
             stream,
