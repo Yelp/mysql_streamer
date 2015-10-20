@@ -360,8 +360,8 @@ class TestRecoveryHandler(object):
             mock_schema_wrapper,
             mock_rbr_source_cursor,
         )
-        # Even though we have 5 data events in the stream, the recovery process halted after
-        # we caught up to master
+        # Even though we have 5 data events in the stream, the recovery process halted
+        # after we caught up to master
         assert len(producer.ensure_messages_published.call_args[0][0]) == 4
 
     def test_recovery_process_with_supported_query_event(
@@ -395,8 +395,8 @@ class TestRecoveryHandler(object):
             mock_rbr_source_cursor,
         )
 
-        # Even though we have 5 data events in the stream, the recovery process halted after
-        # we encounter a supported query event.
+        # Even though we have 5 data events in the stream, the recovery process halted
+        # after we encounter a supported query event.
         assert len(producer.ensure_messages_published.call_args[0][0]) == 3
 
     def _setup_stream_and_recover_for_unclean_shutdown(
