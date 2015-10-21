@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
+import datetime
 import logging
+from datetime import timedelta
 
 from pymysqlreplication.event import GtidEvent
+
+import pysensu_yelp
+from dateutil import parser
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
@@ -76,14 +81,30 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             # {"previous_values": {"serial": 123, "timestamp": "2015/07/22"},
             # "after_values": {"serial": 456, "timestamp": "2015/07/23"}}
             # for more details, check out python-mysql-replication docs.
-            log.info("Processing timestamp {timestamp}".format(timestamp=event.row["after_values"]["timestamp"]))
+            timestamp = event.row["after_values"]["timestamp"]
+            log.info("Processing timestamp {timestamp}".format(timestamp=timestamp))
+            # If we are 15 minutes behind real time, trigger a sensu alert
+            if datetime.datetime.now() - parser.parse(timestamp) > timedelta(minutes=15):
+                self._trigger_sensu_alert()
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
                 log_file=event.log_file,
                 hb_serial=event.row["after_values"]["serial"],
-                hb_timestamp=event.row["after_values"]["timestamp"],
+                hb_timestamp=timestamp,
             )
         self._offset = 0
+
+    def _trigger_sensu_alert(self):
+        result_dict = {
+            'name': 'replication_handler_real_time_check',
+            'runbook': 'http://trac.yelpcorp.com/wiki/DataPipeline',
+            'status': 1,
+            'output': 'Replication Handler is falling 15 min behind real time',
+            'team': 'bam',
+            'page': False,
+            'notification_email': 'bam@yelp.com',
+        }
+        pysensu_yelp.send_event(**result_dict)
 
     def _refill_current_events_if_empty(self):
         if not self.current_events:
