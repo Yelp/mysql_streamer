@@ -19,6 +19,9 @@ from replication_handler.util.position import LogPosition
 log = logging.getLogger('replication_handler.components.simple_binlog_stream_reader_wrapper')
 
 
+DELAY_ALLOWED = 15 # minutes
+
+
 class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     """ This class is a higher level abstraction on top of LowLevelBinlogStreamReaderWrapper,
     focusing on dealing with offsets, and providing the ability to iterate through
@@ -84,7 +87,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             timestamp = event.row["after_values"]["timestamp"]
             log.info("Processing timestamp {timestamp}".format(timestamp=timestamp))
             # If we are 15 minutes behind real time, trigger a sensu alert
-            if datetime.datetime.now() - parser.parse(timestamp) > timedelta(minutes=15):
+            if datetime.datetime.now() - parser.parse(timestamp) > timedelta(minutes=DELAY_ALLOWED):
                 self._trigger_sensu_alert()
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
@@ -99,7 +102,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             'name': 'replication_handler_real_time_check',
             'runbook': 'http://trac.yelpcorp.com/wiki/DataPipeline',
             'status': 1,
-            'output': 'Replication Handler is falling 15 min behind real time',
+            'output': 'Replication Handler is falling {delay_allowed} min behind real time'.format(delay_allowed=DELAY_ALLOWED),
             'team': 'bam',
             'page': False,
             'notification_email': 'bam@yelp.com',
