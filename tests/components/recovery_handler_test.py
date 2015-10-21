@@ -325,8 +325,8 @@ class TestRecoveryHandler(object):
             mock_rbr_source_cursor,
             max_size=max_message_size,
         )
-        # Even though we have 4 data events in the stream, the recovery process halted after
-        # we got max_message_size(3) events.
+        # Even though we have 4 data events in the stream, the recovery process halted
+        # after we got max_message_size(3) events.
         assert len(producer.ensure_messages_published.call_args[0][0]) == max_message_size
         assert patch_get_topic_to_kafka_offset_map.call_count == 1
         assert patch_save_position.call_count == 1
