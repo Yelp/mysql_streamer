@@ -61,6 +61,14 @@ def after_scenario(context, _):
     context.data['expected_create_table_statement'] = None
 
 def after_feature(context, _):
+    # Clean up all states in rbrstate
+    state_tables = ['data_event_checkpoint', 'schema_event_state', 'global_event_state']
+    for table in state_tables:
+        cleanup_query = 'delete from {table}'.format(table=table)
+        execute_query('rbrstate', cleanup_query)
+    # Drop table created in schematracker
+    if 'table_name' in context.data.keys():
+        execute_query('schematracker', 'drop table {table}'.format(table=context.data['table_name']))
     # Revert the heartbeat.
     _set_heartbeat(123, 0)
 
