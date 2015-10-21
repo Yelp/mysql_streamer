@@ -68,7 +68,9 @@ def after_feature(context, _):
         execute_query('rbrstate', cleanup_query)
     # Drop table created in schematracker
     if 'table_name' in context.data.keys():
-        execute_query('schematracker', 'drop table {table}'.format(table=context.data['table_name']))
+        execute_query('schematracker', 'drop table {table}'.format(
+            table=context.data['table_name'])
+        )
     # Revert the heartbeat.
     _set_heartbeat(123, 0)
 
