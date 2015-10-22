@@ -75,6 +75,10 @@ class EnvConfig(BaseConfig):
     def pii_yaml_path(self):
         return staticconf.get('pii_yaml_path').value
 
+    @property
+    def max_delay_allowed_in_minutes(self):
+        return staticconf.get('max_delay_allowed_in_minutes').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

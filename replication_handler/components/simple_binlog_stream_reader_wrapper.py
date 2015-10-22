@@ -4,11 +4,11 @@ import logging
 from datetime import timedelta
 
 from pymysqlreplication.event import GtidEvent
-
 import pysensu_yelp
 from dateutil import parser
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
+from replication_handler import config
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.misc import ReplicationHandlerEvent
@@ -17,9 +17,6 @@ from replication_handler.util.position import LogPosition
 
 
 log = logging.getLogger('replication_handler.components.simple_binlog_stream_reader_wrapper')
-
-
-DELAY_ALLOWED = 15 # minutes
 
 
 class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
@@ -86,9 +83,10 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             # for more details, check out python-mysql-replication docs.
             timestamp = event.row["after_values"]["timestamp"]
             log.info("Processing timestamp {timestamp}".format(timestamp=timestamp))
-            # If we are 15 minutes behind real time, trigger a sensu alert
-            if datetime.datetime.now() - parser.parse(timestamp) > timedelta(minutes=DELAY_ALLOWED):
-                self._trigger_sensu_alert()
+            # If we pass allowed delay time, trigger a sensu alert
+            delay_time = datetime.datetime.now() - parser.parse(timestamp)
+            if delay_time > timedelta(minutes=config.env_config.max_delay_allowed_in_minutes):
+                self._trigger_sensu_alert(delay_time)
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
                 log_file=event.log_file,
@@ -97,12 +95,12 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             )
         self._offset = 0
 
-    def _trigger_sensu_alert(self):
+    def _trigger_sensu_alert(self, delay_time):
         result_dict = {
             'name': 'replication_handler_real_time_check',
             'runbook': 'http://trac.yelpcorp.com/wiki/DataPipeline',
             'status': 1,
-            'output': 'Replication Handler is falling {delay_allowed} min behind real time'.format(delay_allowed=DELAY_ALLOWED),
+            'output': 'Replication Handler is falling {delay_time} min behind real time'.format(delay_time=delay_time),
             'team': 'bam',
             'page': False,
             'notification_email': 'bam@yelp.com',
