@@ -16,14 +16,17 @@ schema_blacklist:
     - performance_schema
     - test
 
+# biz and employee_new is for acceptance tests
 table_whitelist:
+    - biz
+    - employee_new
     - advertiser
-    - payment_program
-    - payment_feature
     - business_payment_account_entity
     - payment_account_entity
-    - salesperson
+    - payment_feature
+    - payment_program
     - replication_heartbeat
+    - salesperson
 
 producer_name: replication_handler
 
