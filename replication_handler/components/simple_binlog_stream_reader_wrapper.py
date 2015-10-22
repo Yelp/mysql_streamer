@@ -99,7 +99,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 'name': 'replication_handler_real_time_check',
                 'runbook': 'http://trac.yelpcorp.com/wiki/DataPipeline',
                 'status': 1,
-                'output': 'Replication Handler is falling {delay_time} min behind real time'.format(delay_time=delay_time),
+                'output': 'Replication Handler is falling {delay_time} behind real time'.format(delay_time=delay_time),
                 'team': 'bam',
                 'page': False,
                 'notification_email': 'bam@yelp.com',
