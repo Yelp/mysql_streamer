@@ -81,8 +81,12 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         """ Convert the rows into events."""
         target_table = row_event.table
         message_type = message_type_map[row_event.event_type]
+        # Tables with suffix _data_pipeline_refresh come
+        # from the FullRefreshRunner.
         if row_event.table.endswith('_data_pipeline_refresh'):
-            target_table = row_event.table.replace('_data_pipeline_refresh', '')
+            # Table that this row_event is meant for 
+            # is determined by removing the suffix.
+            target_table = row_event.table[:-22]
             message_type = RefreshMessage
         return [
             DataEvent(
