@@ -67,7 +67,7 @@ def after_feature(context, _):
         cleanup_query = 'delete from {table}'.format(table=table)
         execute_query('rbrstate', cleanup_query)
     # Drop table created in schematracker
-    if 'table_name' in context.data.keys():
+    if 'table_name' in context.data:
         execute_query('schematracker', 'drop table {table}'.format(
             table=context.data['table_name'])
         )
