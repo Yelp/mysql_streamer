@@ -83,10 +83,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             # for more details, check out python-mysql-replication docs.
             timestamp = event.row["after_values"]["timestamp"]
             log.info("Processing timestamp {timestamp}".format(timestamp=timestamp))
-            # If we pass allowed delay time, trigger a sensu alert
-            delay_time = datetime.datetime.now() - parser.parse(timestamp)
-            if delay_time > timedelta(minutes=config.env_config.max_delay_allowed_in_minutes):
-                self._trigger_sensu_alert(delay_time)
+            self._trigger_sensu_alert_if_pass_allowed_delay_time(timestamp)
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
                 log_file=event.log_file,
@@ -95,17 +92,19 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             )
         self._offset = 0
 
-    def _trigger_sensu_alert(self, delay_time):
-        result_dict = {
-            'name': 'replication_handler_real_time_check',
-            'runbook': 'http://trac.yelpcorp.com/wiki/DataPipeline',
-            'status': 1,
-            'output': 'Replication Handler is falling {delay_time} min behind real time'.format(delay_time=delay_time),
-            'team': 'bam',
-            'page': False,
-            'notification_email': 'bam@yelp.com',
-        }
-        pysensu_yelp.send_event(**result_dict)
+    def _trigger_sensu_alert_if_pass_allowed_delay_time(self, timestamp):
+        delay_time = datetime.datetime.now() - parser.parse(timestamp)
+        if delay_time > timedelta(minutes=config.env_config.max_delay_allowed_in_minutes):
+            result_dict = {
+                'name': 'replication_handler_real_time_check',
+                'runbook': 'http://trac.yelpcorp.com/wiki/DataPipeline',
+                'status': 1,
+                'output': 'Replication Handler is falling {delay_time} min behind real time'.format(delay_time=delay_time),
+                'team': 'bam',
+                'page': False,
+                'notification_email': 'bam@yelp.com',
+            }
+            pysensu_yelp.send_event(**result_dict)
 
     def _refill_current_events_if_empty(self):
         if not self.current_events:
