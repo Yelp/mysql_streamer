@@ -86,7 +86,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         if row_event.table.endswith('_data_pipeline_refresh'):
             # Table that this row_event is meant for 
             # is determined by removing the suffix.
-            target_table = row_event.table[:-22]
+            target_table = row_event.table[:-len('_data_pipeline_refresh')]
             message_type = RefreshMessage
         return [
             DataEvent(
