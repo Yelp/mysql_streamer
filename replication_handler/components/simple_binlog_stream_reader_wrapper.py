@@ -2,6 +2,7 @@
 import datetime
 import logging
 from datetime import timedelta
+import dateutil.tz
 
 from pymysqlreplication.event import GtidEvent
 import pysensu_yelp
@@ -12,6 +13,7 @@ from replication_handler import config
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.misc import ReplicationHandlerEvent
+from replication_handler.util.misc import get_refresh_primary_mysql_server_timezone
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
 
@@ -34,6 +36,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         self.stream = LowLevelBinlogStreamReaderWrapper(position)
         self.gtid_enabled = gtid_enabled
         self._upstream_position = position
+        self.mysql_time_zone = get_refresh_primary_mysql_server_timezone()
         self._offset = 0
         self._seek(self._upstream_position.offset)
 
@@ -93,7 +96,14 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         self._offset = 0
 
     def _trigger_sensu_alert_if_pass_allowed_delay_time(self, timestamp):
-        delay_time = datetime.datetime.now() - parser.parse(timestamp)
+        # Construct a timestamp with timezone info.
+        timestamp_with_tz = '{timestamp} {tz}'.format(
+            timestamp=timestamp,
+            tz=self.mysql_time_zone
+        )
+        import ipdb; ipdb.set_trace()
+        # Make both timestamps timezone-aware.
+        delay_time = datetime.datetime.now(dateutil.tz.tzutc()) - parser.parse(timestamp_with_tz)
         if delay_time > timedelta(minutes=config.env_config.max_delay_allowed_in_minutes):
             result_dict = {
                 'name': 'replication_handler_real_time_check',

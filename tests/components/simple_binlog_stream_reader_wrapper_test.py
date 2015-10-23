@@ -38,7 +38,15 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             mock_time.datetime.now.return_value = datetime.datetime(2015, 10, 21, 12, 6, 27)
             yield mock_time
 
-    def test_yield_events_when_gtid_enabled(self, patch_stream):
+    @pytest.yield_fixture
+    def patch_timezone(self):
+        with mock.patch(
+            'replication_handler.components.simple_binlog_stream_reader_wrapper.get_refresh_primary_mysql_server_timezone'
+        ) as mock_timezone:
+            mock_timezone.return_value = 'PT'
+            yield mock_timezone
+
+    def test_yield_events_when_gtid_enabled(self, patch_stream, patch_timezone):
         gtid_event_0 = mock.Mock(spec=GtidEvent, gtid="sid:11")
         query_event_0 = mock.Mock(spec=QueryEvent)
         query_event_1 = mock.Mock(spec=QueryEvent)
@@ -84,7 +92,13 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             assert replication_event.position.gtid == result.position.gtid
             assert replication_event.position.offset == result.position.offset
 
-    def test_yield_event_with_heartbeat_event(self, patch_stream, patch_sensu, patch_time):
+    def test_yield_event_with_heartbeat_event(
+        self,
+        patch_stream,
+        patch_sensu,
+        patch_time,
+        patch_timezone
+    ):
         stream, results = self._setup_stream_and_expected_result(patch_stream)
         assert patch_sensu.send_event.call_count == 0
         for replication_event, result in zip(stream, results):
@@ -95,7 +109,13 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             assert replication_event.position.hb_serial == result.position.hb_serial
             assert replication_event.position.hb_timestamp == result.position.hb_timestamp
 
-    def test_heartbeat_event_trigger_sensu(self, patch_stream, patch_sensu, patch_time):
+    def test_heartbeat_event_trigger_sensu(
+        self,
+        patch_stream,
+        patch_sensu,
+        patch_time,
+        patch_timezone
+    ):
         # Make the time difference heartbeat timestamp and fake real time more than 10 min.
         patch_time.datetime.now.return_value = datetime.datetime(2015, 10, 21, 13, 6, 27)
         stream, _ = self._setup_stream_and_expected_result(patch_stream)

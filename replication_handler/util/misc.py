@@ -2,6 +2,7 @@
 import kazoo.client
 
 import yelp_lib.config_loader
+from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.config import env_config
 from replication_handler.models.database import rbr_state_session
@@ -104,3 +105,11 @@ def get_kazoo_client_for_cluster_def(cluster_def, **kwargs):
 def get_kazoo_client(**kwargs):
     """Get a KazooClient for a local zookeeper cluster."""
     return get_kazoo_client_for_cluster_def(get_local_zk(), **kwargs)
+
+
+def get_refresh_primary_mysql_server_timezone():
+    refresh_source_cursor = ConnectionSet.rbr_source_ro().refresh_primary.cursor()
+    refresh_source_cursor.execute('SELECT @@system_time_zone')
+    return refresh_source_cursor.fetchone()[0]
+
+
