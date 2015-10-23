@@ -2,18 +2,18 @@
 import datetime
 import logging
 from datetime import timedelta
-import dateutil.tz
-
 from pymysqlreplication.event import GtidEvent
+
+import dateutil.tz
 import pysensu_yelp
 from dateutil import parser
 
-from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler import config
+from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
+from replication_handler.util.misc import get_refresh_primary_mysql_server_timezone
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.misc import ReplicationHandlerEvent
-from replication_handler.util.misc import get_refresh_primary_mysql_server_timezone
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
 
