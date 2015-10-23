@@ -5,8 +5,8 @@ import yelp_lib.config_loader
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.config import env_config
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
+from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 
@@ -111,5 +111,3 @@ def get_refresh_primary_mysql_server_timezone():
     refresh_source_cursor = ConnectionSet.rbr_source_ro().refresh_primary.cursor()
     refresh_source_cursor.execute('SELECT @@system_time_zone')
     return refresh_source_cursor.fetchone()[0]
-
-

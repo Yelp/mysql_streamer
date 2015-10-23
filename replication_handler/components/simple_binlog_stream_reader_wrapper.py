@@ -101,7 +101,6 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             timestamp=timestamp,
             tz=self.mysql_time_zone
         )
-        import ipdb; ipdb.set_trace()
         # Make both timestamps timezone-aware.
         delay_time = datetime.datetime.now(dateutil.tz.tzutc()) - parser.parse(timestamp_with_tz)
         if delay_time > timedelta(minutes=config.env_config.max_delay_allowed_in_minutes):
