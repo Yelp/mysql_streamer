@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
 from pii_generator.components.pii_identifier import PIIIdentifier
@@ -44,7 +47,8 @@ class MessageBuilder(object):
                 database_name=self.event.schema,
                 table_name=self.event.table
             ),
-            "timestamp": self.event.timestamp
+            "timestamp": self.event.timestamp,
+            "meta": [self.position.transaction_id],
         }
 
         if self.event.message_type == UpdateMessage:

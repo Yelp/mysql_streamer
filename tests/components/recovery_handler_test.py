@@ -274,7 +274,7 @@ class TestRecoveryHandler(object):
         data_event.timestamp = int(time.time())
         stream.peek.return_value.event = data_event
         stream.next.return_value.event = data_event
-        stream.next.return_value.position = LogPosition()
+        stream.next.return_value.position = LogPosition(log_file='binlog', log_pos=100)
         position_data = mock.Mock()
         position_data.last_published_message_position_info = {
             "position": {"gtid": "sid:10"},
