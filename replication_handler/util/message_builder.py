@@ -47,7 +47,7 @@ class MessageBuilder(object):
                 database_name=self.event.schema,
                 table_name=self.event.table
             ),
-            "meta": [self.position.get_transaction_id_as_meta_attribute()],
+            "meta": [self.position.transaction_id],
         }
 
         if self.event.message_type == UpdateMessage:

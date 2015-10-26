@@ -144,9 +144,6 @@ class LogPosition(Position):
     def transaction_id(self):
         return TransactionId(self.cluster_name, self.log_file, self.log_pos)
 
-    def get_transaction_id_as_meta_attribute(self):
-        return self.transaction_id.avro_repr
-
 
 def construct_position(position_dict):
     if "gtid" in position_dict:

@@ -10,15 +10,13 @@ from data_pipeline.meta_attribute import MetaAttribute
 
 
 class TransactionId(MetaAttribute):
-    """Transaction is a MetaAttribute to be added in a data pipeline message.
-    This allows us to reconstruct the order of messages in replication by
-    specifying a statement's exact position in the binlog file. It has to
-    register its avro schema with the schematizer first to get a schema_id.
-    Its payload consists a dict of cluster_name, log_file name and log_position.
-    Since it inherits from BaseMetaAttribute in data_pipeline clientlib, we
-    need to implement all the fields and methods abstracted in it. These are
-    primarily required to specify the avro schema and all other information
-    required to register it with schematizer.
+    """TransactionId is a MetaAttribute which allows us to reconstruct the
+    order of messages in replication handler by specifying a statement's exact
+    position in the binlog file. Its payload consists a dict of cluster name,
+    log_file name and log_position. Since it inherits from MetaAttribute in
+    data_pipeline clientlib, we need to override the cached properties
+    required to register the schema like avro_schema, payload, namespace,
+    source, owner_email, contains_pii, etc.
     """
 
     @cached_property
@@ -36,10 +34,6 @@ class TransactionId(MetaAttribute):
     @cached_property
     def contains_pii(self):
         return False
-
-    @cached_property
-    def base_schema_id(self):
-        return 0
 
     @cached_property
     def avro_schema(self):
