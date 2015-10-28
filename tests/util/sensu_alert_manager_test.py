@@ -1,0 +1,67 @@
+# -*- coding: utf-8 -*-
+import datetime
+
+import mock
+import pytest
+import pytz
+
+from replication_handler.util.sensu_alert_manager import SensuAlertManager
+
+
+class TestSensuAlertManager(object):
+
+    @pytest.yield_fixture
+    def patch_sensu_send_event(self):
+        with mock.patch(
+            'replication_handler.util.sensu_alert_manager.pysensu_yelp.send_event'
+        ) as mock_sensu_send_event:
+            yield mock_sensu_send_event
+
+    @pytest.yield_fixture
+    def patch_time(self):
+        with mock.patch(
+            'replication_handler.util.sensu_alert_manager.datetime'
+        ) as mock_time:
+            mock_time.datetime.now.side_effect = [
+                datetime.datetime(
+                    2015, 10, 21, 18, 0, 0, 0, pytz.UTC
+                ),
+                datetime.datetime(
+                    2015, 10, 21, 18, 1, 0, 0, pytz.UTC
+                ),
+                datetime.datetime(
+                    2015, 10, 21, 19, 0, 0, 0, pytz.UTC
+                ),
+                datetime.datetime(
+                    2015, 10, 21, 19, 0, 0, 0, pytz.UTC
+                ),
+            ]
+            yield mock_time
+
+    def test_sensu_alert_manager_fall_behind(self, patch_sensu_send_event, patch_time):
+        timestamp = datetime.datetime(2015, 10, 21, 11, 30, 00)
+        self._trigger_alert_and_check_result(
+            timestamp, patch_sensu_send_event, expected_status=2
+        )
+
+    def test_sensu_alert_manager_resolve(self, patch_sensu_send_event, patch_time):
+        timestamp = datetime.datetime(2015, 10, 21, 11, 50, 00)
+        self._trigger_alert_and_check_result(
+            timestamp, patch_sensu_send_event, expected_status=0
+        )
+
+    def _trigger_alert_and_check_result(
+        self, timestamp, patch_sensu_send_event, expected_status=0
+    ):
+        sensu_alert_manager = SensuAlertManager()
+        sensu_alert_manager.trigger_sensu_alert_if_fall_behind(timestamp)
+        assert patch_sensu_send_event.call_count == 1
+        result = patch_sensu_send_event.call_args[1]
+        assert result['status'] == expected_status
+        assert result['name'] == 'replication_handler_real_time_check'
+        assert result['runbook'] == 'y/datapipeline'
+        assert result['team'] == 'bam'
+        assert result['notification_email'] == 'bam@yelp.com'
+        assert result['check_every'] == '30s'
+        assert result['alert_after'] == '5m'
+        assert result['ttl'] == '300s'

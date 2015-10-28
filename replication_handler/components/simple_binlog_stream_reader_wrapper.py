@@ -1,21 +1,17 @@
 # -*- coding: utf-8 -*-
-import datetime
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
-from datetime import timedelta
 from pymysqlreplication.event import GtidEvent
 
-import dateutil.tz
-import pysensu_yelp
-from dateutil import parser
-
-from replication_handler import config
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
-from replication_handler.util.misc import get_refresh_primary_mysql_server_timezone
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
+from replication_handler.util.sensu_alert_manager import SensuAlertManager
 
 
 log = logging.getLogger('replication_handler.components.simple_binlog_stream_reader_wrapper')
@@ -36,8 +32,8 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         self.stream = LowLevelBinlogStreamReaderWrapper(position)
         self.gtid_enabled = gtid_enabled
         self._upstream_position = position
-        self.mysql_time_zone = get_refresh_primary_mysql_server_timezone()
         self._offset = 0
+        self.sensu_alert_manager = SensuAlertManager()
         self._seek(self._upstream_position.offset)
 
     def __iter__(self):
@@ -80,13 +76,10 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 gtid=event.gtid
             )
         elif (not self.gtid_enabled) and event.schema == HEARTBEAT_DB and hasattr(event, 'row'):
-            # This should be an update event, so a row will look like
-            # {"previous_values": {"serial": 123, "timestamp": "2015/07/22"},
-            # "after_values": {"serial": 456, "timestamp": "2015/07/23"}}
-            # for more details, check out python-mysql-replication docs.
+            # row['after_values']['timestamp'] should be a datetime object with local timezone.
             timestamp = event.row["after_values"]["timestamp"]
+            self.sensu_alert_manager.trigger_sensu_alert_if_fall_behind(timestamp)
             log.info("Processing timestamp {timestamp}".format(timestamp=timestamp))
-            self._trigger_sensu_alert_if_pass_allowed_delay_time(timestamp)
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
                 log_file=event.log_file,
@@ -94,26 +87,6 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 hb_timestamp=timestamp,
             )
         self._offset = 0
-
-    def _trigger_sensu_alert_if_pass_allowed_delay_time(self, timestamp):
-        # Construct a timestamp with timezone info.
-        timestamp_with_tz = '{timestamp} {tz}'.format(
-            timestamp=timestamp,
-            tz=self.mysql_time_zone
-        )
-        # Make both timestamps timezone-aware.
-        delay_time = datetime.datetime.now(dateutil.tz.tzutc()) - parser.parse(timestamp_with_tz)
-        if delay_time > timedelta(minutes=config.env_config.max_delay_allowed_in_minutes):
-            result_dict = {
-                'name': 'replication_handler_real_time_check',
-                'runbook': 'http://trac.yelpcorp.com/wiki/DataPipeline',
-                'status': 1,
-                'output': 'Replication Handler is falling {delay_time} behind real time'.format(delay_time=delay_time),
-                'team': 'bam',
-                'page': False,
-                'notification_email': 'bam@yelp.com',
-            }
-            pysensu_yelp.send_event(**result_dict)
 
     def _refill_current_events_if_empty(self):
         if not self.current_events:

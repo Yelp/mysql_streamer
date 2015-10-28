@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import datetime
-
 from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 
@@ -24,29 +22,13 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             yield mock_stream
 
     @pytest.yield_fixture
-    def patch_sensu(self):
+    def patch_sensu_alert(self):
         with mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.pysensu_yelp'
-        ) as mock_sensu:
-            yield mock_sensu
+            'replication_handler.components.simple_binlog_stream_reader_wrapper.SensuAlertManager'
+        ) as mock_sensu_alert:
+            yield mock_sensu_alert
 
-    @pytest.yield_fixture
-    def patch_time(self):
-        with mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.datetime'
-        ) as mock_time:
-            mock_time.datetime.now.return_value = datetime.datetime(2015, 10, 21, 12, 6, 27)
-            yield mock_time
-
-    @pytest.yield_fixture
-    def patch_timezone(self):
-        with mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.get_refresh_primary_mysql_server_timezone'
-        ) as mock_timezone:
-            mock_timezone.return_value = 'PT'
-            yield mock_timezone
-
-    def test_yield_events_when_gtid_enabled(self, patch_stream, patch_timezone):
+    def test_yield_events_when_gtid_enabled(self, patch_stream):
         gtid_event_0 = mock.Mock(spec=GtidEvent, gtid="sid:11")
         query_event_0 = mock.Mock(spec=QueryEvent)
         query_event_1 = mock.Mock(spec=QueryEvent)
@@ -94,13 +76,11 @@ class TestSimpleBinlogStreamReaderWrapper(object):
 
     def test_yield_event_with_heartbeat_event(
         self,
+        patch_sensu_alert,
         patch_stream,
-        patch_sensu,
-        patch_time,
-        patch_timezone
     ):
         stream, results = self._setup_stream_and_expected_result(patch_stream)
-        assert patch_sensu.send_event.call_count == 0
+        assert patch_sensu_alert.return_value.trigger_sensu_alert_if_fall_behind.call_count == 1
         for replication_event, result in zip(stream, results):
             assert replication_event.event == result.event
             assert replication_event.position.log_pos == result.position.log_pos
@@ -108,19 +88,6 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             assert replication_event.position.offset == result.position.offset
             assert replication_event.position.hb_serial == result.position.hb_serial
             assert replication_event.position.hb_timestamp == result.position.hb_timestamp
-
-    def test_heartbeat_event_trigger_sensu(
-        self,
-        patch_stream,
-        patch_sensu,
-        patch_time,
-        patch_timezone
-    ):
-        # Make the time difference heartbeat timestamp and fake real time more than 10 min.
-        patch_time.datetime.now.return_value = datetime.datetime(2015, 10, 21, 13, 6, 27)
-        stream, _ = self._setup_stream_and_expected_result(patch_stream)
-        stream.next()
-        assert patch_sensu.send_event.call_count == 1
 
     def _setup_stream_and_expected_result(self, patch_stream):
         log_pos = 10
