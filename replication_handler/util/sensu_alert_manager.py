@@ -37,6 +37,7 @@ class SensuAlertManager(object):
     def _send_sensu_event(self, timestamp):
         result_dict = {
             'name': 'replication_handler_real_time_check',
+            'output': 'Replication Handler has caught up with real time.',
             'runbook': 'y/datapipeline',
             'status': 0,
             'team': 'bam',
