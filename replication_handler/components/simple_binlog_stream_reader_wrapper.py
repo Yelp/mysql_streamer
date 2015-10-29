@@ -19,6 +19,7 @@ from replication_handler.util.sensu_alert_manager import SensuAlertManager
 
 log = logging.getLogger('replication_handler.components.simple_binlog_stream_reader_wrapper')
 
+sensu_alert_interval_in_seconds = 30
 
 class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     """ This class is a higher level abstraction on top of LowLevelBinlogStreamReaderWrapper,
@@ -36,7 +37,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         self.gtid_enabled = gtid_enabled
         self._upstream_position = position
         self._offset = 0
-        self.sensu_alert_manager = SensuAlertManager()
+        self.sensu_alert_manager = SensuAlertManager(sensu_alert_interval_in_seconds)
         self._seek(self._upstream_position.offset)
 
     def __iter__(self):
@@ -84,7 +85,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             timestamp = self._add_tz_info_to_tz_naive_timestamp(
                 event.row["after_values"]["timestamp"]
             )
-            self.sensu_alert_manager.trigger_sensu_alert_if_fall_behind(timestamp)
+            self.sensu_alert_manager.periodic_process(timestamp)
             self._log_process_timestamp(timestamp)
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,

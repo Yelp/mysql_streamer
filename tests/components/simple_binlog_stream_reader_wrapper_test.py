@@ -81,7 +81,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         patch_stream,
     ):
         stream, results = self._setup_stream_and_expected_result(patch_stream)
-        assert patch_sensu_alert.return_value.trigger_sensu_alert_if_fall_behind.call_count == 1
+        assert patch_sensu_alert.return_value.periodic_process.call_count == 1
         for replication_event, result in zip(stream, results):
             assert replication_event.event == result.event
             assert replication_event.position.log_pos == result.position.log_pos

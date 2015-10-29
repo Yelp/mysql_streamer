@@ -21,7 +21,7 @@ class TestSensuAlertManager(object):
     @pytest.yield_fixture
     def patch_time(self):
         with mock.patch(
-            'replication_handler.util.sensu_alert_manager.datetime'
+            'replication_handler.util.heartbeat_periodic_processor.datetime'
         ) as mock_time:
             mock_time.datetime.now.side_effect = [
                 datetime.datetime(
@@ -54,8 +54,8 @@ class TestSensuAlertManager(object):
     def _trigger_alert_and_check_result(
         self, timestamp, patch_sensu_send_event, expected_status=0
     ):
-        sensu_alert_manager = SensuAlertManager()
-        sensu_alert_manager.trigger_sensu_alert_if_fall_behind(timestamp)
+        sensu_alert_manager = SensuAlertManager(30)
+        sensu_alert_manager.periodic_process(timestamp)
         assert patch_sensu_send_event.call_count == 1
         result = patch_sensu_send_event.call_args[1]
         assert result['status'] == expected_status
