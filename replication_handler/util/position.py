@@ -91,7 +91,7 @@ class LogPosition(Position):
       log_file(string): binlog name.
       offset(int): offset within a pymysqlreplication RowEvent.
       hb_serial(int): the serial number of this heartbeat.
-      hb_timestamp(int): the timestamp when the hearbeat is inserted.
+      hb_timestamp(str): the timestamp when the hearbeat is inserted.
 
     TODO(DATAPIPE-312|cheng): clean up and unify LogPosition and HeartbeatSearcher.
     TODO(DATAPIPE-315|cheng): create a data struture for hb_serial and hb_timestamp.

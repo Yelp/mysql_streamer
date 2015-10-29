@@ -6,7 +6,6 @@ import datetime
 from datetime import timedelta
 
 import pysensu_yelp
-from dateutil.tz import tzlocal
 from dateutil.tz import tzutc
 
 from replication_handler import config
@@ -26,8 +25,9 @@ class SensuAlertManager(object):
         self._next_alert_time = self._compute_next_alert_time()
 
     def trigger_sensu_alert_if_fall_behind(self, timestamp):
+        # This timestamp param has to be timezone aware, otherwise it will not be
+        # able to compare with timezone aware timestamps.
         if self._should_send_sensu_event:
-            timestamp = self._add_tz_info_to_tz_naive_timestamp(timestamp)
             self._send_sensu_event(timestamp)
 
     @property
@@ -42,7 +42,7 @@ class SensuAlertManager(object):
             'status': 0,
             'team': 'bam',
             'page': False,
-            'notification_email': 'bam@yelp.com',
+            'notification_email': 'bam+sensu@yelp.com',
             'check_every': '30s',
             'alert_after': '5m',
             'ttl': '300s',
@@ -55,12 +55,6 @@ class SensuAlertManager(object):
             })
         pysensu_yelp.send_event(**result_dict)
         self._next_alert_time = self._compute_next_alert_time()
-
-    def _add_tz_info_to_tz_naive_timestamp(self, timestamp):
-        # if a timestamp is timezone naive, we give it a local timezone.
-        if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=tzlocal())
-        return timestamp
 
     def _compute_next_alert_time(self):
         return self._utc_now + timedelta(seconds=alert_interval_in_seconds)

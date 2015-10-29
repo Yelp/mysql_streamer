@@ -4,6 +4,7 @@ import datetime
 import mock
 import pytest
 import pytz
+from dateutil.tz import tzlocal
 
 from replication_handler.util.sensu_alert_manager import SensuAlertManager
 
@@ -39,13 +40,13 @@ class TestSensuAlertManager(object):
             yield mock_time
 
     def test_sensu_alert_manager_fall_behind(self, patch_sensu_send_event, patch_time):
-        timestamp = datetime.datetime(2015, 10, 21, 11, 30, 00)
+        timestamp = datetime.datetime(2015, 10, 21, 11, 30, 0, 0, tzlocal())
         self._trigger_alert_and_check_result(
             timestamp, patch_sensu_send_event, expected_status=2
         )
 
     def test_sensu_alert_manager_resolve(self, patch_sensu_send_event, patch_time):
-        timestamp = datetime.datetime(2015, 10, 21, 11, 50, 00)
+        timestamp = datetime.datetime(2015, 10, 21, 11, 50, 00, 0, tzlocal())
         self._trigger_alert_and_check_result(
             timestamp, patch_sensu_send_event, expected_status=0
         )
@@ -61,7 +62,7 @@ class TestSensuAlertManager(object):
         assert result['name'] == 'replication_handler_real_time_check'
         assert result['runbook'] == 'y/datapipeline'
         assert result['team'] == 'bam'
-        assert result['notification_email'] == 'bam@yelp.com'
+        assert result['notification_email'] == 'bam+sensu@yelp.com'
         assert result['check_every'] == '30s'
         assert result['alert_after'] == '5m'
         assert result['ttl'] == '300s'

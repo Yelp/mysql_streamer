@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
 from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 
@@ -92,7 +93,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
     def _setup_stream_and_expected_result(self, patch_stream):
         log_pos = 10
         log_file = "binlog.001"
-        row = {"after_values": {"serial": 123, "timestamp": "2015-10-21 12:05:27"}}
+        row = {"after_values": {"serial": 123, "timestamp": datetime(2015, 10, 21, 12, 05, 27)}}
         heartbeat_event = mock.Mock(
             spec=DataEvent,
             schema='yelp_heartbeat',
@@ -129,7 +130,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
                     log_file=log_file,
                     offset=1,
                     hb_serial=123,
-                    hb_timestamp="2015-10-21 12:05:27",
+                    hb_timestamp="2015-10-21 12:05:27-07:00",
                 )
             ),
             ReplicationHandlerEvent(
@@ -139,7 +140,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
                     log_file=log_file,
                     offset=2,
                     hb_serial=123,
-                    hb_timestamp="2015-10-21 12:05:27",
+                    hb_timestamp="2015-10-21 12:05:27-07:00",
                 )
             )
         ]
