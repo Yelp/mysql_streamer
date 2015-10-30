@@ -2,9 +2,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import datetime
 from datetime import timedelta
 
-import datetime
 from dateutil.tz import tzutc
 
 

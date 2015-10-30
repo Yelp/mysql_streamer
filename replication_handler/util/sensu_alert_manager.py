@@ -17,7 +17,7 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
     resolving this alert itself.
     """
 
-    def process(self, timestamp=None):
+    def process(self, timestamp):
         # This timestamp param has to be timezone aware, otherwise it will not be
         # able to compare with timezone aware timestamps.
         result_dict = {

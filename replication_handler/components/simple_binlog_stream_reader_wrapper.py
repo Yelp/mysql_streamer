@@ -21,6 +21,7 @@ log = logging.getLogger('replication_handler.components.simple_binlog_stream_rea
 
 sensu_alert_interval_in_seconds = 30
 
+
 class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     """ This class is a higher level abstraction on top of LowLevelBinlogStreamReaderWrapper,
     focusing on dealing with offsets, and providing the ability to iterate through
