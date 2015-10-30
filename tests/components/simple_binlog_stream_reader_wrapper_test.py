@@ -25,7 +25,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
     @pytest.yield_fixture
     def patch_sensu_alert(self):
         with mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.SensuAlertManager'
+            'replication_handler.components.simple_binlog_stream_reader_wrapper.SensuAlertManager.periodic_process'
         ) as mock_sensu_alert:
             yield mock_sensu_alert
 
@@ -81,7 +81,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         patch_stream,
     ):
         stream, results = self._setup_stream_and_expected_result(patch_stream)
-        assert patch_sensu_alert.return_value.periodic_process.call_count == 1
+        assert patch_sensu_alert.call_count == 1
         for replication_event, result in zip(stream, results):
             assert replication_event.event == result.event
             assert replication_event.position.log_pos == result.position.log_pos

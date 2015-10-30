@@ -28,7 +28,7 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
             'team': 'bam',
             'page': False,
             'notification_email': 'bam+sensu@yelp.com',
-            'check_every': '30s',
+            'check_every': '{time}s'.format(time=self.interval_in_seconds),
             'alert_after': '5m',
             'ttl': '300s',
         }
