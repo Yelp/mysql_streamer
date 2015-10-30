@@ -23,7 +23,7 @@ class HeartbeatPeriodicProcessor(object):
     def periodic_process(self, timestamp=None):
         if self._should_process():
             self.process(timestamp)
-            self._next_alert_time = self._compute_next_process_time()
+            self._next_process_time = self._compute_next_process_time()
 
     def process(self, timestamp=None):
         raise NotImplementedError
