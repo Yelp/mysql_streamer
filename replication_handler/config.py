@@ -75,6 +75,10 @@ class EnvConfig(BaseConfig):
     def pii_yaml_path(self):
         return staticconf.get('pii_yaml_path').value
 
+    @property
+    def recovery_queue_size(self):
+        return staticconf.get('recovery_queue_size').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

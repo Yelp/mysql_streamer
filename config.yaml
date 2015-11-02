@@ -36,6 +36,8 @@ zookeeper_discovery_path: '/nail/etc/zookeeper_discovery/generic/local.yaml'
 
 pii_yaml_path: '/nail/etc/services/database_pii'
 
+recovery_queue_size: 2000
+
 module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml
@@ -70,3 +72,4 @@ module_config:
         kafka_cluster_type: datapipe
         kafka_cluster_name: uswest2-devc
         skip_messages_with_pii: True
+        kafka_producer_buffer_size: 500
