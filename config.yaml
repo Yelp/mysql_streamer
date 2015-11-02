@@ -36,7 +36,7 @@ zookeeper_discovery_path: '/nail/etc/zookeeper_discovery/generic/local.yaml'
 
 pii_yaml_path: '/nail/etc/services/database_pii'
 
-recovery_queue_size: 2000
+recovery_queue_size: 1500
 
 module_config:
     -   namespace: yelp_conn

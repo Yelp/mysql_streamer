@@ -77,6 +77,9 @@ class EnvConfig(BaseConfig):
 
     @property
     def recovery_queue_size(self):
+        # The recovery queue size have to be greater than data pipeline producer
+        # buffer size, otherwise we could potentially have stale checkpoint data which
+        # would cause the recovery process to fail.
         return staticconf.get('recovery_queue_size').value
 
 
