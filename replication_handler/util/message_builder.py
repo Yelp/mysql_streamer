@@ -49,7 +49,7 @@ class MessageBuilder(object):
             ),
             "timestamp": self.event.timestamp,
             # TODO(DATAPIPE-577): re-enable transaction_id when it caches the schema
-            #"meta": [self.position.transaction_id],
+            # "meta": [self.position.transaction_id],
         }
 
         if self.event.message_type == UpdateMessage:
