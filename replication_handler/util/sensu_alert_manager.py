@@ -31,6 +31,7 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
             'check_every': '{time}s'.format(time=self.interval_in_seconds),
             'alert_after': '5m',
             'ttl': '300s',
+            'sensu_host': config.env_config.sensu_host,
         }
         delay_time = self._utc_now - timestamp
         if delay_time > timedelta(minutes=config.env_config.max_delay_allowed_in_minutes):

@@ -79,6 +79,10 @@ class EnvConfig(BaseConfig):
     def max_delay_allowed_in_minutes(self):
         return staticconf.get('max_delay_allowed_in_minutes').value
 
+    @property
+    def sensu_host(self):
+        return staticconf.get('sensu_host').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

@@ -38,6 +38,8 @@ pii_yaml_path: '/nail/etc/services/database_pii'
 
 max_delay_allowed_in_minutes: 10
 
+sensu_host: 169.254.255.254
+
 module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml
