@@ -9,7 +9,7 @@ from dateutil.tz import tzutc
 
 
 class HeartbeatPeriodicProcessor(object):
-    """ This class implements an interface for handling periodic events that
+    """ This class provides an interface for handling periodic events that
     can be triggered by a heartbeat event, like sensu alert and data event checkpoint.
 
     Args:
