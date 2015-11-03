@@ -40,6 +40,8 @@ max_delay_allowed_in_minutes: 10
 
 sensu_host: 169.254.255.254
 
+recovery_queue_size: 1500
+
 module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml
@@ -74,3 +76,4 @@ module_config:
         kafka_cluster_type: datapipe
         kafka_cluster_name: uswest2-devc
         skip_messages_with_pii: True
+        kafka_producer_buffer_size: 500

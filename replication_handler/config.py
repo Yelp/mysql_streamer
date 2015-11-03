@@ -83,6 +83,13 @@ class EnvConfig(BaseConfig):
     def sensu_host(self):
         return staticconf.get('sensu_host').value
 
+    @property
+    def recovery_queue_size(self):
+        # The recovery queue size have to be greater than data pipeline producer
+        # buffer size, otherwise we could potentially have stale checkpoint data which
+        # would cause the recovery process to fail.
+        return staticconf.get('recovery_queue_size').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

@@ -1,0 +1,23 @@
+{
+  "type": "record",
+  "namespace": "yelp.replication_handler",
+  "name": "transaction_id",
+  "doc": "Serializes a TransactionId object.",
+  "fields": [
+  	{
+  	  "name": "cluster_name",
+  	  "type": "string",
+  	  "doc": "Name of the database cluster."
+  	},
+  	{
+  	  "name": "log_file",
+  	  "type": "string",
+  	  "doc": "Name of the binlog file."
+  	},
+  	{
+  	  "name": "log_pos",
+  	  "type": "int",
+  	  "doc": "Position of the statement withing the binlog file."
+  	}
+  ]
+}
