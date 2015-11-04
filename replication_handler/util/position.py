@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
+from replication_handler.config import source_database_config
+from replication_handler.util.transaction_id import TransactionId
+
+
 class InvalidPositionDictException(Exception):
     pass
 
@@ -85,24 +92,34 @@ class GtidPosition(Position):
 
 class LogPosition(Position):
     """ This class uses log_pos, log_file and offset to represent a position.
+    It also returns transaction_id as a meta_attribute which is a combination
+    of cluster_name, log_pos and log_file.
 
     Args:
       log_pos(int): the log position on binlog.
       log_file(string): binlog name.
       offset(int): offset within a pymysqlreplication RowEvent.
       hb_serial(int): the serial number of this heartbeat.
-      hb_timestamp(int): the timestamp when the hearbeat is inserted.
+      hb_timestamp(str): the timestamp when the hearbeat is inserted.
 
     TODO(DATAPIPE-312|cheng): clean up and unify LogPosition and HeartbeatSearcher.
-    TODO(DATAPIPE-315|cheng): create a data struture for hb_serial and hb_timestamp.
+    TODO(DATAPIPE-315|cheng): create a data structure for hb_serial and hb_timestamp.
     """
 
-    def __init__(self, log_pos=None, log_file=None, offset=None, hb_serial=None, hb_timestamp=None):
+    def __init__(
+        self,
+        log_pos=None,
+        log_file=None,
+        offset=None,
+        hb_serial=None,
+        hb_timestamp=None
+    ):
         self.log_pos = log_pos
         self.log_file = log_file
         self.offset = offset
         self.hb_serial = hb_serial
         self.hb_timestamp = hb_timestamp
+        self.cluster_name = unicode(source_database_config.cluster_name)
 
     def to_dict(self):
         position_dict = {}
@@ -122,6 +139,10 @@ class LogPosition(Position):
             position_dict["log_pos"] = self.log_pos
             position_dict["log_file"] = self.log_file
         return position_dict
+
+    @property
+    def transaction_id(self):
+        return TransactionId(self.cluster_name, self.log_file, self.log_pos)
 
 
 def construct_position(position_dict):

@@ -174,7 +174,7 @@ class TestDataEventHandler(object):
             last_published_message_position_info=second_test_position,
             topic_to_last_position_info_map={test_topic: second_test_position},
             topic_to_kafka_offset_map={test_topic: second_test_kafka_offset},
-            merged_upstream_position_info_map={test_topic: {0: first_test_kafka_offset}}
+            merged_upstream_position_info_map={0, first_test_kafka_offset}
         )
 
     @pytest.fixture
@@ -324,7 +324,7 @@ class TestDataEventHandler(object):
     ):
         expected_call_args = []
         for data_event in data_create_events:
-            position = LogPosition()
+            position = LogPosition(log_file='binlog', log_pos=100)
             upstream_position_info = {
                 "position": position.to_dict(),
                 "cluster_name": "yelp_main",
@@ -405,7 +405,7 @@ class TestDataEventHandler(object):
     ):
         expected_call_args = []
         for data_event in data_update_events:
-            position = LogPosition()
+            position = LogPosition(log_file='binlog', log_pos=100)
             upstream_position_info = {
                 "position": position.to_dict(),
                 "cluster_name": "yelp_main",
@@ -435,7 +435,7 @@ class TestDataEventHandler(object):
     ):
         patches.patch_dry_run_config.return_value = True
         for data_event in data_create_events:
-            position = LogPosition()
+            position = LogPosition(log_file='binlog', log_pos=100)
             dry_run_data_event_handler.handle_event(data_event, position)
         assert producer.publish.call_count == 4
 

@@ -11,6 +11,7 @@ from yelp_conn.connection_set import ConnectionSet
 from replication_handler.components._pending_schema_event_recovery_handler import PendingSchemaEventRecoveryHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.sql_handler import mysql_statement_factory
+from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
@@ -38,8 +39,6 @@ class RecoveryHandler(object):
       resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
       publish_dry_run(boolean): whether actually publishing a message or not.
     """
-
-    MAX_EVENT_SIZE = 1000
 
     def __init__(
         self,
@@ -98,7 +97,7 @@ class RecoveryHandler(object):
     def _recover_from_unclean_shutdown(self, stream):
         events = []
         log.info("Recovering from unclean shutdown.")
-        while(len(events) < self.MAX_EVENT_SIZE):
+        while(len(events) < env_config.recovery_queue_size):
             event = stream.peek().event
             if not isinstance(event, DataEvent):
                 if self._is_unsupported_query_event(event):

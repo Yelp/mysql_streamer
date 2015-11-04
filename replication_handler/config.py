@@ -75,6 +75,21 @@ class EnvConfig(BaseConfig):
     def pii_yaml_path(self):
         return staticconf.get('pii_yaml_path').value
 
+    @property
+    def max_delay_allowed_in_minutes(self):
+        return staticconf.get('max_delay_allowed_in_minutes').value
+
+    @property
+    def sensu_host(self):
+        return staticconf.get('sensu_host').value
+
+    @property
+    def recovery_queue_size(self):
+        # The recovery queue size have to be greater than data pipeline producer
+        # buffer size, otherwise we could potentially have stale checkpoint data which
+        # would cause the recovery process to fail.
+        return staticconf.get('recovery_queue_size').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

@@ -10,7 +10,7 @@ SQLAlchemy==0.9.8
 avro==1.7.6
 boto==2.36.0
 contextdecorator==0.10.0
-data_pipeline>=0.1.22
+data_pipeline>=0.1.31
 dateglob==0.1
 enum34==1.0.4
 future==0.14.3
@@ -29,6 +29,7 @@ py==1.4.26
 pycrypto==2.6.1
 pyflakes==0.8.1
 pyramid-yelp-conn==0.4.1
+pysensu_yelp==0.2.3
 pysubnettree==0.23
 python-dateutil==2.4.2
 pytz==2014.10

@@ -4,8 +4,8 @@ import kazoo.client
 import yelp_lib.config_loader
 
 from replication_handler.config import env_config
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
+from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 

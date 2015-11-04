@@ -224,6 +224,15 @@ class TestRecoveryHandler(object):
             yield mock_cluster_name
 
     @pytest.yield_fixture
+    def patch_config_recovery_queue_size(self):
+        with mock.patch.object(
+            config.EnvConfig,
+            'recovery_queue_size',
+            new_callable=mock.PropertyMock
+        ) as mock_recovery_queue_size:
+            yield mock_recovery_queue_size
+
+    @pytest.yield_fixture
     def patch_get_topic_to_kafka_offset_map(self):
         with mock.patch.object(
             DataEventCheckpoint,
@@ -306,6 +315,7 @@ class TestRecoveryHandler(object):
         patch_get_topic_to_kafka_offset_map,
         patch_rbr_source_connection,
         patch_save_position,
+        patch_config_recovery_queue_size,
     ):
         event_list = [
             rh_data_event_before_master_log_pos,
@@ -323,6 +333,7 @@ class TestRecoveryHandler(object):
             producer,
             mock_schema_wrapper,
             mock_rbr_source_cursor,
+            patch_config_recovery_queue_size,
             max_size=max_message_size,
         )
         # Even though we have 4 data events in the stream, the recovery process halted
@@ -406,6 +417,7 @@ class TestRecoveryHandler(object):
         producer,
         mock_schema_wrapper,
         mock_rbr_source_cursor,
+        patch_config_recovery_queue_size=None,
         max_size=None,
     ):
         stream.peek.side_effect = event_list
@@ -418,7 +430,7 @@ class TestRecoveryHandler(object):
             pending_schema_event=None
         )
         if max_size:
-            recovery_handler.MAX_EVENT_SIZE = max_size
+            patch_config_recovery_queue_size.return_value = max_size
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
         assert mock_rbr_source_cursor.execute.call_count == 1

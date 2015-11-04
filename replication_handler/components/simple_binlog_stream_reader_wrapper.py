@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
-import logging
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
+import logging
 from pymysqlreplication.event import GtidEvent
+
+import pytz
+from dateutil.tz import tzlocal
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
@@ -9,9 +14,12 @@ from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
+from replication_handler.util.sensu_alert_manager import SensuAlertManager
 
 
 log = logging.getLogger('replication_handler.components.simple_binlog_stream_reader_wrapper')
+
+sensu_alert_interval_in_seconds = 30
 
 
 class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
@@ -30,6 +38,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         self.gtid_enabled = gtid_enabled
         self._upstream_position = position
         self._offset = 0
+        self.sensu_alert_manager = SensuAlertManager(sensu_alert_interval_in_seconds)
         self._seek(self._upstream_position.offset)
 
     def __iter__(self):
@@ -72,18 +81,31 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 gtid=event.gtid
             )
         elif (not self.gtid_enabled) and event.schema == HEARTBEAT_DB and hasattr(event, 'row'):
-            # This should be an update event, so a row will look like
-            # {"previous_values": {"serial": 123, "timestamp": "2015/07/22"},
-            # "after_values": {"serial": 456, "timestamp": "2015/07/23"}}
-            # for more details, check out python-mysql-replication docs.
-            log.info("Processing timestamp {timestamp}".format(timestamp=event.row["after_values"]["timestamp"]))
+            # row['after_values']['timestamp'] should be a datetime object without tzinfo.
+            # we need to give it a local timezone.
+            timestamp = self._add_tz_info_to_tz_naive_timestamp(
+                event.row["after_values"]["timestamp"]
+            )
+            self.sensu_alert_manager.periodic_process(timestamp)
+            self._log_process_timestamp(timestamp)
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
                 log_file=event.log_file,
                 hb_serial=event.row["after_values"]["serial"],
-                hb_timestamp=event.row["after_values"]["timestamp"],
+                hb_timestamp=str(timestamp),
             )
         self._offset = 0
+
+    def _add_tz_info_to_tz_naive_timestamp(self, timestamp):
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=tzlocal())
+        return timestamp
+
+    def _log_process_timestamp(self, timestamp):
+        # Change the timezone of timestamp to PST(local timezone in SF)
+        log.info("Processing timestamp {timestamp}".format(
+            timestamp=timestamp.replace(tzinfo=pytz.timezone('US/Pacific'))
+        ))
 
     def _refill_current_events_if_empty(self):
         if not self.current_events:
