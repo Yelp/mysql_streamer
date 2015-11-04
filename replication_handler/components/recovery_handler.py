@@ -112,7 +112,7 @@ class RecoveryHandler(object):
             log.info("Recovery event for %s" % event.table)
             replication_handler_event = stream.next()
             events.append(replication_handler_event)
-            if self._already_catch_up(replication_handler_event):
+            if self._already_caught_up(replication_handler_event):
                 break
         log.info("Recovering with %s events" % len(events))
         if events:
@@ -125,7 +125,7 @@ class RecoveryHandler(object):
         position_data = self.producer.get_checkpoint_position_data()
         save_position(position_data)
 
-    def _already_catch_up(self, rh_event):
+    def _already_caught_up(self, rh_event):
         # when we catch up with the latest position, we should stop accumulating more events.
         if (rh_event.position.log_file == self.latest_source_log_position.log_file and
             rh_event.position.log_pos >= self.latest_source_log_position.log_pos):
