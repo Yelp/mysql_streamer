@@ -126,8 +126,10 @@ class RecoveryHandler(object):
 
     def _already_caught_up(self, rh_event):
         # when we catch up with the latest position, we should stop accumulating more events.
-        if (rh_event.position.log_file == self.latest_source_log_position.log_file and
-            rh_event.position.log_pos >= self.latest_source_log_position.log_pos):
+        if (
+            rh_event.position.log_file == self.latest_source_log_position.log_file and
+            rh_event.position.log_pos >= self.latest_source_log_position.log_pos
+        ):
             log.info("We caught up with real time, halt recovery.")
             return True
         return False
