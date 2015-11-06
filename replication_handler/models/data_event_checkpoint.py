@@ -19,7 +19,7 @@ class DataEventCheckpoint(Base):
     kafka_offset = Column(Integer, nullable=False)
     cluster_name = Column(String, nullable=False)
     time_created = Column(UnixTimeStampType, default=default_now)
-    time_updated = Column(UnixTimeStampType, default=default_now)
+    time_updated = Column(UnixTimeStampType, default=default_now, onupdate=default_now)
 
     @classmethod
     def upsert_data_event_checkpoint(
