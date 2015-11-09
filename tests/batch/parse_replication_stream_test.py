@@ -124,6 +124,16 @@ class TestParseReplicationStream(object):
             yield mock_config
 
     @pytest.yield_fixture
+    def patch_config_with_small_recovery_queue_size(self):
+        with mock.patch(
+            'replication_handler.batch.parse_replication_stream.config.env_config'
+        ) as mock_config:
+            mock_config.register_dry_run = False
+            mock_config.publish_dry_run = False
+            mock_config.recovery_queue_size = 1
+            yield mock_config
+
+    @pytest.yield_fixture
     def patch_zk(self, zk_client):
         with mock.patch(
             'replication_handler.batch.parse_replication_stream.get_kazoo_client'
@@ -212,6 +222,20 @@ class TestParseReplicationStream(object):
             mock.call(signal.SIGINT, replication_stream._handle_graceful_termination),
             mock.call(signal.SIGTERM, replication_stream._handle_graceful_termination),
         ]
+        self._check_zk(zk_client)
+
+    def test_graceful_exit_if_buffer_size_mismatch(
+        self,
+        zk_client,
+        producer,
+        patch_config_with_small_recovery_queue_size,
+        patch_restarter,
+        patch_data_handle_event,
+        patch_save_position,
+        patch_exit,
+    ):
+        self._init_and_run_batch()
+        assert patch_exit.call_count == 1
         self._check_zk(zk_client)
 
     def test_handle_graceful_termination_data_event(

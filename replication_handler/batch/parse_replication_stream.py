@@ -7,6 +7,7 @@ import signal
 import sys
 from collections import namedtuple
 
+from data_pipeline.config import get_config
 from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.producer import Producer
 from data_pipeline.schema_cache import get_schema_cache
@@ -53,6 +54,10 @@ class ParseReplicationStream(Batch):
         )
         self.register_dry_run = config.env_config.register_dry_run
         self.publish_dry_run = config.env_config.publish_dry_run
+        if get_config().kafka_producer_buffer_size > config.env_config.recovery_queue_size:
+            log.info("Shutting down because producer_buffer_size was greater than \
+                    recovery queue size")
+            sys.exit()
 
     def _post_producer_setup(self):
         """ All these setups would need producer to be initialized."""
