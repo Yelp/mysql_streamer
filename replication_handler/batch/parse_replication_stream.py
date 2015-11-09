@@ -34,7 +34,7 @@ log = logging.getLogger('replication_handler.batch.parse_replication_stream')
 
 HandlerInfo = namedtuple("HandlerInfo", ("event_type", "handler"))
 
-STAT_COUNTER_NAME = 'replication_handler'
+STAT_COUNTER_NAME = 'replication_handler_counter'
 
 
 class ParseReplicationStream(Batch):
