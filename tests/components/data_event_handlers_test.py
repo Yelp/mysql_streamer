@@ -13,6 +13,7 @@ from data_pipeline.message import CreateMessage
 from data_pipeline.message import UpdateMessage
 from data_pipeline.position_data import PositionData
 from data_pipeline.producer import Producer
+from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pii_generator.components.pii_identifier import PIIIdentifier
 
 from replication_handler import config
@@ -62,7 +63,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def stats_counter(self):
-        return mock.Mock()
+        return mock.Mock(autospect=StatsCounter)
 
     @pytest.fixture
     def data_event_handler(

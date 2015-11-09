@@ -7,6 +7,7 @@ from collections import namedtuple
 import mock
 import pytest
 from data_pipeline.producer import Producer
+from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pii_generator.components.pii_identifier import PIIIdentifier
 from yelp_conn.connection_set import ConnectionSet
 
@@ -56,7 +57,7 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture
     def stats_counter(self):
-        return mock.Mock()
+        return mock.Mock(autospect=StatsCounter)
 
     @pytest.fixture
     def schema_event_handler(self, producer, schema_wrapper, stats_counter):
