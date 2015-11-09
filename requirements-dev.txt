@@ -10,4 +10,3 @@ fig
 flake8
 mock
 pytest
-yelp_meteorite[testing]==0.2.2
