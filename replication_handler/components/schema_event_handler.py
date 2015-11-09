@@ -49,6 +49,8 @@ class SchemaEventHandler(BaseEventHandler):
             return
 
         log.info("Processing Supported Statement: %s" % event.query)
+        self.stats_counter.increment(event.query)
+
         handle_method = self._get_handle_method(statement)
 
         # Schema events aren't necessarily idempotent, so we need to make sure

@@ -6,10 +6,12 @@ import logging
 import signal
 import sys
 from collections import namedtuple
+from contextlib import contextmanager
 
 from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.producer import Producer
 from data_pipeline.schema_cache import get_schema_cache
+from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from kazoo.exceptions import LockTimeout
 from kazoo.retry import KazooRetry
 from pymysqlreplication.event import QueryEvent
@@ -31,6 +33,8 @@ from replication_handler.util.misc import save_position
 log = logging.getLogger('replication_handler.batch.parse_replication_stream')
 
 HandlerInfo = namedtuple("HandlerInfo", ("event_type", "handler"))
+
+STAT_COUNTER_NAME = 'replication_handler'
 
 
 class ParseReplicationStream(Batch):
@@ -62,14 +66,7 @@ class ParseReplicationStream(Batch):
 
     def run(self):
         try:
-            with Producer(
-                producer_name=REPLICATION_HANDLER_PRODUCER_NAME,
-                team_name=REPLICATION_HANDLER_TEAM_NAME,
-                expected_frequency_seconds=ExpectedFrequency.constantly,
-                monitoring_enabled=False,
-                dry_run=self.publish_dry_run,
-                position_data_callback=save_position,
-            ) as self.producer:
+            with self._setup_producer() as self.producer, self._setup_counters() as self.counters:
                 self._post_producer_setup()
                 for replication_handler_event in self.stream:
                     event_class = replication_handler_event.event.__class__
@@ -93,11 +90,13 @@ class ParseReplicationStream(Batch):
         data_event_handler = DataEventHandler(
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
+            stats_counter=self.counters['data_event_counter'],
             register_dry_run=self.register_dry_run,
         )
         schema_event_handler = SchemaEventHandler(
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
+            stats_counter=self.counters['schema_event_counter'],
             register_dry_run=self.register_dry_run,
         )
         handler_map = {
@@ -111,6 +110,37 @@ class ParseReplicationStream(Batch):
             )
         }
         return handler_map
+
+    @contextmanager
+    def _setup_producer(self):
+        with Producer(
+            producer_name=REPLICATION_HANDLER_PRODUCER_NAME,
+            team_name=REPLICATION_HANDLER_TEAM_NAME,
+            expected_frequency_seconds=ExpectedFrequency.constantly,
+            monitoring_enabled=False,
+            dry_run=self.publish_dry_run,
+            position_data_callback=save_position,
+        ) as producer:
+            yield producer
+
+    @contextmanager
+    def _setup_counters(self):
+        schema_event_counter = StatsCounter(
+            STAT_COUNTER_NAME,
+            event_type='schema',
+        )
+        data_event_counter = StatsCounter(
+            STAT_COUNTER_NAME,
+            event_type='data',
+        )
+        try:
+            yield {
+                'schema_event_counter': schema_event_counter,
+                'data_event_counter': data_event_counter
+            }
+        finally:
+            schema_event_counter.flush()
+            data_event_counter.flush()
 
     def _register_signal_handler(self):
         """Register the handler for SIGINT(KeyboardInterrupt) and SigTerm"""

@@ -55,6 +55,7 @@ class DataEventHandler(BaseEventHandler):
         )
         message = builder.build_message()
         self.producer.publish(message)
+        self.stats_counter.increment(event.table)
         self.processor.push(message)
 
     def _get_payload_schema(self, table):

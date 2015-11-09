@@ -61,15 +61,21 @@ class TestDataEventHandler(object):
         return "93fd11e6-cf7c-11e4-912d-0242a9fe01db:12"
 
     @pytest.fixture
+    def stats_counter(self):
+        return mock.Mock()
+
+    @pytest.fixture
     def data_event_handler(
         self,
         schema_wrapper,
         patch_checkpoint_size,
-        producer
+        producer,
+        stats_counter,
     ):
         return DataEventHandler(
             producer,
             schema_wrapper=schema_wrapper,
+            stats_counter=stats_counter,
             register_dry_run=False,
         )
 
@@ -78,11 +84,13 @@ class TestDataEventHandler(object):
         self,
         schema_wrapper,
         patch_checkpoint_size,
+        stats_counter,
         producer
     ):
         return DataEventHandler(
             producer,
             schema_wrapper=schema_wrapper,
+            stats_counter=stats_counter,
             register_dry_run=True,
         )
 
@@ -310,6 +318,7 @@ class TestDataEventHandler(object):
     def test_handle_data_create_event_to_publish_call(
         self,
         producer,
+        stats_counter,
         first_test_position,
         second_test_position,
         test_table,
@@ -343,7 +352,8 @@ class TestDataEventHandler(object):
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
-
+        assert stats_counter.increment.call_count == 4
+        assert stats_counter.increment.call_args[0][0] == 'fake_table'
         assert producer.publish.call_count == 4
         # We set the checkpoint size to 2, so 4 rows will checkpoint twice
         # and upsert GlobalEventState twice
