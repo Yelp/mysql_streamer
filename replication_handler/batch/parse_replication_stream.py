@@ -128,7 +128,7 @@ class ParseReplicationStream(Batch):
             position_data = self.producer.get_checkpoint_position_data()
             save_position(position_data, is_clean_shutdown=True)
             log.info(
-                "Flushing final DataEvent at position {} before shutting down"
+                "Flushing final DataEvent at position {} before shutting down."
                 .format(position_data)
             )
         self._close_zk()

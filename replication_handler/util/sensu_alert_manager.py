@@ -41,5 +41,5 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
                 'status': 2,
                 'output': 'Replication Handler is falling {delay_time} min behind real time'.format(delay_time=delay_time),
             })
-        log.info("Replication Handler status: {}, output: {}".format(result_dict['status'], result_dict['output']))
+        log.info("Replication Handler status: {}, output: {}.".format(result_dict['status'], result_dict['output']))
         pysensu_yelp.send_event(**result_dict)
