@@ -8,7 +8,9 @@ from yelp_lib.containers.lists import unlist
 from replication_handler.models.database import Base
 from replication_handler.models.database import UnixTimeStampType
 from replication_handler.models.database import default_now
+import logging
 
+log = logging.getLogger('replication_handler.models.data_event_checkpoint')
 
 class DataEventCheckpoint(Base):
 

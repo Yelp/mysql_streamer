@@ -193,6 +193,7 @@ class MysqlQualifiedIdentifierParser(object):
             identifiers = self._handle_identifier()
 
         if self.index != len(self.identifier):
+            log.info("Parsing failed for identifier {}".format(self.identifier))
             raise ParseError()
 
         return identifiers
