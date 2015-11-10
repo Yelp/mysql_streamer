@@ -9,6 +9,7 @@ import pysensu_yelp
 from replication_handler import config
 from replication_handler.util.heartbeat_periodic_processor import HeartbeatPeriodicProcessor
 
+
 log = logging.getLogger('replication_handler.util.sensu_alert_manager')
 
 class SensuAlertManager(HeartbeatPeriodicProcessor):
