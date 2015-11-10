@@ -193,7 +193,14 @@ class MysqlQualifiedIdentifierParser(object):
             identifiers = self._handle_identifier()
 
         if self.index != len(self.identifier):
-            log.info("Parsing failed for identifier {}".format(self.identifier))
+            log.error(
+                "ParseError: {} failed to parse.  Qualified: {}. "
+                "Identifiers: {}".format(
+                    self.identifier,
+                    self.identifier_qualified,
+                    identifiers,
+                )
+            )
             raise ParseError()
 
         return identifiers
@@ -261,6 +268,15 @@ class TableStatementBase(MysqlStatement):
 
         return database_name, table_name
 
+    def set_db_and_table_name(self):
+        log.info("Extract db and table (token: {}) from statement: {}".format(
+            self.token_matcher.peek().value,
+            str(self.statement)
+        ))
+        self.database_name, self.table = TableStatementBase.extract_db_and_table_name(
+            self.token_matcher.pop().value
+        )
+
 
 class CreateTableStatement(TableStatementBase):
     matchers = [
@@ -305,9 +321,7 @@ class AlterTableStatement(TableStatementBase):
     def __init__(self, statement):
         super(AlterTableStatement, self).__init__(statement)
         if self.token_matcher.has_next():
-            self.database_name, self.table = TableStatementBase.extract_db_and_table_name(
-                self.token_matcher.pop().value
-            )
+            self.set_db_and_table_name()
         else:
             raise IncompatibleStatementError()
 
@@ -331,9 +345,7 @@ class DropTableStatement(TableStatementBase):
             self.token_matcher.matches(Optional([Compound(['if', 'exists'])])) and
             self.token_matcher.has_next()
         ):
-            self.database_name, self.table = TableStatementBase.extract_db_and_table_name(
-                self.token_matcher.pop().value
-            )
+            self.set_db_and_table_name()
         else:
             raise IncompatibleStatementError()
 
