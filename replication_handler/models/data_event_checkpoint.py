@@ -45,7 +45,7 @@ class DataEventCheckpoint(Base):
             data_event_checkpoint.kafka_offset = offset
             data_event_checkpoint.cluster_name = cluster_name
             log.info(
-                'reached checkpoint with offset {} on topic  {} at time {}'.
+                'reached checkpoint with offset {} on topic {} at time {}'.
                 format(offset, topic, default_now)
             )
             session.add(data_event_checkpoint)
