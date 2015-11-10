@@ -7,6 +7,7 @@ from collections import namedtuple
 import mock
 import pytest
 from data_pipeline.producer import Producer
+from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pii_generator.components.pii_identifier import PIIIdentifier
 from yelp_conn.connection_set import ConnectionSet
 
@@ -55,18 +56,24 @@ class TestSchemaEventHandler(object):
         return SchemaWrapper(schematizer_client=schematizer_client)
 
     @pytest.fixture
-    def schema_event_handler(self, producer, schema_wrapper):
+    def stats_counter(self):
+        return mock.Mock(autospect=StatsCounter)
+
+    @pytest.fixture
+    def schema_event_handler(self, producer, schema_wrapper, stats_counter):
         return SchemaEventHandler(
             producer=producer,
             schema_wrapper=schema_wrapper,
+            stats_counter=stats_counter,
             register_dry_run=False,
         )
 
     @pytest.fixture
-    def dry_run_schema_event_handler(self, producer, schema_wrapper):
+    def dry_run_schema_event_handler(self, producer, schema_wrapper, stats_counter):
         return SchemaEventHandler(
             producer=producer,
             schema_wrapper=schema_wrapper,
+            stats_counter=stats_counter,
             register_dry_run=True,
         )
 
@@ -381,6 +388,7 @@ class TestSchemaEventHandler(object):
         self,
         schematizer_client,
         producer,
+        stats_counter,
         test_position,
         save_position,
         external_patches,
@@ -417,11 +425,14 @@ class TestSchemaEventHandler(object):
         )
 
         assert producer.flush.call_count == 1
+        assert stats_counter.increment.call_count == 1
+        assert stats_counter.increment.call_args[0][0] == show_create_result_initial.query
         assert save_position.call_count == 1
 
     def test_handle_event_alter_table(
         self,
         producer,
+        stats_counter,
         test_position,
         save_position,
         external_patches,
@@ -468,6 +479,8 @@ class TestSchemaEventHandler(object):
         )
 
         assert producer.flush.call_count == 1
+        assert stats_counter.increment.call_count == 1
+        assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
         assert save_position.call_count == 1
 
     def test_handle_event_rename_table(
@@ -540,6 +553,7 @@ class TestSchemaEventHandler(object):
     def test_unsupported_query(
         self,
         producer,
+        stats_counter,
         test_position,
         save_position,
         external_patches,
@@ -552,7 +566,8 @@ class TestSchemaEventHandler(object):
             unsupported_query_event,
             test_position,
             external_patches,
-            producer
+            producer,
+            stats_counter,
         )
 
     def test_incomplete_transaction(
@@ -650,8 +665,10 @@ class TestSchemaEventHandler(object):
         query_event,
         test_position,
         external_patches,
-        producer
+        producer,
+        stats_counter,
     ):
         schema_event_handler.handle_event(query_event, test_position)
         assert external_patches.execute_query.call_count == 0
         assert producer.flush.call_count == 0
+        assert stats_counter.increment.call_count == 0
