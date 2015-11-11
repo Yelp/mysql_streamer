@@ -97,7 +97,7 @@ class SchemaWrapper(object):
         if alter_table_stmt:
             request_body["alter_table_stmt"] = alter_table_stmt
 
-        resp = self.schematizer_client.schemas.register_schema_from_mysql_stmts(
+        resp = self.schematizer_client._client.schemas.register_schema_from_mysql_stmts(
             body=request_body
         ).result()
         self._populate_schema_cache(table, resp)
