@@ -63,8 +63,4 @@ class DataEventHandler(BaseEventHandler):
 
     def _checkpoint_latest_published_offset(self, rows):
         position_data = self.producer.get_checkpoint_position_data()
-        log.info(
-            "Checkpoint for publishing reached at position {}."
-            .format(position_data)
-        )
         save_position(position_data)

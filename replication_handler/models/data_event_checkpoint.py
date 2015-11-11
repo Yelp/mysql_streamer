@@ -14,6 +14,7 @@ from replication_handler.models.database import default_now
 
 log = logging.getLogger('replication_handler.models.data_event_checkpoint')
 
+
 class DataEventCheckpoint(Base):
 
     __tablename__ = 'data_event_checkpoint'
@@ -47,7 +48,7 @@ class DataEventCheckpoint(Base):
             data_event_checkpoint.cluster_name = cluster_name
             log.info(
                 'Reached checkpoint with offset {} on topic {} at time {}.'.
-                format(offset, topic, default_now)
+                format(offset, topic, data_event_checkpoint.time_updated)
             )
             session.add(data_event_checkpoint)
 

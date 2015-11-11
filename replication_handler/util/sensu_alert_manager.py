@@ -12,6 +12,7 @@ from replication_handler.util.heartbeat_periodic_processor import HeartbeatPerio
 
 log = logging.getLogger('replication_handler.util.sensu_alert_manager')
 
+
 class SensuAlertManager(HeartbeatPeriodicProcessor):
     """ This class triggers sensu alert if replication handler fall behind real time.
     The check will be triggered every 30 seconds to avoid flapping and overflowing
