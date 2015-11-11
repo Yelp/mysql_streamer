@@ -9,7 +9,7 @@ from collections import namedtuple
 
 from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.producer import Producer
-from data_pipeline.schema_cache import get_schema_cache
+from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from kazoo.exceptions import LockTimeout
 from kazoo.retry import KazooRetry
 from pymysqlreplication.event import QueryEvent
@@ -49,7 +49,7 @@ class ParseReplicationStream(Batch):
         self._init_zk_and_lock_replication_handler()
         super(ParseReplicationStream, self).__init__()
         self.schema_wrapper = SchemaWrapper(
-            schematizer_client=get_schema_cache().schematizer_client
+            schematizer_client=get_schematizer()
         )
         self.register_dry_run = config.env_config.register_dry_run
         self.publish_dry_run = config.env_config.publish_dry_run
