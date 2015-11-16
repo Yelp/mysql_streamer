@@ -155,9 +155,12 @@ class TestSchemaEventHandler(object):
         query = request.param
         return QueryEvent(schema=test_schema, query=query)
 
-    @pytest.fixture
-    def non_schema_relevant_query_event(self, test_schema):
-        query = "CREATE DATABASE weird_new_db"
+    @pytest.fixture(params=[
+        'CREATE DATABASE weird_new_db',
+        'DROP DATABASE weird_new_db'
+    ])
+    def non_schema_relevant_query_event(self, request, test_schema):
+        query = request.param
         schema = test_schema
         return QueryEvent(schema=schema, query=query)
 
@@ -538,10 +541,16 @@ class TestSchemaEventHandler(object):
     ):
         schema_event_handler.handle_event(non_schema_relevant_query_event, test_position)
         assert external_patches.execute_query.call_count == 1
+
+        if 'CREATE DATABASE' in non_schema_relevant_query_event.query:
+            expected_schema = None
+        else:
+            expected_schema = non_schema_relevant_query_event.schema
+
         assert external_patches.execute_query.call_args_list == [
             mock.call(
                 non_schema_relevant_query_event.query,
-                non_schema_relevant_query_event.schema,
+                expected_schema
             )
         ]
         # We should flush and save state before
