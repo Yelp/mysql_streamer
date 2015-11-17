@@ -396,10 +396,10 @@ class TestSchemaEventHandler(object):
            create table event hence many mocks
         """
         schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
-        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value.\
-            result.return_value = create_table_schema_store_response
+        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value\
+             = create_table_schema_store_response
         external_patches.get_show_create_statement.return_value = show_create_result_initial
-        mysql_statements = {"new_create_table_stmt": show_create_result_initial.query}
+        new_create_table_stmt = show_create_result_initial.query
 
         schema_event_handler.handle_event(create_table_schema_event, test_position)
 
@@ -410,7 +410,8 @@ class TestSchemaEventHandler(object):
             mock_schema_tracker_cursor,
             table_with_schema_changes,
             schema_event_handler,
-            mysql_statements,
+            new_create_table_stmt,
+            {},
             create_table_schema_store_response,
             external_patches,
             test_schema
@@ -439,12 +440,11 @@ class TestSchemaEventHandler(object):
            event with an alter table hence many mocks.
         """
         schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
-        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value.\
-            result.return_value = alter_table_schema_store_response
-
+        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value \
+             = alter_table_schema_store_response
+        new_create_table_stmt = show_create_result_after_alter.query
         mysql_statements = {
             "old_create_table_stmt": show_create_result_initial.query,
-            "new_create_table_stmt": show_create_result_after_alter.query,
             "alter_table_stmt": alter_table_schema_event.query,
         }
         external_patches.get_show_create_statement.side_effect = [
@@ -461,6 +461,7 @@ class TestSchemaEventHandler(object):
             mock_schema_tracker_cursor,
             table_with_schema_changes,
             schema_event_handler,
+            new_create_table_stmt,
             mysql_statements,
             alter_table_schema_store_response,
             external_patches,
@@ -585,6 +586,7 @@ class TestSchemaEventHandler(object):
         mock_schema_tracker_cursor,
         table,
         schema_event_handler,
+        new_create_table_stmt,
         mysql_statements,
         schema_store_response,
         external_patches,
@@ -615,6 +617,7 @@ class TestSchemaEventHandler(object):
                 table.table_name,
                 'bam+replication+handler@yelp.com',
                 True,
+                new_create_table_stmt,
                 **mysql_statements
             )
         ]
