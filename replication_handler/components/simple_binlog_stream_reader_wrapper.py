@@ -3,10 +3,10 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
-from pymysqlreplication.event import GtidEvent
 
 import pytz
 from dateutil.tz import tzlocal
+from pymysqlreplication.event import GtidEvent
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
@@ -87,7 +87,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 event.row["after_values"]["timestamp"]
             )
             self.sensu_alert_manager.periodic_process(timestamp)
-            self._log_process_timestamp(timestamp)
+            self._log_process(timestamp, event.log_file, event.log_pos)
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
                 log_file=event.log_file,
@@ -101,11 +101,15 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             timestamp = timestamp.replace(tzinfo=tzlocal())
         return timestamp
 
-    def _log_process_timestamp(self, timestamp):
+    def _log_process(self, timestamp, log_file, log_pos):
         # Change the timezone of timestamp to PST(local timezone in SF)
-        log.info("Processing timestamp {timestamp}".format(
-            timestamp=timestamp.replace(tzinfo=pytz.timezone('US/Pacific'))
-        ))
+        log.info(
+            "Processing timestamp is {timestamp}, log position is {log_file}: {log_pos}".format(
+                timestamp=timestamp.replace(tzinfo=pytz.timezone('US/Pacific')),
+                log_file=log_file,
+                log_pos=log_pos,
+            )
+        )
 
     def _refill_current_events_if_empty(self):
         if not self.current_events:
