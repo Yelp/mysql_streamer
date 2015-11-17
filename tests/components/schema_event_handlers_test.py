@@ -411,7 +411,6 @@ class TestSchemaEventHandler(object):
             table_with_schema_changes,
             schema_event_handler,
             new_create_table_stmt,
-            {},
             create_table_schema_store_response,
             external_patches,
             test_schema
@@ -462,10 +461,10 @@ class TestSchemaEventHandler(object):
             table_with_schema_changes,
             schema_event_handler,
             new_create_table_stmt,
-            mysql_statements,
             alter_table_schema_store_response,
             external_patches,
-            test_schema
+            test_schema,
+            mysql_statements=mysql_statements
         )
 
         assert producer.flush.call_count == 1
@@ -587,10 +586,10 @@ class TestSchemaEventHandler(object):
         table,
         schema_event_handler,
         new_create_table_stmt,
-        mysql_statements,
         schema_store_response,
         external_patches,
-        test_schema
+        test_schema,
+        mysql_statements={}
     ):
         """Test helper method that checks various things in a successful scenario
            of event handling
@@ -613,11 +612,11 @@ class TestSchemaEventHandler(object):
         body.update(mysql_statements)
         assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_args_list == [
             mock.call(
-                "{0}.{1}".format(table.cluster_name, table.database_name),
-                table.table_name,
-                'bam+replication+handler@yelp.com',
-                True,
-                new_create_table_stmt,
+                namespace="{0}.{1}".format(table.cluster_name, table.database_name),
+                source=table.table_name,
+                source_owner_email='bam+replication+handler@yelp.com',
+                contains_pii=True,
+                new_create_table_stmt=new_create_table_stmt,
                 **mysql_statements
             )
         ]

@@ -89,14 +89,14 @@ class SchemaWrapper(object):
             table_stmt_kwargs["alter_table_stmt"] = alter_table_stmt
 
         resp = self.schematizer_client.schemas.register_schema_from_mysql_stmts(
-            "{0}.{1}".format(table.cluster_name, table.database_name),
-            table.table_name,
-            self._notify_email,
-            self.pii_identifier.table_has_pii(
+            namespace="{0}.{1}".format(table.cluster_name, table.database_name),
+            source=table.table_name,
+            source_owner_email=self._notify_email,
+            contains_pii=self.pii_identifier.table_has_pii(
                 database_name=table.database_name,
                 table_name=table.table_name
             ),
-            new_create_table_stmt,
+            new_create_table_stmt=new_create_table_stmt,
             **table_stmt_kwargs
         )
         self._populate_schema_cache(table, resp)
