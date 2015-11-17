@@ -183,8 +183,21 @@ class ParseError(Exception):
 class MysqlQualifiedIdentifierParser(object):
     def __init__(self, identifier, identifier_qualified=True):
         self.index = 0
-        self.identifier = identifier.strip()
+        self.identifier = self._clean_identifier(identifier)
         self.identifier_qualified = identifier_qualified
+
+    def _clean_identifier(self, identifier):
+        identifier = identifier.strip()
+
+        # This is a workaround for DATAPIPE-588
+        # TODO(DATAPIPE-490|justinc): We'll probably need to replace SQLParse
+        # to get rid of this.
+        # https://regex101.com/r/mZ5oS9/1
+        match = re.match('^(.+?)(\s+engine$)', identifier, re.I)
+        if match:
+            identifier = match.group(1)
+
+        return identifier
 
     def parse(self):
         if self.identifier_qualified:

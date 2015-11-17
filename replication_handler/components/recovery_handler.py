@@ -16,9 +16,9 @@ from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.util.message_builder import MessageBuilder
-from replication_handler.util.position import LogPosition
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import save_position
+from replication_handler.util.position import LogPosition
 
 
 log = logging.getLogger('replication_handler.components.recovery_handler')
@@ -78,6 +78,10 @@ class RecoveryHandler(object):
         refresh_source_cursor.execute("show master status")
         result = refresh_source_cursor.fetchone()
         # result is a tuple with file name at pos 0, and position at pos 1.
+        log.info("The latest master log position is {log_file}: {log_pos}".format(
+            log_file=result[0],
+            log_pos=result[1],
+        ))
         return LogPosition(log_file=result[0], log_pos=result[1])
 
     def recover(self):

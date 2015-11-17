@@ -3,6 +3,7 @@ import mock
 import pytest
 
 from data_pipeline.producer import Producer
+from data_pipeline.tools.meteorite_wrappers import StatsCounter
 
 from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
@@ -24,8 +25,12 @@ class TestBaseEventHandler(object):
         return SchemaWrapper(schematizer_client=mock_schematizer_client)
 
     @pytest.fixture(scope="class")
-    def base_event_handler(self, producer, schema_wrapper):
-        return BaseEventHandler(producer, schema_wrapper)
+    def stats_counter(self):
+        return mock.Mock(autospect=StatsCounter)
+
+    @pytest.fixture(scope="class")
+    def base_event_handler(self, producer, schema_wrapper, stats_counter):
+        return BaseEventHandler(producer, schema_wrapper, stats_counter)
 
     @pytest.yield_fixture
     def patch_config(self):
@@ -38,6 +43,5 @@ class TestBaseEventHandler(object):
             yield mock_cluster_name
 
     def test_handle_event_not_implemented(self, base_event_handler):
-
         with pytest.raises(NotImplementedError):
             base_event_handler.handle_event(mock.Mock(), mock.Mock())

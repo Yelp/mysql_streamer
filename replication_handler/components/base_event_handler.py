@@ -22,12 +22,14 @@ class BaseEventHandler(object):
       producer(data_pipe.producer.Producer object): producer object from data pipeline
         clientlib, since both schema and data event handling involve publishing.
       schema_wrapper(SchemaWrapper object): a wrapper for communication with schematizer.
+      stats_counter(StatsCounter object): a wrapper for communication with meteorite.
     """
 
-    def __init__(self, producer, schema_wrapper):
+    def __init__(self, producer, schema_wrapper, stats_counter):
         self.schema_wrapper = schema_wrapper
         self.cluster_name = source_database_config.cluster_name
         self.producer = producer
+        self.stats_counter = stats_counter
 
     def handle_event(self, event, position):
         """ All subclasses need to define how they want to handle an evnet."""

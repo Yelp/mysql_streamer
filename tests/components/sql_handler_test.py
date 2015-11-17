@@ -167,14 +167,22 @@ class TestAlterTableStatement(MysqlTableStatementBaseTest):
     def to(self, request):
         return request.param
 
+    @pytest.fixture(params=[
+        'DROP test_col',
+        'ENGINE=INNODB'  # Added to test condition from DATAPIPE-588
+    ])
+    def operation(self, request):
+        return request.param
+
     # 5.5, 5.6: ALTER [ONLINE|OFFLINE] [IGNORE] TABLE tbl_name
     # 5.7: ALTER [IGNORE] TABLE tbl_name
     @pytest.fixture
-    def query(self, online_offline, ignore, table):
-        return "ALTER {online_offline} {ignore} TABLE {table} DROP test_col".format(
+    def query(self, online_offline, ignore, table, operation):
+        return "ALTER {online_offline} {ignore} TABLE {table} {operation}".format(
             online_offline=online_offline,
             ignore=ignore,
-            table=table
+            table=table,
+            operation=operation
         )
 
     @pytest.fixture

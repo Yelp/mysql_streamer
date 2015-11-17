@@ -13,6 +13,7 @@ from replication_handler.components.base_event_handler import Table
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.sql_handler import AlterTableStatement
+from replication_handler.components.sql_handler import CreateDatabaseStatement
 from replication_handler.components.sql_handler import CreateTableStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.components.sql_handler import RenameTableStatement
@@ -49,6 +50,8 @@ class SchemaEventHandler(BaseEventHandler):
             return
 
         log.info("Processing Supported Statement: %s" % event.query)
+        self.stats_counter.increment(event.query)
+
         handle_method = self._get_handle_method(statement)
 
         # Schema events aren't necessarily idempotent, so we need to make sure
@@ -111,8 +114,17 @@ class SchemaEventHandler(BaseEventHandler):
             # We may eventually want to add some kind of journaling here, where
             # we could manually mark a statement as complete to get things
             # moving again, if we hit this edge case frequently.
-            self._execute_non_schema_store_relevant_query(event, event.schema)
+            db = self._get_db_for_statement(statement, event)
+            self._execute_non_schema_store_relevant_query(event, db)
             self._mark_schema_event_complete(event, position)
+
+    def _get_db_for_statement(self, statement, event):
+        # Create database statements shouldn't use a database, since the
+        # database may not exist yet.
+        if isinstance(statement, CreateDatabaseStatement):
+            return None
+        else:
+            return event.schema
 
     def _mark_schema_event_complete(self, event, position):
         with rbr_state_session.connect_begin(ro=False) as session:

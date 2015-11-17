@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import datetime
 
 import mock
@@ -66,3 +69,4 @@ class TestSensuAlertManager(object):
         assert result['check_every'] == '30s'
         assert result['alert_after'] == '5m'
         assert result['ttl'] == '300s'
+        assert result['source'] == 'replication_handler_real_time_check'
