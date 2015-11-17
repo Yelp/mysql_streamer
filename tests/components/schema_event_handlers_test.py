@@ -396,8 +396,8 @@ class TestSchemaEventHandler(object):
            create table event hence many mocks
         """
         schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
-        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value\
-             = create_table_schema_store_response
+        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value = \
+            create_table_schema_store_response
         external_patches.get_show_create_statement.return_value = show_create_result_initial
         new_create_table_stmt = show_create_result_initial.query
 
@@ -440,8 +440,8 @@ class TestSchemaEventHandler(object):
            event with an alter table hence many mocks.
         """
         schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
-        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value \
-             = alter_table_schema_store_response
+        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value = \
+            alter_table_schema_store_response
         new_create_table_stmt = show_create_result_after_alter.query
         mysql_statements = {
             "old_create_table_stmt": show_create_result_initial.query,
