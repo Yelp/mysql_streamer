@@ -82,24 +82,23 @@ class SchemaWrapper(object):
             self.cache[table] = self._dry_run_schema
             return
 
-        request_body = {
-            "namespace": "{0}.{1}".format(table.cluster_name, table.database_name),
-            "source": table.table_name,
-            "source_owner_email": self._notify_email,
-            "contains_pii": self.pii_identifier.table_has_pii(
+        table_stmt_kwargs = {}
+        if old_create_table_stmt:
+            table_stmt_kwargs["old_create_table_stmt"] = old_create_table_stmt
+        if alter_table_stmt:
+            table_stmt_kwargs["alter_table_stmt"] = alter_table_stmt
+
+        resp = self.schematizer_client.schemas.register_schema_from_mysql_stmts(
+            "{0}.{1}".format(table.cluster_name, table.database_name),
+            table.table_name,
+            self._notify_email,
+            self.pii_identifier.table_has_pii(
                 database_name=table.database_name,
                 table_name=table.table_name
             ),
-            "new_create_table_stmt": new_create_table_stmt
-        }
-        if old_create_table_stmt:
-            request_body["old_create_table_stmt"] = old_create_table_stmt
-        if alter_table_stmt:
-            request_body["alter_table_stmt"] = alter_table_stmt
-
-        resp = self.schematizer_client.schemas.register_schema(
-            body=request_body
-        ).result()
+            new_create_table_stmt,
+            **table_stmt_kwargs
+        )
         self._populate_schema_cache(table, resp)
 
     def reset_cache(self):
