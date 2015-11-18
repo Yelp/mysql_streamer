@@ -18,7 +18,7 @@ class HeartbeatPeriodicProcessor(object):
 
     def __init__(self, interval_in_seconds):
         self.interval_in_seconds = interval_in_seconds
-        self._next_process_time = self._compute_next_process_time()
+        self._next_process_time = self._utc_now
 
     def periodic_process(self, timestamp=None):
         if self._should_process():
