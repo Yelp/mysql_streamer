@@ -1,9 +1,14 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from collections import namedtuple
 from datetime import datetime
-from mock import Mock
-from mock import patch
 
 import pytest
+import pytz
+from mock import Mock
+from mock import patch
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import UpdateRowsEvent
 
@@ -64,20 +69,20 @@ class MockBinLogEvents(Mock):
     @property
     def hbs(self):
         return [
-            RowEntry(True, 0, datetime(2015, 1, 1)),
-            RowEntry(True, 1, datetime(2015, 1, 2)),
-            RowEntry(True, 2, datetime(2015, 1, 3)),
-            RowEntry(True, 3, datetime(2015, 1, 4)),
-            RowEntry(True, 4, datetime(2015, 1, 5)),
-            RowEntry(True, 5, datetime(2015, 1, 6)),
-            RowEntry(True, 6, datetime(2015, 1, 6)),
-            RowEntry(True, 7, datetime(2015, 1, 6)),
-            RowEntry(True, 8, datetime(2015, 1, 6)),
+            RowEntry(True, 0, datetime(2015, 1, 1).replace(tzinfo=pytz.utc)),
+            RowEntry(True, 1, datetime(2015, 1, 2).replace(tzinfo=pytz.utc)),
+            RowEntry(True, 2, datetime(2015, 1, 3).replace(tzinfo=pytz.utc)),
+            RowEntry(True, 3, datetime(2015, 1, 4).replace(tzinfo=pytz.utc)),
+            RowEntry(True, 4, datetime(2015, 1, 5).replace(tzinfo=pytz.utc)),
+            RowEntry(True, 5, datetime(2015, 1, 6).replace(tzinfo=pytz.utc)),
+            RowEntry(True, 6, datetime(2015, 1, 6).replace(tzinfo=pytz.utc)),
+            RowEntry(True, 7, datetime(2015, 1, 6).replace(tzinfo=pytz.utc)),
+            RowEntry(True, 8, datetime(2015, 1, 6).replace(tzinfo=pytz.utc)),
         ]
 
     @property
     def nonexistent_hb(self):
-        return RowEntry(True, 100, datetime(2015, 1, 8))
+        return RowEntry(True, 100, datetime(2015, 1, 8).replace(tzinfo=pytz.utc))
 
     def construct_heartbeat_pos(self, log, index):
         """Constructs a HeartbeatPosition object located at a given log and index"""

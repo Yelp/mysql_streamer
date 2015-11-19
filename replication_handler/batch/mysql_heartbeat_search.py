@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import sys
 
@@ -13,6 +16,7 @@ class MySQLHeartbeatSearchBatch(Batch):
     To use from the command line:
         python -m replication_handler.batch.mysql_heartbeat_search \
             {heartbeat_time_stamp} {heartbeat_serial}
+    Note that the heartbeat_time_stamp should be utc timestamp, eg, 1447354877
     Prints information about the heartbeat or None if the heartbeat could
     not be found.
     """

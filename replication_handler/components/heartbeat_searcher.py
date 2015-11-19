@@ -1,5 +1,11 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from datetime import datetime
 
+import pytz
+from dateutil.tz import tzlocal
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import UpdateRowsEvent
 from yelp_conn.connection_set import ConnectionSet
@@ -43,7 +49,9 @@ class HeartbeatSearcher(object):
         """Entry method for using the class from other python modules, which
         returns the HeartbeatPosition object.
         """
-        hb_timestamp = datetime.utcfromtimestamp(hb_timestamp_epoch)
+        hb_timestamp = datetime.utcfromtimestamp(
+            hb_timestamp_epoch
+        ).replace(tzinfo=pytz.utc)
         start_index = self._binary_search_log_files(hb_timestamp, 0, len(self.all_logs))
         return self._full_search_log_file(start_index, hb_timestamp, hb_serial)
 
@@ -112,7 +120,9 @@ class HeartbeatSearcher(object):
                     continue
                 return HeartbeatPosition(
                     hb_serial=event.rows[0]["after_values"]["serial"],
-                    hb_timestamp=event.rows[0]["after_values"]["timestamp"],
+                    hb_timestamp=self._add_tz_info_to_tz_naive_timestamp(
+                        event.rows[0]["after_values"]["timestamp"]
+                    ),
                     log_file=stream.log_file,
                     log_pos=stream.log_pos,
                 )
@@ -184,17 +194,21 @@ class HeartbeatSearcher(object):
                 if not self._is_heartbeat(event):
                     continue
                 # break if we encounter heartheat with larger time stamp
-                if event.rows[0]["after_values"]["timestamp"] > hb_timestamp:
+                current_timestamp = self._add_tz_info_to_tz_naive_timestamp(
+                    event.rows[0]["after_values"]["timestamp"]
+                )
+                current_serial = event.rows[0]["after_values"]["serial"]
+                if current_timestamp > hb_timestamp:
                     break
                 if (
-                    event.rows[0]["after_values"]["timestamp"] != hb_timestamp or
-                    event.rows[0]["after_values"]["serial"] != hb_serial
+                    current_timestamp != hb_timestamp or
+                    current_serial != hb_serial
                 ):
                     continue
 
                 return HeartbeatPosition(
-                    hb_serial=event.rows[0]["after_values"]["serial"],
-                    hb_timestamp=event.rows[0]["after_values"]["timestamp"],
+                    hb_serial=current_serial,
+                    hb_timestamp=current_timestamp,
                     log_file=stream.log_file,
                     log_pos=stream.log_pos,
                 )
@@ -222,7 +236,9 @@ class HeartbeatSearcher(object):
                     continue
 
                 found_hb = True
-                event_timestamp = event.rows[0]["after_values"]["timestamp"]
+                event_timestamp = self._add_tz_info_to_tz_naive_timestamp(
+                    event.rows[0]["after_values"]["timestamp"]
+                )
                 event_serial = event.rows[0]["after_values"]["serial"]
                 if event_timestamp == hb_timestamp and event_serial == hb_serial:
                     return found_hb, HeartbeatPosition(
@@ -235,3 +251,8 @@ class HeartbeatSearcher(object):
         finally:
             if stream:
                 stream.close()
+
+    def _add_tz_info_to_tz_naive_timestamp(self, timestamp):
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=tzlocal())
+        return timestamp

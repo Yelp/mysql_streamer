@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from datetime import datetime
-from pymysqlreplication.event import GtidEvent
-from pymysqlreplication.event import QueryEvent
 
 import mock
 import pytest
+from pymysqlreplication.event import GtidEvent
+from pymysqlreplication.event import QueryEvent
 
 from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
 from replication_handler.util.misc import DataEvent
@@ -130,7 +133,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
                     log_file=log_file,
                     offset=1,
                     hb_serial=123,
-                    hb_timestamp="2015-10-21 12:05:27-07:00",
+                    hb_timestamp=1445429127,
                 )
             ),
             ReplicationHandlerEvent(
@@ -140,7 +143,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
                     log_file=log_file,
                     offset=2,
                     hb_serial=123,
-                    hb_timestamp="2015-10-21 12:05:27-07:00",
+                    hb_timestamp=1445429127,
                 )
             )
         ]
