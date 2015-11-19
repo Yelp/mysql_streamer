@@ -3,11 +3,14 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from datetime import timedelta
-
+import logging
 import pysensu_yelp
 
 from replication_handler import config
 from replication_handler.util.heartbeat_periodic_processor import HeartbeatPeriodicProcessor
+
+
+log = logging.getLogger('replication_handler.util.sensu_alert_manager')
 
 
 class SensuAlertManager(HeartbeatPeriodicProcessor):
@@ -41,4 +44,5 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
                 'status': 2,
                 'output': 'Replication Handler is falling {delay_time} min behind real time'.format(delay_time=delay_time),
             })
+        log.info("Replication Handler status: {}, output: {}.".format(result_dict['status'], result_dict['output']))
         pysensu_yelp.send_event(**result_dict)

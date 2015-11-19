@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import kazoo.client
+import logging
 
 import yelp_lib.config_loader
 
@@ -18,6 +19,8 @@ REPLICATION_HANDLER_PRODUCER_NAME = env_config.producer_name
 REPLICATION_HANDLER_TEAM_NAME = env_config.team_name
 
 HEARTBEAT_DB = "yelp_heartbeat"
+
+log = logging.getLogger('replication_handler.util.misc.data_event')
 
 
 class ReplicationHandlerEvent(object):
@@ -65,6 +68,7 @@ class DataEvent(object):
 def save_position(position_data, is_clean_shutdown=False):
     if not position_data or not position_data.last_published_message_position_info:
         return
+    log.info("Saving position with position data {}.".format(position_data))
     position_info = position_data.last_published_message_position_info
     topic_to_kafka_offset_map = position_data.topic_to_kafka_offset_map
     with rbr_state_session.connect_begin(ro=False) as session:
