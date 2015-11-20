@@ -81,7 +81,6 @@ class SchemaWrapper(object):
         if env_config.register_dry_run:
             self.cache[table] = self._dry_run_schema
             return
-        
         table_stmt_kwargs = {}
         if old_create_table_stmt:
             table_stmt_kwargs["old_create_table_stmt"] = old_create_table_stmt
