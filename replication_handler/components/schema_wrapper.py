@@ -81,14 +81,14 @@ class SchemaWrapper(object):
         if env_config.register_dry_run:
             self.cache[table] = self._dry_run_schema
             return
-
+        
         table_stmt_kwargs = {}
         if old_create_table_stmt:
             table_stmt_kwargs["old_create_table_stmt"] = old_create_table_stmt
         if alter_table_stmt:
             table_stmt_kwargs["alter_table_stmt"] = alter_table_stmt
 
-        resp = self.schematizer_client.schemas.register_schema_from_mysql_stmts(
+        resp = self.schematizer_client.register_schema_from_mysql_stmts(
             namespace="{0}.{1}".format(table.cluster_name, table.database_name),
             source=table.table_name,
             source_owner_email=self._notify_email,
