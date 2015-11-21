@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
-from replication_handler.util.position import LogPosition
 from replication_handler.util.position import construct_position
+from replication_handler.util.position import LogPosition
 
 
 log = logging.getLogger('replication_handler.components.position_finder')
@@ -15,16 +18,12 @@ class PositionFinder(object):
     Args:
       global_event_state(GlobalEventState object): stores the global state, including
         position information.
-      pending_schema_event(SchemaEventState object): schema event that has a pending state.
     """
 
-    def __init__(self, global_event_state, pending_schema_event=None):
+    def __init__(self, global_event_state):
         self.global_event_state = global_event_state
-        self.pending_schema_event = pending_schema_event
 
     def get_position_to_resume_tailing_from(self):
-        if self.pending_schema_event is not None:
-            return construct_position(self.pending_schema_event.position)
         if self.global_event_state:
             return construct_position(self.global_event_state.position)
         return LogPosition()

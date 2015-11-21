@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import mock
 import pytest
 
@@ -17,10 +20,6 @@ class TestPositionFinder(object):
         return "CREATE TABLE STATEMENT"
 
     @pytest.fixture
-    def alter_table_statement(self):
-        return "ALTER TABLE STATEMENT"
-
-    @pytest.fixture
     def position_dict(self):
         return {"gtid": "sid:12"}
 
@@ -30,18 +29,6 @@ class TestPositionFinder(object):
             position=position_dict,
             status=SchemaEventStatus.COMPLETED,
             query=create_table_statement,
-            table_name="Business",
-            create_table_statement=create_table_statement,
-        )
-
-    @pytest.fixture
-    def pending_schema_event_state(
-        self, create_table_statement, alter_table_statement, position_dict
-    ):
-        return SchemaEventState(
-            position=position_dict,
-            status=SchemaEventStatus.PENDING,
-            query=alter_table_statement,
             table_name="Business",
             create_table_statement=create_table_statement,
         )
@@ -67,19 +54,7 @@ class TestPositionFinder(object):
             mock_session_connect_begin.return_value.__enter__.return_value = mock.Mock()
             yield mock_session_connect_begin
 
-    def test_get_position_to_resume_tailing_from_when_there_is_pending_state(
-        self,
-        schema_event_position,
-        pending_schema_event_state,
-    ):
-        position_finder = PositionFinder(
-            global_event_state=mock.Mock(),
-            pending_schema_event=pending_schema_event_state
-        )
-        position = position_finder.get_position_to_resume_tailing_from()
-        assert position.to_dict() == schema_event_position.to_dict()
-
-    def test_get_position_to_resume_tailing_from_when_there_is_no_pending_state(
+    def test_get_position_to_resume_tailing(
         self,
         schema_event_position,
         patch_get_latest_schema_event_state,
@@ -93,7 +68,6 @@ class TestPositionFinder(object):
         )
         position_finder = PositionFinder(
             global_event_state=global_event_state,
-            pending_schema_event=None
         )
         patch_get_latest_schema_event_state.return_value = completed_schema_event_state
         position = position_finder.get_position_to_resume_tailing_from()

@@ -36,7 +36,6 @@ class ReplicationStreamRestarter(object):
         )
         self.position_finder = PositionFinder(
             self.global_event_state,
-            self.pending_schema_event
         )
         self.schema_wrapper = schema_wrapper
 
