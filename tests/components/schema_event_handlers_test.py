@@ -590,7 +590,7 @@ class TestSchemaEventHandler(object):
         schema_store_response,
         external_patches,
         test_schema,
-        mysql_statements={}
+        mysql_statements=None
     ):
         """Test helper method that checks various things in a successful scenario
            of event handling
@@ -610,6 +610,8 @@ class TestSchemaEventHandler(object):
             "source_owner_email": 'bam+replication+handler@yelp.com',
             "contains_pii": True
         }
+        if mysql_statements is None:
+            mysql_statements = {}
         body.update(mysql_statements)
         assert schematizer_client.register_schema_from_mysql_stmts.call_args_list == [
             mock.call(
