@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import mock
 import pytest
 from data_pipeline.schematizer_clientlib.models.avro_schema import AvroSchema
+
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.schema_wrapper import SchemaWrapper
 
