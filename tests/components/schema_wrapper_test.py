@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 import mock
 import pytest
-from data_pipeline.schema_cache import AvroSchema
+from data_pipeline.schematizer_clientlib.models.avro_schema import AvroSchema
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.schema_wrapper import SchemaWrapper
 
@@ -55,7 +55,12 @@ class TestSchemaWrapper(object):
             schema_id=0,
             schema_json=avro_schema,
             topic=topic,
-            primary_keys=primary_keys
+            base_schema_id=mock.Mock(),
+            status=mock.Mock(),
+            primary_keys=primary_keys,
+            note=mock.Mock(),
+            created_at=mock.Mock(),
+            updated_at=mock.Mock()
         )
 
     def test_schema_wrapper_singleton(self, base_schema_wrapper):
@@ -78,7 +83,6 @@ class TestSchemaWrapper(object):
         self._assert_expected_result(resp, topic)
 
     def _assert_expected_result(self, resp, topic):
-        import ipdb; ipdb.set_trace()
         assert resp.topic == topic.name
         assert resp.schema_id == 0
         assert resp.schema_obj.name == "business"
