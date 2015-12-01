@@ -105,7 +105,7 @@ class SchemaWrapper(object):
 
     def _populate_schema_cache(self, table, resp):
         self.cache[table] = SchemaWrapperEntry(
-            schema_obj=avro.schema.parse(resp.schema),
+            schema_obj=avro.schema.parse(resp.schema_json),
             topic=str(resp.topic.name),
             schema_id=resp.schema_id,
             primary_keys=resp.primary_keys,

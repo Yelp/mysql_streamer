@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 import mock
 import pytest
-
+from data_pipeline.schema_cache import AvroSchema
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.schema_wrapper import SchemaWrapper
 
@@ -50,10 +50,10 @@ class TestSchemaWrapper(object):
         return topic
 
     @pytest.fixture
-    def mock_response(self, avro_schema, topic, primary_keys):
-        return mock.Mock(
+    def test_response(self, avro_schema, topic, primary_keys):
+        return AvroSchema(
             schema_id=0,
-            schema=avro_schema,
+            schema_json=avro_schema,
             topic=topic,
             primary_keys=primary_keys
         )
@@ -65,11 +65,11 @@ class TestSchemaWrapper(object):
     def test_get_schema_schema_not_cached(
         self,
         base_schema_wrapper,
-        mock_response,
+        test_response,
         table,
         topic,
     ):
-        base_schema_wrapper._populate_schema_cache(table, mock_response)
+        base_schema_wrapper._populate_schema_cache(table, test_response)
         resp = base_schema_wrapper[table]
         self._assert_expected_result(resp, topic)
 
@@ -78,6 +78,7 @@ class TestSchemaWrapper(object):
         self._assert_expected_result(resp, topic)
 
     def _assert_expected_result(self, resp, topic):
+        import ipdb; ipdb.set_trace()
         assert resp.topic == topic.name
         assert resp.schema_id == 0
         assert resp.schema_obj.name == "business"
@@ -89,8 +90,8 @@ class TestSchemaWrapper(object):
         self,
         base_schema_wrapper,
         bogus_table,
-        mock_response,
+        test_response,
     ):
         assert bogus_table not in base_schema_wrapper.cache
-        base_schema_wrapper._populate_schema_cache(bogus_table, mock_response)
+        base_schema_wrapper._populate_schema_cache(bogus_table, test_response)
         assert bogus_table in base_schema_wrapper.cache
