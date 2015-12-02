@@ -7,7 +7,6 @@ PyMySQL==0.6.3
 PyStaticConfiguration==0.8.0
 PyYAML==3.11
 SQLAlchemy==0.9.8
-avro==1.7.6
 boto==2.36.0
 contextdecorator==0.10.0
 data_pipeline>=0.1.39
