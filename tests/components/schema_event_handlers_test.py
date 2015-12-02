@@ -8,6 +8,7 @@ import mock
 import pytest
 from data_pipeline.producer import Producer
 from data_pipeline.tools.meteorite_wrappers import StatsCounter
+from data_pipeline.schema_cache import SchematizerClient
 from pii_generator.components.pii_identifier import PIIIdentifier
 from yelp_conn.connection_set import ConnectionSet
 
@@ -49,7 +50,7 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture
     def schematizer_client(self):
-        return mock.Mock()
+        return mock.Mock(autospect=SchematizerClient)
 
     @pytest.fixture
     def schema_wrapper(self, schematizer_client):
@@ -407,10 +408,10 @@ class TestSchemaEventHandler(object):
            create table event hence many mocks
         """
         schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
-        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value.\
-            result.return_value = create_table_schema_store_response
+        schematizer_client.register_schema_from_mysql_stmts.return_value = \
+            create_table_schema_store_response
         external_patches.get_show_create_statement.return_value = show_create_result_initial
-        mysql_statements = {"new_create_table_stmt": show_create_result_initial.query}
+        new_create_table_stmt = show_create_result_initial.query
 
         schema_event_handler.handle_event(create_table_schema_event, test_position)
 
@@ -421,7 +422,7 @@ class TestSchemaEventHandler(object):
             mock_schema_tracker_cursor,
             table_with_schema_changes,
             schema_event_handler,
-            mysql_statements,
+            new_create_table_stmt,
             create_table_schema_store_response,
             external_patches,
             test_schema
@@ -453,12 +454,11 @@ class TestSchemaEventHandler(object):
            event with an alter table hence many mocks.
         """
         schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
-        schematizer_client.schemas.register_schema_from_mysql_stmts.return_value.\
-            result.return_value = alter_table_schema_store_response
-
+        schematizer_client.register_schema_from_mysql_stmts.return_value = \
+            alter_table_schema_store_response
+        new_create_table_stmt = show_create_result_after_alter.query
         mysql_statements = {
             "old_create_table_stmt": show_create_result_initial.query,
-            "new_create_table_stmt": show_create_result_after_alter.query,
             "alter_table_stmt": alter_table_schema_event.query,
         }
         external_patches.get_show_create_statement.side_effect = [
@@ -475,10 +475,11 @@ class TestSchemaEventHandler(object):
             mock_schema_tracker_cursor,
             table_with_schema_changes,
             schema_event_handler,
-            mysql_statements,
+            new_create_table_stmt,
             alter_table_schema_store_response,
             external_patches,
-            test_schema
+            test_schema,
+            mysql_statements=mysql_statements
         )
 
         assert producer.flush.call_count == 1
@@ -609,10 +610,11 @@ class TestSchemaEventHandler(object):
         mock_schema_tracker_cursor,
         table,
         schema_event_handler,
-        mysql_statements,
+        new_create_table_stmt,
         schema_store_response,
         external_patches,
-        test_schema
+        test_schema,
+        mysql_statements=None
     ):
         """Test helper method that checks various things in a successful scenario
            of event handling
@@ -624,7 +626,7 @@ class TestSchemaEventHandler(object):
         assert external_patches.execute_query.call_args_list == [
             mock.call(event.query, test_schema)
         ]
-        assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_count == 1
+        assert schematizer_client.register_schema_from_mysql_stmts.call_count == 1
 
         body = {
             "namespace": "{0}.{1}".format(table.cluster_name, table.database_name),
@@ -632,10 +634,17 @@ class TestSchemaEventHandler(object):
             "source_owner_email": 'bam+replication+handler@yelp.com',
             "contains_pii": True
         }
+        if mysql_statements is None:
+            mysql_statements = {}
         body.update(mysql_statements)
-        assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_args_list == [
+        assert schematizer_client.register_schema_from_mysql_stmts.call_args_list == [
             mock.call(
-                body=body
+                namespace="{0}.{1}".format(table.cluster_name, table.database_name),
+                source=table.table_name,
+                source_owner_email='bam+replication+handler@yelp.com',
+                contains_pii=True,
+                new_create_table_stmt=new_create_table_stmt,
+                **mysql_statements
             )
         ]
 
@@ -665,7 +674,7 @@ class TestSchemaEventHandler(object):
         external_patches.dry_run_config.return_value = True
         dry_run_schema_event_handler.handle_event(create_table_schema_event, test_position)
         assert external_patches.execute_query.call_count == 1
-        assert schematizer_client.schemas.register_schema_from_mysql_stmts.call_count == 0
+        assert schematizer_client.register_schema_from_mysql_stmts.call_count == 0
         assert save_position.call_count == 1
 
     def _assert_query_skipped(
