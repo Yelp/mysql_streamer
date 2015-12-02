@@ -86,9 +86,6 @@ class TestSchemaWrapper(object):
     def _assert_expected_result(self, resp, topic):
         assert resp.topic == topic.name
         assert resp.schema_id == 0
-        assert resp.schema_obj.name == "business"
-        assert resp.schema_obj.fields[0].name == "id"
-        assert resp.schema_obj.fields[1].name == "name"
         assert resp.primary_keys == ['primary_key']
 
     def test_call_to_populate_schema(

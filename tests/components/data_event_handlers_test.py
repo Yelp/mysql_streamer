@@ -5,8 +5,6 @@ from __future__ import unicode_literals
 import json
 from collections import namedtuple
 
-import avro.io
-import avro.schema
 import mock
 import pytest
 from data_pipeline.message import CreateMessage
@@ -107,9 +105,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def schema_wrapper_entry(self, schema_in_json):
-        avro_obj = avro.schema.parse(schema_in_json)
         return SchemaWrapperEntry(
-            schema_obj=avro_obj,
             topic=str("fake_topic"),
             schema_id=0,
             primary_keys=['primary_key'],
