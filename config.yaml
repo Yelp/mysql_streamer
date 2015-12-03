@@ -61,6 +61,10 @@ module_config:
             # Print queries to stdout
             enable_query_printing: True
 
+            db:
+                db_pool_listeners:
+                    - yelp_conn.engine.DisconnectedPoolListener
+
     -   namespace: clog
         initialize: yelp_servlib.clog_util.initialize
         config:
