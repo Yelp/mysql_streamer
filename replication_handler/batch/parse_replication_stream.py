@@ -179,7 +179,7 @@ class ParseReplicationStream(Batch):
         try:
             self.lock.acquire(timeout=10)
         except LockTimeout:
-            print "Already one instance running against this source! exit..."
+            print "Already one instance running against this source! exit. See y/oneandonly for help."
             self._close_zk()
             sys.exit(1)
 

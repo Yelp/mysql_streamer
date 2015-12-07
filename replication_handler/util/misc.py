@@ -92,7 +92,7 @@ def save_position(position_data, is_clean_shutdown=False):
 
 
 def get_ecosystem():
-    return open('/nail/etc/ecosystem').read().rstrip()
+    return open('/nail/etc/ecosystem').read().strip()
 
 
 def get_local_zk():
