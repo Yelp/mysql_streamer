@@ -40,6 +40,8 @@ max_delay_allowed_in_minutes: 10
 
 sensu_host: 169.254.255.254
 
+disable_sensu: False
+
 recovery_queue_size: 1500
 
 module_config:

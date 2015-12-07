@@ -2,8 +2,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
+
 import pysensu_yelp
 
 from replication_handler import config
@@ -21,6 +22,8 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
     """
 
     def process(self, timestamp):
+        if config.env_config.disable_sensu:
+            return
         # This timestamp param has to be timezone aware, otherwise it will not be
         # able to compare with timezone aware timestamps.
         result_dict = {

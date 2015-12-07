@@ -9,6 +9,7 @@ import pytest
 import pytz
 from dateutil.tz import tzlocal
 
+from replication_handler import config
 from replication_handler.util.sensu_alert_manager import SensuAlertManager
 
 
@@ -53,6 +54,18 @@ class TestSensuAlertManager(object):
         self._trigger_alert_and_check_result(
             timestamp, patch_sensu_send_event, expected_status=0
         )
+
+    def test_sensu_diabled(self, patch_sensu_send_event):
+        with mock.patch.object(
+            config.EnvConfig,
+            'disable_sensu',
+            new_callable=mock.PropertyMock
+        ) as mock_disable_sensu:
+            mock_disable_sensu.return_value = True
+            timestamp = datetime.datetime(2015, 10, 21, 11, 30, 0, 0, tzlocal())
+            sensu_alert_manager = SensuAlertManager(30)
+            sensu_alert_manager.periodic_process(timestamp)
+            assert patch_sensu_send_event.call_count == 0
 
     def _trigger_alert_and_check_result(
         self, timestamp, patch_sensu_send_event, expected_status=0

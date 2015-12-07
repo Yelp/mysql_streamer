@@ -84,6 +84,10 @@ class EnvConfig(BaseConfig):
         return staticconf.get('sensu_host').value
 
     @property
+    def disable_sensu(self):
+        return staticconf.get('disable_sensu').value
+
+    @property
     def recovery_queue_size(self):
         # The recovery queue size have to be greater than data pipeline producer
         # buffer size, otherwise we could potentially have stale checkpoint data which
