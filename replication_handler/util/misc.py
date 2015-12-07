@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-import kazoo.client
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
+import kazoo.client
 import yelp_lib.config_loader
 
 from replication_handler.config import env_config
@@ -88,8 +91,12 @@ def save_position(position_data, is_clean_shutdown=False):
         )
 
 
+def get_ecosystem():
+    return open('/nail/etc/ecosystem').read().rstrip()
+
+
 def get_local_zk():
-    path = env_config.zookeeper_discovery_path
+    path = env_config.zookeeper_discovery_path.format(ecosystem=get_ecosystem())
     """Get (with caching) the local zookeeper cluster definition."""
     return yelp_lib.config_loader.load(path, '/')
 

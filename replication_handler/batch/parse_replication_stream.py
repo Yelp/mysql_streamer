@@ -11,8 +11,8 @@ from contextlib import contextmanager
 from data_pipeline.config import get_config
 from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.producer import Producer
-from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
+from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from kazoo.exceptions import LockTimeout
 from kazoo.retry import KazooRetry
 from pymysqlreplication.event import QueryEvent
@@ -168,8 +168,10 @@ class ParseReplicationStream(Batch):
 
     def _init_zk_and_lock_replication_handler(self):
         """ Use zookeeper to make sure only one instance of replication handler
-        is running against one source. see DATAPIPE-309.
+        is running against one source. This is very crucial to maintain the data integrity
+        in replication handler dbs and kafka topics. see DATAPIPE-309.
         """
+        log.info("Making sure there's only one instance of replication handler running against this data source.")
         retry_policy = KazooRetry(max_tries=3)
         self.zk_client = get_kazoo_client(command_retry=retry_policy)
         self.zk_client.start()
