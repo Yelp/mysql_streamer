@@ -96,7 +96,11 @@ class TestSimpleBinlogStreamReaderWrapper(object):
     def _setup_stream_and_expected_result(self, patch_stream):
         log_pos = 10
         log_file = "binlog.001"
-        row = {"after_values": {"serial": 123, "timestamp": datetime(2015, 10, 21, 12, 05, 27)}}
+        row = {"after_values": {
+            "serial": 123,
+            # This timestamp is Wed, 21 Oct 2015 12:05:27 GMT
+            "timestamp": datetime.fromtimestamp(1445429127)
+        }}
         heartbeat_event = mock.Mock(
             spec=DataEvent,
             schema='yelp_heartbeat',
@@ -133,6 +137,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
                     log_file=log_file,
                     offset=1,
                     hb_serial=123,
+                    # This is Wed, 21 Oct 2015 12:05:27 GMT
                     hb_timestamp=1445429127,
                 )
             ),
@@ -143,6 +148,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
                     log_file=log_file,
                     offset=2,
                     hb_serial=123,
+                    # This is Wed, 21 Oct 2015 12:05:27 GMT
                     hb_timestamp=1445429127,
                 )
             )
