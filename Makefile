@@ -1,4 +1,4 @@
-.PHONY: clean venv-dev test itest build-image
+.PHONY: clean venv-dev test itest build-image compose-prefix
 
 DOCKER_TAG ?= replication-handler-dev-$(USER)
 
@@ -20,3 +20,6 @@ venv-dev:
 
 install-hooks:
 	tox -e pre-commit -- install -f --install-hooks
+
+compose-prefix:
+	@python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"
