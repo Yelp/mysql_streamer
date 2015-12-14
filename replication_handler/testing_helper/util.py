@@ -44,7 +44,9 @@ def execute_query(containers, db_name, query):
 
 
 def set_heartbeat(containers, before, after):
-    heartbeat_query = 'update yelp_heartbeat.replication_heartbeat set serial={after} where serial={before}'.format(
+    heartbeat_query = "update yelp_heartbeat.replication_heartbeat"
+    "set serial={after}"
+    "where serial={before}".format(
         before=before,
         after=after
     )
@@ -53,7 +55,7 @@ def set_heartbeat(containers, before, after):
 
 def db_health_check(containers, db_name, timeout_seconds):
     # Just to check the connection
-    query = 'Select 1;'
+    query = "SELECT 1;"
     # wait for db to pass health check
     end_time = time.time() + timeout_seconds
     logger.info("Waiting for db {} to pass health check".format(db_name))

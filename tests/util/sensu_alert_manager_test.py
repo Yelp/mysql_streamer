@@ -43,29 +43,45 @@ class TestSensuAlertManager(object):
             ]
             yield mock_time
 
-    def test_sensu_alert_manager_fall_behind(self, patch_sensu_send_event, patch_time):
-        timestamp = datetime.datetime(2015, 10, 21, 11, 30, 0, 0, tzlocal())
-        self._trigger_alert_and_check_result(
-            timestamp, patch_sensu_send_event, expected_status=2
-        )
-
-    def test_sensu_alert_manager_resolve(self, patch_sensu_send_event, patch_time):
-        timestamp = datetime.datetime(2015, 10, 21, 11, 50, 00, 0, tzlocal())
-        self._trigger_alert_and_check_result(
-            timestamp, patch_sensu_send_event, expected_status=0
-        )
-
-    def test_sensu_diabled(self, patch_sensu_send_event):
+    @pytest.yield_fixture
+    def patch_disable_sensu(self):
         with mock.patch.object(
             config.EnvConfig,
             'disable_sensu',
             new_callable=mock.PropertyMock
         ) as mock_disable_sensu:
-            mock_disable_sensu.return_value = True
-            timestamp = datetime.datetime(2015, 10, 21, 11, 30, 0, 0, tzlocal())
-            sensu_alert_manager = SensuAlertManager(30)
-            sensu_alert_manager.periodic_process(timestamp)
-            assert patch_sensu_send_event.call_count == 0
+            yield mock_disable_sensu
+
+    def test_sensu_alert_manager_fall_behind(
+        self,
+        patch_sensu_send_event,
+        patch_time,
+        patch_disable_sensu,
+    ):
+        patch_disable_sensu.return_value = False
+        timestamp = datetime.datetime(2015, 10, 21, 11, 30, 0, 0, tzlocal())
+        self._trigger_alert_and_check_result(
+            timestamp, patch_sensu_send_event, expected_status=2
+        )
+
+    def test_sensu_alert_manager_resolve(
+        self,
+        patch_sensu_send_event,
+        patch_time,
+        patch_disable_sensu,
+    ):
+        patch_disable_sensu.return_value = False
+        timestamp = datetime.datetime(2015, 10, 21, 11, 50, 00, 0, tzlocal())
+        self._trigger_alert_and_check_result(
+            timestamp, patch_sensu_send_event, expected_status=0
+        )
+
+    def test_sensu_diabled(self, patch_sensu_send_event, patch_disable_sensu):
+        patch_disable_sensu.return_value = True
+        timestamp = datetime.datetime(2015, 10, 21, 11, 30, 0, 0, tzlocal())
+        sensu_alert_manager = SensuAlertManager(30)
+        sensu_alert_manager.periodic_process(timestamp)
+        assert patch_sensu_send_event.call_count == 0
 
     def _trigger_alert_and_check_result(
         self, timestamp, patch_sensu_send_event, expected_status=0
