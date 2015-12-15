@@ -64,6 +64,7 @@ def db_health_check(containers, db_name, timeout_seconds):
         try:
             result = execute_query(containers, db_name, query)
             assert result['1'] == 1
+            logger.info("db {} is ready!".format(db_name))
             return
         except Exception:
             logger.info("db {} not yet available, waiting...".format(db_name))
