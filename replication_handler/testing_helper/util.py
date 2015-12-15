@@ -44,9 +44,9 @@ def execute_query(containers, db_name, query):
 
 
 def set_heartbeat(containers, before, after):
-    heartbeat_query = "update yelp_heartbeat.replication_heartbeat"
-    "set serial={after}"
-    "where serial={before}".format(
+    heartbeat_query = "update yelp_heartbeat.replication_heartbeat \
+    set serial={after} \
+    where serial={before}".format(
         before=before,
         after=after
     )
