@@ -6,11 +6,14 @@ import logging
 import os
 
 import pytest
+from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.testing_helper.util import db_health_check
+from replication_handler.testing_helper.util import replication_handler_health_check
 
-tiemout_seconds = 30
+
+timeout_seconds = 30
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -46,7 +49,8 @@ def services():
 def containers(compose_file, services):
     with Containers(compose_file, services) as containers:
         for db in ["rbrsource", "schematracker", "rbrstate"]:
-            db_health_check(containers, db, tiemout_seconds)
+            db_health_check(containers, db, timeout_seconds)
+        replication_handler_health_check(containers, timeout_seconds)
         yield containers
 
 
@@ -58,3 +62,8 @@ def kafka_docker(containers):
 @pytest.fixture(scope='session')
 def namespace():
     return 'refresh_primary.yelp'
+
+
+@pytest.fixture(scope='session')
+def schematizer():
+    return get_schematizer()

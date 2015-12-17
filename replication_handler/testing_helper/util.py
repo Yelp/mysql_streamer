@@ -69,3 +69,23 @@ def db_health_check(containers, db_name, timeout_seconds):
         except Exception:
             logger.info("db {} not yet available, waiting...".format(db_name))
     raise ContainerUnavailable()
+
+
+def replication_handler_health_check(containers, timeout_seconds):
+    table_name = 'health_check'
+    end_time = time.time() + timeout_seconds
+    logger.info("Waiting for replication handler to pass health check")
+    query = "CREATE TABLE {} (`id` int(11) DEFAULT NULL)".format(table_name)
+    time.sleep(5)
+    while end_time > time.time():
+        time.sleep(0.1)
+        try:
+            result = execute_query(containers, 'rbrsource', query)
+            query = 'SHOW CREATE TABLE {}'.format(table_name)
+            result = execute_query(containers, 'schematracker', query)
+            assert result['Table'] == table_name
+            logger.info("replication handler is ready!")
+            return
+        except Exception:
+            logger.info("replication handler not yet available, waiting...")
+    raise ContainerUnavailable()

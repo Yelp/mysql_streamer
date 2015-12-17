@@ -6,7 +6,6 @@ import json
 import time
 
 import pytest
-from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from yelp_lib.containers.lists import unlist
 
 from replication_handler.testing_helper.util import execute_query
@@ -40,7 +39,16 @@ class TestReplicationHandler(object):
             u'type': u'record'
         }
 
-    def test_create_table(self, containers, create_table_query, avro_schema, table_name, namespace):
+    def test_create_table(
+        self,
+        containers,
+        create_table_query,
+        avro_schema,
+        table_name,
+        namespace,
+        schematizer,
+    ):
+        time.sleep(DB_WAITTIME)
         old_heartbeat = 0
         new_heartbeat = 123
         set_heartbeat(containers, old_heartbeat, new_heartbeat)
@@ -77,10 +85,23 @@ class TestReplicationHandler(object):
         self.assert_expected_result(position, expected_position)
 
         # Check schematizer.
-        self.check_schematizer_has_correct_source_info(containers, table_name, avro_schema, namespace)
+        time.sleep(DB_WAITTIME)
+        self.check_schematizer_has_correct_source_info(
+            containers,
+            table_name,
+            avro_schema,
+            namespace,
+            schematizer,
+        )
 
-    def check_schematizer_has_correct_source_info(self, containers, table_name, avro_schema, namespace):
-        schematizer = get_schematizer()
+    def check_schematizer_has_correct_source_info(
+        self,
+        containers,
+        table_name,
+        avro_schema,
+        namespace,
+        schematizer,
+    ):
         sources = schematizer.get_sources_by_namespace(namespace)
         source = next(src for src in reversed(sources) if src.name == table_name)
         topic = unlist(schematizer.get_topics_by_source_id(source.source_id))
