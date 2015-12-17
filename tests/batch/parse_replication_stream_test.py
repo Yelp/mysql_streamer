@@ -8,6 +8,7 @@ import sys
 import mock
 import pytest
 from data_pipeline.producer import Producer
+from data_pipeline.schematizer_clientlib.schematizer import SchematizerClient
 from kazoo.client import KazooClient
 from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
@@ -73,7 +74,7 @@ class TestParseReplicationStream(object):
 
     @pytest.fixture
     def schematizer(self):
-        return mock.Mock()
+        return mock.Mock(autospec=SchematizerClient)
 
     @pytest.yield_fixture
     def patch_producer(self, producer):
@@ -83,7 +84,7 @@ class TestParseReplicationStream(object):
             mock_producer.return_value.__enter__.return_value = producer
             yield mock_producer
 
-    @pytest.yield_fixture
+    @pytest.yield_fixture(autouse=True)
     def patch_schematizer(self, schematizer):
         with mock.patch(
             'replication_handler.batch.parse_replication_stream.get_schematizer'
@@ -171,7 +172,6 @@ class TestParseReplicationStream(object):
         schema_event,
         data_event,
         patch_config,
-        patch_schematizer,
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
@@ -208,7 +208,6 @@ class TestParseReplicationStream(object):
         zk_client,
         data_event,
         patch_config,
-        patch_schematizer,
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
@@ -240,7 +239,6 @@ class TestParseReplicationStream(object):
         self,
         zk_client,
         patch_config,
-        patch_schematizer,
         patch_rbr_state_rw,
         patch_schema_tracker,
         patch_restarter,
@@ -258,7 +256,6 @@ class TestParseReplicationStream(object):
         self,
         zk_client,
         producer,
-        patch_schematizer,
         patch_config_with_small_recovery_queue_size,
         patch_restarter,
         patch_data_handle_event,
@@ -275,7 +272,6 @@ class TestParseReplicationStream(object):
         zk_client,
         producer,
         patch_producer,
-        patch_schematizer,
         patch_config,
         patch_restarter,
         patch_data_handle_event,
@@ -296,7 +292,6 @@ class TestParseReplicationStream(object):
         zk_client,
         producer,
         patch_producer,
-        patch_schematizer,
         patch_config,
         patch_restarter,
         patch_data_handle_event,
@@ -310,7 +305,7 @@ class TestParseReplicationStream(object):
         assert patch_exit.call_count == 1
         self._check_zk(zk_client)
 
-    def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter, patch_schematizer):
+    def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter):
         with mock.patch(
             'replication_handler.batch.parse_replication_stream.config.env_config'
         ) as mock_config:
@@ -326,7 +321,6 @@ class TestParseReplicationStream(object):
         patch_restarter,
         patch_rbr_state_rw,
         patch_schema_tracker,
-        patch_schematizer,
     ):
         patch_restarter.return_value.get_stream.return_value.__iter__.side_effect = Exception
         with pytest.raises(Exception):

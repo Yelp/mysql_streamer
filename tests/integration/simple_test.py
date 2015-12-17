@@ -6,7 +6,6 @@ import json
 import time
 
 import pytest
-from yelp_lib.containers.lists import unlist
 
 from replication_handler.testing_helper.util import execute_query
 from replication_handler.testing_helper.util import set_heartbeat
@@ -104,7 +103,8 @@ class TestReplicationHandler(object):
     ):
         sources = schematizer.get_sources_by_namespace(namespace)
         source = next(src for src in reversed(sources) if src.name == table_name)
-        topic = unlist(schematizer.get_topics_by_source_id(source.source_id))
+        topics = schematizer.get_topics_by_source_id(source.source_id)
+        topic = next(topic for topic in topics if topic.source.name == table_name and topic.source.namespace.name == namespace)
         schema = schematizer.get_latest_schema_by_topic_name(topic.name)
         assert schema.topic.source.name == table_name
         assert schema.topic.source.namespace.name == namespace

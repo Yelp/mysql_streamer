@@ -44,11 +44,13 @@ def execute_query(containers, db_name, query):
 
 
 def set_heartbeat(containers, before, after):
-    heartbeat_query = "update yelp_heartbeat.replication_heartbeat \
-    set serial={after} \
-    where serial={before}".format(
-        before=before,
-        after=after
+    heartbeat_query = (
+        "update yelp_heartbeat.replication_heartbeat "
+        "set serial={after} "
+        "where serial={before}".format(
+            before=before,
+            after=after
+        )
     )
     execute_query(containers, 'rbrsource', heartbeat_query)
 
@@ -72,20 +74,18 @@ def db_health_check(containers, db_name, timeout_seconds):
 
 
 def replication_handler_health_check(containers, timeout_seconds):
-    table_name = 'health_check'
+    table_name = "health_check"
     end_time = time.time() + timeout_seconds
     logger.info("Waiting for replication handler to pass health check")
-    query = "CREATE TABLE {} (`id` int(11) DEFAULT NULL)".format(table_name)
-    time.sleep(5)
+    create_query = "CREATE TABLE {} (`id` int(11) DEFAULT NULL)".format(table_name)
+    check_query = "SHOW TABLES LIKE '{}'".format(table_name)
     while end_time > time.time():
         time.sleep(0.1)
-        try:
-            result = execute_query(containers, 'rbrsource', query)
-            query = 'SHOW CREATE TABLE {}'.format(table_name)
-            result = execute_query(containers, 'schematracker', query)
-            assert result['Table'] == table_name
+        if not execute_query(containers, "rbrsource", check_query):
+            execute_query(containers, "rbrsource", create_query)
+        if execute_query(containers, "schematracker", check_query):
             logger.info("replication handler is ready!")
             return
-        except Exception:
+        else:
             logger.info("replication handler not yet available, waiting...")
     raise ContainerUnavailable()
