@@ -71,7 +71,6 @@ class TestReplicationHandler(object):
             'query': create_table_query,
         }
         result = execute_query(containers, 'rbrstate', query)
-        time.sleep(DB_WAITTIME)
         self.assert_expected_result(result, expected)
 
         # Check position is correct.
