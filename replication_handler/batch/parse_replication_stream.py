@@ -175,7 +175,7 @@ class ParseReplicationStream(Batch):
         retry_policy = KazooRetry(max_tries=3)
         self.zk_client = get_kazoo_client(command_retry=retry_policy)
         self.zk_client.start()
-        self.lock = self.zk_client.Lock("/replication_handler", config.env_config.rbr_source_cluster)
+        self.lock = self.zk_client.Lock("/replication_handler", config.env_config.namespace)
         try:
             self.lock.acquire(timeout=10)
         except LockTimeout:
