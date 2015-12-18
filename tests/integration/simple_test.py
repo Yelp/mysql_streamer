@@ -103,8 +103,7 @@ class TestReplicationHandler(object):
     ):
         sources = schematizer.get_sources_by_namespace(namespace)
         source = next(src for src in reversed(sources) if src.name == table_name)
-        topics = schematizer.get_topics_by_source_id(source.source_id)
-        topic = next(topic for topic in topics if topic.source.name == table_name and topic.source.namespace.name == namespace)
+        topic = schematizer.get_topics_by_source_id(source.source_id)[-1]
         schema = schematizer.get_latest_schema_by_topic_name(topic.name)
         assert schema.topic.source.name == table_name
         assert schema.topic.source.namespace.name == namespace
