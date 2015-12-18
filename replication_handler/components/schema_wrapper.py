@@ -87,7 +87,7 @@ class SchemaWrapper(object):
             table_stmt_kwargs["alter_table_stmt"] = alter_table_stmt
 
         resp = self.schematizer_client.register_schema_from_mysql_stmts(
-            namespace="{0}.{1}".format(table.cluster_name, table.database_name),
+            namespace="{0}.{1}.{2}".format(env_config.namespace, table.cluster_name, table.database_name),
             source=table.table_name,
             source_owner_email=self._notify_email,
             contains_pii=self.pii_identifier.table_has_pii(
