@@ -61,6 +61,8 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             offset -= 1
 
         # Make sure that we skipped correct number of events.
+        log.info("self._offset is {}".format(self._offset))
+        log.info("original_offset is {}".format(original_offset))
         assert self._offset == original_offset + 1
 
     def _is_position_update(self, event):
