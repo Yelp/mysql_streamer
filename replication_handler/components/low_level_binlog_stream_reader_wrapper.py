@@ -1,20 +1,22 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 
+from data_pipeline.message import CreateMessage
+from data_pipeline.message import DeleteMessage
+from data_pipeline.message import RefreshMessage
+from data_pipeline.message import UpdateMessage
 from pymysqlreplication import BinLogStreamReader
+from pymysqlreplication.constants.BINLOG import DELETE_ROWS_EVENT_V2
+from pymysqlreplication.constants.BINLOG import UPDATE_ROWS_EVENT_V2
+from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
 from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import DeleteRowsEvent
 from pymysqlreplication.row_event import UpdateRowsEvent
 from pymysqlreplication.row_event import WriteRowsEvent
-from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
-from pymysqlreplication.constants.BINLOG import UPDATE_ROWS_EVENT_V2
-from pymysqlreplication.constants.BINLOG import DELETE_ROWS_EVENT_V2
-
-from data_pipeline.message import CreateMessage
-from data_pipeline.message import DeleteMessage
-from data_pipeline.message import UpdateMessage
-from data_pipeline.message import RefreshMessage
 
 from replication_handler import config
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
@@ -59,7 +61,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
         self._seek(connection_config, allowed_event_types, position, only_tables)
 
-    def _refill_current_events_if_empty(self):
+    def _refill_current_events(self):
         if not self.current_events:
             self.current_events.extend(self._prepare_event(self.stream.fetchone()))
 

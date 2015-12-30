@@ -113,7 +113,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             )
         )
 
-    def _refill_current_events_if_empty(self):
+    def _refill_current_events(self):
         if not self.current_events:
             # If the site goes into readonly mode, there are only heartbeats, we should just
             # update the position.
