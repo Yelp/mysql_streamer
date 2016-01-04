@@ -14,6 +14,7 @@ log = logging.getLogger('replication_handler.components.sql_handler')
 
 
 def mysql_statement_factory(query):
+    log.info("Parsing incoming query: {}".format(query))
     parsed_query = sqlparse.parse(query, dialect='mysql')
     assert len(parsed_query) == 1
     statement = parsed_query[0]
