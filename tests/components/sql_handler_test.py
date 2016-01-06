@@ -118,6 +118,7 @@ class TestMysqlQualifiedIdentifierParser(object):
 
 
 class TestCreateTableStatement(MysqlTableStatementBaseTest):
+
     @pytest.fixture
     def statement_type(self):
         return CreateTableStatement
@@ -129,13 +130,21 @@ class TestCreateTableStatement(MysqlTableStatementBaseTest):
     def if_not_exists(self, request):
         return request.param
 
+    @pytest.fixture(params=[
+        '(test_col VARCHAR(255))',
+        'LIKE test_table'
+    ])
+    def column_definition(self, request):
+        return request.param
+
     # 5.5, 5.6, 5.7: CREATE [TEMPORARY] TABLE [IF NOT EXISTS] tbl_name
     @pytest.fixture
-    def query(self, temporary, if_not_exists, table):
-        return "CREATE {temporary} TABLE {if_not_exists} {table} (test_col VARCHAR(255))".format(
+    def query(self, temporary, if_not_exists, table, column_definition):
+        return "CREATE {temporary} TABLE {if_not_exists} {table} {column_definition}".format(
             temporary=temporary,
             if_not_exists=if_not_exists,
             table=table,
+            column_definition=column_definition
         )
 
 
