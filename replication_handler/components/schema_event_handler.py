@@ -202,19 +202,31 @@ class SchemaEventHandler(BaseEventHandler):
         """This method contains the core logic for handling a *create* event
            and occurs within a transaction in case of failure
         """
-        self._exec_query(
+        show_create_result = self._exec_query_and_get_show_create_statement(
             event,
             table
+        )
+        self.schema_wrapper.register_with_schema_store(
+            table,
+            new_create_table_stmt=show_create_result.query
         )
 
     def _handle_alter_table_event(self, event, table):
         """This method contains the core logic for handling an *alter* event
            and occurs within a transaction in case of failure
         """
-        self._exec_query(
+        show_create_result_before = self.schema_tracker.get_show_create_statement(table)
+        show_create_result_after = self._exec_query_and_get_show_create_statement(
             event,
             table
         )
+        self.schema_wrapper.register_with_schema_store(
+            table,
+            new_create_table_stmt=show_create_result_after.query,
+            old_create_table_stmt=show_create_result_before.query,
+            alter_table_stmt=event.query,
+        )
 
-    def _exec_query(self, event, table):
+    def _exec_query_and_get_show_create_statement(self, event, table):
         self.schema_tracker.execute_query(event.query, table.database_name)
+        return self.schema_tracker.get_show_create_statement(table)
