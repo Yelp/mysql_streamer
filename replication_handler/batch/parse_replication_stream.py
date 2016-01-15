@@ -80,6 +80,11 @@ class ParseReplicationStream(Batch):
                         replication_handler_event.event,
                         replication_handler_event.position
                     )
+        except:
+            log.exception("Shutting down because of exception")
+            raise
+        else:
+            log.info("Normal shutdown")
         finally:
             self._close_zk()
 
