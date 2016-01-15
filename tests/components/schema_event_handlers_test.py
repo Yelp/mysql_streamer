@@ -301,6 +301,20 @@ class TestSchemaEventHandler(object):
             mock_cluster_name.return_value = "yelp_main"
             yield mock_cluster_name
 
+    @pytest.fixture()
+    def namespace(self):
+        return "main1"
+
+    @pytest.yield_fixture(autouse=True)
+    def patch_namespace(self, namespace):
+        with mock.patch.object(
+            config.EnvConfig,
+            'namespace',
+            new_callable=mock.PropertyMock
+        ) as mock_namespace:
+            mock_namespace.return_value = namespace
+            yield mock_namespace
+
     @pytest.yield_fixture
     def patch_get_show_create_statement(self):
         with mock.patch.object(
@@ -390,6 +404,7 @@ class TestSchemaEventHandler(object):
 
     def test_handle_event_create_table(
         self,
+        namespace,
         schematizer_client,
         producer,
         stats_counter,
@@ -416,6 +431,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler.handle_event(create_table_schema_event, test_position)
 
         self.check_external_calls(
+            namespace,
             schematizer_client,
             producer,
             create_table_schema_event,
@@ -435,6 +451,7 @@ class TestSchemaEventHandler(object):
 
     def test_handle_event_alter_table(
         self,
+        namespace,
         producer,
         stats_counter,
         test_position,
@@ -469,6 +486,7 @@ class TestSchemaEventHandler(object):
 
         schema_event_handler.handle_event(alter_table_schema_event, test_position)
         self.check_external_calls(
+            namespace,
             schematizer_client,
             producer,
             alter_table_schema_event,
@@ -604,6 +622,7 @@ class TestSchemaEventHandler(object):
 
     def check_external_calls(
         self,
+        namespace,
         schematizer_client,
         producer,
         event,
@@ -639,7 +658,9 @@ class TestSchemaEventHandler(object):
         body.update(mysql_statements)
         assert schematizer_client.register_schema_from_mysql_stmts.call_args_list == [
             mock.call(
-                namespace="{0}.{1}".format(table.cluster_name, table.database_name),
+                namespace="{0}.{1}.{2}".format(
+                    namespace, table.cluster_name, table.database_name
+                ),
                 source=table.table_name,
                 source_owner_email='bam+replication+handler@yelp.com',
                 contains_pii=True,

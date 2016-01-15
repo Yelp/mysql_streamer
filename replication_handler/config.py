@@ -28,6 +28,10 @@ class EnvConfig(BaseConfig):
     not accepted, so by calling value on that we will get its original value."""
 
     @property
+    def namespace(self):
+        return staticconf.get('namespace').value
+
+    @property
     def rbr_source_cluster(self):
         return staticconf.get('rbr_source_cluster').value
 
