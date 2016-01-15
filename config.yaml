@@ -44,6 +44,8 @@ disable_sensu: False
 
 recovery_queue_size: 1500
 
+namespace: dev
+
 module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml
