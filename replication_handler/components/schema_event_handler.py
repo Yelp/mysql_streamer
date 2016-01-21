@@ -6,7 +6,6 @@ import copy
 import logging
 
 import simplejson as json
-from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
@@ -22,6 +21,7 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
+from replication_handler.util.misc import repltracker_cursor
 from replication_handler.util.misc import save_position
 
 
@@ -34,7 +34,7 @@ class SchemaEventHandler(BaseEventHandler):
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
         self.schema_tracker = SchemaTracker(
-            ConnectionSet.schema_tracker_rw().repltracker.cursor()
+            repltracker_cursor()
         )
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
 

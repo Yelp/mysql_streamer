@@ -6,10 +6,10 @@ import logging
 from collections import namedtuple
 
 from pii_generator.components.pii_identifier import PIIIdentifier
-from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.config import env_config
+from replication_handler.util.misc import repltracker_cursor
 
 
 log = logging.getLogger('replication_handler.components.schema_wrapper')
@@ -46,7 +46,7 @@ class SchemaWrapper(object):
         self.reset_cache()
         self.schematizer_client = schematizer_client
         self.schema_tracker = SchemaTracker(
-            ConnectionSet.schema_tracker_rw().repltracker.cursor()
+            repltracker_cursor()
         )
         self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 

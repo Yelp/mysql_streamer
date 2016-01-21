@@ -6,6 +6,7 @@ import logging
 
 import kazoo.client
 import yelp_lib.config_loader
+from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.config import env_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
@@ -115,3 +116,10 @@ def get_kazoo_client_for_cluster_def(cluster_def, **kwargs):
 def get_kazoo_client(**kwargs):
     """Get a KazooClient for a local zookeeper cluster."""
     return get_kazoo_client_for_cluster_def(get_local_zk(), **kwargs)
+
+
+def repltracker_cursor():
+    if env_config.namespace != 'canary':
+        return ConnectionSet.schema_tracker_rw().repltracker.cursor()
+    else:
+        return ConnectionSet.schema_tracker_rw().repltracker_canary.cursor()
