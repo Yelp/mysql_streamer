@@ -69,7 +69,6 @@ module_config:
                     - yelp_conn.engine.DisconnectedPoolListener
 
     -   namespace: clog
-        initialize: yelp_servlib.clog_util.initialize
         config:
             log_stream_name: tmp_replication_handler_logs
         file: /nail/srv/configs/clog.yaml

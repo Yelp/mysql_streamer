@@ -7,6 +7,7 @@ import os
 
 import staticconf
 import yelp_conn
+from yelp_servlib import clog_util
 from yelp_servlib.config_util import load_default_config
 
 
@@ -25,6 +26,7 @@ class BaseConfig(object):
         log.info("SERVICE_ENV_CONFIG_PATH is {}".format(SERVICE_ENV_CONFIG_PATH))
         load_default_config(SERVICE_CONFIG_PATH, SERVICE_ENV_CONFIG_PATH)
         yelp_conn.initialize()
+        clog_util.initialize()
 
 
 class EnvConfig(BaseConfig):
