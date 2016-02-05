@@ -27,7 +27,7 @@ class TestReplicationHandler(object):
         )
 
     @pytest.fixture
-    def avro_schema(self, table_name):
+    def avro_schema(self, table_name, namespace):
         return {
             u'fields': [
                 {u'default': None, u'type': [u'null', u'int'], u'name': u'id'},
@@ -84,6 +84,13 @@ class TestReplicationHandler(object):
 
         # Check schematizer.
         time.sleep(DB_WAITTIME)
+        schematizer.register_schema_from_mysql_stmts(
+            namespace,
+            table_name,
+            'bam+test@yelp.com',
+            False,
+            create_table_query
+        )
         self.check_schematizer_has_correct_source_info(
             containers,
             table_name,
