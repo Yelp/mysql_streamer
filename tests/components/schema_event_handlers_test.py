@@ -158,7 +158,9 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture(params=[
         'CREATE DATABASE weird_new_db',
-        'DROP DATABASE weird_new_db'
+        'DROP DATABASE weird_new_db',
+        "CREATE TABLE `yelp`.`some_table` (`a_number` int)",
+        "CREATE TABLE `some_table` (`a_number` int)",
     ])
     def non_schema_relevant_query_event(self, request, test_schema):
         query = request.param
@@ -402,53 +404,6 @@ class TestSchemaEventHandler(object):
             table_has_pii=patch_table_has_pii,
         )
 
-    def test_handle_event_create_table(
-        self,
-        namespace,
-        schematizer_client,
-        producer,
-        stats_counter,
-        test_position,
-        save_position,
-        external_patches,
-        schema_event_handler,
-        create_table_schema_event,
-        show_create_result_initial,
-        table_with_schema_changes,
-        mock_schema_tracker_cursor,
-        create_table_schema_store_response,
-        test_schema
-    ):
-        """Integration test the things that need to be called during a handle
-           create table event hence many mocks
-        """
-        schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
-        schematizer_client.register_schema_from_mysql_stmts.return_value = \
-            create_table_schema_store_response
-        external_patches.get_show_create_statement.return_value = show_create_result_initial
-        new_create_table_stmt = show_create_result_initial.query
-
-        schema_event_handler.handle_event(create_table_schema_event, test_position)
-
-        self.check_external_calls(
-            namespace,
-            schematizer_client,
-            producer,
-            create_table_schema_event,
-            mock_schema_tracker_cursor,
-            table_with_schema_changes,
-            schema_event_handler,
-            new_create_table_stmt,
-            create_table_schema_store_response,
-            external_patches,
-            test_schema
-        )
-
-        assert producer.flush.call_count == 1
-        assert stats_counter.increment.call_count == 1
-        assert stats_counter.increment.call_args[0][0] == show_create_result_initial.query
-        assert save_position.call_count == 1
-
     def test_handle_event_alter_table(
         self,
         namespace,
@@ -539,10 +494,10 @@ class TestSchemaEventHandler(object):
         save_position,
         external_patches,
         schema_event_handler,
-        create_table_schema_event,
+        alter_table_schema_event,
     ):
         external_patches.database_config.return_value = ['fake_schema']
-        schema_event_handler.handle_event(create_table_schema_event, test_position)
+        schema_event_handler.handle_event(alter_table_schema_event, test_position)
         assert external_patches.populate_schema_cache.call_count == 0
         assert external_patches.create_schema_event_state.call_count == 0
         assert external_patches.update_schema_event_state.call_count == 0
@@ -605,7 +560,7 @@ class TestSchemaEventHandler(object):
         test_position,
         external_patches,
         schema_event_handler,
-        create_table_schema_event,
+        alter_table_schema_event,
         show_create_result_initial,
     ):
         external_patches.get_show_create_statement.side_effect = [
@@ -613,7 +568,7 @@ class TestSchemaEventHandler(object):
             Exception
         ]
         with pytest.raises(Exception):
-            schema_event_handler.handle_event(create_table_schema_event, test_position)
+            schema_event_handler.handle_event(alter_table_schema_event, test_position)
         assert external_patches.create_schema_event_state.call_count == 1
         assert external_patches.update_schema_event_state.call_count == 0
         assert external_patches.upsert_global_event_state.call_count == 0
