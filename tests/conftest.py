@@ -48,6 +48,13 @@ def services():
 @pytest.yield_fixture(scope='session')
 def containers(compose_file, services):
     with Containers(compose_file, services) as containers:
+        # Need to wait for all containers to spin up
+        replication_handler_ip = None
+        while replication_handler_ip is None:
+            replication_handler_ip = Containers.get_container_ip_address(
+                containers.project,
+                'replicationhandler')
+
         for db in ["rbrsource", "schematracker", "rbrstate"]:
             db_health_check(containers, db, timeout_seconds)
         replication_handler_health_check(containers, timeout_seconds)

@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 import mock
 import pytest
 from data_pipeline.producer import Producer
-from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
@@ -77,22 +76,10 @@ class TestReplicationStreamRestarter(object):
         ) as mock_recover:
             yield mock_recover
 
-    @pytest.yield_fixture
-    def patch_rbr_source(self):
-        with mock.patch.object(
-            ConnectionSet,
-            'rbr_source_ro'
-        ) as mock_rbr_source_ro:
-            cursor = mock.Mock()
-            mock_rbr_source_ro.return_value.refresh_primary.cursor.return_value = cursor
-            cursor.fetchone.return_value = ('binlog.001', 1)
-            yield mock_rbr_source_ro
-
     def test_restart_with_clean_shutdown_and_no_pending_schema_event(
         self,
         producer,
         mock_schema_wrapper,
-        patch_rbr_source,
         patch_session_connect_begin,
         patch_get_global_event_state,
         patch_get_pending_schema_event_state,
@@ -118,7 +105,6 @@ class TestReplicationStreamRestarter(object):
         producer,
         mock_schema_wrapper,
         patch_session_connect_begin,
-        patch_rbr_source,
         patch_get_global_event_state,
         patch_get_pending_schema_event_state,
         patch_stream_reader,
@@ -140,7 +126,6 @@ class TestReplicationStreamRestarter(object):
         producer,
         mock_schema_wrapper,
         patch_session_connect_begin,
-        patch_rbr_source,
         patch_get_global_event_state,
         patch_get_pending_schema_event_state,
         patch_stream_reader,

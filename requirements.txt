@@ -1,9 +1,10 @@
 # Need this because mysql-replication on internal pypi is old.
 # Since it is a hit, no fallback to python's pypi happens
+--extra-index-url https://pypi.python.org/simple
 --extra-index-url https://pypi.python.org/pypi
 -e .
 MySQL-python==1.2.5
-PyMySQL==0.6.3
+PyMySQL==0.6.7
 PyStaticConfiguration==0.8.0
 PyYAML==3.11
 SQLAlchemy==0.9.8
