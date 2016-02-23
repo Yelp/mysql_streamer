@@ -230,10 +230,9 @@ class TestParseReplicationStream(object):
         patch_exit,
     ):
         replication_stream = ParseReplicationStream()
-        replication_stream.original_int_handler = mock.Mock(side_effect=sys.exit())
         replication_stream.producer = producer
         replication_stream.current_event_type = EventType.DATA_EVENT
-        replication_stream._handle_graceful_termination(signal.SIGINT, mock.Mock())
+        replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
         assert producer.get_checkpoint_position_data.call_count == 1
         assert producer.flush.call_count == 1
         assert patch_exit.call_count == 1
@@ -247,9 +246,8 @@ class TestParseReplicationStream(object):
         patch_exit,
     ):
         replication_stream = ParseReplicationStream()
-        replication_stream.original_int_handler = mock.Mock(side_effect=sys.exit())
         replication_stream.current_event_type = EventType.SCHEMA_EVENT
-        replication_stream._handle_graceful_termination(signal.SIGINT, mock.Mock())
+        replication_stream._handle_graceful_termination(mock.Mock(), mock.Mock())
         assert producer.get_checkpoint_position_data.call_count == 0
         assert producer.flush.call_count == 0
         assert patch_exit.call_count == 1

@@ -152,8 +152,6 @@ class ParseReplicationStream(Batch):
 
     def _register_signal_handler(self):
         """Register the handler for SIGINT(KeyboardInterrupt) and SigTerm"""
-        self.original_int_handler = signal.getsignal(signal.SIGINT)
-        self.original_term_handler = signal.getsignal(signal.SIGTERM)
         signal.signal(signal.SIGINT, self._handle_graceful_termination)
         signal.signal(signal.SIGTERM, self._handle_graceful_termination)
 
@@ -167,10 +165,7 @@ class ParseReplicationStream(Batch):
             self.producer.flush()
             position_data = self.producer.get_checkpoint_position_data()
             save_position(position_data, is_clean_shutdown=True)
-        if sig == signal.SIGINT:
-            self.original_int_handler(sig, frame)
-        elif sig == signal.SIGTERM:
-            self.original_term_handler(sig, frame)
+        sys.exit()
 
 
 if __name__ == '__main__':
