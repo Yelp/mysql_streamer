@@ -4,8 +4,6 @@ from __future__ import unicode_literals
 
 import logging
 
-import kazoo.client
-import yelp_lib.config_loader
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.config import env_config
@@ -15,9 +13,6 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 
 
-KAZOO_CLIENT_DEFAULTS = {
-    'timeout': 30,
-}
 REPLICATION_HANDLER_PRODUCER_NAME = env_config.producer_name
 
 REPLICATION_HANDLER_TEAM_NAME = env_config.team_name
@@ -90,32 +85,6 @@ def save_position(position_data, is_clean_shutdown=False):
             topic_to_kafka_offset_map=topic_to_kafka_offset_map,
             cluster_name=position_info["cluster_name"]
         )
-
-
-def get_ecosystem():
-    return open('/nail/etc/ecosystem').read().strip()
-
-
-def get_local_zk():
-    path = env_config.zookeeper_discovery_path.format(ecosystem=get_ecosystem())
-    """Get (with caching) the local zookeeper cluster definition."""
-    return yelp_lib.config_loader.load(path, '/')
-
-
-def get_kazoo_client_for_cluster_def(cluster_def, **kwargs):
-    """Get a KazooClient for a list of host-port pairs `cluster_def`."""
-    host_string = ','.join('%s:%s' % (host, port) for host, port in cluster_def)
-
-    for default_kwarg, default_value in KAZOO_CLIENT_DEFAULTS.iteritems():
-        if default_kwarg not in kwargs:
-            kwargs[default_kwarg] = default_value
-
-    return kazoo.client.KazooClient(host_string, **kwargs)
-
-
-def get_kazoo_client(**kwargs):
-    """Get a KazooClient for a local zookeeper cluster."""
-    return get_kazoo_client_for_cluster_def(get_local_zk(), **kwargs)
 
 
 def repltracker_cursor():
