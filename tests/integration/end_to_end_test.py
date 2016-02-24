@@ -23,8 +23,8 @@ class TestEndToEnd(object):
     @pytest.fixture
     def create_table_query(self, table_name):
         query = ("CREATE TABLE `{table_name}` "
-                 "(\n  `id` int(11) DEFAULT NULL,\n "
-                 " `name` varchar(64) DEFAULT NULL\n) "
+                 "(\n  `id` INT(11) DEFAULT NULL,\n "
+                 " `name` VARCHAR(64) DEFAULT NULL\n) "
                  "ENGINE=InnoDB DEFAULT CHARSET=utf8").format(table_name=table_name)
         return query
 
@@ -80,9 +80,9 @@ class TestEndToEnd(object):
         first_row = return_values[0]
         second_row = return_values[1]
         if first_row.get('time_created') < second_row.get('time_created'):
-            schema_event_query = 'SELECT * FROM schema_event_state ORDER BY time_created DESC limit 1'
+            schema_event_query = 'SELECT * FROM schema_event_state ORDER BY time_created DESC LIMIT 1'
         else:
-            schema_event_query = 'SELECT * FROM schema_event_state ORDER BY time_updated DESC limit 1'
+            schema_event_query = 'SELECT * FROM schema_event_state ORDER BY time_updated DESC LIMIT 1'
         expected_schema_event_result = {
             'status': 'Completed',
             'table_name': table_name,
