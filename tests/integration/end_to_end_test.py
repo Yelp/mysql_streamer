@@ -75,18 +75,18 @@ class TestEndToEnd(object):
         self.assert_expected_result(verify_create_table_result, expected_create_table_result)
 
         # Check rbrstate has this schema event.
-        query = 'select time_created, time_updated from schema_event_state'
+        query = 'SELECT time_created, time_updated FROM schema_event_state'
         return_values = execute_query_get_all_rows(containers, 'rbrstate', query)
         first_row = return_values[0]
         second_row = return_values[1]
         if first_row.get('time_created') < second_row.get('time_created'):
-            schema_event_query = 'select * from schema_event_state order by time_created desc limit 1'
+            schema_event_query = 'SELECT * FROM schema_event_state ORDER BY time_created DESC limit 1'
         else:
-            schema_event_query = 'select * from schema_event_state order by time_updated desc limit 1'
+            schema_event_query = 'SELECT * FROM schema_event_state ORDER BY time_updated DESC limit 1'
         expected_schema_event_result = {
             'status': 'Completed',
             'table_name': table_name,
-            'query': create_table_query,
+            'query': create_table_query
         }
         schema_event_result = execute_query_get_one_row(containers, 'rbrstate', schema_event_query)
         self.assert_expected_result(schema_event_result, expected_schema_event_result)
@@ -96,7 +96,7 @@ class TestEndToEnd(object):
         # Heartbeat serial and offset uniquely identifies a position.
         expected_position = {
             'hb_serial': new_heartbeat,
-            'offset': 0,
+            'offset': 0
         }
         self.assert_expected_result(position, expected_position)
 
@@ -120,7 +120,7 @@ class TestEndToEnd(object):
         table_name,
         avro_schema,
         namespace,
-        schematizer,
+        schematizer
     ):
         sources = schematizer.get_sources_by_namespace(namespace)
         source = next(src for src in reversed(sources) if src.name == table_name)
