@@ -6,13 +6,13 @@ VOLUME  /nail/srv/configs/
 ADD     nail-etc/services.yaml /nail/etc/services/services.yaml
 VOLUME /nail/etc/services/
 
-Add     nail-etc/local.yaml /nail/etc/zookeeper_discovery/generic/uswest2devc.yaml
+Add     nail-etc/uswest2devc.yaml /nail/etc/zookeeper_discovery/generic/uswest2devc.yaml
 VOLUME /nail/etc/zookeeper_discovery/generic
 
 Add     nail-etc/ecosystem /nail/etc/ecosystem
 VOLUME /nail/etc/
 
-Add     yelp /nail/etc/services/database_pii/yelp
+Add     nail-etc/yelp /nail/etc/services/database_pii/yelp
 VOLUME /nail/etc/services/database_pii
 
 
