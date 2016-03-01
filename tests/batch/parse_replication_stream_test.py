@@ -4,14 +4,12 @@ from __future__ import unicode_literals
 
 import signal
 import sys
-from pymysqlreplication.event import QueryEvent
 
 import mock
 import pytest
 from data_pipeline.producer import Producer
 from data_pipeline.zookeeper import ZKLock
 from data_pipeline.schematizer_clientlib.schematizer import SchematizerClient
-from kazoo.client import KazooClient
 from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
 
@@ -24,8 +22,23 @@ from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
 
+class FakeZK(object):
+    def __enter__(self):
+        self.open = True
+
+    def __exit__(self):
+        self.open = False
+
 
 class TestParseReplicationStream(object):
+
+    @pytest.yield_fixture
+    def patch_zk(self):
+        with mock.patch(
+            'data_pipeline.zookeeper.ZKLock',
+            FakeZK
+        ) as mock_zk:
+            yield mock_zk
 
     @pytest.fixture
     def schema_event(self):
@@ -303,6 +316,17 @@ class TestParseReplicationStream(object):
         with ZKLock("replication_handler", "test_namespace"):
             self._init_and_run_batch()
             assert patch_exit.call_count == 1
+
+    def test_zk_exit_on_exception(
+        self,
+        patch_config,
+        patch_restarter,
+        patch_zk
+    ):
+        patch_restarter.return_value.get_stream.return_value.__iter__.side_effect = Exception
+        with pytest.raises(Exception):
+            self._init_and_run_batch()
+            assert not patch_zk.open
 
     def _init_and_run_batch(self):
         replication_stream = ParseReplicationStream()

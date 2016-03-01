@@ -71,7 +71,9 @@ class ParseReplicationStream(Batch):
             with ZKLock(
                 "replication_handler",
                 config.env_config.namespace
-            ), self._setup_producer() as self.producer, self._setup_counters() as self.counters:
+            ) as self.zk, self._setup_producer(
+            ) as self.producer, self._setup_counters(
+            ) as self.counters:
                 self._post_producer_setup()
                 for replication_handler_event in self.stream:
                     event_class = replication_handler_event.event.__class__
@@ -165,6 +167,7 @@ class ParseReplicationStream(Batch):
             self.producer.flush()
             position_data = self.producer.get_checkpoint_position_data()
             save_position(position_data, is_clean_shutdown=True)
+        log.info("Gracefully shutting down")
         sys.exit()
 
 
