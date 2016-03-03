@@ -3,7 +3,7 @@
 DOCKER_TAG ?= replication-handler-dev-$(USER)
 
 test:
-	tox
+	tox -r
 
 itest: cook-image
 
