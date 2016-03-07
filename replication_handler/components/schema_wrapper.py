@@ -52,6 +52,7 @@ class SchemaWrapper(object):
 
     def __getitem__(self, table):
         if table not in self.cache:
+            log.info("table '{}' is not in the cache")
             self._fetch_schema_for_table(table)
         return self.cache[table]
 
@@ -60,6 +61,7 @@ class SchemaWrapper(object):
         create a new schema if one hasn't been created before, or populate
         the cache with the existing schema.
         """
+        log.info("fetching schema for table table '{}'".format(table))
         show_create_result = self.schema_tracker.get_show_create_statement(table)
         self.register_with_schema_store(
             table,
@@ -77,25 +79,38 @@ class SchemaWrapper(object):
            with response, one interface for both create and alter
            statements.
         """
+        log.info("registering {} with schema store".format(table))
         if env_config.register_dry_run:
             self.cache[table] = self._dry_run_schema
             return
-        table_stmt_kwargs = {}
+        table_stmt_kwargs = {
+            'namespace': "{0}.{1}.{2}".format(
+                env_config.namespace,
+                table.cluster_name,
+                table.database_name
+            ),
+            'source': table.table_name,
+            'source_owner_email': self._notify_email,
+            'contains_pii': self.pii_identifier.table_has_pii(
+                database_name=table.database_name,
+                table_name=table.table_name
+            ),
+            'new_create_table_stmt': new_create_table_stmt
+        }
         if old_create_table_stmt:
             table_stmt_kwargs["old_create_table_stmt"] = old_create_table_stmt
         if alter_table_stmt:
             table_stmt_kwargs["alter_table_stmt"] = alter_table_stmt
 
+        log.info(
+            "Calling schematizer_client.register_schema_from_mysql_stmts "
+            "with kwargs: {}".format(table_stmt_kwargs)
+        )
         resp = self.schematizer_client.register_schema_from_mysql_stmts(
-            namespace="{0}.{1}.{2}".format(env_config.namespace, table.cluster_name, table.database_name),
-            source=table.table_name,
-            source_owner_email=self._notify_email,
-            contains_pii=self.pii_identifier.table_has_pii(
-                database_name=table.database_name,
-                table_name=table.table_name
-            ),
-            new_create_table_stmt=new_create_table_stmt,
             **table_stmt_kwargs
+        )
+        log.info(
+            "Got response of {} from schematizer".format(resp)
         )
         self._populate_schema_cache(table, resp)
 

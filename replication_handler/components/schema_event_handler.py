@@ -59,6 +59,7 @@ class SchemaEventHandler(BaseEventHandler):
         #
         # We'll probably want to get more aggressive about filtering query
         # events, since this makes applying them kind of expensive.
+        log.info("Flushing producer and saving position data.")
         self.producer.flush()
         save_position(self.producer.get_checkpoint_position_data())
 
