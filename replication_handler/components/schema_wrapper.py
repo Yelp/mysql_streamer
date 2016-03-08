@@ -61,7 +61,7 @@ class SchemaWrapper(object):
         create a new schema if one hasn't been created before, or populate
         the cache with the existing schema.
         """
-        log.info("fetching schema for table table '{}'".format(table))
+        log.info("fetching schema for table '{}'".format(table))
         show_create_result = self.schema_tracker.get_show_create_statement(table)
         self.register_with_schema_store(
             table,
@@ -102,14 +102,14 @@ class SchemaWrapper(object):
         if alter_table_stmt:
             table_stmt_kwargs["alter_table_stmt"] = alter_table_stmt
 
-        log.info(
+        log.debug(
             "Calling schematizer_client.register_schema_from_mysql_stmts "
             "with kwargs: {}".format(table_stmt_kwargs)
         )
         resp = self.schematizer_client.register_schema_from_mysql_stmts(
             **table_stmt_kwargs
         )
-        log.info(
+        log.debug(
             "Got response of {} from schematizer".format(resp)
         )
         self._populate_schema_cache(table, resp)
