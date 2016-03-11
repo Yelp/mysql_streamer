@@ -158,7 +158,7 @@ class TestSchemaEventHandler(object):
         "BEGIN",
         "COMMIT"
     ])
-    def begin_or_commit(self, test_schema, request):
+    def skippable(self, test_schema, request):
         query = request.param
         return QueryEvent(schema=test_schema, query=query)
 
@@ -659,9 +659,9 @@ class TestSchemaEventHandler(object):
         assert schematizer_client.register_schema_from_mysql_stmts.call_count == 0
         assert save_position.call_count == 1
 
-    def test_begin_commit_skips_parsing(
+    def test_skippables_skips_parsing(
         self,
-        begin_or_commit,
+        skippable,
         producer,
         stats_counter,
         test_position,
@@ -676,7 +676,7 @@ class TestSchemaEventHandler(object):
         ) as mock_statement_factory:
             self._assert_query_skipped(
                 schema_event_handler,
-                begin_or_commit,
+                skippable,
                 test_position,
                 external_patches,
                 producer,

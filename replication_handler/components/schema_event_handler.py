@@ -43,7 +43,7 @@ class SchemaEventHandler(BaseEventHandler):
         if self.is_blacklisted(event, event.schema):
             return
 
-        if self.is_begin_or_commit_statement(event.query):
+        if self.is_skippable_statement(event.query):
             return
 
         statement = mysql_statement_factory(event.query)
@@ -120,11 +120,11 @@ class SchemaEventHandler(BaseEventHandler):
             self._execute_non_schema_store_relevant_query(event, db)
             self._mark_schema_event_complete(event, position)
 
-    def is_begin_or_commit_statement(self, query):
+    def is_skippable_statement(self, query):
         # The replication handler uses a separate function from the statement factory here
         # since it just wants to skip right over without any real parsing
-        begin_or_commit = {"BEGIN", "COMMIT"}
-        return query in begin_or_commit
+        skippables = {"BEGIN", "COMMIT"}
+        return query in skippables
 
     def _get_db_for_statement(self, statement, event):
         # Create database statements shouldn't use a database, since the
