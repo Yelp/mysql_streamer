@@ -148,11 +148,17 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture(params=[
         "DROP TRIGGER `yelp`.`pt_osc_yelp_ad_asset_del`",
-        "BEGIN",
-        "COMMIT",
         "USE YELP"
     ])
     def unsupported_query_event(self, test_schema, request):
+        query = request.param
+        return QueryEvent(schema=test_schema, query=query)
+
+    @pytest.fixture(params=[
+        "BEGIN",
+        "COMMIT"
+    ])
+    def begin_or_commit(self, test_schema, request):
         query = request.param
         return QueryEvent(schema=test_schema, query=query)
 
@@ -652,6 +658,31 @@ class TestSchemaEventHandler(object):
         assert external_patches.execute_query.call_count == 1
         assert schematizer_client.register_schema_from_mysql_stmts.call_count == 0
         assert save_position.call_count == 1
+
+    def test_begin_commit_skips_parsing(
+        self,
+        begin_or_commit,
+        producer,
+        stats_counter,
+        test_position,
+        save_position,
+        external_patches,
+        schema_event_handler,
+        mock_schema_tracker_cursor,
+    ):
+        with mock.patch(
+            'replication_handler.components.schema_event_handler.mysql_statement_factory',
+            mock.Mock()
+        ) as mock_statement_factory:
+            self._assert_query_skipped(
+                schema_event_handler,
+                begin_or_commit,
+                test_position,
+                external_patches,
+                producer,
+                stats_counter,
+            )
+            assert mock_statement_factory.call_count == 0
 
     def _assert_query_skipped(
         self,
