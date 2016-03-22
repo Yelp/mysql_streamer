@@ -44,13 +44,10 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     def __init__(self, position):
         super(LowLevelBinlogStreamReaderWrapper, self).__init__()
         source_config = config.source_database_config.entries[0]
+        schema_tracking_config = config.schema_tracking_database_config.entries[0]
         only_tables = config.env_config.table_whitelist
-        connection_config = {
-            'host': source_config['host'],
-            'port': source_config['port'],
-            'user': source_config['user'],
-            'passwd': source_config['passwd']
-        }
+        connection_config = self._entries_to_config_dict(source_config)
+        schema_tracking_config = self._entries_to_config_dict(schema_tracking_config)
         allowed_event_types = [
             GtidEvent,
             QueryEvent,
@@ -59,7 +56,21 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             DeleteRowsEvent,
         ]
 
-        self._seek(connection_config, allowed_event_types, position, only_tables)
+        self._seek(
+            connection_config,
+            schema_tracking_config,
+            allowed_event_types,
+            position,
+            only_tables
+        )
+
+    def _entries_to_config_dict(self, entries):
+        return {
+            'host': entries['host'],
+            'port': entries['port'],
+            'user': entries['user'],
+            'passwd': entries['passwd']
+        }
 
     def _refill_current_events(self):
         if not self.current_events:
@@ -103,10 +114,18 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             ) for row in row_event.rows
         ]
 
-    def _seek(self, connection_config, allowed_event_types, position, only_tables):
+    def _seek(
+        self,
+        connection_config,
+        schema_tracking_config,
+        allowed_event_types,
+        position,
+        only_tables
+    ):
         # server_id doesn't seem to matter but must be set.
         self.stream = BinLogStreamReader(
             connection_settings=connection_config,
+            ctl_connection_settings=schema_tracking_config,
             server_id=1,
             only_events=allowed_event_types,
             resume_stream=True,
