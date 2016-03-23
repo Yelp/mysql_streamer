@@ -130,5 +130,6 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             only_events=allowed_event_types,
             resume_stream=True,
             only_tables=only_tables,
+            fail_on_table_metadata_unavailable=True,
             **position.to_replication_dict()
         )
