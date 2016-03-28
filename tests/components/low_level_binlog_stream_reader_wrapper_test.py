@@ -112,3 +112,24 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         )
         assert stream.peek() == query_event
         assert stream.pop() == query_event
+
+    @pytest.yield_fixture
+    def patch_config_whitelist(self):
+        with mock.patch.object(
+            config.EnvConfig,
+            'table_whitelist',
+            new_callable=mock.PropertyMock
+        ) as mock_whitelist:
+            yield mock_whitelist
+
+    def test_get_only_tables(self, patch_config_whitelist):
+        patch_config_whitelist.return_value = ['tab1', 'tab2', 'tab1_data_pipeline_refresh']
+        expected_only_tables = ['tab1', 'tab1_data_pipeline_refresh', 'tab2', 'tab2_data_pipeline_refresh']
+        stream = LowLevelBinlogStreamReaderWrapper(
+            LogPosition(
+                log_pos=100,
+                log_file="binlog.001",
+            )
+        )
+
+        assert expected_only_tables == stream._get_only_tables()
