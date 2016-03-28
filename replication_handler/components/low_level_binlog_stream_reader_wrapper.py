@@ -43,6 +43,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def __init__(self, position):
         super(LowLevelBinlogStreamReaderWrapper, self).__init__()
+        self.refresh_table_suffix = '_data_pipeline_refresh'
         source_config = config.source_database_config.entries[0]
         only_tables = self._get_only_tables()
         connection_config = {
@@ -60,18 +61,20 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         ]
 
         self._seek(connection_config, allowed_event_types, position, only_tables)
-        self.refresh_table_suffix = '_data_pipeline_refresh'
 
     def _get_only_tables(self):
         only_tables = config.env_config.table_whitelist
         res_only_table = []
         for table_name in only_tables:
-            # prevents us from whitelisting a refresh table 
+            # prevents us from whitelisting a refresh table
             # without the underlying table being whitelisted
-            if table_name.endswith(refresh_table_suffix):
+            if table_name.endswith(self.refresh_table_suffix):
                 continue
             res_only_table.append(table_name)
-            res_only_table.append("{0}{1}".format(table_name, self.refresh_table_suffix))
+            res_only_table.append("{0}{1}".format(
+                table_name,
+                self.refresh_table_suffix
+            ))
         return res_only_table
 
     def _refill_current_events(self):
