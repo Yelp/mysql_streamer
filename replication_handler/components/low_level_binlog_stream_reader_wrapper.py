@@ -60,16 +60,18 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         ]
 
         self._seek(connection_config, allowed_event_types, position, only_tables)
+        self.refresh_table_suffix = '_data_pipeline_refresh'
 
     def _get_only_tables(self):
         only_tables = config.env_config.table_whitelist
-        refresh_table_suffix = '_data_pipeline_refresh'
         res_only_table = []
         for table_name in only_tables:
+            # prevents us from whitelisting a refresh table 
+            # without the underlying table being whitelisted
             if table_name.endswith(refresh_table_suffix):
                 continue
             res_only_table.append(table_name)
-            res_only_table.append("{0}{1}".format(table_name, refresh_table_suffix))
+            res_only_table.append("{0}{1}".format(table_name, self.refresh_table_suffix))
         return res_only_table
 
     def _refill_current_events(self):
@@ -94,13 +96,12 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         """ Convert the rows into events."""
         target_table = row_event.table
         message_type = message_type_map[row_event.event_type]
-        refresh_table_suffix = '_data_pipeline_refresh'
         # Tables with suffix _data_pipeline_refresh come
         # from the FullRefreshRunner.
-        if row_event.table.endswith(refresh_table_suffix):
+        if row_event.table.endswith(self.refresh_table_suffix):
             # Table that this row_event is meant for
             # is determined by removing the suffix.
-            target_table = row_event.table[:-len(refresh_table_suffix)]
+            target_table = row_event.table[:-len(self.refresh_table_suffix)]
             message_type = RefreshMessage
         return [
             DataEvent(
