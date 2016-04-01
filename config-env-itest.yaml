@@ -1,0 +1,29 @@
+rbr_source_cluster: refresh_primary
+
+schema_tracker_cluster: repltracker
+
+rbr_state_cluster: replhandler
+
+register_dry_run: False
+
+publish_dry_run: False
+
+disable_sensu: True
+
+topology_path: /nail/srv/configs/topology.yaml
+
+resume_stream: False
+
+schema_blacklist:
+    - information_schema
+    - mysql
+    - performance_schema
+    - test
+
+table_whitelist:
+    - biz
+    - employee_new
+    - health_check
+    - replication_heartbeat
+
+module_env_config: []

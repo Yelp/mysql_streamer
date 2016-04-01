@@ -47,6 +47,7 @@ class ReplicationStreamRestarter(object):
         position = self.position_finder.get_position_to_resume_tailing_from()
         log.info("Restarting replication: %s" % repr(position))
         self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=False)
+        log.info("Created replication stream.")
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
                 stream=self.stream,

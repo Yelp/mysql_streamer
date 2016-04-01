@@ -16,10 +16,7 @@ schema_blacklist:
     - performance_schema
     - test
 
-# biz and employee_new is for acceptance tests
 table_whitelist:
-    - biz
-    - employee_new
     - advertiser
     - business_payment_account_entity
     - payment_account_entity

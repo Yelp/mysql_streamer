@@ -37,7 +37,6 @@ def compose_file():
 @pytest.fixture(scope='session')
 def services():
     return [
-        'replicationhandlerconfigs',
         'replicationhandler',
         'rbrsource',
         'schematracker',
