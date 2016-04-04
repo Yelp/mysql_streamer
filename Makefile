@@ -23,6 +23,3 @@ install-hooks:
 
 compose-prefix:
 	@python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"
-
-get-venv-update:
-	curl http://yelp.github.io/venv-update/install.txt | bash -s v1.0.0
