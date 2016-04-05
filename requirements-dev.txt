@@ -3,7 +3,7 @@
 # These will be used for tox and other testing environments.
 -r requirements.txt
 coverage
-docker-compose==1.5.2
+docker-compose==1.6.2
 ipdb
 ipython
 fig

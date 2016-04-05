@@ -124,7 +124,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             connection_settings=connection_config,
             server_id=1,
             only_events=allowed_event_types,
-            resume_stream=True,
+            resume_stream=config.env_config.resume_stream,
             only_tables=only_tables,
             **position.to_replication_dict()
         )

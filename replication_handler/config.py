@@ -104,6 +104,21 @@ class EnvConfig(BaseConfig):
         # would cause the recovery process to fail.
         return staticconf.get('recovery_queue_size').value
 
+    @property
+    def resume_stream(self):
+        """Controls if the replication handler will attempt to resume from
+        an existing position, or start from the beginning of replicaton.  This
+        should almost always be True.  The two exceptions are when dealing
+        with a brand new database that has never had any tables created, or
+        when running integration tests.
+
+        We may want to make this always True, and otherwise bootstrap the
+        replication handler for integration tests.  Even "schemaless" databases
+        likely have Yelp administrative tables, limiting the usefuleness of
+        this in practice.
+        """
+        return staticconf.get_bool('resume_stream', default=True).value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

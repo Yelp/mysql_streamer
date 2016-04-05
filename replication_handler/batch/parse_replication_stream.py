@@ -75,6 +75,7 @@ class ParseReplicationStream(Batch):
             ) as self.producer, self._setup_counters(
             ) as self.counters:
                 self._post_producer_setup()
+                log.info("Starting to receive replication events")
                 for replication_handler_event in self.stream:
                     event_class = replication_handler_event.event.__class__
                     self.current_event_type = self.handler_map[event_class].event_type
@@ -94,6 +95,7 @@ class ParseReplicationStream(Batch):
             self.producer,
             register_dry_run=self.register_dry_run,
         )
+        log.info("Replication stream successfully restarted.")
         return replication_stream_restarter.get_stream()
 
     def _build_handler_map(self):
