@@ -192,11 +192,12 @@ class HeartbeatSearcher(object):
                     break
                 if not self._is_heartbeat(event):
                     continue
+                first_event = event.rows[0]['after_values']
                 # break if we encounter heartheat with larger time stamp
                 current_timestamp = self._convert_to_utc_timestamp(
-                    event.rows[0]["after_values"]["timestamp"]
+                    first_event["timestamp"]
                 )
-                current_serial = event.rows[0]["after_values"]["serial"]
+                current_serial = first_event["serial"]
                 if current_timestamp > hb_timestamp:
                     break
                 if (
@@ -235,10 +236,11 @@ class HeartbeatSearcher(object):
                     continue
 
                 found_hb = True
+                first_event = event.rows[0]["after_values"]
                 event_timestamp = self._convert_to_utc_timestamp(
-                    event.rows[0]["after_values"]["timestamp"]
+                    first_event["timestamp"]
                 )
-                event_serial = event.rows[0]["after_values"]["serial"]
+                event_serial = first_event["serial"]
                 if event_timestamp == hb_timestamp and event_serial == hb_serial:
                     return found_hb, HeartbeatPosition(
                         hb_serial=event_serial,
