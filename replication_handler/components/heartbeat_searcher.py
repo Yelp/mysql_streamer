@@ -115,11 +115,12 @@ class HeartbeatSearcher(object):
                     return None
                 if not self._is_heartbeat(event):
                     continue
+                first_event = event.rows[0]['after_values']
                 current_timestamp = self._convert_to_utc_timestamp(
-                    event.rows[0]["after_values"]["timestamp"]
+                    first_event["timestamp"]
                 )
                 return HeartbeatPosition(
-                    hb_serial=event.rows[0]["after_values"]["serial"],
+                    hb_serial=first_event["serial"],
                     hb_timestamp=current_timestamp,
                     log_file=stream.log_file,
                     log_pos=stream.log_pos,
