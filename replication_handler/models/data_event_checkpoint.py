@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import logging
+import time
+
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -8,6 +11,9 @@ from yelp_lib.containers.lists import unlist
 from replication_handler.models.database import Base
 from replication_handler.models.database import UnixTimeStampType
 from replication_handler.models.database import default_now
+
+
+log = logging.getLogger('replication_handler.models.data_event_checkpoint')
 
 
 class DataEventCheckpoint(Base):
@@ -41,6 +47,12 @@ class DataEventCheckpoint(Base):
             data_event_checkpoint.kafka_topic = topic
             data_event_checkpoint.kafka_offset = offset
             data_event_checkpoint.cluster_name = cluster_name
+            # Log data with current time (not necessarily
+            # the time on the event time field)
+            log.info(
+                'Reached checkpoint with offset {} on topic {} at time {}.'.
+                format(offset, topic, int(time.time()))
+            )
             session.add(data_event_checkpoint)
 
     @classmethod

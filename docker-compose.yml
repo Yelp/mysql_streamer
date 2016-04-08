@@ -1,5 +1,6 @@
 replicationhandler:
   build: .
+  image: $DOCKER_TAG
   links:
     - kafka
     - zookeeper:zk
@@ -9,6 +10,9 @@ replicationhandler:
     - schematizer
   volumes_from:
     - replicationhandlerconfigs
+  command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -vv --no-notification
+  environment:
+    - SERVICE_ENV_CONFIG_PATH=config-env-itest.yaml
 replicationhandlerconfigs:
   build: acceptance/configs/
 # Replication Handler databases
@@ -18,31 +22,3 @@ schematracker:
     build: devdbs/schema_tracker/
 rbrstate:
     build: devdbs/rbr_state/
-
-zookeeper:
-  image: wurstmeister/zookeeper
-  ports:
-    - "32796:2181"
-kafka:
-  image: wurstmeister/kafka:0.8.2.0
-  ports:
-    - "49255:9092"
-  links:
-    - zookeeper:zk
-  environment:
-    KAFKA_ADVERTISED_HOST_NAME: "169.254.255.254"
-    KAFKA_ADVERTISED_PORT: 49255
-    KAFKA_BROKER_ID: 1
-schematizerdatabase:
-  image: docker-dev.yelpcorp.com/schematizer_database:latest
-schematizerconfigs:
-  image: docker-dev.yelpcorp.com/schematizer_configs:latest
-schematizer:
-  image: docker-dev.yelpcorp.com/schematizer_service:latest
-  ports:
-    - "49256:8888"
-  links:
-    - schematizerdatabase
-  volumes_from:
-    - schematizerconfigs
-  command: "/code/virtualenv_run/bin/python /code/serviceinit.d/schematizer start-dev"

@@ -6,7 +6,6 @@ import copy
 import logging
 
 import simplejson as json
-from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
@@ -14,7 +13,6 @@ from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.sql_handler import AlterTableStatement
 from replication_handler.components.sql_handler import CreateDatabaseStatement
-from replication_handler.components.sql_handler import CreateTableStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.components.sql_handler import RenameTableStatement
 from replication_handler.models.database import rbr_state_session
@@ -22,6 +20,7 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
+from replication_handler.util.misc import repltracker_cursor
 from replication_handler.util.misc import save_position
 
 
@@ -34,7 +33,7 @@ class SchemaEventHandler(BaseEventHandler):
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
         self.schema_tracker = SchemaTracker(
-            ConnectionSet.schema_tracker_rw().repltracker.cursor()
+            repltracker_cursor()
         )
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
 
@@ -42,6 +41,9 @@ class SchemaEventHandler(BaseEventHandler):
         """Handle queries related to schema change, schema registration."""
         # Filter out blacklisted schemas
         if self.is_blacklisted(event, event.schema):
+            return
+
+        if self.is_skippable_statement(event.query):
             return
 
         statement = mysql_statement_factory(event.query)
@@ -118,6 +120,12 @@ class SchemaEventHandler(BaseEventHandler):
             self._execute_non_schema_store_relevant_query(event, db)
             self._mark_schema_event_complete(event, position)
 
+    def is_skippable_statement(self, query):
+        # The replication handler uses a separate function from the statement factory here
+        # since it just wants to skip right over without any real parsing
+        skippables = {"BEGIN", "COMMIT"}
+        return query in skippables
+
     def _get_db_for_statement(self, statement, event):
         # Create database statements shouldn't use a database, since the
         # database may not exist yet.
@@ -139,9 +147,7 @@ class SchemaEventHandler(BaseEventHandler):
 
     def _get_handle_method(self, statement):
         handle_method = None
-        if isinstance(statement, CreateTableStatement):
-            handle_method = self._handle_create_table_event
-        elif isinstance(statement, AlterTableStatement) and not statement.does_rename_table():
+        if isinstance(statement, AlterTableStatement) and not statement.does_rename_table():
             handle_method = self._handle_alter_table_event
         return handle_method
 
@@ -197,19 +203,6 @@ class SchemaEventHandler(BaseEventHandler):
         """
         log.info("Executing non-schema-store query on %s: %s" % (database_name, event.query))
         self.schema_tracker.execute_query(event.query, database_name)
-
-    def _handle_create_table_event(self, event, table):
-        """This method contains the core logic for handling a *create* event
-           and occurs within a transaction in case of failure
-        """
-        show_create_result = self._exec_query_and_get_show_create_statement(
-            event,
-            table
-        )
-        self.schema_wrapper.register_with_schema_store(
-            table,
-            new_create_table_stmt=show_create_result.query
-        )
 
     def _handle_alter_table_event(self, event, table):
         """This method contains the core logic for handling an *alter* event

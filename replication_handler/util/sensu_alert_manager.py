@@ -2,12 +2,16 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import logging
 from datetime import timedelta
 
 import pysensu_yelp
 
 from replication_handler import config
 from replication_handler.util.heartbeat_periodic_processor import HeartbeatPeriodicProcessor
+
+
+log = logging.getLogger('replication_handler.util.sensu_alert_manager')
 
 
 class SensuAlertManager(HeartbeatPeriodicProcessor):
@@ -18,6 +22,8 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
     """
 
     def process(self, timestamp):
+        if config.env_config.disable_sensu:
+            return
         # This timestamp param has to be timezone aware, otherwise it will not be
         # able to compare with timezone aware timestamps.
         result_dict = {
@@ -41,4 +47,5 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
                 'status': 2,
                 'output': 'Replication Handler is falling {delay_time} min behind real time'.format(delay_time=delay_time),
             })
+        log.info("Replication Handler status: {}, output: {}.".format(result_dict['status'], result_dict['output']))
         pysensu_yelp.send_event(**result_dict)

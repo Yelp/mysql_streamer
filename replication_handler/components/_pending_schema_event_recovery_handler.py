@@ -4,12 +4,11 @@ from __future__ import unicode_literals
 
 import logging
 
-from yelp_conn.connection_set import ConnectionSet
-
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
+from replication_handler.util.misc import repltracker_cursor
 
 
 log = logging.getLogger('replication_handler.components.pending_schema_event_recovery_handler')
@@ -31,7 +30,7 @@ class PendingSchemaEventRecoveryHandler(object):
         )
         self.database_name = self.pending_schema_event.database_name
         self.schema_tracker = SchemaTracker(
-            ConnectionSet.schema_tracker_rw().repltracker.cursor()
+            repltracker_cursor()
         )
 
     def recover(self):

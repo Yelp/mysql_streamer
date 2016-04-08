@@ -1,4 +1,4 @@
-.PHONY: clean venv-dev test itest build-image
+.PHONY: clean venv-dev test itest build-image compose-prefix
 
 DOCKER_TAG ?= replication-handler-dev-$(USER)
 
@@ -6,6 +6,7 @@ test:
 	tox
 
 itest: cook-image
+	DOCKER_TAG=$(DOCKER_TAG) tox -e itest
 
 cook-image:
 	docker build -t $(DOCKER_TAG) .
@@ -20,3 +21,6 @@ venv-dev:
 
 install-hooks:
 	tox -e pre-commit -- install -f --install-hooks
+
+compose-prefix:
+	@echo "DOCKER_TAG=$(DOCKER_TAG) `python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"

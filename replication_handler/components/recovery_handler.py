@@ -21,7 +21,7 @@ from replication_handler.util.misc import save_position
 from replication_handler.util.position import LogPosition
 
 
-log = logging.getLogger('replication_handler.components.recvoery_handler')
+log = logging.getLogger('replication_handler.components.recovery_handler')
 
 
 class RecoveryHandler(object):

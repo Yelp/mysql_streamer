@@ -62,6 +62,8 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             offset -= 1
 
         # Make sure that we skipped correct number of events.
+        log.info("self._offset is {}".format(self._offset))
+        log.info("original_offset is {}".format(original_offset))
         assert self._offset == original_offset + 1
 
     def _is_position_update(self, event):
@@ -112,7 +114,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             )
         )
 
-    def _refill_current_events_if_empty(self):
+    def _refill_current_events(self):
         if not self.current_events:
             # If the site goes into readonly mode, there are only heartbeats, we should just
             # update the position.

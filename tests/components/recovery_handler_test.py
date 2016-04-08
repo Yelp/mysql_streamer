@@ -2,10 +2,10 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import mock
-import pytest
 import time
 
+import mock
+import pytest
 from data_pipeline.message import CreateMessage
 from data_pipeline.producer import Producer
 from pymysqlreplication.event import QueryEvent
@@ -46,7 +46,6 @@ class TestRecoveryHandler(object):
     def mock_schema_wrapper(self):
         mock_schema_wrapper = mock.MagicMock()
         mock_schema_wrapper.__getitem__.return_value = SchemaWrapperEntry(
-            schema_obj=None,
             topic=str("test_topic"),
             schema_id=1,
             primary_keys=['key']

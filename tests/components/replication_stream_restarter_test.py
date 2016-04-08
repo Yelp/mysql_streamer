@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import mock
 import pytest
-
 from data_pipeline.producer import Producer
 
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.models.database import rbr_state_session
-from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
+from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 
 

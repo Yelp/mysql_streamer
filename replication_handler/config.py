@@ -6,6 +6,8 @@ import logging
 import os
 
 import staticconf
+import yelp_conn
+from yelp_servlib import clog_util
 from yelp_servlib.config_util import load_default_config
 
 
@@ -20,12 +22,20 @@ class BaseConfig(object):
     def __init__(self, config_path='config.yaml', env_config_path='config-env-dev.yaml'):
         SERVICE_CONFIG_PATH = os.environ.get('SERVICE_CONFIG_PATH', config_path)
         SERVICE_ENV_CONFIG_PATH = os.environ.get('SERVICE_ENV_CONFIG_PATH', env_config_path)
+        log.info("SERVICE_CONFIG_PATH is {}".format(SERVICE_CONFIG_PATH))
+        log.info("SERVICE_ENV_CONFIG_PATH is {}".format(SERVICE_ENV_CONFIG_PATH))
         load_default_config(SERVICE_CONFIG_PATH, SERVICE_ENV_CONFIG_PATH)
+        yelp_conn.initialize()
+        clog_util.initialize()
 
 
 class EnvConfig(BaseConfig):
     """When we do staticconf.get(), we will get a ValueProxy object, sometimes it is
     not accepted, so by calling value on that we will get its original value."""
+
+    @property
+    def namespace(self):
+        return staticconf.get('namespace').value
 
     @property
     def rbr_source_cluster(self):
@@ -84,11 +94,30 @@ class EnvConfig(BaseConfig):
         return staticconf.get('sensu_host').value
 
     @property
+    def disable_sensu(self):
+        return staticconf.get('disable_sensu').value
+
+    @property
     def recovery_queue_size(self):
         # The recovery queue size have to be greater than data pipeline producer
         # buffer size, otherwise we could potentially have stale checkpoint data which
         # would cause the recovery process to fail.
         return staticconf.get('recovery_queue_size').value
+
+    @property
+    def resume_stream(self):
+        """Controls if the replication handler will attempt to resume from
+        an existing position, or start from the beginning of replicaton.  This
+        should almost always be True.  The two exceptions are when dealing
+        with a brand new database that has never had any tables created, or
+        when running integration tests.
+
+        We may want to make this always True, and otherwise bootstrap the
+        replication handler for integration tests.  Even "schemaless" databases
+        likely have Yelp administrative tables, limiting the usefuleness of
+        this in practice.
+        """
+        return staticconf.get_bool('resume_stream', default=True).value
 
 
 class DatabaseConfig(object):

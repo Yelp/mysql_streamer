@@ -16,10 +16,7 @@ schema_blacklist:
     - performance_schema
     - test
 
-# biz and employee_new is for acceptance tests
 table_whitelist:
-    - biz
-    - employee_new
     - advertiser
     - business_payment_account_entity
     - payment_account_entity
@@ -32,7 +29,7 @@ producer_name: replication_handler
 
 team_name: bam
 
-zookeeper_discovery_path: '/nail/etc/zookeeper_discovery/generic/local.yaml'
+zookeeper_discovery_path: '/nail/etc/zookeeper_discovery/generic/uswest2{ecosystem}.yaml'
 
 pii_yaml_path: '/nail/etc/services/database_pii'
 
@@ -40,12 +37,15 @@ max_delay_allowed_in_minutes: 10
 
 sensu_host: 169.254.255.254
 
+disable_sensu: False
+
 recovery_queue_size: 1500
+
+namespace: dev
 
 module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml
-        initialize: yelp_conn.initialize
         config:
             connection_set_file: connection_sets.yaml
 
@@ -61,8 +61,11 @@ module_config:
             # Print queries to stdout
             enable_query_printing: True
 
+            db:
+                db_pool_listeners:
+                    - yelp_conn.engine.DisconnectedPoolListener
+
     -   namespace: clog
-        initialize: yelp_servlib.clog_util.initialize
         config:
             log_stream_name: tmp_replication_handler_logs
         file: /nail/srv/configs/clog.yaml
