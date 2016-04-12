@@ -8,6 +8,7 @@ import time
 import pymysql
 from data_pipeline.testing_helpers.containers import Containers
 from data_pipeline.testing_helpers.containers import ContainerUnavailableError
+from sqlalchemy import create_engine
 
 
 logger = logging.getLogger('replication_handler.testing_helper.util')
@@ -29,6 +30,15 @@ def get_db_connection(containers, db_name):
         db='yelp',
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
+    )
+
+
+def get_db_engine(containers, db_name):
+    db_host = get_service_host(containers, db_name)
+    return create_engine(
+        "mysql+pymysql://yelpdev:@{host}/yelp?charset=utf8mb4".format(
+            host=db_host
+        )
     )
 
 

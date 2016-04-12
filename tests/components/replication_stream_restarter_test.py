@@ -6,6 +6,7 @@ import mock
 import pytest
 from data_pipeline.producer import Producer
 
+import replication_handler.components.recovery_handler
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
@@ -75,6 +76,17 @@ class TestReplicationStreamRestarter(object):
             'recover',
         ) as mock_recover:
             yield mock_recover
+
+    @pytest.yield_fixture(autouse=True)
+    def patch_rbr_source(self):
+        with mock.patch.object(
+            replication_handler.components.recovery_handler,
+            'ConnectionSet'
+        ) as mock_connection_set:
+            cursor = mock.Mock()
+            mock_connection_set.rbr_source_ro.return_value.refresh_primary.cursor.return_value = cursor
+            cursor.fetchone.return_value = ('mysql-bin.000003', 1133)
+            yield
 
     def test_restart_with_clean_shutdown_and_no_pending_schema_event(
         self,

@@ -304,6 +304,7 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_exit,
         patch_running,
+        patch_schema_tracker
     ):
         patch_running.return_value = False
         replication_stream = ParseReplicationStream()
@@ -321,7 +322,8 @@ class TestParseReplicationStream(object):
         patch_restarter,
         patch_data_handle_event,
         patch_exit,
-        patch_running
+        patch_running,
+        patch_schema_tracker
     ):
         patch_running.return_value = False
         replication_stream = ParseReplicationStream()
