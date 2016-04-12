@@ -76,7 +76,3 @@ module_config:
     - namespace: data_pipeline
       config:
         load_schematizer_host_and_port_from_smartstack: True
-        kafka_cluster_type: datapipe
-        kafka_cluster_name: uswest2-devc
-        skip_messages_with_pii: True
-        kafka_producer_buffer_size: 500

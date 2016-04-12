@@ -3,11 +3,14 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import os
 import signal
 import sys
 from collections import namedtuple
 from contextlib import contextmanager
 
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError
 from data_pipeline.config import get_config
 from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.producer import Producer
@@ -55,10 +58,15 @@ class ParseReplicationStream(Batch):
         )
         self.register_dry_run = config.env_config.register_dry_run
         self.publish_dry_run = config.env_config.publish_dry_run
+        self._running = True
         if get_config().kafka_producer_buffer_size > config.env_config.recovery_queue_size:
             log.info("Shutting down because producer_buffer_size was greater than \
                     recovery queue size")
             sys.exit()
+
+    @property
+    def running(self):
+        return self._running
 
     def _post_producer_setup(self):
         """ All these setups would need producer to be initialized."""
@@ -76,18 +84,35 @@ class ParseReplicationStream(Batch):
             ) as self.counters:
                 self._post_producer_setup()
                 log.info("Starting to receive replication events")
-                for replication_handler_event in self.stream:
-                    event_class = replication_handler_event.event.__class__
-                    self.current_event_type = self.handler_map[event_class].event_type
-                    self.handler_map[event_class].handler.handle_event(
-                        replication_handler_event.event,
-                        replication_handler_event.position
-                    )
+                for replication_handler_event in self._get_events():
+                    self.process_event(replication_handler_event)
         except:
             log.exception("Shutting down because of exception")
             raise
         else:
             log.info("Normal shutdown")
+            self._handle_graceful_termination()
+
+    def process_event(self, replication_handler_event):
+        event_class = replication_handler_event.event.__class__
+        self.current_event_type = self.handler_map[event_class].event_type
+        self.handler_map[event_class].handler.handle_event(
+            replication_handler_event.event,
+            replication_handler_event.position
+        )
+
+    def _get_events(self):
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = None
+            while self.running:
+                if future is None:
+                    future = executor.submit(self.stream.next)
+
+                try:
+                    yield future.result(timeout=0.1)
+                    future = None
+                except TimeoutError:
+                    self.producer.wake()
 
     def _get_stream(self):
         replication_stream_restarter = ReplicationStreamRestarter(self.schema_wrapper)
@@ -156,13 +181,13 @@ class ParseReplicationStream(Batch):
 
     def _register_signal_handler(self):
         """Register the handler for SIGINT(KeyboardInterrupt) and SigTerm"""
-        signal.signal(signal.SIGINT, self._handle_graceful_termination)
-        signal.signal(signal.SIGTERM, self._handle_graceful_termination)
+        signal.signal(signal.SIGINT, self._handle_shutdown_signal)
+        signal.signal(signal.SIGTERM, self._handle_shutdown_signal)
 
-    def _handle_graceful_termination(self, sig, frame):
-        """This function would be invoked when SIGINT and SIGTERM
-        signals are fired.
-        """
+    def _handle_shutdown_signal(self, sig, frame):
+        self._running = False
+
+    def _handle_graceful_termination(self):
         # We will not do anything for SchemaEvent, because we have
         # a good way to recover it.
         if self.current_event_type == EventType.DATA_EVENT:
@@ -170,7 +195,18 @@ class ParseReplicationStream(Batch):
             position_data = self.producer.get_checkpoint_position_data()
             save_position(position_data, is_clean_shutdown=True)
         log.info("Gracefully shutting down")
-        sys.exit()
+
+        # Using os._exit here instead of sys.exit, because sys.exit can
+        # potentially block forever waiting for futures, and our futures can
+        # potentially block forever waiting on new messages in replication,
+        # which may never come.  The producer is manually flushed above, so it
+        # should be OK to flush metrics buffers and stdout/stderr, and force the
+        # os to terminate the whole process at this point.
+        self.counters['data_event_counter'].flush()
+        self.counters['schema_event_counter'].flush()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(0)
 
 
 if __name__ == '__main__':

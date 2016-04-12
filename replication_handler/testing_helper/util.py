@@ -56,16 +56,16 @@ def execute_query_get_all_rows(containers, db_name, query):
         connection.close()
 
 
-def set_heartbeat(containers, before, after):
+def increment_heartbeat(containers):
     heartbeat_query = (
-        "update yelp_heartbeat.replication_heartbeat "
-        "set serial={after} "
-        "where serial={before}".format(
-            before=before,
-            after=after
-        )
+        "update yelp_heartbeat.replication_heartbeat set serial=serial+1"
     )
     execute_query_get_one_row(containers, RBR_SOURCE, heartbeat_query)
+
+
+def get_heartbeat_serial(containers):
+    query = "select * from yelp_heartbeat.replication_heartbeat"
+    return execute_query_get_one_row(containers, RBR_SOURCE, query)['serial']
 
 
 def db_health_check(containers, db_name, timeout_seconds):

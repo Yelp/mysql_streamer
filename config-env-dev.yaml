@@ -8,7 +8,11 @@ register_dry_run: True
 
 publish_dry_run: True
 
+disable_sensu: True
+
 topology_path: /nail/srv/configs/topology.yaml
+
+namespace: dev
 
 schema_blacklist:
     - information_schema
@@ -16,4 +20,7 @@ schema_blacklist:
     - performance_schema
     - test
 
-module_env_config: []
+module_env_config:
+    - namespace: data_pipeline
+      config:
+        load_schematizer_host_and_port_from_smartstack: False

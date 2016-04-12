@@ -14,10 +14,11 @@ data_pipeline>=0.1.42
 dateglob==0.1
 enum34==1.0.4
 future==0.14.3
+futures==3.0.5
 geogrid==1.0.8
 ipaddress==1.0.14
 iso8601==0.1.10
-kafka-python==0.9.4
+kafka-python==0.9.4.post2
 kazoo==2.2
 mccabe==0.3.1
 mrjob==0.4.3.post7
