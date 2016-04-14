@@ -118,8 +118,6 @@ class TestEndToEnd(object):
             create_table_query.format(table_name=source)
         )
 
-        # Executing this twice, since any issues with blocking on replication
-        # will manifest as only a single message being written into Kafka.
         BasicModel = self._generate_basic_model(source)
         model_1 = BasicModel(id=1, name='insert')
         model_2 = BasicModel(id=2, name='insert')
