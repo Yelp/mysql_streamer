@@ -37,7 +37,7 @@ ADD     requirements.txt /code/requirements.txt
 ADD     setup.py /code/setup.py
 RUN     virtualenv -p pypy /code/virtualenv_run
 RUN     /code/virtualenv_run/bin/pip install \
-            -i https://pypi-dev.yelpcorp.com/simple \
+            -i https://pypi.yelpcorp.com/simple/ \
             -r /code/requirements.txt
 
 ADD     . /code

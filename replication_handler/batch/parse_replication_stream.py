@@ -60,9 +60,11 @@ class ParseReplicationStream(Batch):
         self.publish_dry_run = config.env_config.publish_dry_run
         self._running = True
         if get_config().kafka_producer_buffer_size > config.env_config.recovery_queue_size:
-            log.info("Shutting down because producer_buffer_size was greater than \
-                    recovery queue size")
-            sys.exit()
+            # Printing here, since this executes *before* logging is
+            # configured.
+            print "Shutting down because kafka_producer_buffer_size was greater than \
+                    recovery_queue_size"
+            sys.exit(1)
 
     @property
     def running(self):
