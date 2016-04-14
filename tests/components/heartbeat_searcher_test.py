@@ -1,9 +1,13 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from collections import namedtuple
 from datetime import datetime
-from mock import Mock
-from mock import patch
 
 import pytest
+from mock import Mock
+from mock import patch
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import UpdateRowsEvent
 
@@ -64,20 +68,20 @@ class MockBinLogEvents(Mock):
     @property
     def hbs(self):
         return [
-            RowEntry(True, 0, datetime(2015, 1, 1)),
-            RowEntry(True, 1, datetime(2015, 1, 2)),
-            RowEntry(True, 2, datetime(2015, 1, 3)),
-            RowEntry(True, 3, datetime(2015, 1, 4)),
-            RowEntry(True, 4, datetime(2015, 1, 5)),
-            RowEntry(True, 5, datetime(2015, 1, 6)),
-            RowEntry(True, 6, datetime(2015, 1, 6)),
-            RowEntry(True, 7, datetime(2015, 1, 6)),
-            RowEntry(True, 8, datetime(2015, 1, 6)),
+            RowEntry(True, 0, 1420099200),  # 2015-1-1
+            RowEntry(True, 1, 1420185600),  # 2015-1-2
+            RowEntry(True, 2, 1420272000),  # 2015-1-3
+            RowEntry(True, 3, 1420358400),  # 2015-1-4
+            RowEntry(True, 4, 1420444800),  # 2015-1-5
+            RowEntry(True, 5, 1420531200),  # 2015-1-6
+            RowEntry(True, 6, 1420531200),  # 2015-1-6
+            RowEntry(True, 7, 1420531200),  # 2015-1-6
+            RowEntry(True, 8, 1420531200),  # 2015-1-6
         ]
 
     @property
     def nonexistent_hb(self):
-        return RowEntry(True, 100, datetime(2015, 1, 8))
+        return RowEntry(True, 100, 1420704000)  # 2015-1-8
 
     def construct_heartbeat_pos(self, log, index):
         """Constructs a HeartbeatPosition object located at a given log and index"""
@@ -195,7 +199,9 @@ class BinLogStreamMock(MockBinLogEvents):
                     row = [{
                         "after_values": {
                             "serial": self.events[log_name][i].serial,
-                            "timestamp": self.events[log_name][i].timestamp
+                            "timestamp": datetime.fromtimestamp(
+                                self.events[log_name][i].timestamp
+                            )
                         }
                     }]
                     mock = Mock(spec=UpdateRowsEvent, schema="yelp_heartbeat", rows=row)

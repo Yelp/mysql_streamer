@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import calendar
 import logging
 
 import pytz
@@ -94,7 +95,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 log_pos=event.log_pos,
                 log_file=event.log_file,
                 hb_serial=event.row["after_values"]["serial"],
-                hb_timestamp=str(timestamp),
+                hb_timestamp=calendar.timegm(timestamp.utctimetuple()),
             )
         self._offset = 0
 
