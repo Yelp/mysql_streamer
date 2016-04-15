@@ -1,5 +1,10 @@
-from datetime import datetime
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
+import calendar
+
+from dateutil.tz import tzlocal
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import UpdateRowsEvent
 from yelp_conn.connection_set import ConnectionSet
@@ -12,9 +17,10 @@ from replication_handler.util.position import HeartbeatPosition
 class HeartbeatSearcher(object):
     """Component which locates the log position of a heartbeat event in a mysql
     binary log given its sequence number.
+    Note: all the timestamps in this class are UTC timestamp ints(Unix timestamp).
 
     To use from other modules:
-        pos = MySQLHeartbeatSearch().get_position({heartbeat_sequence_num})
+        pos = MySQLHeartbeatSearch().get_position(heartbeat_timestamp, heartbeat_sequence_num)
     Returns a replication_handler.util.position.HeartbeatPosition object
         or None if it wasnt found
     """
@@ -43,9 +49,8 @@ class HeartbeatSearcher(object):
         """Entry method for using the class from other python modules, which
         returns the HeartbeatPosition object.
         """
-        hb_timestamp = datetime.utcfromtimestamp(hb_timestamp_epoch)
-        start_index = self._binary_search_log_files(hb_timestamp, 0, len(self.all_logs))
-        return self._full_search_log_file(start_index, hb_timestamp, hb_serial)
+        start_index = self._binary_search_log_files(hb_timestamp_epoch, 0, len(self.all_logs))
+        return self._full_search_log_file(start_index, hb_timestamp_epoch, hb_serial)
 
     def _is_heartbeat(self, event):
         """Returns whether or not a binlog event is a heartbeat event. A heartbeat
@@ -110,9 +115,13 @@ class HeartbeatSearcher(object):
                     return None
                 if not self._is_heartbeat(event):
                     continue
+                first_event = event.rows[0]['after_values']
+                current_timestamp = self._convert_to_utc_timestamp(
+                    first_event["timestamp"]
+                )
                 return HeartbeatPosition(
-                    hb_serial=event.rows[0]["after_values"]["serial"],
-                    hb_timestamp=event.rows[0]["after_values"]["timestamp"],
+                    hb_serial=first_event["serial"],
+                    hb_timestamp=current_timestamp,
                     log_file=stream.log_file,
                     log_pos=stream.log_pos,
                 )
@@ -183,18 +192,23 @@ class HeartbeatSearcher(object):
                     break
                 if not self._is_heartbeat(event):
                     continue
+                first_event = event.rows[0]['after_values']
                 # break if we encounter heartheat with larger time stamp
-                if event.rows[0]["after_values"]["timestamp"] > hb_timestamp:
+                current_timestamp = self._convert_to_utc_timestamp(
+                    first_event["timestamp"]
+                )
+                current_serial = first_event["serial"]
+                if current_timestamp > hb_timestamp:
                     break
                 if (
-                    event.rows[0]["after_values"]["timestamp"] != hb_timestamp or
-                    event.rows[0]["after_values"]["serial"] != hb_serial
+                    current_timestamp != hb_timestamp or
+                    current_serial != hb_serial
                 ):
                     continue
 
                 return HeartbeatPosition(
-                    hb_serial=event.rows[0]["after_values"]["serial"],
-                    hb_timestamp=event.rows[0]["after_values"]["timestamp"],
+                    hb_serial=current_serial,
+                    hb_timestamp=current_timestamp,
                     log_file=stream.log_file,
                     log_pos=stream.log_pos,
                 )
@@ -222,8 +236,11 @@ class HeartbeatSearcher(object):
                     continue
 
                 found_hb = True
-                event_timestamp = event.rows[0]["after_values"]["timestamp"]
-                event_serial = event.rows[0]["after_values"]["serial"]
+                first_event = event.rows[0]["after_values"]
+                event_timestamp = self._convert_to_utc_timestamp(
+                    first_event["timestamp"]
+                )
+                event_serial = first_event["serial"]
                 if event_timestamp == hb_timestamp and event_serial == hb_serial:
                     return found_hb, HeartbeatPosition(
                         hb_serial=event_serial,
@@ -235,3 +252,12 @@ class HeartbeatSearcher(object):
         finally:
             if stream:
                 stream.close()
+
+    def _add_tz_info_to_tz_naive_timestamp(self, timestamp):
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=tzlocal())
+        return timestamp
+
+    def _convert_to_utc_timestamp(self, timestamp):
+        timestamp = self._add_tz_info_to_tz_naive_timestamp(timestamp)
+        return calendar.timegm(timestamp.utctimetuple())

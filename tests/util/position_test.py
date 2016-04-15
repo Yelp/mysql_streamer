@@ -2,16 +2,15 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import datetime
 import pytest
 
 from replication_handler.config import source_database_config
-from replication_handler.util.position import InvalidPositionDictException
+from replication_handler.util.position import construct_position
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import HeartbeatPosition
+from replication_handler.util.position import InvalidPositionDictException
 from replication_handler.util.position import LogPosition
 from replication_handler.util.position import Position
-from replication_handler.util.position import construct_position
 from replication_handler.util.transaction_id import TransactionId
 
 
@@ -64,14 +63,14 @@ class TestLogPosition(object):
             log_file="binlog",
             offset=10,
             hb_serial=123,
-            hb_timestamp=datetime.datetime(2011, 10, 21, 0, 1)
+            hb_timestamp=1447354877
         )
         expected_dict = {
             "log_pos": 100,
             "log_file": "binlog",
             "offset": 10,
             "hb_serial": 123,
-            "hb_timestamp": '2011-10-21 00:01:00',
+            "hb_timestamp": 1447354877,
         }
         assert p.to_dict() == expected_dict
 
@@ -81,14 +80,14 @@ class TestLogPosition(object):
             log_file="binlog",
             offset=0,
             hb_serial=123,
-            hb_timestamp=datetime.datetime(2011, 10, 21, 0, 1)
+            hb_timestamp=1447354877,
         )
         expected_dict = {
             "log_pos": 100,
             "log_file": "binlog",
             "offset": 0,
             "hb_serial": 123,
-            "hb_timestamp": '2011-10-21 00:01:00',
+            "hb_timestamp": 1447354877,
         }
         assert p.to_dict() == expected_dict
 

@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from datetime import datetime
-from pymysqlreplication.event import GtidEvent
-from pymysqlreplication.event import QueryEvent
 
 import mock
 import pytest
+from pymysqlreplication.event import GtidEvent
+from pymysqlreplication.event import QueryEvent
 
 from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
 from replication_handler.util.misc import DataEvent
@@ -93,7 +96,11 @@ class TestSimpleBinlogStreamReaderWrapper(object):
     def _setup_stream_and_expected_result(self, patch_stream):
         log_pos = 10
         log_file = "binlog.001"
-        row = {"after_values": {"serial": 123, "timestamp": datetime(2015, 10, 21, 12, 05, 27)}}
+        row = {"after_values": {
+            "serial": 123,
+            # This timestamp is Wed, 21 Oct 2015 12:05:27 GMT
+            "timestamp": datetime.fromtimestamp(1445429127)
+        }}
         heartbeat_event = mock.Mock(
             spec=DataEvent,
             schema='yelp_heartbeat',
@@ -130,7 +137,8 @@ class TestSimpleBinlogStreamReaderWrapper(object):
                     log_file=log_file,
                     offset=1,
                     hb_serial=123,
-                    hb_timestamp="2015-10-21 12:05:27-07:00",
+                    # This is Wed, 21 Oct 2015 12:05:27 GMT
+                    hb_timestamp=1445429127,
                 )
             ),
             ReplicationHandlerEvent(
@@ -140,7 +148,8 @@ class TestSimpleBinlogStreamReaderWrapper(object):
                     log_file=log_file,
                     offset=2,
                     hb_serial=123,
-                    hb_timestamp="2015-10-21 12:05:27-07:00",
+                    # This is Wed, 21 Oct 2015 12:05:27 GMT
+                    hb_timestamp=1445429127,
                 )
             )
         ]
