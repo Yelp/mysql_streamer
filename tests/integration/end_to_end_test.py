@@ -265,8 +265,8 @@ class TestEndToEnd(object):
                     assert actual == expected
 
     def _assert_equal_dict(self, dict1, dict2):
-        assert set(dict1.keys()) == set(dict2.keys())
-        for key in dict1.keys():
+        assert set(dict1) == set(dict2)
+        for key in dict1:
             v1 = dict1[key]
             v2 = dict2[key]
             if isinstance(v1, float) and isinstance(v2, float):
