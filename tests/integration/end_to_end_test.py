@@ -9,8 +9,10 @@ from data_pipeline.consumer import Consumer
 from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.message_type import MessageType
 from sqlalchemy import Column
+from sqlalchemy import Float
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy.dialects.mysql import TINYINT
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -19,6 +21,7 @@ from replication_handler.testing_helper.util import get_db_engine
 from replication_handler.testing_helper.util import increment_heartbeat
 from replication_handler.testing_helper.util import RBR_SOURCE
 from replication_handler.testing_helper.util import SCHEMA_TRACKER
+# from sqlalchemy.dialects.mysql import BIT
 
 
 Base = declarative_base()
@@ -58,6 +61,71 @@ class TestEndToEnd(object):
             u'name': table_name,
             u'type': u'record'
         }
+
+    @pytest.fixture
+    def complex_table_name(self, containers):
+        table_name = 'complex_table'
+        query = """CREATE TABLE {table_name}
+        (
+            `id` int(11) NOT NULL PRIMARY KEY,
+            /* `test_bit` BIT(8), */
+            `test_tinyint` TINYINT,
+            `test_float` FLOAT
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+        """.format(table_name=table_name)
+        execute_query_get_one_row(containers, RBR_SOURCE, query)
+        return table_name
+
+    @pytest.fixture
+    def ComplexModel(self, complex_table_name):
+        class Model(Base):
+            __tablename__ = complex_table_name
+            id = Column('id', Integer, primary_key=True)
+            # test_bit = Column('test_bit', BIT(8))
+            test_tinyint = Column('test_tinyint', TINYINT)
+            test_float = Column('test_float', Float)
+
+        return Model
+
+    @pytest.fixture
+    def complex_data(self):
+        return {
+            'id': 1,
+            # 'test_bit': 0b11,
+            'test_tinyint': 3,
+            'test_float': 3.14
+        }
+
+    def test_complex_table(
+        self,
+        containers,
+        ComplexModel,
+        complex_table_name,
+        complex_data,
+        schematizer,
+        namespace,
+        rbr_source_session
+    ):
+        increment_heartbeat(containers)
+
+        complex_instance = ComplexModel(**complex_data)
+        rbr_source_session.add(complex_instance)
+        rbr_source_session.commit()
+
+        messages = self._fetch_messages(
+            containers,
+            schematizer,
+            namespace,
+            complex_table_name,
+            1
+        )
+        expected_messages = [
+            {
+                'message_type': MessageType.create,
+                'payload_data': complex_data
+            },
+        ]
+        self._verify_messages(messages, expected_messages)
 
     def test_create_table(
         self,
@@ -189,7 +257,22 @@ class TestEndToEnd(object):
     def _verify_messages(self, messages, expected_messages):
         for message, expected_message in zip(messages, expected_messages):
             for key in expected_message.keys():
-                assert getattr(message, key) == expected_message[key]
+                actual = getattr(message, key)
+                expected = expected_message[key]
+                if isinstance(expected, dict) and isinstance(actual, dict):
+                    self._assert_equal_dict(actual, expected)
+                else:
+                    assert actual == expected
+
+    def _assert_equal_dict(self, dict1, dict2):
+        assert set(dict1.keys()) == set(dict2.keys())
+        for key in dict1.keys():
+            v1 = dict1[key]
+            v2 = dict2[key]
+            if isinstance(v1, float) and isinstance(v2, float):
+                assert abs(v1 - v2) < 0.000001
+            else:
+                assert v1 == v2
 
     def _wait_for_table(self, containers, db_name, table_name):
         poll_query = "SHOW TABLES LIKE '{table_name}'".format(table_name=table_name)

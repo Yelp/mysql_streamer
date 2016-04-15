@@ -25,6 +25,7 @@ schema_blacklist:
 table_whitelist:
     - basic_table
     - biz
+    - complex_table
     - employee_new
     - health_check
     - replication_heartbeat
