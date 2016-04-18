@@ -75,6 +75,11 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 table_name,
                 self.refresh_table_suffix
             ))
+        if len(res_only_table) == 0:
+            res_only_table = None
+
+        # this line has to be removed once whitelist in configs have been cleared
+        res_only_table = None
         return res_only_table
 
     def _refill_current_events(self):
