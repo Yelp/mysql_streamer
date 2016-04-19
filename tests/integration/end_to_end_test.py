@@ -291,12 +291,12 @@ class TestEndToEnd(object):
         elif 'ENUMS' in complex_table_column:
             col_type = self._build_type_enum_or_set(
                 col_type,
-                "', '".join(complex_table_column['ENUMS'])
+                complex_table_column['ENUMS']
             )
         elif 'SET' in complex_table_column:
             col_type = self._build_type_enum_or_set(
                 col_type,
-                "', '".join(complex_table_column['SET'])
+                complex_table_column['SET']
             )
 
         if ('tags' in complex_table_column and
