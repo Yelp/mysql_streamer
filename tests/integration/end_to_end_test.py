@@ -65,56 +65,57 @@ class TestEndToEnd(object):
     @pytest.fixture(params=[
         # {'uid': 1, 'type': 'BIT', 'data': 1, 'm': 1},
 
-        {'uid': 2, 'type': 'TINYINT', 'data': 3, 'm': 3},
+        {'uid': 2, 'type': 'TINYINT', 'data': 127},
         {'uid': 3, 'type': 'TINYINT', 'data': -128, 'm': 3, 'tags': ["SIGNED"]},
         {'uid': 4, 'type': 'TINYINT', 'data': 255, 'm': 3, 'tags': ["UNSIGNED"]},
 
         # have to figure out a way to handle zerofilled ints
-        # {
-        #     'uid': 5,
-        #     'type': 'TINYINT',
-        #     'data': '005', 'm': 3,
-        #     'tags': ["UNSIGNED", 'ZEROFILL']
-        # },
+        {
+            'uid': 5,
+            'type': 'TINYINT',
+            'data': 5, 'm': 3,
+            'tags': ["UNSIGNED", 'ZEROFILL']
+        },
 
         # casted ti tinyint(1) by mysql
-        # {'uid': 10, 'type': 'BOOL', 'data': 1},
+        {'uid': 6, 'type': 'BOOL', 'data': 1},
+        {'uid': 6, 'type': 'BOOLEAN', 'data': 1},
 
-        {'uid': 11, 'type': 'SMALLINT', 'data': 3, 'm': 3},
+        {'uid': 11, 'type': 'SMALLINT', 'data': 32767},
         {'uid': 12, 'type': 'SMALLINT', 'data': -32768, 'm': 5, 'tags': ["SIGNED"]},
         {'uid': 13, 'type': 'SMALLINT', 'data': 65535, 'm': 5, 'tags': ["UNSIGNED"]},
 
         # have to figure out a way to handle zerofilled ints
-        # {
-        #     'uid': 14,
-        #     'type': 'SMALLINT',
-        #     'data': '005', 'm': 3,
-        #     'tags': ["UNSIGNED", 'ZEROFILL']
-        # },
+        {
+            'uid': 14,
+            'type': 'SMALLINT',
+            'data': 5, 'm': 3,
+            'tags': ["UNSIGNED", 'ZEROFILL']
+        },
 
-        {'uid': 20, 'type': 'MEDIUMINT', 'data': 3, 'm': 3},
+        {'uid': 20, 'type': 'MEDIUMINT', 'data': 8388607},
         {'uid': 21, 'type': 'MEDIUMINT', 'data': -8388608, 'm': 7, 'tags': ["SIGNED"]},
         {'uid': 22, 'type': 'MEDIUMINT', 'data': 16777215, 'm': 8, 'tags': ["UNSIGNED"]},
 
         # have to figure out a way to handle zerofilled ints
-        # {
-        #     'uid':23,
-        #     'type': 'MEDIUMINT',
-        #     'data': '005', 'm': 3,
-        #     'tags': ["UNSIGNED", 'ZEROFILL']
-        # },
+        {
+            'uid': 23,
+            'type': 'MEDIUMINT',
+            'data': 5, 'm': 3,
+            'tags': ["UNSIGNED", 'ZEROFILL']
+        },
 
-        {'uid': 30, 'type': 'INT', 'data': 3, 'm': 3},
+        {'uid': 30, 'type': 'INT', 'data': 2147483647},
         {'uid': 31, 'type': 'INT', 'data': -2147483648, 'm': 10, 'tags': ["SIGNED"]},
         {'uid': 32, 'type': 'INT', 'data': 4294967295, 'm': 11, 'tags': ["UNSIGNED"]},
 
         # have to figure out a way to handle zerofilled ints
-        # {
-        #     'uid':33,
-        #     'type': 'INT',
-        #     'data': '005', 'm': 3,
-        #     'tags': ["UNSIGNED", 'ZEROFILL']
-        # },
+        {
+            'uid': 33,
+            'type': 'INT',
+            'data': 5, 'm': 3,
+            'tags': ["UNSIGNED", 'ZEROFILL']
+        },
 
         {'uid': 34, 'type': 'INTEGER', 'data': 3, 'm': 3},
 
@@ -123,17 +124,17 @@ class TestEndToEnd(object):
         # {'uid': 42, 'type': 'BIGINT', 'data': 18446744073709551615, 'm': 20, 'tags': ["UNSIGNED"]},
 
         # have to figure out a way to handle zerofilled ints
-        # {
-        #     'uid':43,
-        #     'type': 'BIGINT',
-        #     'data': '005', 'm': 3,
-        #     'tags': ["UNSIGNED", 'ZEROFILL']
-        # },
+        {
+            'uid': 43,
+            'type': 'BIGINT',
+            'data': 5, 'm': 3,
+            'tags': ["UNSIGNED", 'ZEROFILL']
+        },
 
         # PartitionerError: Failed to get partitions set from Kafka
-        # {'uid': 50, 'type': 'DECIMAL', 'data': Decimal('23.42'), 'm': 5, 'd': 3},
-        # {'uid': 51, 'type': 'DECIMAL', 'data': -15.432, 'm': 5, 'd': 3, 'tags': ["SIGNED"]},
-        # {'uid': 52, 'type': 'DECIMAL', 'data': 145.432, 'm': 7, 'd': 3, 'tags': ["UNSIGNED"]},
+        # {'uid': 50, 'type': 'DECIMAL', 'data': 101.40, 'm': 9, 'd': 2},
+        # {'uid': 51, 'type': 'DECIMAL', 'data': -80.00, 'm': 9, 'd': 2, 'tags': ["SIGNED"]},
+        # {'uid': 52, 'type': 'DECIMAL', 'data': 0.00, 'm': 9, 'd': 2, 'tags': ["UNSIGNED"]},
 
         # have to figure out a way to handle zerofilled ints
         # {
@@ -152,12 +153,12 @@ class TestEndToEnd(object):
         {'uid': 63, 'type': 'FLOAT', 'data': 24.00, 'm': 5, 'd': 3, 'tags': ["UNSIGNED"]},
 
         # have to figure out a way to handle zerofilled ints
-        # {
-        #     'uid':64,
-        #     'type': 'FLOAT',
-        #     'data': '005', 'm': 3,
-        #     'tags': ["UNSIGNED", 'ZEROFILL']
-        # },
+        {
+            'uid': 64,
+            'type': 'FLOAT',
+            'data': 5.5, 'm': 3,
+            'tags': ["UNSIGNED", 'ZEROFILL']
+        },
 
         {'uid': 65, 'type': 'FLOAT', 'data': 24.01, 'm': 5},
         {'uid': 66, 'type': 'FLOAT', 'data': 24.01, 'm': 30},
@@ -169,12 +170,12 @@ class TestEndToEnd(object):
         {'uid': 73, 'type': 'DOUBLE', 'data': 24.00, 'm': 5, 'd': 3, 'tags': ["UNSIGNED"]},
 
         # have to figure out a way to handle zerofilled ints
-        # {
-        #     'uid':74,
-        #     'type': 'DOUBLE',
-        #     'data': '005', 'm': 3,
-        #     'tags': ["UNSIGNED", 'ZEROFILL']
-        # },
+        {
+            'uid': 74,
+            'type': 'DOUBLE',
+            'data': 24.00, 'm': 8, 'd': 3,
+            'tags': ["UNSIGNED", 'ZEROFILL']
+        },
 
         {'uid': 75, 'type': 'DOUBLE PRECISION', 'data': 3.14},
         {'uid': 76, 'type': 'REAL', 'data': 3.14},
@@ -334,6 +335,8 @@ class TestEndToEnd(object):
             column_type = str('CHAR')
         elif column_type in ['CHARACTER VARYING', 'NATIONAL VARCHAR', 'NVARCHAR']:
             column_type = str('VARCHAR')
+        elif column_type == 'BOOL':
+            column_type = str('BOOLEAN')
         mysql = __import__(
             'sqlalchemy.dialects.mysql',
             fromlist=[column_type]

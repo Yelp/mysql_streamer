@@ -67,7 +67,7 @@ class EnvConfig(BaseConfig):
 
     @property
     def table_whitelist(self):
-        return staticconf.get('table_whitelist').value
+        return staticconf.get('table_whitelist', default=None).value
 
     @property
     def zookeeper_discovery_path(self):
