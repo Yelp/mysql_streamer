@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import time
 
 import pytest
+import sqlalchemy
 from data_pipeline.consumer import Consumer
 from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.message_type import MessageType
@@ -346,11 +347,11 @@ class TestEndToEnd(object):
             column_type = str('VARCHAR')
         elif column_type == 'BOOL':
             column_type = str('BOOLEAN')
-        mysql = __import__(
-            'sqlalchemy.dialects.mysql',
-            fromlist=[column_type]
-        )
-        dtype_class = getattr(mysql, column_type)
+        # mysql = __import__(
+        #     'sqlalchemy.dialects.mysql',
+        #     fromlist=[column_type]
+        # )
+        dtype_class = getattr(sqlalchemy.dialects.mysql, column_type)
         return dtype_class
 
     @pytest.fixture
