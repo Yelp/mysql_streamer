@@ -261,34 +261,49 @@ class TestEndToEnd(object):
         col_type = complex_table_column['type']
         return col_type
 
+    def _build_type_precision_scale(self, col_type, precision, scale):
+        return "{0}({1}, {2})".format(col_type, precision, scale)
+
+    def _build_type_display_width(self, col_type, display_width):
+        return "{0}({1})".format(col_type, display_width)
+
+    def _build_type_enum_or_set(self, col_type, enum_or_set):
+        return "{0}('{1}')".format(col_type, "', '".join(enum_or_set))
+
+    def _build_type_tags(self, col_type, tags):
+        return "{0} {1}".format(col_type, ' '.join(tags))
+
     @pytest.fixture
     def complex_column_type(self, complex_table_column):
         col_type = complex_table_column['type']
         if ('m' in complex_table_column and
                 'd' in complex_table_column):
-            col_type = "{0}({1}, {2})".format(
+            col_type = self._build_type_precision_scale(
                 col_type,
                 complex_table_column['m'],
                 complex_table_column['d']
             )
         elif 'm' in complex_table_column:
-            col_type = "{0}({1})".format(col_type, complex_table_column['m'])
+            col_type = self._build_type_display_width(
+                col_type,
+                complex_table_column['m']
+            )
         elif 'ENUMS' in complex_table_column:
-            col_type = "{0}('{1}')".format(
+            col_type = self._build_type_enum_or_set(
                 col_type,
                 "', '".join(complex_table_column['ENUMS'])
             )
         elif 'SET' in complex_table_column:
-            col_type = "{0}('{1}')".format(
+            col_type = self._build_type_enum_or_set(
                 col_type,
                 "', '".join(complex_table_column['SET'])
             )
 
         if ('tags' in complex_table_column and
                 isinstance(complex_table_column['tags'], list)):
-            col_type = "{0} {1}".format(
+            col_type = self._build_type_tags(
                 col_type,
-                ' '.join(complex_table_column['tags'])
+                complex_table_column['tags']
             )
         return col_type
 
@@ -314,16 +329,10 @@ class TestEndToEnd(object):
         )
 
     @pytest.fixture
-    def sql_alchamy_column_type(  # NOQA
+    def sql_alchamy_column_type_class(
         self,
-        complex_column_base_type,
-        complex_table_column
+        complex_column_base_type
     ):
-        # BIGINT, BINARY, BIT, BLOB, BOOLEAN, CHAR, DATE, \
-        # DATETIME, DECIMAL, DECIMAL, DOUBLE, ENUM, FLOAT, INTEGER, \
-        # LONGBLOB, LONGTEXT, MEDIUMBLOB, MEDIUMINT, MEDIUMTEXT, NCHAR, \
-        # NUMERIC, NVARCHAR, REAL, SET, SMALLINT, TEXT, TIME, TIMESTAMP, \
-        # TINYBLOB, TINYINT, TINYTEXT, VARBINARY, VARCHAR, YEAR
         column_type = str(complex_column_base_type)
         if column_type == 'INT':
             column_type = str('INTEGER')
@@ -342,29 +351,37 @@ class TestEndToEnd(object):
             fromlist=[column_type]
         )
         dtype_class = getattr(mysql, column_type)
+        return dtype_class
+
+    @pytest.fixture
+    def sql_alchamy_column_type_obj(  # NOQA
+        self,
+        sql_alchamy_column_type_class,
+        complex_table_column
+    ):
         if ('m' in complex_table_column and
                 'd' in complex_table_column):
-            return dtype_class(
+            return sql_alchamy_column_type_class(
                 complex_table_column['m'],
                 complex_table_column['d']
             )
         elif 'm' in complex_table_column:
-            return dtype_class(complex_table_column['m'])
+            return sql_alchamy_column_type_class(complex_table_column['m'])
         elif 'fsp' in complex_table_column:
-            return dtype_class(
+            return sql_alchamy_column_type_class(
                 timezone=False,
                 fsp=complex_table_column['fsp']
             )
         elif 'ENUMS' in complex_table_column:
-            return dtype_class(
+            return sql_alchamy_column_type_class(
                 complex_table_column['ENUMS']
             )
         elif 'SET' in complex_table_column:
-            return dtype_class(
+            return sql_alchamy_column_type_class(
                 complex_table_column['SET']
             )
         else:
-            return dtype_class
+            return sql_alchamy_column_type_class()
 
     @pytest.fixture
     def complex_column_uid(self, complex_table_column):
@@ -398,8 +415,7 @@ class TestEndToEnd(object):
         complex_table,
         complex_table_name,
         complex_column_name,
-        complex_column_type,
-        sql_alchamy_column_type
+        sql_alchamy_column_type_obj
     ):
         class Model(Base):
             __tablename__ = complex_table_name
@@ -410,7 +426,7 @@ class TestEndToEnd(object):
             complex_column_name,
             Column(
                 complex_column_name,
-                sql_alchamy_column_type
+                sql_alchamy_column_type_obj
             )
         )
         return Model
