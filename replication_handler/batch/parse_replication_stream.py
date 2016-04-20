@@ -167,10 +167,16 @@ class ParseReplicationStream(Batch):
         schema_event_counter = StatsCounter(
             STAT_COUNTER_NAME,
             event_type='schema',
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            rbr_source_cluster=config.env_config.rbr_source_cluster,
         )
         data_event_counter = StatsCounter(
             STAT_COUNTER_NAME,
             event_type='data',
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            rbr_source_cluster=config.env_config.rbr_source_cluster,
         )
         try:
             yield {

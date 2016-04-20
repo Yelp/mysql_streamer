@@ -98,4 +98,4 @@ class TestSensuAlertManager(object):
         assert result['check_every'] == '30s'
         assert result['alert_after'] == '5m'
         assert result['ttl'] == '300s'
-        assert result['source'] == 'replication_handler_real_time_check'
+        assert result['source'] == 'replication_handler_raw_dev'
