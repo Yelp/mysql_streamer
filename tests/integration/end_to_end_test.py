@@ -64,203 +64,266 @@ class TestEndToEnd(object):
     # fsp - time precision
     # [UNSIGNED] [ZEROFILL]
     @pytest.fixture(params=[
-        # {'uid': 1, 'type': 'BIT', 'data': 1, 'm': 1},
-
-        {'uid': 2, 'type': 'TINYINT', 'data': 127},
-        {'uid': 3, 'type': 'TINYINT', 'data': -128, 'm': 3, 'tags': ["SIGNED"]},
-        {'uid': 4, 'type': 'TINYINT', 'data': 255, 'm': 3, 'tags': ["UNSIGNED"]},
-
-        # have to figure out a way to handle zerofilled ints
         {
-            'uid': 5,
-            'type': 'TINYINT',
-            'data': 5, 'm': 3,
-            'tags': ["UNSIGNED", 'ZEROFILL']
+            'table_name': 'test_bit',
+            'test_schema': [
+                # {'uid': 1, 'type': 'BIT', 'data': 3, 'm': 8}
+            ]
         },
-
-        # casted ti tinyint(1) by mysql
-        {'uid': 6, 'type': 'BOOL', 'data': 1},
-        {'uid': 6, 'type': 'BOOLEAN', 'data': 1},
-
-        {'uid': 11, 'type': 'SMALLINT', 'data': 32767},
-        {'uid': 12, 'type': 'SMALLINT', 'data': -32768, 'm': 5, 'tags': ["SIGNED"]},
-        {'uid': 13, 'type': 'SMALLINT', 'data': 65535, 'm': 5, 'tags': ["UNSIGNED"]},
-
-        # have to figure out a way to handle zerofilled ints
         {
-            'uid': 14,
-            'type': 'SMALLINT',
-            'data': 5, 'm': 3,
-            'tags': ["UNSIGNED", 'ZEROFILL']
+            'table_name': 'test_tinyint',
+            'test_schema': [
+                {'uid': 2, 'type': 'TINYINT', 'data': 127},
+                {'uid': 3, 'type': 'TINYINT', 'data': -128, 'm': 3, 'tags': ["SIGNED"]},
+                {'uid': 4, 'type': 'TINYINT', 'data': 255, 'm': 3, 'tags': ["UNSIGNED"]},
+
+                # have to figure out a way to handle zerofilled ints
+                {
+                    'uid': 5,
+                    'type': 'TINYINT',
+                    'data': 5, 'm': 3,
+                    'tags': ["UNSIGNED", 'ZEROFILL']
+                },
+                # casted ti tinyint(1) by mysql
+                {'uid': 6, 'type': 'BOOL', 'data': 1},
+                {'uid': 7, 'type': 'BOOLEAN', 'data': 1},
+            ]
         },
-
-        {'uid': 20, 'type': 'MEDIUMINT', 'data': 8388607},
-        {'uid': 21, 'type': 'MEDIUMINT', 'data': -8388608, 'm': 7, 'tags': ["SIGNED"]},
-        {'uid': 22, 'type': 'MEDIUMINT', 'data': 16777215, 'm': 8, 'tags': ["UNSIGNED"]},
-
-        # have to figure out a way to handle zerofilled ints
         {
-            'uid': 23,
-            'type': 'MEDIUMINT',
-            'data': 5, 'm': 3,
-            'tags': ["UNSIGNED", 'ZEROFILL']
+            'table_name': 'test_smallint',
+            'test_schema': [
+                {'uid': 11, 'type': 'SMALLINT', 'data': 32767},
+                {'uid': 12, 'type': 'SMALLINT', 'data': -32768, 'm': 5, 'tags': ["SIGNED"]},
+                {'uid': 13, 'type': 'SMALLINT', 'data': 65535, 'm': 5, 'tags': ["UNSIGNED"]},
+
+                # have to figure out a way to handle zerofilled ints
+                {
+                    'uid': 14,
+                    'type': 'SMALLINT',
+                    'data': 5, 'm': 3,
+                    'tags': ["UNSIGNED", 'ZEROFILL']
+                },
+            ]
         },
-
-        {'uid': 30, 'type': 'INT', 'data': 2147483647},
-        {'uid': 31, 'type': 'INT', 'data': -2147483648, 'm': 10, 'tags': ["SIGNED"]},
-        {'uid': 32, 'type': 'INT', 'data': 4294967295, 'm': 11, 'tags': ["UNSIGNED"]},
-
-        # have to figure out a way to handle zerofilled ints
         {
-            'uid': 33,
-            'type': 'INT',
-            'data': 5, 'm': 3,
-            'tags': ["UNSIGNED", 'ZEROFILL']
+            'table_name': 'test_mediumint',
+            'test_schema': [
+                {'uid': 20, 'type': 'MEDIUMINT', 'data': 8388607},
+                {'uid': 21, 'type': 'MEDIUMINT', 'data': -8388608, 'm': 7, 'tags': ["SIGNED"]},
+                {'uid': 22, 'type': 'MEDIUMINT', 'data': 16777215, 'm': 8, 'tags': ["UNSIGNED"]},
+
+                # have to figure out a way to handle zerofilled ints
+                {
+                    'uid': 23,
+                    'type': 'MEDIUMINT',
+                    'data': 5, 'm': 3,
+                    'tags': ["UNSIGNED", 'ZEROFILL']
+                },
+            ]
         },
-
-        {'uid': 34, 'type': 'INTEGER', 'data': 3, 'm': 3},
-
-        {'uid': 40, 'type': 'BIGINT', 'data': 23372854775807, 'm': 19},
-        {'uid': 41, 'type': 'BIGINT', 'data': -9223372036854775808, 'm': 19, 'tags': ["SIGNED"]},
-        # {'uid': 42, 'type': 'BIGINT', 'data': 18446744073709551615, 'm': 20, 'tags': ["UNSIGNED"]},
-
-        # have to figure out a way to handle zerofilled ints
         {
-            'uid': 43,
-            'type': 'BIGINT',
-            'data': 5, 'm': 3,
-            'tags': ["UNSIGNED", 'ZEROFILL']
+            'table_name': 'test_int',
+            'test_schema': [
+                {'uid': 30, 'type': 'INT', 'data': 2147483647},
+                {'uid': 31, 'type': 'INT', 'data': -2147483648, 'm': 10, 'tags': ["SIGNED"]},
+                {'uid': 32, 'type': 'INT', 'data': 4294967295, 'm': 11, 'tags': ["UNSIGNED"]},
+
+                # have to figure out a way to handle zerofilled ints
+                {
+                    'uid': 33,
+                    'type': 'INT',
+                    'data': 5, 'm': 3,
+                    'tags': ["UNSIGNED", 'ZEROFILL']
+                },
+
+                {'uid': 34, 'type': 'INTEGER', 'data': 3, 'm': 3},
+            ]
         },
-
-        # PartitionerError: Failed to get partitions set from Kafka
-        # {'uid': 50, 'type': 'DECIMAL', 'data': 101.40, 'm': 9, 'd': 2},
-        # {'uid': 51, 'type': 'DECIMAL', 'data': -80.00, 'm': 9, 'd': 2, 'tags': ["SIGNED"]},
-        # {'uid': 52, 'type': 'DECIMAL', 'data': 0.00, 'm': 9, 'd': 2, 'tags': ["UNSIGNED"]},
-
-        # have to figure out a way to handle zerofilled ints
-        # {
-        #     'uid':53,
-        #     'type': 'BIGINT',
-        #     'data': '005', 'm': 3,
-        #     'tags': ["UNSIGNED", 'ZEROFILL']
-        # },
-
-        # {'uid': 54, 'type': 'DEC', 'data': 5.432, 'm': 5, 'd': 3},
-        # {'uid': 55, 'type': 'FIXED', 'data': 45.432, 'm': 8, 'd': 3},
-
-        {'uid': 60, 'type': 'FLOAT', 'data': 3.14},
-        {'uid': 61, 'type': 'FLOAT', 'data': 3.14, 'm': 5, 'd': 3},
-        {'uid': 62, 'type': 'FLOAT', 'data': -2.14, 'm': 5, 'd': 3, 'tags': ["SIGNED"]},
-        {'uid': 63, 'type': 'FLOAT', 'data': 24.00, 'm': 5, 'd': 3, 'tags': ["UNSIGNED"]},
-
-        # have to figure out a way to handle zerofilled ints
         {
-            'uid': 64,
-            'type': 'FLOAT',
-            'data': 5.5, 'm': 3,
-            'tags': ["UNSIGNED", 'ZEROFILL']
+            'table_name': 'test_bigint',
+            'test_schema': [
+                {'uid': 40, 'type': 'BIGINT', 'data': 23372854775807, 'm': 19},
+                {'uid': 41, 'type': 'BIGINT', 'data': -9223372036854775808, 'm': 19, 'tags': ["SIGNED"]},
+                # {'uid': 42, 'type': 'BIGINT', 'data': 18446744073709551615, 'm': 20, 'tags': ["UNSIGNED"]},
+
+                # have to figure out a way to handle zerofilled ints
+                {
+                    'uid': 43,
+                    'type': 'BIGINT',
+                    'data': 5, 'm': 3,
+                    'tags': ["UNSIGNED", 'ZEROFILL']
+                },
+            ]
         },
-
-        {'uid': 65, 'type': 'FLOAT', 'data': 24.01, 'm': 5},
-        {'uid': 66, 'type': 'FLOAT', 'data': 24.01, 'm': 30},
-
-
-        {'uid': 70, 'type': 'DOUBLE', 'data': 3.14},
-        {'uid': 71, 'type': 'DOUBLE', 'data': 3.14, 'm': 5, 'd': 3},
-        {'uid': 72, 'type': 'DOUBLE', 'data': -2.14, 'm': 5, 'd': 3, 'tags': ["SIGNED"]},
-        {'uid': 73, 'type': 'DOUBLE', 'data': 24.00, 'm': 5, 'd': 3, 'tags': ["UNSIGNED"]},
-
-        # have to figure out a way to handle zerofilled ints
         {
-            'uid': 74,
-            'type': 'DOUBLE',
-            'data': 24.00, 'm': 8, 'd': 3,
-            'tags': ["UNSIGNED", 'ZEROFILL']
+            'table_name': 'test_decimal',
+            'test_schema': [
+                # PartitionerError: Failed to get partitions set from Kafka
+                # {'uid': 50, 'type': 'DECIMAL', 'data': '101.40', 'm': 9, 'd': 2},
+                # {'uid': 51, 'type': 'DECIMAL', 'data': '-80.00', 'm': 9, 'd': 2, 'tags': ["SIGNED"]},
+                # {'uid': 52, 'type': 'DECIMAL', 'data': '0.00', 'm': 9, 'd': 2, 'tags': ["UNSIGNED"]},
+
+                # have to figure out a way to handle zerofilled ints
+                # {
+                #     'uid':53,
+                #     'type': 'BIGINT',
+                #     'data': '005', 'm': 3,
+                #     'tags': ["UNSIGNED", 'ZEROFILL']
+                # },
+
+                # {'uid': 54, 'type': 'DEC', 'data': 5.432, 'm': 5, 'd': 3},
+                # {'uid': 55, 'type': 'FIXED', 'data': 45.432, 'm': 8, 'd': 3},
+            ]
         },
-
-        {'uid': 75, 'type': 'DOUBLE PRECISION', 'data': 3.14},
-        {'uid': 76, 'type': 'REAL', 'data': 3.14},
-
-        # PartitionerError: Failed to get partitions set from Kafka
-        # {'uid': 80, 'type': 'DATE', 'data': '1000-01-01'},
-        # {'uid': 81, 'type': 'DATE', 'data': '9999-12-31'},
-
-        # PartitionerError: Failed to get partitions set from Kafka
-        # {'uid': 90, 'type': 'DATETIME', 'data': datetime(2014, 3, 24, 2, 3, 46), 'fsp': 6},
-
-        # PartitionerError: Failed to get partitions set from Kafka
-        # {'uid': 100, 'type': 'TIMESTAMP', 'data': datetime(2014, 3, 24, 2, 3, 46), 'fsp': 6},
-
-        # PartitionerError: Failed to get partitions set from Kafka
-        # {'uid': 110, 'type': 'TIME', 'data': datetime(2014, 3, 24, 2, 3, 46).time(), 'fsp': 6},
-
-        {'uid': 120, 'type': 'YEAR', 'data': 2000},
-        {'uid': 121, 'type': 'YEAR', 'data': 2000, 'm': 4},
-
-        {'uid': 130, 'type': 'CHAR', 'data': 'a'},
-        {'uid': 131, 'type': 'CHARACTER', 'data': 'a'},
-        {'uid': 132, 'type': 'NATIONAL CHAR', 'data': 'a'},
-        {'uid': 133, 'type': 'NCHAR', 'data': 'a'},
-        {'uid': 134, 'type': 'CHAR', 'data': '', 'm': 0},
-        {'uid': 135, 'type': 'CHAR', 'data': '1234567890', 'm': 10},
-
-        {'uid': 140, 'type': 'VARCHAR', 'data': 'asdasdd', 'm': 1000},
-        {'uid': 141, 'type': 'CHARACTER VARYING', 'data': 'test dsafnskdf j', 'm': 1000},
-        {'uid': 142, 'type': 'NATIONAL VARCHAR', 'data': 'asdkjasd', 'm': 1000},
-        {'uid': 143, 'type': 'NVARCHAR', 'data': 'aASDASD SAD AS', 'm': 1000},
-        {'uid': 144, 'type': 'VARCHAR', 'data': 'sadasdas', 'm': 1000},
-        {'uid': 145, 'type': 'VARCHAR', 'data': '1234567890', 'm': 10000},
-
         {
-            'uid': 150,
-            'type': 'BINARY',
-            'data': 'hello',
-            'm': 5
+            'table_name': 'test_float',
+            'test_schema': [
+                {'uid': 60, 'type': 'FLOAT', 'data': 3.14},
+                {'uid': 61, 'type': 'FLOAT', 'data': 3.14, 'm': 5, 'd': 3},
+                {'uid': 62, 'type': 'FLOAT', 'data': -2.14, 'm': 5, 'd': 3, 'tags': ["SIGNED"]},
+                {'uid': 63, 'type': 'FLOAT', 'data': 24.00, 'm': 5, 'd': 3, 'tags': ["UNSIGNED"]},
+
+                # have to figure out a way to handle zerofilled ints
+                {
+                    'uid': 64,
+                    'type': 'FLOAT',
+                    'data': 5.5, 'm': 3,
+                    'tags': ["UNSIGNED", 'ZEROFILL']
+                },
+
+                {'uid': 65, 'type': 'FLOAT', 'data': 24.01, 'm': 5},
+                {'uid': 66, 'type': 'FLOAT', 'data': 24.01, 'm': 30},
+            ]
         },
+        {
+            'table_name': 'test_double',
+            'test_schema': [
+                {'uid': 70, 'type': 'DOUBLE', 'data': 3.14},
+                {'uid': 71, 'type': 'DOUBLE', 'data': 3.14, 'm': 5, 'd': 3},
+                {'uid': 72, 'type': 'DOUBLE', 'data': -2.14, 'm': 5, 'd': 3, 'tags': ["SIGNED"]},
+                {'uid': 73, 'type': 'DOUBLE', 'data': 24.00, 'm': 5, 'd': 3, 'tags': ["UNSIGNED"]},
 
-        {'uid': 160, 'type': 'VARBINARY', 'data': 'hello', 'm': 100},
+                # have to figure out a way to handle zerofilled ints
+                {
+                    'uid': 74,
+                    'type': 'DOUBLE',
+                    'data': 24.00, 'm': 8, 'd': 3,
+                    'tags': ["UNSIGNED", 'ZEROFILL']
+                },
 
-        {'uid': 170, 'type': 'TINYBLOB', 'data': 'hello'},
+                {'uid': 75, 'type': 'DOUBLE PRECISION', 'data': 3.14},
+                {'uid': 76, 'type': 'REAL', 'data': 3.14},
+            ]
+        },
+        {
+            'table_name': 'test_date_time',
+            'test_schema': [
+                {'uid': 80, 'type': 'DATE', 'data': '1901-01-01'},
+                {'uid': 81, 'type': 'DATE', 'data': '2100-12-31'},
 
-        {'uid': 180, 'type': 'TINYTEXT', 'data': 'hello'},
+                {'uid': 90, 'type': 'DATETIME', 'data': '2014-03-24 02:03:46'},
+                {'uid': 91, 'type': 'DATETIME', 'data': '2014-03-24 02:03:46.001212', 'fsp': 6},
 
-        {'uid': 190, 'type': 'BLOB', 'data': 'hello'},
-        {'uid': 191, 'type': 'BLOB', 'data': 'hello', 'm': 100},
+                # # PartitionerError: Failed to get partitions set from Kafka
+                # {'uid': 100, 'type': 'TIMESTAMP', 'data': '2014-03-24 02:03:46'},
+                # {'uid': 101, 'type': 'TIMESTAMP', 'data': '2014-03-24 02:03:46.001212', 'fsp': 6},
 
-        {'uid': 200, 'type': 'TEXT', 'data': 'hello'},
-        {'uid': 201, 'type': 'TEXT', 'data': 'hello', 'm': 100},
+                {'uid': 110, 'type': 'TIME', 'data': '02:03:46'},
+                {'uid': 111, 'type': 'TIME', 'data': '02:03:46.001212', 'fsp': 6},
 
-        {'uid': 210, 'type': 'MEDIUMBLOB', 'data': 'hello'},
+                {'uid': 120, 'type': 'YEAR', 'data': 2000},
+                {'uid': 121, 'type': 'YEAR', 'data': 2000, 'm': 4},
+            ]
+        },
+        {
+            'table_name': 'test_char',
+            'test_schema': [
+                {'uid': 130, 'type': 'CHAR', 'data': 'a'},
+                {'uid': 131, 'type': 'CHARACTER', 'data': 'a'},
+                {'uid': 132, 'type': 'NATIONAL CHAR', 'data': 'a'},
+                {'uid': 133, 'type': 'NCHAR', 'data': 'a'},
+                {'uid': 134, 'type': 'CHAR', 'data': '', 'm': 0},
+                {'uid': 135, 'type': 'CHAR', 'data': '1234567890', 'm': 10},
 
-        {'uid': 220, 'type': 'MEDIUMTEXT', 'data': 'hello'},
+                {'uid': 140, 'type': 'VARCHAR', 'data': 'asdasdd', 'm': 1000},
+                {'uid': 141, 'type': 'CHARACTER VARYING', 'data': 'test dsafnskdf j', 'm': 1000},
+                {'uid': 142, 'type': 'NATIONAL VARCHAR', 'data': 'asdkjasd', 'm': 1000},
+                {'uid': 143, 'type': 'NVARCHAR', 'data': 'aASDASD SAD AS', 'm': 1000},
+                {'uid': 144, 'type': 'VARCHAR', 'data': 'sadasdas', 'm': 1000},
+                {'uid': 145, 'type': 'VARCHAR', 'data': '1234567890', 'm': 10000},
+            ]
+        },
+        {
+            'table_name': 'test_binary',
+            'test_schema': [
+                {
+                    'uid': 150,
+                    'type': 'BINARY',
+                    'data': 'hello',
+                    'm': 5
+                },
 
-        {'uid': 230, 'type': 'LONGBLOB', 'data': 'hello'},
+                {'uid': 160, 'type': 'VARBINARY', 'data': 'hello', 'm': 100},
 
-        {'uid': 240, 'type': 'LONGTEXT', 'data': 'hello'},
+                {'uid': 170, 'type': 'TINYBLOB', 'data': 'hello'},
 
-        # PartitionerError: Failed to get partitions set from Kafka
-        # {
-        #     'uid': 250,
-        #     'type': 'ENUM',
-        #     'data': 'ONE',
-        #     'ENUMS': ['ONE', 'TWO']
-        # },
+                {'uid': 180, 'type': 'TINYTEXT', 'data': 'hello'},
 
-        # PartitionerError: Failed to get partitions set from Kafka
-        # {
-        #     'uid': 270,
-        #     'type': 'SET',
-        #     'data': ['ONE', 'TWO'],
-        #     'SET': ['ONE', 'TWO', 'THREE']
-        # },
+                {'uid': 190, 'type': 'BLOB', 'data': 'hello'},
+                {'uid': 191, 'type': 'BLOB', 'data': 'hello', 'm': 100},
+
+                {'uid': 200, 'type': 'TEXT', 'data': 'hello'},
+                {'uid': 201, 'type': 'TEXT', 'data': 'hello', 'm': 100},
+
+                {'uid': 210, 'type': 'MEDIUMBLOB', 'data': 'hello'},
+
+                {'uid': 220, 'type': 'MEDIUMTEXT', 'data': 'hello'},
+
+                {'uid': 230, 'type': 'LONGBLOB', 'data': 'hello'},
+
+                {'uid': 240, 'type': 'LONGTEXT', 'data': 'hello'},
+            ]
+        },
+        {
+            'table_name': 'test_enum',
+            'test_schema': [
+                # PartitionerError: Failed to get partitions set from Kafka
+                # {
+                #     'uid': 250,
+                #     'type': 'ENUM',
+                #     'data': 'ONE',
+                #     'ENUMS': ['ONE', 'TWO']
+                # },
+            ]
+        },
+        {
+            'table_name': 'test_set',
+            'test_schema': [
+                # PartitionerError: Failed to get partitions set from Kafka
+                # {
+                #     'uid': 270,
+                #     'type': 'SET',
+                #     'data': ['ONE', 'TWO'],
+                #     'SET': ['ONE', 'TWO', 'THREE']
+                # },
+            ]
+        },
     ])
-    def complex_table_column(self, request):
+    def complex_table(self, request):
         return request.param
 
     @pytest.fixture
-    def complex_column_base_type(self, complex_table_column):
-        col_type = complex_table_column['type']
-        return col_type
+    def complex_table_name(self, complex_table):
+        return '{0}_table'.format(complex_table['table_name'])
+
+    @pytest.fixture
+    def complex_table_schema(self, complex_table):
+        return complex_table['test_schema']
+
+    @pytest.fixture
+    def complex_columns_base_type(self, complex_table_schema):
+        return [complex_table_column['type']
+                for complex_table_column in complex_table_schema]
 
     def _build_type_precision_scale(self, col_type, precision, scale):
         return "{0}({1}, {2})".format(col_type, precision, scale)
@@ -274,8 +337,7 @@ class TestEndToEnd(object):
     def _build_type_tags(self, col_type, tags):
         return "{0} {1}".format(col_type, ' '.join(tags))
 
-    @pytest.fixture
-    def complex_column_type(self, complex_table_column):
+    def _build_mysql_col_type(self, complex_table_column):
         col_type = complex_table_column['type']
         if ('m' in complex_table_column and
                 'd' in complex_table_column):
@@ -288,6 +350,11 @@ class TestEndToEnd(object):
             col_type = self._build_type_display_width(
                 col_type,
                 complex_table_column['m']
+            )
+        elif 'fsp' in complex_table_column:
+            col_type = self._build_type_display_width(
+                col_type,
+                complex_table_column['fsp']
             )
         elif 'ENUMS' in complex_table_column:
             col_type = self._build_type_enum_or_set(
@@ -309,17 +376,27 @@ class TestEndToEnd(object):
         return col_type
 
     @pytest.fixture
-    def complex_column_name(self, complex_column_base_type):
-        return 'test_{0}'.format(
-            complex_column_base_type.lower().replace(" ", "_")
+    def complex_columns_type(self, complex_table_schema):
+        return [self._build_mysql_col_type(complex_table_column)
+                for complex_table_column in complex_table_schema]
+
+    def _build_complex_column_name(self, complex_column):
+        return 'test_{0}_{1}'.format(
+            complex_column['type'].lower().replace(" ", "_"),
+            complex_column['uid']
         )
 
     @pytest.fixture
-    def complex_column_data(self, complex_table_column):
-        return complex_table_column['data']
+    def complex_columns_name(self, complex_table_schema):
+        return [self._build_complex_column_name(complex_column)
+                for complex_column in complex_table_schema]
 
     @pytest.fixture
-    def complex_column_create_query(
+    def complex_columns_data(self, complex_table_schema):
+        return [complex_table_column['data']
+                for complex_table_column in complex_table_schema]
+
+    def _build_complex_column_create_query(
         self,
         complex_column_name,
         complex_column_type
@@ -330,10 +407,22 @@ class TestEndToEnd(object):
         )
 
     @pytest.fixture
-    def sql_alchamy_column_type_class(
+    def complex_columns_create_query(
         self,
-        complex_column_base_type
+        complex_columns_name,
+        complex_columns_type
     ):
+        return ", ".join([self._build_complex_column_create_query(
+            complex_column_name,
+            complex_column_type
+        )
+            for complex_column_name, complex_column_type in zip(
+                complex_columns_name,
+                complex_columns_type
+        )
+        ])
+
+    def _build_sql_alchamy_type(self, complex_column_base_type):
         column_type = str(complex_column_base_type)
         if column_type == 'INT':
             column_type = str('INTEGER')
@@ -347,15 +436,18 @@ class TestEndToEnd(object):
             column_type = str('VARCHAR')
         elif column_type == 'BOOL':
             column_type = str('BOOLEAN')
-        # mysql = __import__(
-        #     'sqlalchemy.dialects.mysql',
-        #     fromlist=[column_type]
-        # )
         dtype_class = getattr(sqlalchemy.dialects.mysql, column_type)
         return dtype_class
 
     @pytest.fixture
-    def sql_alchamy_column_type_obj(  # NOQA
+    def sql_alchamy_columns_type_class(
+        self,
+        complex_columns_base_type
+    ):
+        return [self._build_sql_alchamy_type(complex_column_base_type)
+                for complex_column_base_type in complex_columns_base_type]
+
+    def _build_sql_alchamy_type_obj(
         self,
         sql_alchamy_column_type_class,
         complex_table_column
@@ -385,59 +477,80 @@ class TestEndToEnd(object):
             return sql_alchamy_column_type_class()
 
     @pytest.fixture
-    def complex_column_uid(self, complex_table_column):
-        return complex_table_column['uid']
+    def sql_alchamy_columns_type_obj(
+        self,
+        sql_alchamy_columns_type_class,
+        complex_table_schema
+    ):
+        objs = []
+        for sql_alchamy_column_type_class, complex_table_column in zip(
+            sql_alchamy_columns_type_class,
+            complex_table_schema
+        ):
+            objs.append(self._build_sql_alchamy_type_obj(
+                sql_alchamy_column_type_class,
+                complex_table_column
+            ))
+        return objs
 
     @pytest.fixture
-    def complex_table_name(self, complex_column_name, complex_column_uid):
-        return '{0}_{1}_table'.format(complex_column_name, complex_column_uid)
-
-    @pytest.fixture
-    def complex_table(
+    def create_complex_table(
         self,
         containers,
         complex_table_name,
-        complex_column_create_query
+        complex_columns_create_query
     ):
+        if complex_columns_create_query.strip():
+            complex_columns_create_query = ", {}".format(
+                complex_columns_create_query
+            )
         query = """CREATE TABLE {complex_table_name}
         (
-            `id` int(11) NOT NULL PRIMARY KEY,
-            {complex_column_create_query}
+            `id` int(11) NOT NULL PRIMARY KEY
+            {complex_columns_create_query}
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8
         """.format(
             complex_table_name=complex_table_name,
-            complex_column_create_query=complex_column_create_query
+            complex_columns_create_query=complex_columns_create_query
         )
+
         execute_query_get_one_row(containers, RBR_SOURCE, query)
 
     @pytest.fixture
     def ComplexModel(
         self,
-        complex_table,
+        create_complex_table,
         complex_table_name,
-        complex_column_name,
-        sql_alchamy_column_type_obj
+        complex_columns_name,
+        sql_alchamy_columns_type_obj
     ):
         class Model(Base):
             __tablename__ = complex_table_name
             id = Column('id', Integer, primary_key=True)
 
-        setattr(
-            Model,
-            complex_column_name,
-            Column(
+        for sql_alchamy_column_type_obj, complex_column_name in zip(
+            sql_alchamy_columns_type_obj,
+            complex_columns_name
+        ):
+            setattr(
+                Model,
                 complex_column_name,
-                sql_alchamy_column_type_obj
+                Column(
+                    complex_column_name,
+                    sql_alchamy_column_type_obj
+                )
             )
-        )
         return Model
 
     @pytest.fixture
-    def complex_data(self, complex_column_name, complex_column_data):
-        return {
-            'id': 1,
-            complex_column_name: complex_column_data
-        }
+    def complex_data(self, complex_columns_name, complex_columns_data):
+        res = {'id': 1}
+        for complex_column_name, complex_column_data in zip(
+            complex_columns_name,
+            complex_columns_data
+        ):
+            res.update({complex_column_name: complex_column_data})
+        return res
 
     def test_complex_table(
         self,
