@@ -9,6 +9,7 @@ import sys
 from collections import namedtuple
 from contextlib import contextmanager
 
+import vmprof
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
 from data_pipeline.config import get_config
@@ -38,6 +39,8 @@ HandlerInfo = namedtuple("HandlerInfo", ("event_type", "handler"))
 
 STAT_COUNTER_NAME = 'replication_handler_counter'
 
+PROFILER_FILE_NAME = "repl.vmprof"
+
 
 class ParseReplicationStream(Batch):
     """Batch that follows the replication stream and continuously publishes
@@ -59,6 +62,7 @@ class ParseReplicationStream(Batch):
         self.register_dry_run = config.env_config.register_dry_run
         self.publish_dry_run = config.env_config.publish_dry_run
         self._running = True
+        self._profiler_running = False
         if get_config().kafka_producer_buffer_size > config.env_config.recovery_queue_size:
             # Printing here, since this executes *before* logging is
             # configured.
@@ -74,7 +78,7 @@ class ParseReplicationStream(Batch):
         """ All these setups would need producer to be initialized."""
         self.handler_map = self._build_handler_map()
         self.stream = self._get_stream()
-        self._register_signal_handler()
+        self._register_signal_handlers()
 
     def run(self):
         try:
@@ -187,13 +191,36 @@ class ParseReplicationStream(Batch):
             schema_event_counter.flush()
             data_event_counter.flush()
 
-    def _register_signal_handler(self):
-        """Register the handler for SIGINT(KeyboardInterrupt) and SigTerm"""
+    def _register_signal_handlers(self):
+        """Register the handler for SIGINT(KeyboardInterrupt), SigTerm
+        and SIGUSR2, which will toggle a profiler on and off.
+        """
         signal.signal(signal.SIGINT, self._handle_shutdown_signal)
         signal.signal(signal.SIGTERM, self._handle_shutdown_signal)
+        signal.signal(signal.SIGUSR2, self._handle_profiler_signal)
 
     def _handle_shutdown_signal(self, sig, frame):
         self._running = False
+
+    def _handle_profiler_signal(self, sig, frame):
+        log.info("Toggling Profiler")
+        if self._profiler_running:
+            log.info(
+                "Disable Profiler - wrote to {}".format(
+                    PROFILER_FILE_NAME
+                )
+            )
+            vmprof.disable()
+            os.close(self._profiler_fd)
+            self._profiler_running = False
+        else:
+            log.info("Enable Profiler")
+            self._profiler_fd = os.open(
+                PROFILER_FILE_NAME,
+                os.O_RDWR | os.O_CREAT | os.O_TRUNC
+            )
+            vmprof.enable(self._profiler_fd)
+            self._profiler_running = True
 
     def _handle_graceful_termination(self):
         # We will not do anything for SchemaEvent, because we have
