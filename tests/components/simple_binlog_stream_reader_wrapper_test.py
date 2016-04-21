@@ -32,6 +32,13 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         ) as mock_sensu_alert:
             yield mock_sensu_alert
 
+    @pytest.yield_fixture
+    def patch_meteorite(self):
+        with mock.patch(
+            'replication_handler.components.simple_binlog_stream_reader_wrapper.MeteoriteGaugeManager.periodic_process'
+        ) as mock_meteorite:
+            yield mock_meteorite
+
     def test_yield_events_when_gtid_enabled(self, patch_stream):
         gtid_event_0 = mock.Mock(spec=GtidEvent, gtid="sid:11")
         query_event_0 = mock.Mock(spec=QueryEvent)
@@ -81,10 +88,12 @@ class TestSimpleBinlogStreamReaderWrapper(object):
     def test_yield_event_with_heartbeat_event(
         self,
         patch_sensu_alert,
+        patch_meteorite,
         patch_stream,
     ):
         stream, results = self._setup_stream_and_expected_result(patch_stream)
         assert patch_sensu_alert.call_count == 1
+        assert patch_meteorite.call_count == 1
         for replication_event, result in zip(stream, results):
             assert replication_event.event == result.event
             assert replication_event.position.log_pos == result.position.log_pos
