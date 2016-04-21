@@ -3,14 +3,17 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import calendar
+import datetime
 import logging
 
 import pytz
 from dateutil.tz import tzlocal
+from dateutil.tz import tzutc
 from pymysqlreplication.event import GtidEvent
 
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
+from replication_handler.util.meteorite_gauge_manager import MeteoriteGaugeManager
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
@@ -21,6 +24,7 @@ from replication_handler.util.sensu_alert_manager import SensuAlertManager
 log = logging.getLogger('replication_handler.components.simple_binlog_stream_reader_wrapper')
 
 sensu_alert_interval_in_seconds = 30
+meteorite_interval_in_seconds = 2
 
 
 class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
@@ -40,6 +44,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         self._upstream_position = position
         self._offset = 0
         self.sensu_alert_manager = SensuAlertManager(sensu_alert_interval_in_seconds)
+        self.meteorite_gauge_manager = MeteoriteGaugeManager(meteorite_interval_in_seconds)
         self._seek(self._upstream_position.offset)
 
     def __iter__(self):
@@ -90,6 +95,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 event.row["after_values"]["timestamp"]
             )
             self.sensu_alert_manager.periodic_process(timestamp)
+            self.meteorite_gauge_manager.periodic_process(timestamp)
             self._log_process(timestamp, event.log_file, event.log_pos)
             self._upstream_position = LogPosition(
                 log_pos=event.log_pos,
@@ -106,11 +112,14 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _log_process(self, timestamp, log_file, log_pos):
         # Change the timezone of timestamp to PST(local timezone in SF)
+        now = datetime.datetime.now(tzutc())
+        delay_seconds = (now - timestamp).total_seconds()
         log.info(
-            "Processing timestamp is {timestamp}, log position is {log_file}: {log_pos}".format(
+            "Processing timestamp is {timestamp}, delay is {delay_seconds} seconds, log position is {log_file}: {log_pos}".format(
                 timestamp=timestamp.replace(tzinfo=pytz.timezone('US/Pacific')),
                 log_file=log_file,
                 log_pos=log_pos,
+                delay_seconds=delay_seconds,
             )
         )
 

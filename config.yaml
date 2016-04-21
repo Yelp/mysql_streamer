@@ -39,6 +39,8 @@ sensu_host: 169.254.255.254
 
 disable_sensu: False
 
+disable_meteorite: False
+
 recovery_queue_size: 1500
 
 namespace: dev

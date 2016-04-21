@@ -1,19 +1,26 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 import time
 
+from data_pipeline.tools.meteorite_wrappers import StatTimer
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
-
 from yelp_lib.containers.lists import unlist
 
+from replication_handler import config
 from replication_handler.models.database import Base
-from replication_handler.models.database import UnixTimeStampType
 from replication_handler.models.database import default_now
+from replication_handler.models.database import UnixTimeStampType
 
 
 log = logging.getLogger('replication_handler.models.data_event_checkpoint')
+
+
+DATA_EVENT_CHECKPOINT_TIMER_NAME = 'replication_handler_data_event_checkpoint_timer'
 
 
 class DataEventCheckpoint(Base):
@@ -34,6 +41,13 @@ class DataEventCheckpoint(Base):
         topic_to_kafka_offset_map,
         cluster_name,
     ):
+        timer = StatTimer(
+            DATA_EVENT_CHECKPOINT_TIMER_NAME,
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            rbr_source_cluster=config.env_config.rbr_source_cluster,
+        )
+        timer.start()
         for topic, offset in topic_to_kafka_offset_map.iteritems():
             data_event_checkpoint = session.query(
                 DataEventCheckpoint
@@ -54,6 +68,7 @@ class DataEventCheckpoint(Base):
                 format(offset, topic, int(time.time()))
             )
             session.add(data_event_checkpoint)
+        timer.stop()
 
     @classmethod
     def get_topic_to_kafka_offset_map(cls, session, cluster_name):

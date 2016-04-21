@@ -111,7 +111,7 @@ class EnvConfig(BaseConfig):
         prevent false alerts that never resolve when we run locally.
         """
         if os.environ.get('PAASTA_CLUSTER'):
-            return "paasta-{cluster}.yelp:3030".format(
+            return "paasta-{cluster}.yelp".format(
                 cluster=os.environ.get('PAASTA_CLUSTER')
             )
         else:
@@ -131,6 +131,10 @@ class EnvConfig(BaseConfig):
     @property
     def disable_sensu(self):
         return staticconf.get('disable_sensu').value
+
+    @property
+    def disable_meteorite(self):
+        return staticconf.get('disable_meteorite').value
 
     @property
     def recovery_queue_size(self):
