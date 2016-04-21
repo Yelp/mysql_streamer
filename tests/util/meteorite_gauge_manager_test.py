@@ -14,7 +14,7 @@ from replication_handler.util import meteorite_gauge_manager
 from replication_handler.util.meteorite_gauge_manager import MeteoriteGaugeManager
 
 
-class TestMeteoriteGaugetManager(object):
+class TestMeteoriteGaugeManager(object):
 
     @pytest.yield_fixture
     def patch_stat_gauge(self):
@@ -52,10 +52,10 @@ class TestMeteoriteGaugetManager(object):
             config.EnvConfig,
             'disable_meteorite',
             new_callable=mock.PropertyMock
-        ) as mock_disable_sensu:
-            yield mock_disable_sensu
+        ) as mock_disable_meteorite:
+            yield mock_disable_meteorite
 
-    def test_process(
+    def test_meteorite_enabled(
         self,
         patch_stat_gauge,
         patch_time,
