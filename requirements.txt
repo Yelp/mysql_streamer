@@ -41,6 +41,7 @@ simplejson==3.6.5
 six==1.9.0
 -e git://github.com/Yelp/sqlparse.git@4fbab9c395752294225f60393cc0a19d6fb62d54#egg=sqlparse
 thriftpy==0.1.15
+vmprof==0.2.7
 wheel==0.24.0
 wsgiref==0.1.2
 yelp-batch==0.11.4
