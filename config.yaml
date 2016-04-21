@@ -43,6 +43,10 @@ recovery_queue_size: 1500
 
 namespace: dev
 
+container_name: none
+
+container_env: raw
+
 module_config:
     -   namespace: yelp_conn
         file: /nail/srv/configs/yelp_conn_generic.yaml
