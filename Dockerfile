@@ -22,10 +22,10 @@ run locale-gen en_US en_US.UTF-8 && dpkg-reconfigure locales
 # Setup pypy
 run mkdir /src
 workdir /src
-run wget https://bitbucket.org/pypy/pypy/downloads/pypy-5.0.0-linux64.tar.bz2 --no-check-certificate
-run bunzip2 pypy-5.0.0-linux64.tar.bz2
-run tar xvf pypy-5.0.0-linux64.tar
-ENV PATH $PATH:/src/pypy-5.0.0-linux64/bin/
+run wget https://bitbucket.org/pypy/pypy/downloads/pypy-5.1.0-linux64.tar.bz2 --no-check-certificate
+run bunzip2 pypy-5.1.0-linux64.tar.bz2
+run tar xvf pypy-5.1.0-linux64.tar
+ENV PATH $PATH:/src/pypy-5.1.0-linux64/bin/
 run wget https://bootstrap.pypa.io/get-pip.py --no-check-certificate
 run pypy get-pip.py
 
