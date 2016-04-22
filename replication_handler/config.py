@@ -158,6 +158,16 @@ class EnvConfig(BaseConfig):
         """
         return staticconf.get_bool('resume_stream', default=True).value
 
+    @property
+    def force_exit(self):
+        """Determines if we should force an exit, which can be helpful if we'd
+        otherwise block waiting for replication events that aren't going to come.
+
+        In general, this should be False in prod environments, and True in test
+        environments.
+        """
+        return staticconf.get_bool('force_exit').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""
