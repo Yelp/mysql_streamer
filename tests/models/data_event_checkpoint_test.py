@@ -2,8 +2,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import time
-
 import pytest
 
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
@@ -56,11 +54,7 @@ class TestDataEventCheckpoint(object):
             topic_to_kafka_offset_map=expected_topic_to_kafka_offset_map,
             cluster_name=cluster_name,
         )
-        sandbox_session.flush()
-        # Sleep to make sure first is earlier than second event.
-        # somehow if we dont sleep for a short time, the second data event
-        # will have the same timestamp, which will cause this test to fail.
-        time.sleep(1)
+        sandbox_session.commit()
         yield data_event_checkpoint
         sandbox_session.query(
             DataEventCheckpoint
@@ -76,6 +70,27 @@ class TestDataEventCheckpoint(object):
         cluster_name,
         expected_topic_to_kafka_offset_map
     ):
+        topic_to_kafka_offset_map = DataEventCheckpoint.get_topic_to_kafka_offset_map(
+            sandbox_session,
+            cluster_name
+        )
+        assert topic_to_kafka_offset_map == expected_topic_to_kafka_offset_map
+
+    def test_kafka_offset_update(
+        self,
+        sandbox_session,
+        data_event_checkpoint,
+        cluster_name,
+        expected_topic_to_kafka_offset_map,
+        second_kafka_topic,
+    ):
+        DataEventCheckpoint.upsert_data_event_checkpoint(
+            sandbox_session,
+            topic_to_kafka_offset_map={second_kafka_topic: 300},
+            cluster_name=cluster_name,
+        )
+
+        expected_topic_to_kafka_offset_map[second_kafka_topic] = 300
         topic_to_kafka_offset_map = DataEventCheckpoint.get_topic_to_kafka_offset_map(
             sandbox_session,
             cluster_name
