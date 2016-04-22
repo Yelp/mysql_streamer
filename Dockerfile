@@ -31,6 +31,10 @@ run pypy get-pip.py
 
 run ln -s /usr/bin/gcc /usr/local/bin/cc
 
+# Use https://github.com/Yelp/dumb-init to make sure signals propogate
+RUN wget -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.0.1/dumb-init_1.0.1_amd64
+RUN chmod +x /usr/local/bin/dumb-init
+
 # Add the service code
 WORKDIR /code
 ADD     requirements.txt /code/requirements.txt
@@ -44,6 +48,7 @@ ADD     . /code
 
 RUN useradd batch
 RUN chown -R batch /code
+
 USER batch
 
 # Share the logging directory as a volume
@@ -52,4 +57,4 @@ VOLUME  /tmp/logs
 
 WORKDIR /code
 ENV     BASEPATH /code
-CMD /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -v --no-notification
+CMD ["/usr/local/bin/dumb-init", "/code/virtualenv_run/bin/pypy", "/code/replication_handler/batch/parse_replication_stream.py", "-v", "--no-notification"]

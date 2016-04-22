@@ -215,10 +215,12 @@ class ParseReplicationStream(Batch):
             # because signals that are handled don't unwind up the stack in the
             # way that normal methods do.  Any contextmanager or finally
             # statement won't live past the handler function returning.
+            signal.signal(signal.SIGUSR2, signal.SIG_DFL)
             if self._profiler_running:
                 self._disable_profiler()
 
     def _handle_shutdown_signal(self, sig, frame):
+        log.info("Shutdown Signal Received")
         self._running = False
 
     def _handle_profiler_signal(self, sig, frame):
