@@ -218,18 +218,18 @@ class TestEndToEnd(object):
         {
             'table_name': 'test_date_time',
             'test_schema': [
-                {'uid': 80, 'type': 'DATE', 'data': '1901-01-01'},
-                {'uid': 81, 'type': 'DATE', 'data': '2100-12-31'},
+                # {'uid': 80, 'type': 'DATE', 'data': '1901-01-01'},
+                # {'uid': 81, 'type': 'DATE', 'data': '2100-12-31'},
 
-                {'uid': 90, 'type': 'DATETIME', 'data': '2014-03-24 02:03:46'},
-                {'uid': 91, 'type': 'DATETIME', 'data': '2014-03-24 02:03:46.001212', 'fsp': 6},
+                # {'uid': 90, 'type': 'DATETIME', 'data': '2014-03-24 02:03:46'},
+                # {'uid': 91, 'type': 'DATETIME', 'data': '2014-03-24 02:03:46.001212', 'fsp': 6},
 
-                # # PartitionerError: Failed to get partitions set from Kafka
-                # {'uid': 100, 'type': 'TIMESTAMP', 'data': '2014-03-24 02:03:46'},
-                # {'uid': 101, 'type': 'TIMESTAMP', 'data': '2014-03-24 02:03:46.001212', 'fsp': 6},
+                # # # PartitionerError: Failed to get partitions set from Kafka
+                # # {'uid': 100, 'type': 'TIMESTAMP', 'data': '2014-03-24 02:03:46'},
+                # # {'uid': 101, 'type': 'TIMESTAMP', 'data': '2014-03-24 02:03:46.001212', 'fsp': 6},
 
-                {'uid': 110, 'type': 'TIME', 'data': '02:03:46'},
-                {'uid': 111, 'type': 'TIME', 'data': '02:03:46.001212', 'fsp': 6},
+                # {'uid': 110, 'type': 'TIME', 'data': '02:03:46'},
+                # {'uid': 111, 'type': 'TIME', 'data': '02:03:46.001212', 'fsp': 6},
 
                 {'uid': 120, 'type': 'YEAR', 'data': 2000},
                 {'uid': 121, 'type': 'YEAR', 'data': 2000, 'm': 4},
@@ -287,12 +287,13 @@ class TestEndToEnd(object):
         {
             'table_name': 'test_enum',
             'test_schema': [
-                # PartitionerError: Failed to get partitions set from Kafka
+                # # PartitionerError: Failed to get partitions set from Kafka
                 # {
                 #     'uid': 250,
                 #     'type': 'ENUM',
                 #     'data': 'ONE',
-                #     'ENUMS': ['ONE', 'TWO']
+                #     'ENUMS': ['ONE', 'TWO'],
+                #     'tags': ['NOT NULL']
                 # },
             ]
         },
@@ -467,11 +468,11 @@ class TestEndToEnd(object):
             )
         elif 'ENUMS' in complex_table_column:
             return sql_alchamy_column_type_class(
-                complex_table_column['ENUMS']
+                *complex_table_column['ENUMS']
             )
         elif 'SET' in complex_table_column:
             return sql_alchamy_column_type_class(
-                complex_table_column['SET']
+                *complex_table_column['SET']
             )
         else:
             return sql_alchamy_column_type_class()
