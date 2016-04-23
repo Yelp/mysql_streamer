@@ -76,6 +76,8 @@ module_config:
     -   namespace: clog
         config:
             log_stream_name: tmp_replication_handler_logs
+            # Works around https://bitbucket.org/pypy/pypy/issues/2280
+            scribe_errors_to_syslog: false
         file: /nail/srv/configs/clog.yaml
 
     - namespace: smartstack_services
