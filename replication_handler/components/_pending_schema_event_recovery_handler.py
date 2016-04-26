@@ -2,20 +2,66 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import copy
 import logging
 
+import os
+from subprocess import Popen
+
 from replication_handler.components.schema_tracker import SchemaTracker
+from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
+from replication_handler.models.mysql_dumps import MySQLDumps
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import repltracker_cursor
-
+from replication_handler.util.misc import get_dump_file
+from replication_handler.util.misc import delete_file
 
 log = logging.getLogger('replication_handler.components.pending_schema_event_recovery_handler')
 
 
 class BadSchemaEventStateException(Exception):
     pass
+
+
+class ReplayMySQLDump(object):
+
+    @classmethod
+    def recover(cls):
+        entries = source_database_config.entries[0]
+        host = entries['host']
+        port = entries['port']
+
+        with rbr_state_session.connect_begin(ro=True) as session:
+            mysql_dump = MySQLDumps.get_latest_mysql_dump(
+                session=session
+            )
+            mysql_dump = copy.copy(mysql_dump)
+
+        # Store this dump data into a file
+        dump_file_path = get_dump_file()
+        log.info("Writing the MySQLDump to %s " % dump_file_path)
+        try:
+            os.remove(dump_file_path)
+        except OSError:
+            pass
+
+        with open(dump_file_path, 'w') as f:
+            f.write(mysql_dump)
+
+        # Run the restore command
+        restore_cmd = "mysql --host={host} --port={port} < {dump_file_path}".format(
+            host=host,
+            port=port,
+            dump_file_path=dump_file_path
+        )
+        log.info("Running command {} to restore from dump file {}".format(restore_cmd, dump_file_path))
+        p = Popen(restore_cmd, shell=True)
+        os.waitpid(p.pid, 0)
+
+        # Delete the dump data
+        delete_file(dump_file_path)
 
 
 class PendingSchemaEventRecoveryHandler(object):

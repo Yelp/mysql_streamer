@@ -9,6 +9,7 @@ import sys
 from collections import namedtuple
 from contextlib import contextmanager
 
+import traceback
 import vmprof
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
@@ -96,8 +97,9 @@ class ParseReplicationStream(Batch):
                 # Graceful shutdown needs to happen inside the contextmanagers,
                 # since it needs to be able to access the producer
                 self._handle_graceful_termination()
-        except:
+        except Exception:
             log.exception("Shutting down because of exception")
+            traceback.print_exc()
             raise
         else:
             # This will force the process to exit, even if there are futures

@@ -4,9 +4,14 @@ from __future__ import unicode_literals
 
 import logging
 
+from os import remove
+
+from os.path import join, expanduser
+
+import os
 from yelp_conn.connection_set import ConnectionSet
 
-from replication_handler.config import env_config
+from replication_handler.config import env_config, source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -97,3 +102,31 @@ def repltracker_cursor():
         return ConnectionSet.schema_tracker_rw().repltracker.cursor()
     else:
         return ConnectionSet.schema_tracker_rw().repltracker_canary.cursor()
+
+
+def create_mysql_passwd_file(secret_file, user, passwd):
+    delete_file(secret_file)
+    with os.fdopen(os.open(secret_file, os.O_WRONLY | os.O_CREAT, 0600), 'w') as f:
+        f.write("[client]\n")
+        f.write("user="+user+"\n")
+        f.write("password="+'"'+passwd+'"'+"\n\n")
+        f.write("[mysql]\n")
+        f.write("user="+user+"\n")
+        f.write("password="+'"'+passwd+'"'+"\n\n")
+        f.write("[mysqldump]\n")
+        f.write("user="+user+"\n")
+        f.write("password="+'"'+passwd+'"')
+
+
+def get_dump_file():
+    cluster_name = source_database_config.cluster_name
+    home_dir = expanduser('~')
+    dump_file = join(home_dir, '{}_{}.sql'.format(cluster_name, 'mysql_dump'))
+    return dump_file
+
+
+def delete_file(dump_file):
+    try:
+        remove(dump_file)
+    except OSError:
+        pass

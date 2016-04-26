@@ -4,8 +4,14 @@ from __future__ import unicode_literals
 
 import copy
 import logging
+from os.path import expanduser
+from os.path import join
 
+import os
+
+import pymysql
 import simplejson as json
+from subprocess import Popen
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
@@ -15,14 +21,18 @@ from replication_handler.components.sql_handler import AlterTableStatement
 from replication_handler.components.sql_handler import CreateDatabaseStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.components.sql_handler import RenameTableStatement
+from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
+from replication_handler.models.mysql_dumps import MySQLDumps
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import repltracker_cursor
+from replication_handler.util.misc import create_mysql_passwd_file
+from replication_handler.util.misc import get_dump_file
+from replication_handler.util.misc import delete_file
 from replication_handler.util.misc import save_position
-
 
 log = logging.getLogger('replication_handler.components.schema_event_handler')
 
@@ -51,6 +61,11 @@ class SchemaEventHandler(BaseEventHandler):
         if not statement.is_supported():
             return
 
+        # The new way of rolling back
+        log.info("Creating a MySQLDump for rollback before the query %s" % event.query)
+        database_dump = self.create_schema_dump()
+        self._record_mysql_dump(database_dump)
+
         log.info("Processing Supported Statement: %s" % event.query)
         self.stats_counter.increment(event.query)
 
@@ -63,6 +78,7 @@ class SchemaEventHandler(BaseEventHandler):
         # We'll probably want to get more aggressive about filtering query
         # events, since this makes applying them kind of expensive.
         self.producer.flush()
+        log.info("Producer dict is: %s" % self.producer.__dict__)
         save_position(self.producer.get_checkpoint_position_data())
 
         # If it's a rename query, don't handle it, just let it pass through.
@@ -99,7 +115,7 @@ class SchemaEventHandler(BaseEventHandler):
                 database_name=database_name,
                 table_name=statement.table,
             )))
-            # DDL statements are commited implicitly, and can't be rollback.
+            # DDL statements are committed implicitly, and can't be rollback.
             # so we need to implement journaling around.
             record = self._create_journaling_record(position, table, event)
             handle_method(event, table)
@@ -126,6 +142,59 @@ class SchemaEventHandler(BaseEventHandler):
         skippables = {"BEGIN", "COMMIT"}
         return query in skippables
 
+    def create_schema_dump(self):
+        # Create the secret password file
+        # Run a subprocess to create the above file and run the mysqldump command
+        # load the dump into the blob column of the rbr_state_db
+        entries = source_database_config.entries[0]
+        user = entries['user']
+        passwd = entries['passwd']
+        host = entries['host']
+        port = entries['port']
+        home_dir = expanduser('~')
+        secret_file = join(home_dir, '.my.cnf')
+        create_mysql_passwd_file(secret_file, user, passwd)
+        dump_file = get_dump_file()
+        self.create_database_dump(host, port, user, passwd, dump_file, secret_file)
+        dump_content = self._read_dump_content(dump_file)
+        delete_file(dump_file)
+        delete_file(secret_file)
+        return dump_content
+
+    def create_database_dump(self, host, port, user, passwd, dump_file, secret_file):
+        conn = pymysql.connect(
+            host=host,
+            port=port,
+            user=user,
+            passwd=passwd
+        )
+        with conn.cursor() as cur:
+            cur.execute("show databases")
+            result = cur.fetchall()
+
+        unfiltered_databases = [ele for tupl in result for ele in tupl]
+        blacklisted_databases = ['information_schema', 'yelp_heartbeat']
+        databases = ' '.join(filter(lambda filtered_db: filtered_db not in blacklisted_databases, unfiltered_databases))
+        dump_cmd = "mysqldump --defaults-file={} --host={} --port={} {} {} {} {} --databases {} > {}".format(
+            secret_file,
+            host,
+            port,
+            '--no-data',
+            '--single-transaction',
+            '--add-drop-database',
+            '--add-drop-table',
+            databases,
+            dump_file
+        )
+        log.info("Running command {} to create a database dump of {}".format(dump_cmd, databases))
+        p = Popen(dump_cmd, shell=True)
+        os.waitpid(p.pid, 0)
+
+    def _read_dump_content(self, dump_file):
+        with open(dump_file, 'r') as file_reader:
+            content = file_reader.read()
+        return content
+
     def _get_db_for_statement(self, statement, event):
         # Create database statements shouldn't use a database, since the
         # database may not exist yet.
@@ -151,12 +220,7 @@ class SchemaEventHandler(BaseEventHandler):
             handle_method = self._handle_alter_table_event
         return handle_method
 
-    def _create_journaling_record(
-        self,
-        position,
-        table,
-        event,
-    ):
+    def _create_journaling_record(self, position, table, event):
         create_table_statement = self.schema_tracker.get_show_create_statement(
             table
         )
@@ -188,6 +252,15 @@ class SchemaEventHandler(BaseEventHandler):
                 database_name=table.database_name,
                 table_name=table.table_name,
             )
+
+    def _record_mysql_dump(self, database_dump):
+        with rbr_state_session.connect_begin(ro=False) as session:
+            record = MySQLDumps.update_mysql_dump(
+                session=session,
+                database_dump=database_dump
+            )
+            session.flush()
+            return copy.copy(record)
 
     def _is_table_rename_query(self, statement):
         return (

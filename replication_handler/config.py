@@ -146,7 +146,7 @@ class EnvConfig(BaseConfig):
     @property
     def resume_stream(self):
         """Controls if the replication handler will attempt to resume from
-        an existing position, or start from the beginning of replicaton.  This
+        an existing position, or start from the beginning of replication.  This
         should almost always be True.  The two exceptions are when dealing
         with a brand new database that has never had any tables created, or
         when running integration tests.

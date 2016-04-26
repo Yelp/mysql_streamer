@@ -40,7 +40,7 @@ class ReplicationStreamRestarter(object):
         self.schema_wrapper = schema_wrapper
 
     def restart(self, producer, register_dry_run=True):
-        """ This function retrive the saved position from database, and init
+        """ This function retrieves the saved position from database, and init
         stream with that position, and perform recovery procedure, like recreating
         tables, or publish unpublished messages.
         """

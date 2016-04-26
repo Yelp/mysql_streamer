@@ -410,6 +410,9 @@ class TestSchemaEventHandler(object):
             table_has_pii=patch_table_has_pii,
         )
 
+    def test_create_schema_dump(self, schema_event_handler):
+        schema_event_handler.create_schema_dump(None, None)
+
     def test_handle_event_alter_table(
         self,
         namespace,

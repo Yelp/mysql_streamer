@@ -13,7 +13,7 @@ log = logging.getLogger('replication_handler.components.position_finder')
 
 class PositionFinder(object):
     """ This class uses the saved state info from db to figure out
-    a postion for binlog stream reader to resume tailing.
+    a position for binlog stream reader to resume tailing.
 
     Args:
       global_event_state(GlobalEventState object): stores the global state, including

@@ -9,6 +9,7 @@ from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components._pending_schema_event_recovery_handler import PendingSchemaEventRecoveryHandler
+from replication_handler.components._pending_schema_event_recovery_handler import ReplayMySQLDump
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import env_config
@@ -85,7 +86,11 @@ class RecoveryHandler(object):
         return LogPosition(log_file=result[0], log_pos=result[1])
 
     def recover(self):
-        """ Handles the recovery procedure. """
+        """ Handles the new recovery procedure. """
+        self._handle_restart()
+
+    def _recover(self):
+        """ Handles the old recovery procedure. """
         self._handle_pending_schema_event()
         self._handle_unclean_shutdown()
 
@@ -94,6 +99,10 @@ class RecoveryHandler(object):
             log.info("Recovering from pending schema event: %s" % repr(self.pending_schema_event))
             PendingSchemaEventRecoveryHandler(self.pending_schema_event).recover()
 
+    def _handle_restart(self):
+        log.info("Recovering by replaying mysql dump")
+        ReplayMySQLDump.recover()
+
     def _handle_unclean_shutdown(self):
         if not self.is_clean_shutdown:
             self._recover_from_unclean_shutdown(self.stream)
@@ -101,7 +110,7 @@ class RecoveryHandler(object):
     def _recover_from_unclean_shutdown(self, stream):
         events = []
         log.info("Recovering from unclean shutdown.")
-        while(len(events) < env_config.recovery_queue_size):
+        while len(events) < env_config.recovery_queue_size:
             event = stream.peek().event
             if not isinstance(event, DataEvent):
                 if self._is_unsupported_query_event(event):
