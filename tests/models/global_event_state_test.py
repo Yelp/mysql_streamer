@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import pytest
 
-from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.global_event_state import EventType
-from testing import sandbox
+from replication_handler.models.global_event_state import GlobalEventState
 
 
+@pytest.mark.itest
+@pytest.mark.itest_db
 class TestGlobalEventState(object):
 
     @pytest.fixture
@@ -29,11 +33,7 @@ class TestGlobalEventState(object):
         return {"log_pos": 343, "log_file": "binlog.001"}
 
     @pytest.yield_fixture
-    def sandbox_session(self):
-        with sandbox.database_sandbox_master_connection_set() as sandbox_session:
-            yield sandbox_session
-
-    def test_upsert_global_event_state(
+    def starting_global_event_state(
         self,
         sandbox_session,
         cluster_name,
@@ -56,7 +56,25 @@ class TestGlobalEventState(object):
         sandbox_session.flush()
         # one row has been created
         assert GlobalEventState.get(sandbox_session, cluster_name) == first_global_event_state
+        yield first_global_event_state
+        sandbox_session.query(
+            GlobalEventState
+        ).filter(
+            GlobalEventState.cluster_name == cluster_name,
+        ).delete()
+        sandbox_session.commit()
+        assert GlobalEventState.get(sandbox_session, cluster_name) is None
 
+    def test_upsert_global_event_state(
+        self,
+        sandbox_session,
+        cluster_name,
+        database_name,
+        table_name,
+        gtid_position,
+        binlog_position,
+        starting_global_event_state
+    ):
         second_global_event_state = GlobalEventState.upsert(
             session=sandbox_session,
             position=binlog_position,

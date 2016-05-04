@@ -11,6 +11,7 @@ from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
+from testing import sandbox
 
 
 timeout_seconds = 60
@@ -37,7 +38,6 @@ def compose_file():
 @pytest.fixture(scope='session')
 def services():
     return [
-        'replicationhandlerconfigs',
         'replicationhandler',
         'rbrsource',
         'schematracker',
@@ -68,9 +68,15 @@ def kafka_docker(containers):
 
 @pytest.fixture(scope='session')
 def namespace():
-    return 'refresh_primary.yelp'
+    return 'dev.refresh_primary.yelp'
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def schematizer():
     return get_schematizer()
+
+
+@pytest.yield_fixture(scope='session')
+def sandbox_session():
+    with sandbox.database_sandbox_master_connection_set() as sandbox_session:
+        yield sandbox_session

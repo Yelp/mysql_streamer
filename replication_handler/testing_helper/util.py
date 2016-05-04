@@ -8,6 +8,7 @@ import time
 import pymysql
 from data_pipeline.testing_helpers.containers import Containers
 from data_pipeline.testing_helpers.containers import ContainerUnavailableError
+from sqlalchemy import create_engine
 
 
 logger = logging.getLogger('replication_handler.testing_helper.util')
@@ -29,6 +30,15 @@ def get_db_connection(containers, db_name):
         db='yelp',
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
+    )
+
+
+def get_db_engine(containers, db_name):
+    db_host = get_service_host(containers, db_name)
+    return create_engine(
+        "mysql+pymysql://yelpdev:@{host}/yelp?charset=utf8mb4".format(
+            host=db_host
+        )
     )
 
 
@@ -56,16 +66,16 @@ def execute_query_get_all_rows(containers, db_name, query):
         connection.close()
 
 
-def set_heartbeat(containers, before, after):
+def increment_heartbeat(containers):
     heartbeat_query = (
-        "update yelp_heartbeat.replication_heartbeat "
-        "set serial={after} "
-        "where serial={before}".format(
-            before=before,
-            after=after
-        )
+        "update yelp_heartbeat.replication_heartbeat set serial=serial+1"
     )
     execute_query_get_one_row(containers, RBR_SOURCE, heartbeat_query)
+
+
+def get_heartbeat_serial(containers):
+    query = "select * from yelp_heartbeat.replication_heartbeat"
+    return execute_query_get_one_row(containers, RBR_SOURCE, query)['serial']
 
 
 def db_health_check(containers, db_name, timeout_seconds):
