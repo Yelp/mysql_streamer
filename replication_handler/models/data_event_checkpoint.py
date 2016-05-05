@@ -47,7 +47,8 @@ class DataEventCheckpoint(Base):
             container_env=config.env_config.container_env,
             rbr_source_cluster=config.env_config.rbr_source_cluster,
         )
-        timer.start()
+        if not config.env_config.disable_meteorite:
+            timer.start()
 
         existing_topics_to_records = cls._get_topic_to_checkpoint_record_map(
             session,
@@ -95,8 +96,8 @@ class DataEventCheckpoint(Base):
                 ),
                 updated_checkpoints
             )
-
-        timer.stop()
+        if not config.env_config.disable_meteorite:
+            timer.stop()
 
     @classmethod
     def _get_topic_to_checkpoint_record_map(cls, session, cluster_name):
