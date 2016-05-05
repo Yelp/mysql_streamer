@@ -28,6 +28,10 @@ class TestDataEventCheckpoint(object):
         return "fake_table_2.0"
 
     @pytest.fixture
+    def third_kafka_topic(self):
+        return "fake_table_3.0"
+
+    @pytest.fixture
     def cluster_name(self):
         return "cluster"
 
@@ -91,6 +95,48 @@ class TestDataEventCheckpoint(object):
         )
 
         expected_topic_to_kafka_offset_map[second_kafka_topic] = 300
+        topic_to_kafka_offset_map = DataEventCheckpoint.get_topic_to_kafka_offset_map(
+            sandbox_session,
+            cluster_name
+        )
+        assert topic_to_kafka_offset_map == expected_topic_to_kafka_offset_map
+
+    def test_skip_kafka_offset_update(
+        self,
+        sandbox_session,
+        data_event_checkpoint,
+        cluster_name,
+        expected_topic_to_kafka_offset_map,
+        first_kafka_topic,
+    ):
+        DataEventCheckpoint.upsert_data_event_checkpoint(
+            sandbox_session,
+            topic_to_kafka_offset_map={first_kafka_topic: 100},
+            cluster_name=cluster_name,
+        )
+
+        expected_topic_to_kafka_offset_map[first_kafka_topic] = 100
+        topic_to_kafka_offset_map = DataEventCheckpoint.get_topic_to_kafka_offset_map(
+            sandbox_session,
+            cluster_name
+        )
+        assert topic_to_kafka_offset_map == expected_topic_to_kafka_offset_map
+
+    def test_create_checkpoint_for_new_topic(
+        self,
+        sandbox_session,
+        data_event_checkpoint,
+        cluster_name,
+        expected_topic_to_kafka_offset_map,
+        third_kafka_topic,
+    ):
+        DataEventCheckpoint.upsert_data_event_checkpoint(
+            sandbox_session,
+            topic_to_kafka_offset_map={third_kafka_topic: 300},
+            cluster_name=cluster_name,
+        )
+
+        expected_topic_to_kafka_offset_map[third_kafka_topic] = 300
         topic_to_kafka_offset_map = DataEventCheckpoint.get_topic_to_kafka_offset_map(
             sandbox_session,
             cluster_name
