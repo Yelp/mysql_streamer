@@ -143,12 +143,12 @@ class TestEndToEnd(object):
         {
             'table_name': 'test_double',
             'test_schema': [
-                # ColumnInfo('DOUBLE', mysql.DOUBLE(), 3.14),
-                # ColumnInfo('DOUBLE(5, 3) SIGNED', mysql.DOUBLE(precision=5, scale=3, unsigned=False), 3.14),
-                # ColumnInfo('DOUBLE(5, 3) UNSIGNED', mysql.DOUBLE(precision=5, scale=3, unsigned=True), -2.14),
-                # ColumnInfo('DOUBLE(5, 3) UNSIGNED ZEROFILL', mysql.DOUBLE(precision=5, scale=3, unsigned=True, zerofill=True), 24.00),
-                # ColumnInfo('DOUBLE PRECISION', mysql.DOUBLE(), 3.14),
-                # ColumnInfo('REAL', mysql.DOUBLE(), 3.14)
+                ColumnInfo('DOUBLE', mysql.DOUBLE(), 3.14),
+                ColumnInfo('DOUBLE(5, 3) SIGNED', mysql.DOUBLE(precision=5, scale=3, unsigned=False), -3.14),
+                ColumnInfo('DOUBLE(5, 3) UNSIGNED', mysql.DOUBLE(precision=5, scale=3, unsigned=True), 2.14),
+                ColumnInfo('DOUBLE(5, 3) UNSIGNED ZEROFILL', mysql.DOUBLE(precision=5, scale=3, unsigned=True, zerofill=True), 24.00),
+                ColumnInfo('DOUBLE PRECISION', mysql.DOUBLE(), 3.14),
+                ColumnInfo('REAL', mysql.DOUBLE(), 3.14)
             ]
         },
         {
