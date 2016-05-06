@@ -3,15 +3,16 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import time
+from collections import namedtuple
 
 import pytest
-import sqlalchemy
 from data_pipeline.consumer import Consumer
 from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.message_type import MessageType
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy.dialects import mysql
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -23,6 +24,8 @@ from replication_handler.testing_helper.util import SCHEMA_TRACKER
 
 
 Base = declarative_base()
+
+ColumnInfo = namedtuple('ColumnInfo', ['type', 'sqla_obj', 'data'])
 
 
 @pytest.mark.itest
@@ -60,459 +63,223 @@ class TestEndToEnd(object):
             u'type': u'record'
         }
 
-    # m - display width; d - scale;
-    # fsp - time precision
-    # [UNSIGNED] [ZEROFILL]
     @pytest.fixture(params=[
         {
             'table_name': 'test_bit',
             'test_schema': [
-                # {'uid': 1, 'type': 'BIT', 'data': 3, 'm': 8}
+                # ColumnInfo('BIT(8)', mysql.BIT, 3)
             ]
         },
         {
             'table_name': 'test_tinyint',
             'test_schema': [
-                {'uid': 2, 'type': 'TINYINT', 'data': 127},
-                {'uid': 3, 'type': 'TINYINT', 'data': -128, 'm': 3, 'tags': ["SIGNED"]},
-                {'uid': 4, 'type': 'TINYINT', 'data': 255, 'm': 3, 'tags': ["UNSIGNED"]},
-
-                # have to figure out a way to handle zerofilled ints
-                {
-                    'uid': 5,
-                    'type': 'TINYINT',
-                    'data': 5, 'm': 3,
-                    'tags': ["UNSIGNED", 'ZEROFILL']
-                },
-                # casted ti tinyint(1) by mysql
-                {'uid': 6, 'type': 'BOOL', 'data': 1},
-                {'uid': 7, 'type': 'BOOLEAN', 'data': 1},
+                ColumnInfo('TINYINT', mysql.TINYINT(), 127),
+                ColumnInfo('TINYINT(3) SIGNED', mysql.TINYINT(display_width=3, unsigned=False), -128),
+                ColumnInfo('TINYINT(3) UNSIGNED', mysql.TINYINT(display_width=3, unsigned=True), 255),
+                ColumnInfo('TINYINT(3) UNSIGNED ZEROFILL', mysql.TINYINT(display_width=3, unsigned=True, zerofill=True), 5),
+                ColumnInfo('BOOL', mysql.BOOLEAN(), 1),
+                ColumnInfo('BOOLEAN', mysql.BOOLEAN(), 1)
             ]
         },
         {
             'table_name': 'test_smallint',
             'test_schema': [
-                {'uid': 11, 'type': 'SMALLINT', 'data': 32767},
-                {'uid': 12, 'type': 'SMALLINT', 'data': -32768, 'm': 5, 'tags': ["SIGNED"]},
-                {'uid': 13, 'type': 'SMALLINT', 'data': 65535, 'm': 5, 'tags': ["UNSIGNED"]},
-
-                # have to figure out a way to handle zerofilled ints
-                {
-                    'uid': 14,
-                    'type': 'SMALLINT',
-                    'data': 5, 'm': 3,
-                    'tags': ["UNSIGNED", 'ZEROFILL']
-                },
+                ColumnInfo('SMALLINT', mysql.SMALLINT(), 32767),
+                ColumnInfo('SMALLINT(5) SIGNED', mysql.SMALLINT(display_width=5, unsigned=False), -32768),
+                ColumnInfo('SMALLINT(5) UNSIGNED', mysql.SMALLINT(display_width=5, unsigned=True), 65535),
+                ColumnInfo('SMALLINT(3) UNSIGNED ZEROFILL', mysql.SMALLINT(display_width=3, unsigned=True, zerofill=True), 5)
             ]
         },
         {
             'table_name': 'test_mediumint',
             'test_schema': [
-                {'uid': 20, 'type': 'MEDIUMINT', 'data': 8388607},
-                {'uid': 21, 'type': 'MEDIUMINT', 'data': -8388608, 'm': 7, 'tags': ["SIGNED"]},
-                {'uid': 22, 'type': 'MEDIUMINT', 'data': 16777215, 'm': 8, 'tags': ["UNSIGNED"]},
-
-                # have to figure out a way to handle zerofilled ints
-                {
-                    'uid': 23,
-                    'type': 'MEDIUMINT',
-                    'data': 5, 'm': 3,
-                    'tags': ["UNSIGNED", 'ZEROFILL']
-                },
+                ColumnInfo('MEDIUMINT', mysql.MEDIUMINT(), 8388607),
+                ColumnInfo('MEDIUMINT(7) SIGNED', mysql.MEDIUMINT(display_width=7, unsigned=False), -8388608),
+                ColumnInfo('MEDIUMINT(8) UNSIGNED', mysql.MEDIUMINT(display_width=8, unsigned=True), 16777215),
+                ColumnInfo('MEDIUMINT(3) UNSIGNED ZEROFILL', mysql.MEDIUMINT(display_width=3, unsigned=True, zerofill=True), 5)
             ]
         },
         {
             'table_name': 'test_int',
             'test_schema': [
-                {'uid': 30, 'type': 'INT', 'data': 2147483647},
-                {'uid': 31, 'type': 'INT', 'data': -2147483648, 'm': 10, 'tags': ["SIGNED"]},
-                {'uid': 32, 'type': 'INT', 'data': 4294967295, 'm': 11, 'tags': ["UNSIGNED"]},
-
-                # have to figure out a way to handle zerofilled ints
-                {
-                    'uid': 33,
-                    'type': 'INT',
-                    'data': 5, 'm': 3,
-                    'tags': ["UNSIGNED", 'ZEROFILL']
-                },
-
-                {'uid': 34, 'type': 'INTEGER', 'data': 3, 'm': 3},
+                ColumnInfo('INT', mysql.INTEGER(), 2147483647),
+                ColumnInfo('INT(10) SIGNED', mysql.INTEGER(display_width=10, unsigned=False), -2147483648),
+                ColumnInfo('INT(11) UNSIGNED', mysql.INTEGER(display_width=11, unsigned=True), 4294967295),
+                ColumnInfo('INT(3) UNSIGNED ZEROFILL', mysql.INTEGER(display_width=3, unsigned=True, zerofill=True), 5),
+                ColumnInfo('INTEGER(3)', mysql.INTEGER(display_width=3), 3)
             ]
         },
         {
             'table_name': 'test_bigint',
             'test_schema': [
-                {'uid': 40, 'type': 'BIGINT', 'data': 23372854775807, 'm': 19},
-                {'uid': 41, 'type': 'BIGINT', 'data': -9223372036854775808, 'm': 19, 'tags': ["SIGNED"]},
-                # {'uid': 42, 'type': 'BIGINT', 'data': 18446744073709551615, 'm': 20, 'tags': ["UNSIGNED"]},
-
-                # have to figure out a way to handle zerofilled ints
-                {
-                    'uid': 43,
-                    'type': 'BIGINT',
-                    'data': 5, 'm': 3,
-                    'tags': ["UNSIGNED", 'ZEROFILL']
-                },
+                ColumnInfo('BIGINT(19)', mysql.BIGINT(display_width=19), 23372854775807),
+                ColumnInfo('BIGINT(19) SIGNED', mysql.BIGINT(display_width=19, unsigned=False), -9223372036854775808),
+                # ColumnInfo('BIGINT(20) UNSIGNED', mysql.INTEGER(display_width=20, unsigned=True), 18446744073709551615),
+                ColumnInfo('BIGINT(3) UNSIGNED ZEROFILL', mysql.BIGINT(display_width=3, unsigned=True, zerofill=True), 5),
             ]
         },
         {
             'table_name': 'test_decimal',
             'test_schema': [
-                # PartitionerError: Failed to get partitions set from Kafka
-                # {'uid': 50, 'type': 'DECIMAL', 'data': '101.40', 'm': 9, 'd': 2},
-                # {'uid': 51, 'type': 'DECIMAL', 'data': '-80.00', 'm': 9, 'd': 2, 'tags': ["SIGNED"]},
-                # {'uid': 52, 'type': 'DECIMAL', 'data': '0.00', 'm': 9, 'd': 2, 'tags': ["UNSIGNED"]},
-
-                # have to figure out a way to handle zerofilled ints
-                # {
-                #     'uid':53,
-                #     'type': 'BIGINT',
-                #     'data': '005', 'm': 3,
-                #     'tags': ["UNSIGNED", 'ZEROFILL']
-                # },
-
-                # {'uid': 54, 'type': 'DEC', 'data': 5.432, 'm': 5, 'd': 3},
-                # {'uid': 55, 'type': 'FIXED', 'data': 45.432, 'm': 8, 'd': 3},
+                # ColumnInfo('DECIMAL(9, 2)', mysql.DECIMAL(precision=9, scale=2), 101.40),
+                # ColumnInfo('DECIMAL(9, 2) SIGNED', mysql.DECIMAL(precision=9, scale=2, unsigned=False), -80.00),
+                # ColumnInfo('DECIMAL(9, 2) UNSIGNED', mysql.DECIMAL(precision=9, scale=2, unsigned=True), 0.00),
+                # ColumnInfo('DECIMAL(9, 2) UNSIGNED ZEROFILL', mysql.DECIMAL(precision=9, scale=2, unsigned=True, zerofill=True), 5.22),
+                # ColumnInfo('DEC(9, 2)', mysql.DECIMAL(precision=9, scale=2), 5.432),
+                # ColumnInfo('FIXED(9, 2)', mysql.DECIMAL(precision=9, scale=2), 45.432)
             ]
         },
         {
             'table_name': 'test_float',
             'test_schema': [
-                {'uid': 60, 'type': 'FLOAT', 'data': 3.14},
-                {'uid': 61, 'type': 'FLOAT', 'data': 3.14, 'm': 5, 'd': 3},
-                {'uid': 62, 'type': 'FLOAT', 'data': -2.14, 'm': 5, 'd': 3, 'tags': ["SIGNED"]},
-                {'uid': 63, 'type': 'FLOAT', 'data': 24.00, 'm': 5, 'd': 3, 'tags': ["UNSIGNED"]},
-
-                # have to figure out a way to handle zerofilled ints
-                {
-                    'uid': 64,
-                    'type': 'FLOAT',
-                    'data': 5.5, 'm': 3,
-                    'tags': ["UNSIGNED", 'ZEROFILL']
-                },
-
-                {'uid': 65, 'type': 'FLOAT', 'data': 24.01, 'm': 5},
-                {'uid': 66, 'type': 'FLOAT', 'data': 24.01, 'm': 30},
+                ColumnInfo('FLOAT', mysql.FLOAT(), 3.14),
+                ColumnInfo('FLOAT(5, 3) SIGNED', mysql.FLOAT(precision=5, scale=3, unsigned=False), -2.14),
+                ColumnInfo('FLOAT(5, 3) UNSIGNED', mysql.FLOAT(precision=5, scale=3, unsigned=True), 2.14),
+                ColumnInfo('FLOAT(5, 3) UNSIGNED ZEROFILL', mysql.FLOAT(precision=5, scale=3, unsigned=True, zerofill=True), 24.00),
+                ColumnInfo('FLOAT(5)', mysql.FLOAT(5), 24.01),
+                ColumnInfo('FLOAT(30)', mysql.FLOAT(30), 24.01)
             ]
         },
         {
             'table_name': 'test_double',
             'test_schema': [
-                {'uid': 70, 'type': 'DOUBLE', 'data': 3.14},
-                {'uid': 71, 'type': 'DOUBLE', 'data': 3.14, 'm': 5, 'd': 3},
-                {'uid': 72, 'type': 'DOUBLE', 'data': -2.14, 'm': 5, 'd': 3, 'tags': ["SIGNED"]},
-                {'uid': 73, 'type': 'DOUBLE', 'data': 24.00, 'm': 5, 'd': 3, 'tags': ["UNSIGNED"]},
-
-                # have to figure out a way to handle zerofilled ints
-                {
-                    'uid': 74,
-                    'type': 'DOUBLE',
-                    'data': 24.00, 'm': 8, 'd': 3,
-                    'tags': ["UNSIGNED", 'ZEROFILL']
-                },
-
-                {'uid': 75, 'type': 'DOUBLE PRECISION', 'data': 3.14},
-                {'uid': 76, 'type': 'REAL', 'data': 3.14},
+                # ColumnInfo('DOUBLE', mysql.DOUBLE(), 3.14),
+                # ColumnInfo('DOUBLE(5, 3) SIGNED', mysql.DOUBLE(precision=5, scale=3, unsigned=False), 3.14),
+                # ColumnInfo('DOUBLE(5, 3) UNSIGNED', mysql.DOUBLE(precision=5, scale=3, unsigned=True), -2.14),
+                # ColumnInfo('DOUBLE(5, 3) UNSIGNED ZEROFILL', mysql.DOUBLE(precision=5, scale=3, unsigned=True, zerofill=True), 24.00),
+                # ColumnInfo('DOUBLE PRECISION', mysql.DOUBLE(), 3.14),
+                # ColumnInfo('REAL', mysql.DOUBLE(), 3.14)
             ]
         },
         {
             'table_name': 'test_date_time',
             'test_schema': [
-                # {'uid': 80, 'type': 'DATE', 'data': '1901-01-01'},
-                # {'uid': 81, 'type': 'DATE', 'data': '2100-12-31'},
+                # ColumnInfo('DATE', mysql.DATE(), '1901-01-01'),
+                # ColumnInfo('DATE', mysql.DATE(), '2100-12-31'),
 
-                # {'uid': 90, 'type': 'DATETIME', 'data': '2014-03-24 02:03:46'},
-                # {'uid': 91, 'type': 'DATETIME', 'data': '2014-03-24 02:03:46.001212', 'fsp': 6},
+                # ColumnInfo('DATETIME', mysql.DATETIME(), '2014-03-24 02:03:46'),
+                # ColumnInfo('DATETIME(6)', mysql.DATETIME(fsp=6), '2014-03-24 02:03:46.001212'),
 
-                # # # PartitionerError: Failed to get partitions set from Kafka
-                # # {'uid': 100, 'type': 'TIMESTAMP', 'data': '2014-03-24 02:03:46'},
-                # # {'uid': 101, 'type': 'TIMESTAMP', 'data': '2014-03-24 02:03:46.001212', 'fsp': 6},
+                # ColumnInfo('TIMESTAMP', mysql.TIMESTAMP(), '2014-03-24 02:03:46'),
+                # ColumnInfo('TIMESTAMP(6)', mysql.TIMESTAMP(fsp=6), '2014-03-24 02:03:46.001212'),
 
-                # {'uid': 110, 'type': 'TIME', 'data': '02:03:46'},
-                # {'uid': 111, 'type': 'TIME', 'data': '02:03:46.001212', 'fsp': 6},
+                # ColumnInfo('TIME', mysql.TIME(), '02:03:46'),
+                # ColumnInfo('TIME(6)', mysql.TIME(fsp=6), '02:03:46.001212'),
 
-                {'uid': 120, 'type': 'YEAR', 'data': 2000},
-                {'uid': 121, 'type': 'YEAR', 'data': 2000, 'm': 4},
+                ColumnInfo('YEAR', mysql.YEAR(), 2000),
+                ColumnInfo('YEAR(4)', mysql.YEAR(display_width=4), 2000),
             ]
         },
         {
             'table_name': 'test_char',
             'test_schema': [
-                {'uid': 130, 'type': 'CHAR', 'data': 'a'},
-                {'uid': 131, 'type': 'CHARACTER', 'data': 'a'},
-                {'uid': 132, 'type': 'NATIONAL CHAR', 'data': 'a'},
-                {'uid': 133, 'type': 'NCHAR', 'data': 'a'},
-                {'uid': 134, 'type': 'CHAR', 'data': '', 'm': 0},
-                {'uid': 135, 'type': 'CHAR', 'data': '1234567890', 'm': 10},
+                ColumnInfo('CHAR', mysql.CHAR(), 'a'),
+                ColumnInfo('CHARACTER', mysql.CHAR(), 'a'),
+                ColumnInfo('NATIONAL CHAR', mysql.CHAR(), 'a'),
+                ColumnInfo('NCHAR', mysql.CHAR(), 'a'),
+                ColumnInfo('CHAR(0)', mysql.CHAR(length=0), ''),
+                ColumnInfo('CHAR(10)', mysql.CHAR(length=10), '1234567890'),
 
-                {'uid': 140, 'type': 'VARCHAR', 'data': 'asdasdd', 'm': 1000},
-                {'uid': 141, 'type': 'CHARACTER VARYING', 'data': 'test dsafnskdf j', 'm': 1000},
-                {'uid': 142, 'type': 'NATIONAL VARCHAR', 'data': 'asdkjasd', 'm': 1000},
-                {'uid': 143, 'type': 'NVARCHAR', 'data': 'aASDASD SAD AS', 'm': 1000},
-                {'uid': 144, 'type': 'VARCHAR', 'data': 'sadasdas', 'm': 1000},
-                {'uid': 145, 'type': 'VARCHAR', 'data': '1234567890', 'm': 10000},
+                ColumnInfo('VARCHAR(1000)', mysql.VARCHAR(length=1000), 'asdasdd'),
+                ColumnInfo('CHARACTER VARYING(1000)', mysql.VARCHAR(length=1000), 'test dsafnskdf j'),
+                ColumnInfo('NATIONAL VARCHAR(1000)', mysql.VARCHAR(length=1000), 'asdkjasd'),
+                ColumnInfo('NVARCHAR(1000)', mysql.VARCHAR(length=1000), 'asdkjasd'),
+                ColumnInfo('VARCHAR(10000)', mysql.VARCHAR(length=10000), '1234567890'),
             ]
         },
         {
             'table_name': 'test_binary',
             'test_schema': [
-                {
-                    'uid': 150,
-                    'type': 'BINARY',
-                    'data': 'hello',
-                    'm': 5
-                },
-
-                {'uid': 160, 'type': 'VARBINARY', 'data': 'hello', 'm': 100},
-
-                {'uid': 170, 'type': 'TINYBLOB', 'data': 'hello'},
-
-                {'uid': 180, 'type': 'TINYTEXT', 'data': 'hello'},
-
-                {'uid': 190, 'type': 'BLOB', 'data': 'hello'},
-                {'uid': 191, 'type': 'BLOB', 'data': 'hello', 'm': 100},
-
-                {'uid': 200, 'type': 'TEXT', 'data': 'hello'},
-                {'uid': 201, 'type': 'TEXT', 'data': 'hello', 'm': 100},
-
-                {'uid': 210, 'type': 'MEDIUMBLOB', 'data': 'hello'},
-
-                {'uid': 220, 'type': 'MEDIUMTEXT', 'data': 'hello'},
-
-                {'uid': 230, 'type': 'LONGBLOB', 'data': 'hello'},
-
-                {'uid': 240, 'type': 'LONGTEXT', 'data': 'hello'},
+                ColumnInfo('BINARY(5)', mysql.BINARY(length=5), 'hello'),
+                ColumnInfo('VARBINARY(100)', mysql.VARBINARY(length=100), 'hello'),
+                ColumnInfo('TINYBLOB', mysql.TINYBLOB(), 'hello'),
+                ColumnInfo('TINYTEXT', mysql.TINYTEXT(), 'hello'),
+                ColumnInfo('BLOB', mysql.BLOB(), 'hello'),
+                ColumnInfo('BLOB(100)', mysql.BLOB(length=100), 'hello'),
+                ColumnInfo('TEXT', mysql.TEXT(), 'hello'),
+                ColumnInfo('TEXT(100)', mysql.TEXT(length=100), 'hello'),
+                ColumnInfo('MEDIUMBLOB', mysql.MEDIUMBLOB(), 'hello'),
+                ColumnInfo('MEDIUMTEXT', mysql.MEDIUMTEXT(), 'hello'),
+                ColumnInfo('LONGBLOB', mysql.LONGBLOB(), 'hello'),
+                ColumnInfo('LONGTEXT', mysql.LONGTEXT(), 'hello')
             ]
         },
         {
             'table_name': 'test_enum',
             'test_schema': [
-                # # PartitionerError: Failed to get partitions set from Kafka
-                # {
-                #     'uid': 250,
-                #     'type': 'ENUM',
-                #     'data': 'ONE',
-                #     'ENUMS': ['ONE', 'TWO'],
-                #     'tags': ['NOT NULL']
-                # },
+                # ColumnInfo("ENUM('ONE', 'TWO')", mysql.ENUM(['ONE', 'TWO']), 'ONE')
             ]
         },
         {
             'table_name': 'test_set',
             'test_schema': [
-                # PartitionerError: Failed to get partitions set from Kafka
-                # {
-                #     'uid': 270,
-                #     'type': 'SET',
-                #     'data': ['ONE', 'TWO'],
-                #     'SET': ['ONE', 'TWO', 'THREE']
-                # },
+                # ColumnInfo("SET('ONE', 'TWO')", mysql.SET(['ONE', 'TWO']), ['ONE', 'TWO'])
             ]
-        },
-    ])
+        }
+    ], ids=['test_bit', 'test_tinyint', 'test_smallint', 'test_mediumint', 'test_int',
+            'test_bigint', 'test_decimal', 'test_float', 'test_double', 'test_date_time',
+            'test_char', 'test_binary', 'test_enum', 'test_set'])
     def complex_table(self, request):
         return request.param
 
     @pytest.fixture
     def complex_table_name(self, complex_table):
-        return '{0}_table'.format(complex_table['table_name'])
+        return complex_table['table_name']
 
     @pytest.fixture
     def complex_table_schema(self, complex_table):
         return complex_table['test_schema']
 
-    @pytest.fixture
-    def complex_columns_base_type(self, complex_table_schema):
-        return [complex_table_column['type']
-                for complex_table_column in complex_table_schema]
-
-    def _build_type_precision_scale(self, col_type, precision, scale):
-        return "{0}({1}, {2})".format(col_type, precision, scale)
-
-    def _build_type_display_width(self, col_type, display_width):
-        return "{0}({1})".format(col_type, display_width)
-
-    def _build_type_enum_or_set(self, col_type, enum_or_set):
-        return "{0}('{1}')".format(col_type, "', '".join(enum_or_set))
-
-    def _build_type_tags(self, col_type, tags):
-        return "{0} {1}".format(col_type, ' '.join(tags))
-
-    def _build_mysql_col_type(self, complex_table_column):
-        col_type = complex_table_column['type']
-        if ('m' in complex_table_column and
-                'd' in complex_table_column):
-            col_type = self._build_type_precision_scale(
-                col_type,
-                complex_table_column['m'],
-                complex_table_column['d']
-            )
-        elif 'm' in complex_table_column:
-            col_type = self._build_type_display_width(
-                col_type,
-                complex_table_column['m']
-            )
-        elif 'fsp' in complex_table_column:
-            col_type = self._build_type_display_width(
-                col_type,
-                complex_table_column['fsp']
-            )
-        elif 'ENUMS' in complex_table_column:
-            col_type = self._build_type_enum_or_set(
-                col_type,
-                complex_table_column['ENUMS']
-            )
-        elif 'SET' in complex_table_column:
-            col_type = self._build_type_enum_or_set(
-                col_type,
-                complex_table_column['SET']
-            )
-
-        if ('tags' in complex_table_column and
-                isinstance(complex_table_column['tags'], list)):
-            col_type = self._build_type_tags(
-                col_type,
-                complex_table_column['tags']
-            )
-        return col_type
-
-    @pytest.fixture
-    def complex_columns_type(self, complex_table_schema):
-        return [self._build_mysql_col_type(complex_table_column)
-                for complex_table_column in complex_table_schema]
-
-    def _build_complex_column_name(self, complex_column):
-        return 'test_{0}_{1}'.format(
-            complex_column['type'].lower().replace(" ", "_"),
-            complex_column['uid']
-        )
-
-    @pytest.fixture
-    def complex_columns_name(self, complex_table_schema):
-        return [self._build_complex_column_name(complex_column)
-                for complex_column in complex_table_schema]
-
-    @pytest.fixture
-    def complex_columns_data(self, complex_table_schema):
-        return [complex_table_column['data']
-                for complex_table_column in complex_table_schema]
+    def _build_sql_column_name(self, complex_column_name):
+        return 'test_{}'.format(complex_column_name)
 
     def _build_complex_column_create_query(
         self,
         complex_column_name,
-        complex_column_type
+        complex_column_schema
     ):
         return '`{0}` {1}'.format(
             complex_column_name,
-            complex_column_type
+            complex_column_schema
         )
 
     @pytest.fixture
-    def complex_columns_create_query(
+    def complex_table_create_query(
         self,
-        complex_columns_name,
-        complex_columns_type
-    ):
-        return ", ".join([self._build_complex_column_create_query(
-            complex_column_name,
-            complex_column_type
-        )
-            for complex_column_name, complex_column_type in zip(
-                complex_columns_name,
-                complex_columns_type
-        )
-        ])
-
-    def _build_sql_alchamy_type(self, complex_column_base_type):
-        column_type = str(complex_column_base_type)
-        if column_type == 'INT':
-            column_type = str('INTEGER')
-        elif column_type in ['DEC', 'FIXED']:
-            column_type = str('DECIMAL')
-        elif column_type in ['DOUBLE PRECISION', 'REAL']:
-            column_type = str('DOUBLE')
-        elif column_type in ['NCHAR', 'CHARACTER', 'NATIONAL CHAR']:
-            column_type = str('CHAR')
-        elif column_type in ['CHARACTER VARYING', 'NATIONAL VARCHAR', 'NVARCHAR']:
-            column_type = str('VARCHAR')
-        elif column_type == 'BOOL':
-            column_type = str('BOOLEAN')
-        dtype_class = getattr(sqlalchemy.dialects.mysql, column_type)
-        return dtype_class
-
-    @pytest.fixture
-    def sql_alchamy_columns_type_class(
-        self,
-        complex_columns_base_type
-    ):
-        return [self._build_sql_alchamy_type(complex_column_base_type)
-                for complex_column_base_type in complex_columns_base_type]
-
-    def _build_sql_alchamy_type_obj(
-        self,
-        sql_alchamy_column_type_class,
-        complex_table_column
-    ):
-        if ('m' in complex_table_column and
-                'd' in complex_table_column):
-            return sql_alchamy_column_type_class(
-                complex_table_column['m'],
-                complex_table_column['d']
-            )
-        elif 'm' in complex_table_column:
-            return sql_alchamy_column_type_class(complex_table_column['m'])
-        elif 'fsp' in complex_table_column:
-            return sql_alchamy_column_type_class(
-                timezone=False,
-                fsp=complex_table_column['fsp']
-            )
-        elif 'ENUMS' in complex_table_column:
-            return sql_alchamy_column_type_class(
-                *complex_table_column['ENUMS']
-            )
-        elif 'SET' in complex_table_column:
-            return sql_alchamy_column_type_class(
-                *complex_table_column['SET']
-            )
-        else:
-            return sql_alchamy_column_type_class()
-
-    @pytest.fixture
-    def sql_alchamy_columns_type_obj(
-        self,
-        sql_alchamy_columns_type_class,
         complex_table_schema
     ):
-        objs = []
-        for sql_alchamy_column_type_class, complex_table_column in zip(
-            sql_alchamy_columns_type_class,
-            complex_table_schema
-        ):
-            objs.append(self._build_sql_alchamy_type_obj(
-                sql_alchamy_column_type_class,
-                complex_table_column
-            ))
-        return objs
+        return ", ".join([self._build_complex_column_create_query(
+            self._build_sql_column_name(complex_column_name),
+            complex_column_schema.type
+        ) for complex_column_name, complex_column_schema in enumerate(complex_table_schema)])
+
+    @pytest.fixture
+    def sqla_objs(
+        self,
+        complex_table_schema
+    ):
+        return [complex_column_schema.sqla_obj
+                for complex_column_schema in complex_table_schema]
 
     @pytest.fixture
     def create_complex_table(
         self,
         containers,
         complex_table_name,
-        complex_columns_create_query
+        complex_table_create_query
     ):
-        if complex_columns_create_query.strip():
-            complex_columns_create_query = ", {}".format(
-                complex_columns_create_query
+        if complex_table_create_query.strip():
+            complex_table_create_query = ", {}".format(
+                complex_table_create_query
             )
         query = """CREATE TABLE {complex_table_name}
         (
             `id` int(11) NOT NULL PRIMARY KEY
-            {complex_columns_create_query}
+            {complex_table_create_query}
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8
         """.format(
             complex_table_name=complex_table_name,
-            complex_columns_create_query=complex_columns_create_query
+            complex_table_create_query=complex_table_create_query
         )
 
         execute_query_get_one_row(containers, RBR_SOURCE, query)
@@ -520,45 +287,39 @@ class TestEndToEnd(object):
     @pytest.fixture
     def ComplexModel(
         self,
-        create_complex_table,
         complex_table_name,
-        complex_columns_name,
-        sql_alchamy_columns_type_obj
+        create_complex_table,
+        complex_table_schema
     ):
         class Model(Base):
             __tablename__ = complex_table_name
             id = Column('id', Integer, primary_key=True)
 
-        for sql_alchamy_column_type_obj, complex_column_name in zip(
-            sql_alchamy_columns_type_obj,
-            complex_columns_name
-        ):
+        for complex_column_name, complex_column_schema in enumerate(complex_table_schema):
+            col_name = self._build_sql_column_name(complex_column_name)
             setattr(
                 Model,
-                complex_column_name,
+                col_name,
                 Column(
-                    complex_column_name,
-                    sql_alchamy_column_type_obj
+                    col_name,
+                    complex_column_schema.sqla_obj
                 )
             )
         return Model
 
     @pytest.fixture
-    def complex_data(self, complex_columns_name, complex_columns_data):
+    def complex_data(self, complex_table_schema):
         res = {'id': 1}
-        for complex_column_name, complex_column_data in zip(
-            complex_columns_name,
-            complex_columns_data
-        ):
-            res.update({complex_column_name: complex_column_data})
+        for complex_column_name, complex_column_schema in enumerate(complex_table_schema):
+            res.update({self._build_sql_column_name(complex_column_name): complex_column_schema.data})
         return res
 
     def test_complex_table(
         self,
         containers,
+        complex_table_name,
         ComplexModel,
         complex_data,
-        complex_table_name,
         schematizer,
         namespace,
         rbr_source_session
