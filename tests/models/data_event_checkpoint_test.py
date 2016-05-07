@@ -67,6 +67,19 @@ class TestDataEventCheckpoint(object):
         ).delete()
         sandbox_session.commit()
 
+    def get_time_updated(self, session, cluster_name, kafka_topic):
+        records = session.query(
+            DataEventCheckpoint
+        ).filter(
+            DataEventCheckpoint.cluster_name == cluster_name,
+        ).all()
+
+        for record in records:
+            if record.kafka_topic == kafka_topic:
+                return record.time_updated
+
+        return None
+
     def test_get_topic_to_kafka_offset_map(
         self,
         sandbox_session,
@@ -108,18 +121,24 @@ class TestDataEventCheckpoint(object):
         cluster_name,
         expected_topic_to_kafka_offset_map,
         first_kafka_topic,
+        first_kafka_offset,
     ):
+        ts_before_upsert = self.get_time_updated(sandbox_session, cluster_name, first_kafka_topic)
+        
         DataEventCheckpoint.upsert_data_event_checkpoint(
             sandbox_session,
-            topic_to_kafka_offset_map={first_kafka_topic: 100},
+            topic_to_kafka_offset_map={first_kafka_topic: first_kafka_offset},
             cluster_name=cluster_name,
         )
 
-        expected_topic_to_kafka_offset_map[first_kafka_topic] = 100
         topic_to_kafka_offset_map = DataEventCheckpoint.get_topic_to_kafka_offset_map(
             sandbox_session,
             cluster_name
         )
+
+        ts_after_upsert = self.get_time_updated(sandbox_session, cluster_name, first_kafka_topic)
+
+        assert ts_before_upsert == ts_after_upsert
         assert topic_to_kafka_offset_map == expected_topic_to_kafka_offset_map
 
     def test_create_checkpoint_for_new_topic(
@@ -130,6 +149,8 @@ class TestDataEventCheckpoint(object):
         expected_topic_to_kafka_offset_map,
         third_kafka_topic,
     ):
+        ts_before_upsert = self.get_time_updated(sandbox_session, cluster_name, third_kafka_topic)
+
         DataEventCheckpoint.upsert_data_event_checkpoint(
             sandbox_session,
             topic_to_kafka_offset_map={third_kafka_topic: 300},
@@ -141,4 +162,8 @@ class TestDataEventCheckpoint(object):
             sandbox_session,
             cluster_name
         )
+
+        ts_after_upsert = self.get_time_updated(sandbox_session, cluster_name, third_kafka_topic)
+
+        assert ts_before_upsert != ts_after_upsert
         assert topic_to_kafka_offset_map == expected_topic_to_kafka_offset_map
