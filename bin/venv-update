@@ -3,7 +3,7 @@
 '''\
 usage: venv-update [-hV] [options]
 
-Update a (possibly non-existant) virtualenv directory using a pip requirements
+Update a (possibly non-existent) virtualenv directory using a pip requirements
 file.  When this script completes, the virtualenv directory should contain the
 same packages as if it were deleted then rebuilt.
 
@@ -56,7 +56,7 @@ from __future__ import unicode_literals
 from os.path import exists
 from os.path import join
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 DEFAULT_VIRTUALENV_PATH = 'venv'
 VENV_UPDATE_REQS_OVERRIDE = 'requirements.d/venv-update.txt'
 DEFAULT_OPTION_VALUES = {
