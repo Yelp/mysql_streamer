@@ -203,10 +203,8 @@ class ParseReplicationStream(Batch):
                 schema_event_counter.flush()
                 data_event_counter.flush()
             else:
-                schema_event_counter.counts = defaultdict(int)
-                data_event_counter.counts = defaultdict(int)
-                schema_event_counter.flush_time = time.time() + schema_event_counter.message_count_timer
-                data_event_counter.flush_time = time.time() + data_event_counter.message_count_timer
+                schema_event_counter._reset()
+                data_event_counter._reset()
 
     @contextmanager
     def _register_signal_handlers(self):
