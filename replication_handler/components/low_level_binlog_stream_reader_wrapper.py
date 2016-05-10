@@ -64,6 +64,8 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _get_only_tables(self):
         only_tables = config.env_config.table_whitelist
+        if not only_tables:
+            return None
         res_only_table = []
         for table_name in only_tables:
             # prevents us from whitelisting a refresh table
@@ -75,6 +77,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 table_name,
                 self.refresh_table_suffix
             ))
+
         return res_only_table
 
     def _refill_current_events(self):
