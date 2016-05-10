@@ -249,9 +249,9 @@ class TestEndToEnd(object):
         complex_table_schema
     ):
         return ", ".join([self._build_complex_column_create_query(
-            self._build_sql_column_name(complex_column_name),
+            self._build_sql_column_name(indx),
             complex_column_schema.type
-        ) for complex_column_name, complex_column_schema in enumerate(complex_table_schema)])
+        ) for indx, complex_column_schema in enumerate(complex_table_schema)])
 
     @pytest.fixture
     def sqla_objs(
@@ -295,8 +295,8 @@ class TestEndToEnd(object):
             __tablename__ = complex_table_name
             id = Column('id', Integer, primary_key=True)
 
-        for complex_column_name, complex_column_schema in enumerate(complex_table_schema):
-            col_name = self._build_sql_column_name(complex_column_name)
+        for indx, complex_column_schema in enumerate(complex_table_schema):
+            col_name = self._build_sql_column_name(indx)
             setattr(
                 Model,
                 col_name,
@@ -310,8 +310,8 @@ class TestEndToEnd(object):
     @pytest.fixture
     def complex_data(self, complex_table_schema):
         res = {'id': 1}
-        for complex_column_name, complex_column_schema in enumerate(complex_table_schema):
-            res.update({self._build_sql_column_name(complex_column_name): complex_column_schema.data})
+        for indx, complex_column_schema in enumerate(complex_table_schema):
+            res.update({self._build_sql_column_name(indx): complex_column_schema.data})
         return res
 
     def test_complex_table(
