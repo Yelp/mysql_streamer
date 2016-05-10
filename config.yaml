@@ -30,9 +30,17 @@ sensu_host: 169.254.255.254
 
 disable_sensu: False
 
+disable_meteorite: False
+
 recovery_queue_size: 1500
 
 namespace: dev
+
+container_name: none
+
+container_env: raw
+
+force_exit: False
 
 module_config:
     -   namespace: yelp_conn
@@ -59,6 +67,8 @@ module_config:
     -   namespace: clog
         config:
             log_stream_name: tmp_replication_handler_logs
+            # Works around https://bitbucket.org/pypy/pypy/issues/2280
+            scribe_errors_to_syslog: false
         file: /nail/srv/configs/clog.yaml
 
     - namespace: smartstack_services

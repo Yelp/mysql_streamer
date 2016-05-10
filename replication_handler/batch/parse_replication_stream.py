@@ -9,6 +9,7 @@ import sys
 from collections import namedtuple
 from contextlib import contextmanager
 
+import vmprof
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
 from data_pipeline.config import get_config
@@ -38,6 +39,8 @@ HandlerInfo = namedtuple("HandlerInfo", ("event_type", "handler"))
 
 STAT_COUNTER_NAME = 'replication_handler_counter'
 
+PROFILER_FILE_NAME = "repl.vmprof"
+
 
 class ParseReplicationStream(Batch):
     """Batch that follows the replication stream and continuously publishes
@@ -59,6 +62,7 @@ class ParseReplicationStream(Batch):
         self.register_dry_run = config.env_config.register_dry_run
         self.publish_dry_run = config.env_config.publish_dry_run
         self._running = True
+        self._profiler_running = False
         if get_config().kafka_producer_buffer_size > config.env_config.recovery_queue_size:
             # Printing here, since this executes *before* logging is
             # configured.
@@ -74,7 +78,6 @@ class ParseReplicationStream(Batch):
         """ All these setups would need producer to be initialized."""
         self.handler_map = self._build_handler_map()
         self.stream = self._get_stream()
-        self._register_signal_handler()
 
     def run(self):
         try:
@@ -83,17 +86,27 @@ class ParseReplicationStream(Batch):
                 config.env_config.namespace
             ) as self.zk, self._setup_producer(
             ) as self.producer, self._setup_counters(
-            ) as self.counters:
+            ) as self.counters, self._register_signal_handlers():
                 self._post_producer_setup()
                 log.info("Starting to receive replication events")
                 for replication_handler_event in self._get_events():
                     self.process_event(replication_handler_event)
+
+                log.info("Normal shutdown")
+                # Graceful shutdown needs to happen inside the contextmanagers,
+                # since it needs to be able to access the producer
+                self._handle_graceful_termination()
         except:
             log.exception("Shutting down because of exception")
             raise
         else:
-            log.info("Normal shutdown")
-            self._handle_graceful_termination()
+            # This will force the process to exit, even if there are futures
+            # that are still blocking waiting for mysql replication.  We
+            # probably should force the issue in test contexts, but let the
+            # process wait in real applications, since we have db activity
+            # in real applications constantly in the form of heartbeats.
+            if config.env_config.force_exit:
+                self._force_exit()
 
     def process_event(self, replication_handler_event):
         event_class = replication_handler_event.event.__class__
@@ -167,10 +180,16 @@ class ParseReplicationStream(Batch):
         schema_event_counter = StatsCounter(
             STAT_COUNTER_NAME,
             event_type='schema',
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            rbr_source_cluster=config.env_config.rbr_source_cluster,
         )
         data_event_counter = StatsCounter(
             STAT_COUNTER_NAME,
             event_type='data',
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            rbr_source_cluster=config.env_config.rbr_source_cluster,
         )
         try:
             yield {
@@ -181,13 +200,54 @@ class ParseReplicationStream(Batch):
             schema_event_counter.flush()
             data_event_counter.flush()
 
-    def _register_signal_handler(self):
-        """Register the handler for SIGINT(KeyboardInterrupt) and SigTerm"""
-        signal.signal(signal.SIGINT, self._handle_shutdown_signal)
-        signal.signal(signal.SIGTERM, self._handle_shutdown_signal)
+    @contextmanager
+    def _register_signal_handlers(self):
+        """Register the handler for SIGINT(KeyboardInterrupt), SigTerm
+        and SIGUSR2, which will toggle a profiler on and off.
+        """
+        try:
+            signal.signal(signal.SIGINT, self._handle_shutdown_signal)
+            signal.signal(signal.SIGTERM, self._handle_shutdown_signal)
+            signal.signal(signal.SIGUSR2, self._handle_profiler_signal)
+            yield
+        finally:
+            # Cleanup for the profiler signal handler has to happen here,
+            # because signals that are handled don't unwind up the stack in the
+            # way that normal methods do.  Any contextmanager or finally
+            # statement won't live past the handler function returning.
+            signal.signal(signal.SIGUSR2, signal.SIG_DFL)
+            if self._profiler_running:
+                self._disable_profiler()
 
     def _handle_shutdown_signal(self, sig, frame):
+        log.info("Shutdown Signal Received")
         self._running = False
+
+    def _handle_profiler_signal(self, sig, frame):
+        log.info("Toggling Profiler")
+        if self._profiler_running:
+            self._disable_profiler()
+        else:
+            self._enable_profiler()
+
+    def _disable_profiler(self):
+        log.info(
+            "Disable Profiler - wrote to {}".format(
+                PROFILER_FILE_NAME
+            )
+        )
+        vmprof.disable()
+        os.close(self._profiler_fd)
+        self._profiler_running = False
+
+    def _enable_profiler(self):
+        log.info("Enable Profiler")
+        self._profiler_fd = os.open(
+            PROFILER_FILE_NAME,
+            os.O_RDWR | os.O_CREAT | os.O_TRUNC
+        )
+        vmprof.enable(self._profiler_fd)
+        self._profiler_running = True
 
     def _handle_graceful_termination(self):
         # We will not do anything for SchemaEvent, because we have
@@ -198,14 +258,13 @@ class ParseReplicationStream(Batch):
             save_position(position_data, is_clean_shutdown=True)
         log.info("Gracefully shutting down")
 
+    def _force_exit(self):
         # Using os._exit here instead of sys.exit, because sys.exit can
         # potentially block forever waiting for futures, and our futures can
         # potentially block forever waiting on new messages in replication,
         # which may never come.  The producer is manually flushed above, so it
-        # should be OK to flush metrics buffers and stdout/stderr, and force the
+        # should be OK to flush stdout/stderr, and force the
         # os to terminate the whole process at this point.
-        self.counters['data_event_counter'].flush()
-        self.counters['schema_event_counter'].flush()
         sys.stdout.flush()
         sys.stderr.flush()
         os._exit(0)

@@ -19,7 +19,8 @@ setup(
         'mysql-replication',
         'MySQL-python',
         'PyMySQL',
-        'sqlparse'
+        'sqlparse',
+        'vmprof',
     ],
     license='Copyright Yelp 2015, All Rights Reserved'
 )

@@ -280,6 +280,7 @@ class TestParseReplicationStream(object):
         assert [
             mock.call(signal.SIGINT, replication_stream._handle_shutdown_signal),
             mock.call(signal.SIGTERM, replication_stream._handle_shutdown_signal),
+            mock.call(signal.SIGUSR2, replication_stream._handle_profiler_signal),
         ] in patch_signal.call_args_list
 
     def test_graceful_exit_if_buffer_size_mismatch(
@@ -293,6 +294,34 @@ class TestParseReplicationStream(object):
     ):
         with pytest.raises(SystemExit):
             self._init_and_run_batch()
+
+    def test_profiler_signal(
+        self,
+        patch_config
+    ):
+        replication_stream = ParseReplicationStream()
+        with mock.patch.object(
+            replication_handler.batch.parse_replication_stream,
+            'vmprof'
+        ) as vmprof_mock, mock.patch.object(
+            replication_handler.batch.parse_replication_stream,
+            'os'
+        ) as os_mock:
+            replication_stream = ParseReplicationStream()
+
+            # Toggle profiling on
+            replication_stream._handle_profiler_signal(None, None)
+            assert os_mock.open.call_count == 1
+            vmprof_mock.enable.assert_called_once_with(
+                os_mock.open.return_value
+            )
+
+            # Toggle profiling off
+            replication_stream._handle_profiler_signal(None, None)
+            assert vmprof_mock.disable.call_count == 1
+            os_mock.close.assert_called_once_with(
+                os_mock.open.return_value
+            )
 
     def test_handle_graceful_termination_data_event(
         self,

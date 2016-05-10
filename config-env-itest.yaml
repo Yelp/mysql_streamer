@@ -16,6 +16,12 @@ resume_stream: False
 
 namespace: dev
 
+container_name: itest
+
+container_env: docker-compose
+
+force_exit: True
+
 schema_blacklist:
     - information_schema
     - mysql

@@ -34,6 +34,20 @@ class EnvConfig(BaseConfig):
     not accepted, so by calling value on that we will get its original value."""
 
     @property
+    def container_name(self):
+        return os.environ.get(
+            'PAASTA_INSTANCE',
+            staticconf.get('container_name').value
+        )
+
+    @property
+    def container_env(self):
+        return os.environ.get(
+            'PAASTA_CLUSTER',
+            staticconf.get('container_env').value
+        )
+
+    @property
     def namespace(self):
         return staticconf.get('namespace').value
 
@@ -91,11 +105,36 @@ class EnvConfig(BaseConfig):
 
     @property
     def sensu_host(self):
-        return staticconf.get('sensu_host').value
+        """If we're running in Paasta, use the paasta cluster from the
+        environment directly as laid out in PAASTA-1579.  This makes it so that
+        local-run and real sensu alerts go to the same cluster, which should
+        prevent false alerts that never resolve when we run locally.
+        """
+        if os.environ.get('PAASTA_CLUSTER'):
+            return "paasta-{cluster}.yelp".format(
+                cluster=os.environ.get('PAASTA_CLUSTER')
+            )
+        else:
+            return staticconf.get('sensu_host').value
+
+    @property
+    def sensu_source(self):
+        """This ensures that the alert tracks both the paasta environment and
+        the running instance, so we can have separate alerts for the pnw-prod
+        canary and the pnw-devc main instances.
+        """
+        return 'replication_handler_{container_env}_{container_name}'.format(
+            container_env=self.container_env,
+            container_name=self.container_name
+        )
 
     @property
     def disable_sensu(self):
         return staticconf.get('disable_sensu').value
+
+    @property
+    def disable_meteorite(self):
+        return staticconf.get('disable_meteorite').value
 
     @property
     def recovery_queue_size(self):
@@ -118,6 +157,16 @@ class EnvConfig(BaseConfig):
         this in practice.
         """
         return staticconf.get_bool('resume_stream', default=True).value
+
+    @property
+    def force_exit(self):
+        """Determines if we should force an exit, which can be helpful if we'd
+        otherwise block waiting for replication events that aren't going to come.
+
+        In general, this should be False in prod environments, and True in test
+        environments.
+        """
+        return staticconf.get_bool('force_exit').value
 
 
 class DatabaseConfig(object):

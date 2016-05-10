@@ -15,6 +15,7 @@ precomputed
 .project
 *.sublime-*
 virtualenv_run
+venv
 .tox
 replication_handler.egg-info/
 __pycache__

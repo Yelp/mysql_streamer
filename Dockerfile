@@ -22,14 +22,18 @@ run locale-gen en_US en_US.UTF-8 && dpkg-reconfigure locales
 # Setup pypy
 run mkdir /src
 workdir /src
-run wget https://bitbucket.org/pypy/pypy/downloads/pypy-5.0.0-linux64.tar.bz2 --no-check-certificate
-run bunzip2 pypy-5.0.0-linux64.tar.bz2
-run tar xvf pypy-5.0.0-linux64.tar
-ENV PATH $PATH:/src/pypy-5.0.0-linux64/bin/
+run wget https://bitbucket.org/pypy/pypy/downloads/pypy-5.1.0-linux64.tar.bz2 --no-check-certificate
+run bunzip2 pypy-5.1.0-linux64.tar.bz2
+run tar xvf pypy-5.1.0-linux64.tar
+ENV PATH $PATH:/src/pypy-5.1.0-linux64/bin/
 run wget https://bootstrap.pypa.io/get-pip.py --no-check-certificate
 run pypy get-pip.py
 
 run ln -s /usr/bin/gcc /usr/local/bin/cc
+
+# Use https://github.com/Yelp/dumb-init to make sure signals propogate
+RUN wget -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.0.1/dumb-init_1.0.1_amd64
+RUN chmod +x /usr/local/bin/dumb-init
 
 # Add the service code
 WORKDIR /code
@@ -44,6 +48,7 @@ ADD     . /code
 
 RUN useradd batch
 RUN chown -R batch /code
+
 USER batch
 
 # Share the logging directory as a volume
@@ -52,4 +57,4 @@ VOLUME  /tmp/logs
 
 WORKDIR /code
 ENV     BASEPATH /code
-CMD /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -v --no-notification
+CMD ["/usr/local/bin/dumb-init", "/code/virtualenv_run/bin/pypy", "/code/replication_handler/batch/parse_replication_stream.py", "-v", "--no-notification"]
