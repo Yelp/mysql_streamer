@@ -39,12 +39,13 @@ class ReplicationStreamRestarter(object):
         )
         self.schema_wrapper = schema_wrapper
 
-    def restart(self, producer, register_dry_run=True):
+    def restart(self, producer, register_dry_run=True, position=None):
         """ This function retrieves the saved position from database, and init
         stream with that position, and perform recovery procedure, like recreating
         tables, or publish unpublished messages.
         """
-        position = self.position_finder.get_position_to_resume_tailing_from()
+        if position is None:
+            position = self.position_finder.get_position_to_resume_tailing_from()
         log.info("Restarting replication: %s" % repr(position))
         self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=False)
         log.info("Created replication stream.")

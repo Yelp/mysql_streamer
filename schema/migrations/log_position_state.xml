@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
-    <changeSet author="pxu" id="1426537649">
-        <createTable tableName="mysql_dumps">
+    <changeSet author="pxu" id="1426520194">
+        <createTable tableName="log_position_state">
             <column autoIncrement="true" name="id" type="INT(11)">
                 <constraints primaryKey="true"/>
             </column>
-            <column name="database_dump" type="LONGTEXT">
+            <column name="log_position" type="TEXT">
                 <constraints nullable="false"/>
             </column>
         </createTable>

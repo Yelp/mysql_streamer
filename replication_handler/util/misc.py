@@ -125,8 +125,8 @@ def get_dump_file():
     return dump_file
 
 
-def delete_file(dump_file):
+def delete_file(file_name):
     try:
-        remove(dump_file)
+        remove(file_name)
     except OSError:
         pass

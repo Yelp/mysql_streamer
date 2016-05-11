@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import copy
 import logging
 import os
 import signal
@@ -27,12 +28,14 @@ from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_wrapper import SchemaWrapper
+from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
+from replication_handler.models.log_position_state import LogPositionState
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
 from replication_handler.util.misc import REPLICATION_HANDLER_TEAM_NAME
 from replication_handler.util.misc import save_position
-
+from replication_handler.util.position import construct_position
 
 log = logging.getLogger('replication_handler.batch.parse_replication_stream')
 
@@ -75,10 +78,10 @@ class ParseReplicationStream(Batch):
     def running(self):
         return self._running
 
-    def _post_producer_setup(self):
+    def _post_producer_setup(self, position=None):
         """ All these setups would need producer to be initialized."""
         self.handler_map = self._build_handler_map()
-        self.stream = self._get_stream()
+        self.stream = self._get_stream(position)
 
     def run(self):
         try:
@@ -88,11 +91,13 @@ class ParseReplicationStream(Batch):
             ) as self.zk, self._setup_producer(
             ) as self.producer, self._setup_counters(
             ) as self.counters, self._register_signal_handlers():
-                self._post_producer_setup()
+                position = self._get_persisted_position()
+                if position:
+                    log.info("Starting replication handler from position %s " % position.__dict__)
+                self._post_producer_setup(position)
                 log.info("Starting to receive replication events")
                 for replication_handler_event in self._get_events():
                     self.process_event(replication_handler_event)
-
                 log.info("Normal shutdown")
                 # Graceful shutdown needs to happen inside the contextmanagers,
                 # since it needs to be able to access the producer
@@ -131,14 +136,33 @@ class ParseReplicationStream(Batch):
                 except TimeoutError:
                     self.producer.wake()
 
-    def _get_stream(self):
+    def _get_stream(self, position=None):
         replication_stream_restarter = ReplicationStreamRestarter(self.schema_wrapper)
         replication_stream_restarter.restart(
-            self.producer,
+            producer=self.producer,
             register_dry_run=self.register_dry_run,
+            position=position
         )
         log.info("Replication stream successfully restarted.")
         return replication_stream_restarter.get_stream()
+
+    def _get_persisted_position(self):
+        log.info("Building position from log_position_state (if any)")
+        with rbr_state_session.connect_begin(ro=True) as session:
+            log_position_exists = LogPositionState.log_position_exists(
+                session=session
+            )
+        if not log_position_exists:
+            log.info("No previous log position found")
+            return None
+
+        with rbr_state_session.connect_begin(ro=True) as session:
+            position = LogPositionState.get_log_position_state(
+                session=session
+            )
+            position = copy.copy(position)
+        log.info("Restarting from log position %s " % position)
+        return construct_position(position)
 
     def _build_handler_map(self):
         data_event_handler = DataEventHandler(
