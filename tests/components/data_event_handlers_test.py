@@ -201,6 +201,7 @@ class TestDataEventHandler(object):
         patch_get_show_create_statement,
         patch_execute_query,
         patch_cluster_name,
+        patch_message_contains_pii
     ):
         return DataHandlerExternalPatches(
             patch_rbr_state_rw=patch_rbr_state_rw,
