@@ -201,6 +201,7 @@ class TestDataEventHandler(object):
         patch_get_show_create_statement,
         patch_execute_query,
         patch_cluster_name,
+        patch_message_contains_pii
     ):
         return DataHandlerExternalPatches(
             patch_rbr_state_rw=patch_rbr_state_rw,
@@ -251,19 +252,13 @@ class TestDataEventHandler(object):
                 schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=upstream_position_info,
                 keys=(u'primary_key', ),
-                timestamp=data_event.timestamp,
-                contains_pii=True,
+                timestamp=data_event.timestamp
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
         assert stats_counter.increment.call_count == 4
         assert stats_counter.increment.call_args[0][0] == 'fake_table'
         assert producer.publish.call_count == 4
-        assert patches.table_has_pii.call_count == 4
-        assert patches.table_has_pii.call_args[1] == {
-            'database_name': 'fake_database',
-            'table_name': 'fake_table'
-        }
 
     def test_handle_data_update_event(
         self,
@@ -295,8 +290,7 @@ class TestDataEventHandler(object):
                 upstream_position_info=upstream_position_info,
                 previous_payload_data=data_event.row["before_values"],
                 keys=(u'primary_key', ),
-                timestamp=data_event.timestamp,
-                contains_pii=True,
+                timestamp=data_event.timestamp
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
@@ -348,7 +342,6 @@ class TestDataEventHandler(object):
             assert expected_message.payload_data == actual_message.payload_data
             assert expected_message.message_type == actual_message.message_type
             assert expected_message.upstream_position_info == actual_message.upstream_position_info
-            assert expected_message.contains_pii == actual_message.contains_pii
             assert expected_message.timestamp == actual_message.timestamp
             # TODO(DATAPIPE-350): keys are inaccessible right now.
             # assert expected_message.keys == actual_message.keys

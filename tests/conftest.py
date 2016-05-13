@@ -5,7 +5,9 @@ from __future__ import unicode_literals
 import logging
 import os
 
+import mock
 import pytest
+from data_pipeline.message import Message
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.testing_helpers.containers import Containers
 
@@ -80,3 +82,17 @@ def schematizer():
 def sandbox_session():
     with sandbox.database_sandbox_master_connection_set() as sandbox_session:
         yield sandbox_session
+
+
+@pytest.yield_fixture
+def patch_message_contains_pii():
+    def set_contains_pii(msg, schema_id):
+        msg._contains_pii = False
+
+    with mock.patch.object(
+        Message,
+        '_set_contains_pii',
+        autospec=True,
+        side_effect=set_contains_pii
+    ):
+        yield

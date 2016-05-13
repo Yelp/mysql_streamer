@@ -16,15 +16,6 @@ schema_blacklist:
     - performance_schema
     - test
 
-table_whitelist:
-    - advertiser
-    - business_payment_account_entity
-    - payment_account_entity
-    - payment_feature
-    - payment_program
-    - replication_heartbeat
-    - salesperson
-
 producer_name: replication_handler
 
 team_name: bam

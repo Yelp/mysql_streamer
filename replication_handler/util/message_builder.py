@@ -27,7 +27,6 @@ class MessageBuilder(object):
         self.event = event
         self.position = position
         self.register_dry_run = register_dry_run
-        self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
     def build_message(self):
         upstream_position_info = {
@@ -43,10 +42,6 @@ class MessageBuilder(object):
             "payload_data": self._get_values(self.event.row),
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
-            "contains_pii": self.pii_identifier.table_has_pii(
-                database_name=self.event.schema,
-                table_name=self.event.table
-            ),
             "timestamp": self.event.timestamp,
             "meta": [self.position.transaction_id],
         }

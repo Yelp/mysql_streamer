@@ -5,20 +5,20 @@
 -e .
 MySQL-python==1.2.5
 PyMySQL==0.6.7
-PyStaticConfiguration==0.8.0
+PyStaticConfiguration==0.9.0
 PyYAML==3.11
 SQLAlchemy==0.9.8
 boto==2.36.0
 contextdecorator==0.10.0
-data_pipeline==0.1.63
+data_pipeline==0.1.71
 dateglob==0.1
 enum34==1.0.4
 future==0.14.3
 futures==3.0.5
 geogrid==1.0.8
-ipaddress==1.0.14
+ipaddress==1.0.16
 iso8601==0.1.10
-kafka-python==0.9.4.post2
+kafka-python==0.9.5.post2
 kazoo==2.2
 mccabe==0.3.1
 mrjob==0.4.3.post7
@@ -26,7 +26,7 @@ mrjob==0.4.3.post7
 pep8==1.5.7
 pii_generator==0.1.5
 ply==3.4
-py==1.4.26
+py==1.4.29
 pycrypto==2.6.1
 pyflakes==0.8.1
 pyramid-yelp-conn==0.4.1
@@ -50,5 +50,5 @@ yelp-clog==2.1.4
 yelp-conn==4.6.1
 yelp-lib==10.0.5
 yelp-logging==1.1.2
-yelp_kafka==4.1.0
+yelp_kafka>=4.2.0
 yelp-servlib==4.3.0

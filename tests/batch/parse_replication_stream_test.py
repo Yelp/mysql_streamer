@@ -26,7 +26,7 @@ from replication_handler.util.position import GtidPosition
 
 class TestParseReplicationStream(object):
 
-    @pytest.yield_fixture
+    @pytest.yield_fixture(autouse=True)
     def patch_zk(self):
         with mock.patch.object(
             replication_handler.batch.parse_replication_stream,
