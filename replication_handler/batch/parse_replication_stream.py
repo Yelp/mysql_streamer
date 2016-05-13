@@ -6,7 +6,7 @@ import logging
 import os
 import signal
 import sys
-import time
+
 from collections import namedtuple
 from contextlib import contextmanager
 
