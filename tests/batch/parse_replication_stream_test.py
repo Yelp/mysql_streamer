@@ -9,6 +9,7 @@ import sys
 import mock
 import pytest
 from data_pipeline.producer import Producer
+from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from data_pipeline.schematizer_clientlib.schematizer import SchematizerClient
 from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
@@ -178,6 +179,18 @@ class TestParseReplicationStream(object):
             mock_config.register_dry_run = False
             mock_config.publish_dry_run = False
             mock_config.namespace = "test_namespace"
+            mock_config.disable_meteorite = False
+            yield mock_config
+
+    @pytest.yield_fixture
+    def patch_config_meteorite_disabled(self):
+        with mock.patch(
+            'replication_handler.batch.parse_replication_stream.config.env_config'
+        ) as mock_config:
+            mock_config.register_dry_run = False
+            mock_config.publish_dry_run = False
+            mock_config.namespace = "test_namespace"
+            mock_config.disable_meteorite = True
             yield mock_config
 
     @pytest.yield_fixture
@@ -190,6 +203,80 @@ class TestParseReplicationStream(object):
             mock_config.namespace = "test_namespace"
             mock_config.recovery_queue_size = 1
             yield mock_config
+
+    def test_meteorite_on(
+        self,
+        schema_event,
+        data_event,
+        patch_config,
+        position_gtid_1,
+        position_gtid_2,
+        patch_restarter,
+        patch_rbr_state_rw,
+        patch_schema_tracker,
+        patch_data_handle_event,
+        patch_schema_handle_event,
+        patch_producer,
+        patch_save_position,
+        patch_exit
+    ):
+        schema_event_with_gtid = ReplicationHandlerEvent(
+            position=position_gtid_1,
+            event=schema_event
+        )
+        data_event_with_gtid = ReplicationHandlerEvent(
+            position=position_gtid_2,
+            event=data_event
+        )
+        patch_restarter.return_value.get_stream.return_value.next.side_effect = [
+            schema_event_with_gtid,
+            data_event_with_gtid,
+        ]
+        with mock.patch.object(
+            StatsCounter,
+            'flush'
+        ) as mock_flush:
+            stream = self._init_and_run_batch()
+            assert mock_flush.call_count == 2
+
+    def test_meteorite_off(
+        self,
+        schema_event,
+        data_event,
+        patch_config_meteorite_disabled,
+        position_gtid_1,
+        position_gtid_2,
+        patch_restarter,
+        patch_rbr_state_rw,
+        patch_schema_tracker,
+        patch_data_handle_event,
+        patch_schema_handle_event,
+        patch_producer,
+        patch_save_position,
+        patch_exit
+    ):
+        schema_event_with_gtid = ReplicationHandlerEvent(
+            position=position_gtid_1,
+            event=schema_event
+        )
+        data_event_with_gtid = ReplicationHandlerEvent(
+            position=position_gtid_2,
+            event=data_event
+        )
+        patch_restarter.return_value.get_stream.return_value.next.side_effect = [
+            schema_event_with_gtid,
+            data_event_with_gtid,
+        ]
+        with mock.patch.object(
+            StatsCounter,
+            'flush'
+        ) as mock_flush, mock.patch.object(
+            StatsCounter,
+            '_reset'
+        ) as mock_reset:
+            stream = self._init_and_run_batch()
+            assert mock_flush.call_count == 0
+            assert mock_reset.call_count == 4
 
     def test_replication_stream_different_events(
         self,

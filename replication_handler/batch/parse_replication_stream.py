@@ -199,7 +199,7 @@ class ParseReplicationStream(Batch):
                 'data_event_counter': data_event_counter
             }
         finally:
-            if config.env_config.disable_meteorite:
+            if not config.env_config.disable_meteorite:
                 schema_event_counter.flush()
                 data_event_counter.flush()
             else:
