@@ -462,8 +462,9 @@ class TestSchemaEventHandler(object):
         )
 
         assert producer.flush.call_count == 1
-        assert stats_counter.increment.call_count == 1
-        assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
+        if not config.env_config.disable_meteorite:
+            assert stats_counter.increment.call_count == 1
+            assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
         assert save_position.call_count == 1
 
     def test_handle_event_rename_table(

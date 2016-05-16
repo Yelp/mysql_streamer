@@ -6,7 +6,6 @@ import logging
 import os
 import signal
 import sys
-
 from collections import namedtuple
 from contextlib import contextmanager
 

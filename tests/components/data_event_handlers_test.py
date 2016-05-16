@@ -256,8 +256,9 @@ class TestDataEventHandler(object):
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
-        assert stats_counter.increment.call_count == 4
-        assert stats_counter.increment.call_args[0][0] == 'fake_table'
+        if not config.env_config.disable_meteorite:
+            assert stats_counter.increment.call_count == 4
+            assert stats_counter.increment.call_args[0][0] == 'fake_table'
         assert producer.publish.call_count == 4
         assert patches.table_has_pii.call_count == 4
         assert patches.table_has_pii.call_args[1] == {
