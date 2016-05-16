@@ -300,6 +300,22 @@ class TestSchemaEventHandler(object):
             yield mock_register_dry_run
 
     @pytest.yield_fixture
+    def patch_config_meteorite_disabled_true(self):
+        with mock.patch(
+            'replication_handler.components.schema_event_handler.config.env_config'
+        ) as mock_config_meteorite_disabled_true:
+            mock_config_meteorite_disabled_true.disable_meteorite = True
+            yield mock_config_meteorite_disabled_true
+
+    @pytest.yield_fixture
+    def patch_config_meteorite_disabled_false(self):
+        with mock.patch(
+            'replication_handler.components.schema_event_handler.config.env_config'
+        ) as mock_config_meteorite_disabled_false:
+            mock_config_meteorite_disabled_false.disable_meteorite = False
+            yield mock_config_meteorite_disabled_false
+
+    @pytest.yield_fixture
     def patch_cluster_name(self, test_schema):
         with mock.patch.object(
             config.DatabaseConfig,
@@ -410,7 +426,7 @@ class TestSchemaEventHandler(object):
             table_has_pii=patch_table_has_pii,
         )
 
-    def test_handle_event_alter_table(
+    def test_handle_event_alter_table_meteorite_disabled_true(
         self,
         namespace,
         producer,
@@ -426,7 +442,8 @@ class TestSchemaEventHandler(object):
         mock_schema_tracker_cursor,
         table_with_schema_changes,
         alter_table_schema_store_response,
-        test_schema
+        test_schema,
+        patch_config_meteorite_disabled_true
     ):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
@@ -462,9 +479,64 @@ class TestSchemaEventHandler(object):
         )
 
         assert producer.flush.call_count == 1
-        if not config.env_config.disable_meteorite:
-            assert stats_counter.increment.call_count == 1
-            assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
+        assert stats_counter.increment.call_count == 0
+        assert save_position.call_count == 1
+
+    def test_handle_event_alter_table_meteorite_disabled_false(
+        self,
+        namespace,
+        producer,
+        stats_counter,
+        test_position,
+        save_position,
+        external_patches,
+        schema_event_handler,
+        schematizer_client,
+        alter_table_schema_event,
+        show_create_result_initial,
+        show_create_result_after_alter,
+        mock_schema_tracker_cursor,
+        table_with_schema_changes,
+        alter_table_schema_store_response,
+        test_schema,
+        patch_config_meteorite_disabled_false
+    ):
+        """Integration test the things that need to be called for handling an
+           event with an alter table hence many mocks.
+        """
+        schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
+        schematizer_client.register_schema_from_mysql_stmts.return_value = \
+            alter_table_schema_store_response
+        new_create_table_stmt = show_create_result_after_alter.query
+        mysql_statements = {
+            "old_create_table_stmt": show_create_result_initial.query,
+            "alter_table_stmt": alter_table_schema_event.query,
+        }
+        external_patches.get_show_create_statement.side_effect = [
+            show_create_result_initial,
+            show_create_result_initial,
+            show_create_result_after_alter
+        ]
+
+        schema_event_handler.handle_event(alter_table_schema_event, test_position)
+        self.check_external_calls(
+            namespace,
+            schematizer_client,
+            producer,
+            alter_table_schema_event,
+            mock_schema_tracker_cursor,
+            table_with_schema_changes,
+            schema_event_handler,
+            new_create_table_stmt,
+            alter_table_schema_store_response,
+            external_patches,
+            test_schema,
+            mysql_statements=mysql_statements
+        )
+
+        assert producer.flush.call_count == 1
+        assert stats_counter.increment.call_count == 1
+        assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
         assert save_position.call_count == 1
 
     def test_handle_event_rename_table(

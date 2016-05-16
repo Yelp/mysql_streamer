@@ -27,36 +27,6 @@ from replication_handler.util.position import GtidPosition
 
 class TestParseReplicationStream(object):
 
-    def _different_events_builder(
-        self,
-        schema_event,
-        data_event,
-        patch_config,
-        position_gtid_1,
-        position_gtid_2,
-        patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
-        patch_data_handle_event,
-        patch_schema_handle_event,
-        patch_producer,
-        patch_save_position,
-        patch_exit
-    ):
-        schema_event_with_gtid = ReplicationHandlerEvent(
-            position=position_gtid_1,
-            event=schema_event
-        )
-        data_event_with_gtid = ReplicationHandlerEvent(
-            position=position_gtid_2,
-            event=data_event
-        )
-        patch_restarter.return_value.get_stream.return_value.next.side_effect = [
-            schema_event_with_gtid,
-            data_event_with_gtid,
-        ]
-        return schema_event_with_gtid,data_event_with_gtid,patch_restarter.return_value.get_stream.return_value.next.side_effect
-
     @pytest.yield_fixture
     def patch_zk(self):
         with mock.patch.object(
@@ -228,6 +198,37 @@ class TestParseReplicationStream(object):
             mock_config.recovery_queue_size = 1
             yield mock_config
 
+    def _different_events_builder(
+        self,
+        schema_event,
+        data_event,
+        patch_config,
+        position_gtid_1,
+        position_gtid_2,
+        patch_restarter,
+        patch_rbr_state_rw,
+        patch_schema_tracker,
+        patch_data_handle_event,
+        patch_schema_handle_event,
+        patch_producer,
+        patch_save_position,
+        patch_exit
+    ):
+        schema_event_with_gtid = ReplicationHandlerEvent(
+            position=position_gtid_1,
+            event=schema_event
+        )
+        data_event_with_gtid = ReplicationHandlerEvent(
+            position=position_gtid_2,
+            event=data_event
+        )
+        patch_restarter.return_value.get_stream.return_value.next.side_effect = [
+            schema_event_with_gtid,
+            data_event_with_gtid,
+        ]
+        return schema_event_with_gtid,data_event_with_gtid,patch_restarter.return_value.get_stream.return_value.next.side_effect
+
+
     def test_meteorite_off(
         self,
         schema_event,
@@ -327,20 +328,21 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_exit
     ):
-        schema_event_with_gtid, data_event_with_gtid, patch_restarter.return_value.get_stream.return_value.next.side_effect = self._different_events_builder(
-                                                                            schema_event,
-                                                                            data_event,
-                                                                            patch_config,
-                                                                            position_gtid_1,
-                                                                            position_gtid_2,
-                                                                            patch_restarter,
-                                                                            patch_rbr_state_rw,
-                                                                            patch_schema_tracker,
-                                                                            patch_data_handle_event,
-                                                                            patch_schema_handle_event,
-                                                                            patch_producer,
-                                                                            patch_save_position,
-                                                                            patch_exit)
+        self._different_events_builder(
+            schema_event,
+            data_event,
+            patch_config,
+            position_gtid_1,
+            position_gtid_2,
+            patch_restarter,
+            patch_rbr_state_rw,
+            patch_schema_tracker,
+            patch_data_handle_event,
+            patch_schema_handle_event,
+            patch_producer,
+            patch_save_position,
+            patch_exit
+        )
         stream = self._init_and_run_batch()
         assert patch_schema_handle_event.call_args_list == \
             [mock.call(schema_event, position_gtid_1)]
