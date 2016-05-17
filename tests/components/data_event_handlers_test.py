@@ -237,7 +237,7 @@ class TestDataEventHandler(object):
         ) as mock_get_payload_schema:
             yield mock_get_payload_schema
 
-    def test_handle_data_create_event_to_publish_call_disable_meteorite_true(
+    def _setup_handle_data_create_event_to_publish_call(
         self,
         producer,
         stats_counter,
@@ -250,7 +250,6 @@ class TestDataEventHandler(object):
         schema_wrapper_entry,
         patches,
         patch_get_payload_schema,
-        patch_config_meteorite_disabled_true
     ):
         expected_call_args = []
         for data_event in data_create_events:
@@ -273,9 +272,38 @@ class TestDataEventHandler(object):
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
+
+    def test_handle_data_create_event_to_publish_call_disable_meteorite_true(
+        self,
+        producer,
+        stats_counter,
+        test_table,
+        test_topic,
+        first_test_kafka_offset,
+        second_test_kafka_offset,
+        data_event_handler,
+        data_create_events,
+        schema_wrapper_entry,
+        patches,
+        patch_get_payload_schema,
+        patch_config_meteorite_disabled_true
+    ):
+        self._setup_handle_data_create_event_to_publish_call(
+            producer,
+            stats_counter,
+            test_table,
+            test_topic,
+            first_test_kafka_offset,
+            second_test_kafka_offset,
+            data_event_handler,
+            data_create_events,
+            schema_wrapper_entry,
+            patches,
+            patch_get_payload_schema
+        )
         assert stats_counter.increment.call_count == 0
-        assert producer.publish.call_count == 4
-        assert patches.table_has_pii.call_count == 4
+        assert producer.publish.call_count == len(data_create_events)
+        assert patches.table_has_pii.call_count == len(data_create_events)
         assert patches.table_has_pii.call_args[1] == {
             'database_name': 'fake_database',
             'table_name': 'fake_table'
@@ -296,31 +324,23 @@ class TestDataEventHandler(object):
         patch_get_payload_schema,
         patch_config_meteorite_disabled_false
     ):
-        expected_call_args = []
-        for data_event in data_create_events:
-            position = LogPosition(log_file='binlog', log_pos=100)
-            upstream_position_info = {
-                "position": position.to_dict(),
-                "cluster_name": "yelp_main",
-                "database_name": "fake_database",
-                "table_name": "fake_table"
-            }
-            data_event_handler.handle_event(data_event, position)
-            expected_call_args.append(CreateMessage(
-                topic=schema_wrapper_entry.topic,
-                payload_data=data_event.row["values"],
-                schema_id=schema_wrapper_entry.schema_id,
-                upstream_position_info=upstream_position_info,
-                keys=(u'primary_key', ),
-                timestamp=data_event.timestamp,
-                contains_pii=True,
-            ))
-        actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
-        self._assert_messages_as_expected(expected_call_args, actual_call_args)
+        self._setup_handle_data_create_event_to_publish_call(
+            producer,
+            stats_counter,
+            test_table,
+            test_topic,
+            first_test_kafka_offset,
+            second_test_kafka_offset,
+            data_event_handler,
+            data_create_events,
+            schema_wrapper_entry,
+            patches,
+            patch_get_payload_schema
+        )
         assert stats_counter.increment.call_count == len(data_create_events)
         assert stats_counter.increment.call_args[0][0] == 'fake_table'
-        assert producer.publish.call_count == 4
-        assert patches.table_has_pii.call_count == 4
+        assert producer.publish.call_count == len(data_create_events)
+        assert patches.table_has_pii.call_count == len(data_create_events)
         assert patches.table_has_pii.call_args[1] == {
             'database_name': 'fake_database',
             'table_name': 'fake_table'
