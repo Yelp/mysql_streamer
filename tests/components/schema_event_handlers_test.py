@@ -300,6 +300,22 @@ class TestSchemaEventHandler(object):
             yield mock_register_dry_run
 
     @pytest.yield_fixture
+    def patch_config_meteorite_disabled_true(self):
+        with mock.patch(
+            'replication_handler.components.schema_event_handler.config.env_config'
+        ) as mock_config_meteorite_disabled_true:
+            mock_config_meteorite_disabled_true.disable_meteorite = True
+            yield mock_config_meteorite_disabled_true
+
+    @pytest.yield_fixture
+    def patch_config_meteorite_disabled_false(self):
+        with mock.patch(
+            'replication_handler.components.schema_event_handler.config.env_config'
+        ) as mock_config_meteorite_disabled_false:
+            mock_config_meteorite_disabled_false.disable_meteorite = False
+            yield mock_config_meteorite_disabled_false
+
+    @pytest.yield_fixture
     def patch_cluster_name(self, test_schema):
         with mock.patch.object(
             config.DatabaseConfig,
@@ -409,8 +425,7 @@ class TestSchemaEventHandler(object):
             upsert_global_event_state=patch_upsert_global_event_state,
             table_has_pii=patch_table_has_pii,
         )
-
-    def test_handle_event_alter_table(
+    def _setup_handle_event_alter_table(
         self,
         namespace,
         producer,
@@ -460,11 +475,87 @@ class TestSchemaEventHandler(object):
             test_schema,
             mysql_statements=mysql_statements
         )
-
         assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
+
+    def test_handle_event_alter_table_meteorite_disabled_true(
+        self,
+        namespace,
+        producer,
+        stats_counter,
+        test_position,
+        save_position,
+        external_patches,
+        schema_event_handler,
+        schematizer_client,
+        alter_table_schema_event,
+        show_create_result_initial,
+        show_create_result_after_alter,
+        mock_schema_tracker_cursor,
+        table_with_schema_changes,
+        alter_table_schema_store_response,
+        test_schema,
+        patch_config_meteorite_disabled_true
+    ):
+        self._setup_handle_event_alter_table(
+            namespace,
+            producer,
+            stats_counter,
+            test_position,
+            save_position,
+            external_patches,
+            schema_event_handler,
+            schematizer_client,
+            alter_table_schema_event,
+            show_create_result_initial,
+            show_create_result_after_alter,
+            mock_schema_tracker_cursor,
+            table_with_schema_changes,
+            alter_table_schema_store_response,
+            test_schema
+        )
+
+        assert stats_counter.increment.call_count == 0
+
+    def test_handle_event_alter_table_meteorite_disabled_false(
+        self,
+        namespace,
+        producer,
+        stats_counter,
+        test_position,
+        save_position,
+        external_patches,
+        schema_event_handler,
+        schematizer_client,
+        alter_table_schema_event,
+        show_create_result_initial,
+        show_create_result_after_alter,
+        mock_schema_tracker_cursor,
+        table_with_schema_changes,
+        alter_table_schema_store_response,
+        test_schema,
+        patch_config_meteorite_disabled_false
+    ):
+        self._setup_handle_event_alter_table(
+            namespace,
+            producer,
+            stats_counter,
+            test_position,
+            save_position,
+            external_patches,
+            schema_event_handler,
+            schematizer_client,
+            alter_table_schema_event,
+            show_create_result_initial,
+            show_create_result_after_alter,
+            mock_schema_tracker_cursor,
+            table_with_schema_changes,
+            alter_table_schema_store_response,
+            test_schema
+        )
+
         assert stats_counter.increment.call_count == 1
         assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
-        assert save_position.call_count == 1
 
     def test_handle_event_rename_table(
         self,

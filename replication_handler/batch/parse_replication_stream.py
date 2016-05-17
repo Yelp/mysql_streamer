@@ -191,14 +191,19 @@ class ParseReplicationStream(Batch):
             container_env=config.env_config.container_env,
             rbr_source_cluster=config.env_config.rbr_source_cluster,
         )
+
         try:
             yield {
                 'schema_event_counter': schema_event_counter,
                 'data_event_counter': data_event_counter
             }
         finally:
-            schema_event_counter.flush()
-            data_event_counter.flush()
+            if not config.env_config.disable_meteorite:
+                schema_event_counter.flush()
+                data_event_counter.flush()
+            else:
+                schema_event_counter._reset()
+                data_event_counter._reset()
 
     @contextmanager
     def _register_signal_handlers(self):
