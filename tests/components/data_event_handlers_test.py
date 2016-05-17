@@ -272,6 +272,13 @@ class TestDataEventHandler(object):
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
+        assert producer.publish.call_count == len(data_create_events)
+        assert patches.table_has_pii.call_count == len(data_create_events)
+        assert patches.table_has_pii.call_args[1] == {
+            'database_name': 'fake_database',
+            'table_name': 'fake_table'
+        }
+
 
     def test_handle_data_create_event_to_publish_call_disable_meteorite_true(
         self,
@@ -302,12 +309,6 @@ class TestDataEventHandler(object):
             patch_get_payload_schema
         )
         assert stats_counter.increment.call_count == 0
-        assert producer.publish.call_count == len(data_create_events)
-        assert patches.table_has_pii.call_count == len(data_create_events)
-        assert patches.table_has_pii.call_args[1] == {
-            'database_name': 'fake_database',
-            'table_name': 'fake_table'
-        }
 
     def test_handle_data_create_event_to_publish_call_disable_meteorite_false(
         self,
@@ -339,12 +340,6 @@ class TestDataEventHandler(object):
         )
         assert stats_counter.increment.call_count == len(data_create_events)
         assert stats_counter.increment.call_args[0][0] == 'fake_table'
-        assert producer.publish.call_count == len(data_create_events)
-        assert patches.table_has_pii.call_count == len(data_create_events)
-        assert patches.table_has_pii.call_args[1] == {
-            'database_name': 'fake_database',
-            'table_name': 'fake_table'
-        }
 
     def test_handle_data_update_event(
         self,

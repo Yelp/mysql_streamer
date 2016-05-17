@@ -226,8 +226,6 @@ class TestParseReplicationStream(object):
             schema_event_with_gtid,
             data_event_with_gtid,
         ]
-        return schema_event_with_gtid,data_event_with_gtid,patch_restarter.return_value.get_stream.return_value.next.side_effect
-
 
     def test_meteorite_off(
         self,

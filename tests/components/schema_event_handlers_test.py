@@ -475,6 +475,9 @@ class TestSchemaEventHandler(object):
             test_schema,
             mysql_statements=mysql_statements
         )
+        assert producer.flush.call_count == 1
+        assert save_position.call_count == 1
+
     def test_handle_event_alter_table_meteorite_disabled_true(
         self,
         namespace,
@@ -512,9 +515,7 @@ class TestSchemaEventHandler(object):
             test_schema
         )
 
-        assert producer.flush.call_count == 1
         assert stats_counter.increment.call_count == 0
-        assert save_position.call_count == 1
 
     def test_handle_event_alter_table_meteorite_disabled_false(
         self,
@@ -553,10 +554,8 @@ class TestSchemaEventHandler(object):
             test_schema
         )
 
-        assert producer.flush.call_count == 1
         assert stats_counter.increment.call_count == 1
         assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
-        assert save_position.call_count == 1
 
     def test_handle_event_rename_table(
         self,
