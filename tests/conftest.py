@@ -25,8 +25,8 @@ logging.basicConfig(
 )
 
 
-@pytest.fixture(scope='session')
-def compose_file():
+@pytest.fixture(scope='module')
+def compose_file(replhandler):
     return os.path.abspath(
         os.path.join(
             os.path.split(
@@ -37,25 +37,25 @@ def compose_file():
     )
 
 
-@pytest.fixture(scope='session')
-def services():
+@pytest.fixture(scope='module')
+def services(replhandler):
     return [
-        'replicationhandler',
+        replhandler,
         'rbrsource',
         'schematracker',
         'rbrstate'
     ]
 
 
-@pytest.yield_fixture(scope='session')
-def containers(compose_file, services):
+@pytest.yield_fixture(scope='module')
+def containers(compose_file, services, replhandler):
     with Containers(compose_file, services) as containers:
         # Need to wait for all containers to spin up
         replication_handler_ip = None
         while replication_handler_ip is None:
             replication_handler_ip = Containers.get_container_ip_address(
                 containers.project,
-                'replicationhandler')
+                replhandler)
 
         for db in ["rbrsource", "schematracker", "rbrstate"]:
             db_health_check(containers, db, timeout_seconds)
@@ -63,22 +63,22 @@ def containers(compose_file, services):
         yield containers
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def kafka_docker(containers):
     return containers.get_kafka_connection()
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def namespace():
     return 'dev.refresh_primary.yelp'
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def schematizer():
     return get_schematizer()
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.yield_fixture(scope='module')
 def sandbox_session():
     with sandbox.database_sandbox_master_connection_set() as sandbox_session:
         yield sandbox_session

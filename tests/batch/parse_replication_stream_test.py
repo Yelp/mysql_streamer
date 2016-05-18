@@ -180,6 +180,7 @@ class TestParseReplicationStream(object):
             mock_config.publish_dry_run = False
             mock_config.namespace = "test_namespace"
             mock_config.disable_meteorite = False
+            mock_config.changelog_mode = False
             yield mock_config
 
     @pytest.yield_fixture
@@ -266,7 +267,7 @@ class TestParseReplicationStream(object):
         ) as mock_reset:
             self._init_and_run_batch()
             assert mock_flush.call_count == 0
-            assert mock_reset.call_count == 4
+            assert mock_reset.call_count == 6
 
     def test_meteorite_on(
         self,
@@ -306,9 +307,9 @@ class TestParseReplicationStream(object):
             '_reset'
         ) as mock_reset:
             self._init_and_run_batch()
-            assert mock_flush.call_count == 2
+            assert mock_flush.call_count == 3
             # note that this is only 2 because we mock the flush method, therefore we don't end up calling its internal reset
-            assert mock_reset.call_count == 2
+            assert mock_reset.call_count == 3
 
     def test_replication_stream_different_events(
         self,

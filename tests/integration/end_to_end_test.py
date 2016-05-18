@@ -28,6 +28,11 @@ Base = declarative_base()
 ColumnInfo = namedtuple('ColumnInfo', ['type', 'sqla_obj', 'data'])
 
 
+@pytest.fixture(scope='module')
+def replhandler():
+    return 'replicationhandler'
+
+
 @pytest.mark.itest
 class TestEndToEnd(object):
     timeout_seconds = 60

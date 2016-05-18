@@ -23,6 +23,7 @@ from yelp_batch import Batch
 
 from replication_handler import config
 from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_wrapper import SchemaWrapper
@@ -63,6 +64,7 @@ class ParseReplicationStream(Batch):
         self.publish_dry_run = config.env_config.publish_dry_run
         self._running = True
         self._profiler_running = False
+        self._changelog_mode = config.env_config.changelog_mode
         if get_config().kafka_producer_buffer_size > config.env_config.recovery_queue_size:
             # Printing here, since this executes *before* logging is
             # configured.
@@ -138,11 +140,24 @@ class ParseReplicationStream(Batch):
         log.info("Replication stream successfully restarted.")
         return replication_stream_restarter.get_stream()
 
+    def _get_data_event_handler(self,
+                                data_event_handler,
+                                change_log_data_event_handler):
+        if self._changelog_mode:
+            return change_log_data_event_handler
+        return data_event_handler
+
     def _build_handler_map(self):
         data_event_handler = DataEventHandler(
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
             stats_counter=self.counters['data_event_counter'],
+            register_dry_run=self.register_dry_run,
+        )
+        change_log_data_event_handler = ChangeLogDataEventHandler(
+            producer=self.producer,
+            schema_wrapper=self.schema_wrapper,
+            stats_counter=self.counters['change_log_data_event_counter'],
             register_dry_run=self.register_dry_run,
         )
         schema_event_handler = SchemaEventHandler(
@@ -154,7 +169,8 @@ class ParseReplicationStream(Batch):
         handler_map = {
             DataEvent: HandlerInfo(
                 event_type=EventType.DATA_EVENT,
-                handler=data_event_handler
+                handler=self._get_data_event_handler(
+                    data_event_handler, change_log_data_event_handler)
             ),
             QueryEvent: HandlerInfo(
                 event_type=EventType.SCHEMA_EVENT,
@@ -191,19 +207,29 @@ class ParseReplicationStream(Batch):
             container_env=config.env_config.container_env,
             rbr_source_cluster=config.env_config.rbr_source_cluster,
         )
+        change_log_data_event_counter = StatsCounter(
+            STAT_COUNTER_NAME,
+            event_type='changelog',
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            rbr_source_cluster=config.env_config.rbr_source_cluster,
+        )
 
         try:
             yield {
                 'schema_event_counter': schema_event_counter,
-                'data_event_counter': data_event_counter
+                'data_event_counter': data_event_counter,
+                'change_log_data_event_counter': change_log_data_event_counter,
             }
         finally:
             if not config.env_config.disable_meteorite:
                 schema_event_counter.flush()
                 data_event_counter.flush()
+                change_log_data_event_counter.flush()
             else:
                 schema_event_counter._reset()
                 data_event_counter._reset()
+                change_log_data_event_counter._reset()
 
     @contextmanager
     def _register_signal_handlers(self):
