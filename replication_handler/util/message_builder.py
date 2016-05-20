@@ -4,10 +4,8 @@ from __future__ import unicode_literals
 
 import logging
 
-from pii_generator.components.pii_identifier import PIIIdentifier
 from data_pipeline.message import UpdateMessage
 
-from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 
 
@@ -22,6 +20,7 @@ class MessageBuilder(object):
       schema_info(SchemaInfo object): contain topic/schema_id.
       resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
     """
+
     def __init__(self, schema_info, event, position, register_dry_run=True):
         self.schema_info = schema_info
         self.event = event
@@ -36,7 +35,6 @@ class MessageBuilder(object):
             "table_name": self.event.table,
         }
         message_params = {
-            "topic": self.schema_info.topic,
             "schema_id": self.schema_info.schema_id,
             "keys": tuple(self.schema_info.primary_keys),
             "payload_data": self._get_values(self.event.row),

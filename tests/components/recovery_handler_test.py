@@ -53,6 +53,17 @@ class TestRecoveryHandler(object):
         )
         return mock_schema_wrapper
 
+    @pytest.yield_fixture
+    def mock_message_topic(self, mock_schema_wrapper):
+        with mock.patch(
+            'data_pipeline.message.Message._schematizer'
+        ), mock.patch(
+            'data_pipeline.message.Message.topic',
+            new_callable=mock.PropertyMock
+        ) as mock_topic:
+            mock_topic.return_value = mock_schema_wrapper.topic
+            yield
+
     @pytest.fixture
     def session(self):
         return mock.Mock()
@@ -316,6 +327,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_save_position,
         patch_config_recovery_queue_size,
+        mock_message_topic
     ):
         event_list = [
             rh_data_event_before_master_log_pos,
@@ -354,6 +366,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
+        mock_message_topic
     ):
         event_list = [
             rh_data_event_before_master_log_pos,
@@ -388,6 +401,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
+        mock_message_topic
     ):
         event_list = [
             rh_data_event_before_master_log_pos,

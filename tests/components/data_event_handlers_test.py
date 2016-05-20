@@ -103,6 +103,17 @@ class TestDataEventHandler(object):
         )
 
     @pytest.yield_fixture
+    def patch_message_topic(self, schema_wrapper_entry):
+        with mock.patch(
+            'data_pipeline.message.Message._schematizer'
+        ), mock.patch(
+            'data_pipeline.message.Message.topic',
+            new_callable=mock.PropertyMock
+        ) as mock_topic:
+            mock_topic.return_value = schema_wrapper_entry.topic
+            yield
+
+    @pytest.yield_fixture
     def patch_config_meteorite_disabled_true(self):
         with mock.patch(
             'replication_handler.components.data_event_handler.config.env_config'
@@ -288,7 +299,8 @@ class TestDataEventHandler(object):
         schema_wrapper_entry,
         patches,
         patch_get_payload_schema,
-        patch_config_meteorite_disabled_true
+        patch_config_meteorite_disabled_true,
+        patch_message_topic
     ):
         self._setup_handle_data_create_event_to_publish_call(
             producer,
@@ -318,7 +330,8 @@ class TestDataEventHandler(object):
         schema_wrapper_entry,
         patches,
         patch_get_payload_schema,
-        patch_config_meteorite_disabled_false
+        patch_config_meteorite_disabled_false,
+        patch_message_topic
     ):
         self._setup_handle_data_create_event_to_publish_call(
             producer,
@@ -348,6 +361,7 @@ class TestDataEventHandler(object):
         schema_wrapper_entry,
         patches,
         patch_get_payload_schema,
+        patch_message_topic,
     ):
         expected_call_args = []
         for data_event in data_update_events:
@@ -377,6 +391,7 @@ class TestDataEventHandler(object):
         dry_run_data_event_handler,
         data_create_events,
         patches,
+        patch_message_topic
     ):
         patches.patch_dry_run_config.return_value = True
         for data_event in data_create_events:
