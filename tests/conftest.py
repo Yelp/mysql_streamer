@@ -7,8 +7,10 @@ import os
 
 import mock
 import pytest
+from data_pipeline.config import get_config
 from data_pipeline.message import Message
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
+from data_pipeline.schematizer_clientlib.schematizer import _Cache
 from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.testing_helper.util import db_health_check
@@ -75,7 +77,12 @@ def namespace():
 
 @pytest.fixture(scope='module')
 def schematizer():
-    return get_schematizer()
+    schematizer = get_schematizer()
+    # schematizer is a Singleton. Rerun the ctor of Schematizer per module.
+    schematizer._client = get_config().schematizer_client  # swaggerpy client
+    schematizer._cache = _Cache()
+    schematizer._avro_schema_cache = {}
+    return schematizer
 
 
 @pytest.yield_fixture(scope='module')
