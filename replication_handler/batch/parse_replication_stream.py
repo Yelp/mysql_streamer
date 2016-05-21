@@ -143,6 +143,10 @@ class ParseReplicationStream(Batch):
     def _get_data_event_handler(self,
                                 data_event_handler,
                                 change_log_data_event_handler):
+        """Decides which data_event handler to choose as per changelog_mode
+        :param data_event_handler: Handler to be chosen for normal flow
+        :param change_log_data_event_handler: Handler for changelog flow
+        """
         if self._changelog_mode:
             return change_log_data_event_handler
         return data_event_handler
