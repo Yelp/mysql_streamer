@@ -97,7 +97,6 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def schema_wrapper_entry(self, schema_in_json):
         return SchemaWrapperEntry(
-            topic=str("fake_topic"),
             schema_id=0,
             primary_keys=['primary_key'],
         )
@@ -110,7 +109,7 @@ class TestDataEventHandler(object):
             'data_pipeline.message.Message.topic',
             new_callable=mock.PropertyMock
         ) as mock_topic:
-            mock_topic.return_value = schema_wrapper_entry.topic
+            mock_topic.return_value = str("fake_topic")
             yield
 
     @pytest.yield_fixture
@@ -274,7 +273,6 @@ class TestDataEventHandler(object):
             }
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(CreateMessage(
-                topic=schema_wrapper_entry.topic,
                 payload_data=data_event.row["values"],
                 schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=upstream_position_info,
@@ -374,7 +372,6 @@ class TestDataEventHandler(object):
             }
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(UpdateMessage(
-                topic=schema_wrapper_entry.topic,
                 payload_data=data_event.row['after_values'],
                 schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=upstream_position_info,
@@ -405,7 +402,6 @@ class TestDataEventHandler(object):
         patches,
     ):
         patches.patch_dry_run_config.return_value = True
-        assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).topic == 'dry_run'
         assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).schema_id == 1
 
     def test_skip_blacklist_schema(

@@ -47,7 +47,6 @@ class TestRecoveryHandler(object):
     def mock_schema_wrapper(self):
         mock_schema_wrapper = mock.MagicMock()
         mock_schema_wrapper.__getitem__.return_value = SchemaWrapperEntry(
-            topic=str("test_topic"),
             schema_id=1,
             primary_keys=['key']
         )
@@ -61,7 +60,7 @@ class TestRecoveryHandler(object):
             'data_pipeline.message.Message.topic',
             new_callable=mock.PropertyMock
         ) as mock_topic:
-            mock_topic.return_value = mock_schema_wrapper.topic
+            mock_topic.return_value = str("test_topic")
             yield
 
     @pytest.fixture

@@ -17,7 +17,7 @@ class MessageBuilder(object):
 
     Args:
       event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
-      schema_info(SchemaInfo object): contain topic/schema_id.
+      schema_info(SchemaInfo object): contain schema_id.
       resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
     """
 
