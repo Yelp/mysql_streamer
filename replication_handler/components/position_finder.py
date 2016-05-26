@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 
 import logging
 
-from replication_handler.util.position import construct_position
 from replication_handler.util.position import LogPosition
+from replication_handler.util.position import construct_position
 
 
 log = logging.getLogger('replication_handler.components.position_finder')
@@ -16,8 +16,8 @@ class PositionFinder(object):
     a position for binlog stream reader to resume tailing.
 
     Args:
-      global_event_state(GlobalEventState object): stores the global state, including
-        position information.
+      global_event_state(GlobalEventState object): stores the global state,
+      including position information.
     """
 
     def __init__(self, global_event_state):

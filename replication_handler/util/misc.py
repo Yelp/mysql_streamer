@@ -3,15 +3,14 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
-
+import os
 from os import remove
-
 from os.path import join, expanduser
 
-import os
 from yelp_conn.connection_set import ConnectionSet
 
-from replication_handler.config import env_config, source_database_config
+from replication_handler.config import env_config
+from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -106,16 +105,20 @@ def repltracker_cursor():
 
 def create_mysql_passwd_file(secret_file, user, passwd):
     delete_file(secret_file)
+    secret_file_content = """
+    [client]
+    user={user}
+    password={password}
+
+    [mysql]
+    user={user}
+    password={password}
+
+    [mysqldump]
+    user={user}
+    password={password}""".format(user=user, password=passwd)
     with os.fdopen(os.open(secret_file, os.O_WRONLY | os.O_CREAT, 0600), 'w') as f:
-        f.write("[client]\n")
-        f.write("user="+user+"\n")
-        f.write("password="+'"'+passwd+'"'+"\n\n")
-        f.write("[mysql]\n")
-        f.write("user="+user+"\n")
-        f.write("password="+'"'+passwd+'"'+"\n\n")
-        f.write("[mysqldump]\n")
-        f.write("user="+user+"\n")
-        f.write("password="+'"'+passwd+'"')
+        f.write(secret_file_content)
 
 
 def get_dump_file():
@@ -126,7 +129,9 @@ def get_dump_file():
 
 
 def delete_file(file_name):
+    log.info("Deleting {file} if it exists".format(file=file_name))
     try:
         remove(file_name)
     except OSError:
+        # Its fine to pass over this error cause this just means the file didn't exist in the first place
         pass

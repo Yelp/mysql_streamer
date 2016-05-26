@@ -159,6 +159,17 @@ class EnvConfig(BaseConfig):
         return staticconf.get_bool('resume_stream', default=True).value
 
     @property
+    def resume_from_log_position(self):
+        """
+        If set to true, when the replication handler restarts, it will resume
+        from the log position that is saved in the log_position_state table
+        """
+        return staticconf.get_bool(
+            'resume_from_log_position',
+            default=True
+        ).value
+
+    @property
     def force_exit(self):
         """Determines if we should force an exit, which can be helpful if we'd
         otherwise block waiting for replication events that aren't going to come.
