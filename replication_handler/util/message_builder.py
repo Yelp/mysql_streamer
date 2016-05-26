@@ -16,9 +16,11 @@ class MessageBuilder(object):
     """ This class knows how to convert a data event into a respective message.
 
     Args:
-      event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
       schema_info(SchemaInfo object): contain schema_id.
-      resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
+      event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
+      position(Position object): contains position information for this event in binlog.
+      register_dry_run(boolean, optional): whether a schema has to be registered for a message to be published.
+      Defaults to True.
     """
 
     def __init__(self, schema_info, event, position, register_dry_run=True):
