@@ -424,7 +424,7 @@ class TestParseReplicationStream(object):
         with pytest.raises(SystemExit):
             self._init_and_run_batch()
 
-    def test_changelog_ON_choses_changelog_dataevent_handler(
+    def test_changelog_ON_chooses_changelog_dataevent_handler(
         self,
         patch_config,
         patch_config_changelog_on,

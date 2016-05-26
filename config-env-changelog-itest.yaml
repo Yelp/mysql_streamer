@@ -1,5 +1,3 @@
-changelog_namespace: changelog.itest.v2
-
 changelog_mode: True
 
 namespace: dev_changelog

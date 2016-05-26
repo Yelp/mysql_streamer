@@ -8,6 +8,7 @@ import os
 import mock
 import pytest
 from data_pipeline.config import get_config
+from data_pipeline.helpers.yelp_avro_store import _AvroStringStore
 from data_pipeline.message import Message
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.schematizer_clientlib.schematizer import _Cache
@@ -89,6 +90,15 @@ def schematizer():
 def sandbox_session():
     with sandbox.database_sandbox_master_connection_set() as sandbox_session:
         yield sandbox_session
+
+
+@pytest.fixture(scope='module')
+def cleanup_avro_cache():
+    # This is needed as _AvroStringStore is a Singleton and doesn't delete
+    # its cache even after an instance gets destroyed. We manually delete
+    # the cache so that last test module's schemas do not affect current tests.
+    _AvroStringStore()._reader_cache = {}
+    _AvroStringStore()._writer_cache = {}
 
 
 @pytest.yield_fixture

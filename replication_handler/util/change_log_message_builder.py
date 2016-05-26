@@ -45,16 +45,11 @@ class ChangeLogMessageBuilder(MessageBuilder):
             "table_name": self.event.table,
         }
         message_params = {
-            "topic": str(self.schema_info.topic),
             "schema_id": self.schema_info.schema_id,
             "keys": tuple(self.schema_info.primary_keys),
             "payload_data": self.create_payload(self._get_values(self.event.row)),
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
-            "contains_pii": self.pii_identifier.table_has_pii(
-                database_name=self.event.schema,
-                table_name=self.event.table
-            ),
             "timestamp": self.event.timestamp,
             "meta": [self.position.transaction_id],
         }

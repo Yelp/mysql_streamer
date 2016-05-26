@@ -3,6 +3,9 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import os
+
+import yaml
 from cached_property import cached_property
 
 from replication_handler import config
@@ -13,11 +16,12 @@ from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 
 log = logging.getLogger(__name__)
 
-
-class MalformedSchemaException(Exception):
-    """This exception should be raised when the topic fetched from
-    schematizer does not follow a proper format.
-    """
+CURR_FILEPATH = os.path.dirname(__file__)
+CHANGELOG_SCHEMANAME = config.env_config.changelog_schemaname
+SCHEMA_FILEPATH = os.path.join(
+    CURR_FILEPATH, '../schema/{}.yaml'.format(CHANGELOG_SCHEMANAME))
+OWNER_EMAIL = 'distsys-data+changelog@yelp.com'
+SOURCE_NAME = 'changelog_schema'
 
 
 class ChangeLogDataEventHandler(DataEventHandler):
@@ -25,34 +29,29 @@ class ChangeLogDataEventHandler(DataEventHandler):
 
     def __init__(self, *args, **kwargs):
         super(ChangeLogDataEventHandler, self).__init__(*args, **kwargs)
+        self.schema_wrapper_entry = SchemaWrapperEntry(
+            schema_id=self.get_schema_id, primary_keys=[])
 
     @cached_property
-    def get_topic_name_and_schema_id(self):
-        namespace_name = config.env_config.changelog_namespace
-        topics = self.schema_wrapper.schematizer_client.get_topics_by_criteria(
-            namespace_name=namespace_name)
-        if not topics:
-            raise MalformedSchemaException(
-                "No topic created for changelog instance {}".format(
-                    namespace_name))
-        topic_name = topics[0].name  # choose the first topic from the list
-        schemas = self.schema_wrapper.schematizer_client.get_schemas_by_topic(
-            topic_name=topic_name)
-        if not schemas:
-            raise MalformedSchemaException(
-                "No schemas registered for {} topic".format(topic_name))
-        schema_id = schemas[0].schema_id  # choose the first schema
-        return (topic_name, schema_id)
+    def get_schema_id(self):
+        schematizer = self.schema_wrapper.schematizer_client
+        with open(SCHEMA_FILEPATH, 'r') as schema_file:
+            schema_dict = yaml.load(schema_file.read())
+        schema = schematizer.register_schema_from_schema_json(
+            namespace=schema_dict['namespace'],
+            source=SOURCE_NAME,
+            schema_json=schema_dict,
+            source_owner_email=OWNER_EMAIL,
+            contains_pii=False,
+        )
+        return schema.schema_id
 
     def handle_event(self, event, position):
         """Make sure that the schema wrapper has the table, publish to Kafka.
         """
         if self.is_blacklisted(event, event.schema):
             return
-        topic_name, schema_id = self.get_topic_name_and_schema_id
-        schema_wrapper_entry = SchemaWrapperEntry(
-            topic=topic_name, schema_id=schema_id, primary_keys=[])
-        self._handle_row(schema_wrapper_entry, event, position)
+        self._handle_row(self.schema_wrapper_entry, event, position)
 
     def _handle_row(self, schema_wrapper_entry, event, position):
         builder = ChangeLogMessageBuilder(

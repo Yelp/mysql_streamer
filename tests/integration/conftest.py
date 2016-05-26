@@ -3,7 +3,6 @@ import time
 import pytest
 from data_pipeline.consumer import Consumer
 from data_pipeline.expected_frequency import ExpectedFrequency
-from data_pipeline.helpers.yelp_avro_store import _AvroStringStore
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -17,15 +16,6 @@ from replication_handler.testing_helper.util import RBR_SOURCE
 timeout_seconds = 60
 
 Base = declarative_base()
-
-
-@pytest.fixture(scope='module')
-def cleanup_avro_cache():
-    # This is needed as _AvroStringStore is a Singleton and doesn't delete
-    # its cache even after an instance gets destroyed. We manually delete
-    # the cache so that last test module's schemas do not affect current tests.
-    _AvroStringStore()._reader_cache = {}
-    _AvroStringStore()._writer_cache = {}
 
 
 @pytest.fixture(scope='module')

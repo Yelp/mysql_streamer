@@ -140,18 +140,12 @@ class ParseReplicationStream(Batch):
         log.info("Replication stream successfully restarted.")
         return replication_stream_restarter.get_stream()
 
-    def _get_data_event_handler(self,
-                                data_event_handler,
-                                change_log_data_event_handler):
+    def _get_data_event_handler(self):
         """Decides which data_event handler to choose as per changelog_mode
-        :param data_event_handler: Handler to be chosen for normal flow
-        :param change_log_data_event_handler: Handler for changelog flow
+        :returns: data_event_handler or change_log_data_event_handler
+                data_event_handler: Handler to be chosen for normal flow
+                change_log_data_event_handler: Handler for changelog flow
         """
-        if self._changelog_mode:
-            return change_log_data_event_handler
-        return data_event_handler
-
-    def _build_handler_map(self):
         data_event_handler = DataEventHandler(
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
@@ -161,9 +155,14 @@ class ParseReplicationStream(Batch):
         change_log_data_event_handler = ChangeLogDataEventHandler(
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
-            stats_counter=self.counters['change_log_data_event_counter'],
+            stats_counter=self.counters['data_event_counter'],
             register_dry_run=self.register_dry_run,
         )
+        if self._changelog_mode:
+            return change_log_data_event_handler
+        return data_event_handler
+
+    def _build_handler_map(self):
         schema_event_handler = SchemaEventHandler(
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
@@ -173,8 +172,7 @@ class ParseReplicationStream(Batch):
         handler_map = {
             DataEvent: HandlerInfo(
                 event_type=EventType.DATA_EVENT,
-                handler=self._get_data_event_handler(
-                    data_event_handler, change_log_data_event_handler)
+                handler=self._get_data_event_handler()
             ),
             QueryEvent: HandlerInfo(
                 event_type=EventType.SCHEMA_EVENT,
@@ -195,15 +193,12 @@ class ParseReplicationStream(Batch):
         ) as producer:
             yield producer
 
-    @contextmanager
-    def _setup_counters(self):
-        schema_event_counter = StatsCounter(
-            STAT_COUNTER_NAME,
-            event_type='schema',
-            container_name=config.env_config.container_name,
-            container_env=config.env_config.container_env,
-            rbr_source_cluster=config.env_config.rbr_source_cluster,
-        )
+    def _get_data_event_counter(self):
+        """Decides which data_event counter to choose as per changelog_mode
+        :returns: data_event_counter or change_log_data_event_counter
+                data_event_counter: Counter to be chosen for normal flow
+                change_log_data_event_counter: Counter for changelog flow
+        """
         data_event_counter = StatsCounter(
             STAT_COUNTER_NAME,
             event_type='data',
@@ -218,22 +213,33 @@ class ParseReplicationStream(Batch):
             container_env=config.env_config.container_env,
             rbr_source_cluster=config.env_config.rbr_source_cluster,
         )
+        if self._changelog_mode:
+            return change_log_data_event_counter
+        return data_event_counter
+
+    @contextmanager
+    def _setup_counters(self):
+        schema_event_counter = StatsCounter(
+            STAT_COUNTER_NAME,
+            event_type='schema',
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            rbr_source_cluster=config.env_config.rbr_source_cluster,
+        )
+        data_event_counter = self._get_data_event_counter()
 
         try:
             yield {
                 'schema_event_counter': schema_event_counter,
                 'data_event_counter': data_event_counter,
-                'change_log_data_event_counter': change_log_data_event_counter,
             }
         finally:
             if not config.env_config.disable_meteorite:
                 schema_event_counter.flush()
                 data_event_counter.flush()
-                change_log_data_event_counter.flush()
             else:
                 schema_event_counter._reset()
                 data_event_counter._reset()
-                change_log_data_event_counter._reset()
 
     @contextmanager
     def _register_signal_handlers(self):

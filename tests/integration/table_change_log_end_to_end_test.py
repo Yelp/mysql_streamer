@@ -32,25 +32,6 @@ def source():
     return 'changelog_test_schema'
 
 
-@pytest.fixture(scope='module')
-def register_schema(namespace, source, schematizer):
-    schema_json = {'doc': 'TCL (table_change_log) like schema for consumption by legacy TCL clients',
-                   'fields': [
-                       {'doc': 'database name containing the table', 'name': 'table_schema', 'type': 'string'},
-                       {'doc': 'table name', 'name': 'table_name', 'type': 'string'},
-                       {'doc': 'pk of the affected table', 'name': 'id', 'type': 'int'}],
-                   'name': 'changelog_schema',
-                   'namespace': namespace,
-                   'type': 'record'}
-
-    schematizer.register_schema_from_schema_json(
-        namespace=namespace,
-        source=source,
-        schema_json=schema_json,
-        source_owner_email='test@test.test',
-        contains_pii=False)
-
-
 @pytest.mark.itest
 def test_change_log_messages(
     containers,
@@ -59,7 +40,6 @@ def test_change_log_messages(
     namespace,
     source,
     rbr_source_session,
-    register_schema,
 ):
 
     increment_heartbeat(containers)
