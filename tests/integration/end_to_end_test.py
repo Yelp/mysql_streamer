@@ -470,6 +470,8 @@ class TestEndToEnd(object):
         ) as consumer:
             messages = consumer.get_messages(message_count, blocking=True, timeout=60)
             assert len(messages) == message_count
+
+        self._assert_topic_set_in_messages(messages, topics[0].name)
         return messages
 
     def _verify_messages(self, messages, expected_messages):
@@ -481,6 +483,10 @@ class TestEndToEnd(object):
                     self._assert_equal_dict(actual, expected)
                 else:
                     assert actual == expected
+
+    def _assert_topic_set_in_messages(self, messages, topic_name):
+        for message in messages:
+            assert topic_name == message.topic
 
     def _assert_equal_dict(self, dict1, dict2):
         assert set(dict1) == set(dict2)
