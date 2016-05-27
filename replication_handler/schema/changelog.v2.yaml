@@ -1,15 +1,24 @@
 ---
 doc: TCL (table_change_log) like schema for consumption by legacy TCL clients
+
 fields:
+
 - doc: database name containing the table
   name: table_schema
   type: string
+
 - doc: table name
   name: table_name
   type: string
+
 - doc: pk of the affected table
   name: id
   type: int
+
+# name is the source name
 name: changelog_schema
+
+# namespace should match the filename.
 namespace: changelog.v2
+
 type: record

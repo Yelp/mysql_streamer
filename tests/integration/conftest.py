@@ -77,9 +77,9 @@ def _verify_messages(messages, expected_messages):
                 assert actual == expected
 
 
- def _assert_topic_set_in_messages(messages, topic_name):
-     for message in messages:
-         assert topic_name == message.topic
+def _assert_topic_set_in_messages(messages, topic_name):
+    for message in messages:
+        assert topic_name == message.topic
 
 
 def _assert_equal_dict(dict1, dict2):

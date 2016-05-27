@@ -21,7 +21,6 @@ CHANGELOG_SCHEMANAME = config.env_config.changelog_schemaname
 SCHEMA_FILEPATH = os.path.join(
     CURR_FILEPATH, '../schema/{}.yaml'.format(CHANGELOG_SCHEMANAME))
 OWNER_EMAIL = 'distsys-data+changelog@yelp.com'
-SOURCE_NAME = 'changelog_schema'
 
 
 class ChangeLogDataEventHandler(DataEventHandler):
@@ -30,16 +29,16 @@ class ChangeLogDataEventHandler(DataEventHandler):
     def __init__(self, *args, **kwargs):
         super(ChangeLogDataEventHandler, self).__init__(*args, **kwargs)
         self.schema_wrapper_entry = SchemaWrapperEntry(
-            schema_id=self.get_schema_id, primary_keys=[])
+            schema_id=self.schema_id, primary_keys=[])
 
     @cached_property
-    def get_schema_id(self):
+    def schema_id(self):
         schematizer = self.schema_wrapper.schematizer_client
         with open(SCHEMA_FILEPATH, 'r') as schema_file:
             schema_dict = yaml.load(schema_file.read())
         schema = schematizer.register_schema_from_schema_json(
             namespace=schema_dict['namespace'],
-            source=SOURCE_NAME,
+            source=schema_dict['name'],
             schema_json=schema_dict,
             source_owner_email=OWNER_EMAIL,
             contains_pii=False,

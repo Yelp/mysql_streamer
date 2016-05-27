@@ -20,7 +20,6 @@ def test_build_message_builds_proper_message(update_mock):
     builder = ChangeLogMessageBuilder(schema_info, event, position)
     builder.build_message()
     update_mock.assert_called_once_with(
-        contains_pii=False,
         dry_run=True,
         keys=(),
         meta=['txn_id'],
@@ -36,7 +35,6 @@ def test_build_message_builds_proper_message(update_mock):
         },
         schema_id=42,
         timestamp=42,
-        topic='topic',
         upstream_position_info={
             'database_name': 'schema',
             'position': {

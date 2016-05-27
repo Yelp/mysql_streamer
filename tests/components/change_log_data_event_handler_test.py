@@ -17,34 +17,30 @@ class TestChangeLogDataEventHandler(object):
             producer=mock.MagicMock(), schema_wrapper=mock.MagicMock(),
             stats_counter=mock.MagicMock(), register_dry_run=False)
 
-    @pytest.yield_fixture()
-    def patch_config(self):
-        with mock.patch('replication_handler.components.'
-                        'change_log_data_event_handler.config') as mock_config:
-            yield mock_config
+    def test_get_schema_id(self):
+        schema_wrapper = mock.MagicMock()
+        schematizer_client = schema_wrapper.schematizer_client
+        schematizer_client.register_schema_from_schema_json.return_value = (
+            mock.MagicMock(schema_id=42))
+        with mock.patch(
+                "replication_handler.components.change_log_data_event_handler.open") as mock_open:
+            mock_open.return_value = mock.MagicMock(spec=file)
+            mock_open.return_value.__enter__.return_value.read.return_value = '{"namespace": "foo"}'
 
-    def test_get_schema_id(self, event_handler):
-        schematizer_client = mock.MagicMock()
-        topic = mock.MagicMock()
-        topic.name = 'topic_name'
-        schematizer_client.get_topics_by_criteria = mock.MagicMock(
-            return_value=[topic])
-        schematizer_client.get_schemas_by_topic = mock.MagicMock(
-            return_value=[mock.Mock(schema_id=42)])
-        event_handler.schema_wrapper.schematizer_client = schematizer_client
-        assert 42 == event_handler.get_schema_id
+            event_handler = ChangeLogDataEventHandler(
+                producer=mock.MagicMock(), schema_wrapper=schema_wrapper,
+                stats_counter=mock.MagicMock(), register_dry_run=False)
 
-    @mock.patch.object(ChangeLogDataEventHandler, 'get_schema_id',
-                       new_callable=mock.PropertyMock)
+            assert 42 == event_handler.schema_id
+        schematizer_client.register_schema_from_schema_json.assert_called_once_with(
+            contains_pii=False, namespace='foo', schema_json={'namespace': 'foo'},
+            source=u'changelog_schema', source_owner_email=u'distsys-data+changelog@yelp.com')
+
     @mock.patch.object(ChangeLogDataEventHandler, '_handle_row')
-    @mock.patch('replication_handler.components.change_log_data_event_handler.'
-                'SchemaWrapperEntry', autospec=True)
-    def test_handle_event(self, SchemaWrapper, mock_row, mock_get_schema_id, event_handler):
-        mock_get_schema_id.return_value = "42"
+    def test_handle_event(self, mock_row, event_handler):
         event = mock.MagicMock(schema="schema")
         event_handler.handle_event(event, "position")
-        SchemaWrapper.assert_called_once_with(primary_keys=[], schema_id='42')
-        mock_row.assert_called_once_with(SchemaWrapper.return_value, event, "position")
+        mock_row.assert_called_once_with(event_handler.schema_wrapper_entry, event, "position")
 
     @mock.patch('replication_handler.components.change_log_data_event_handler.'
                 'ChangeLogMessageBuilder', autospec=True)

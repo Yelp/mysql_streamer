@@ -24,12 +24,12 @@ def replhandler():
 
 @pytest.fixture(scope='module')
 def namespace():
-    return 'changelog.itest.v2'
+    return 'changelog.v2'
 
 
 @pytest.fixture(scope='module')
 def source():
-    return 'changelog_test_schema'
+    return 'changelog_schema'
 
 
 @pytest.mark.itest
