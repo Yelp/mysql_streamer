@@ -25,7 +25,8 @@ class TestChangeLogDataEventHandler(object):
         with mock.patch(
                 "replication_handler.components.change_log_data_event_handler.open") as mock_open:
             mock_open.return_value = mock.MagicMock(spec=file)
-            mock_open.return_value.__enter__.return_value.read.return_value = '{"namespace": "foo"}'
+            mock_open.return_value.__enter__.return_value.read.return_value = (
+                '{"namespace": "foo", "name": "bar"}')
 
             event_handler = ChangeLogDataEventHandler(
                 producer=mock.MagicMock(), schema_wrapper=schema_wrapper,
@@ -33,8 +34,8 @@ class TestChangeLogDataEventHandler(object):
 
             assert 42 == event_handler.schema_id
         schematizer_client.register_schema_from_schema_json.assert_called_once_with(
-            contains_pii=False, namespace='foo', schema_json={'namespace': 'foo'},
-            source=u'changelog_schema', source_owner_email=u'distsys-data+changelog@yelp.com')
+            contains_pii=False, namespace='foo', schema_json={'namespace': 'foo', 'name': 'bar'},
+            source=u'bar', source_owner_email=u'distsys-data+changelog@yelp.com')
 
     @mock.patch.object(ChangeLogDataEventHandler, '_handle_row')
     def test_handle_event(self, mock_row, event_handler):

@@ -5,9 +5,7 @@ from __future__ import unicode_literals
 import logging
 
 from data_pipeline.message import UpdateMessage
-from pii_generator.components.pii_identifier import PIIIdentifier
 
-from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 from replication_handler.util.message_builder import MessageBuilder
 
@@ -23,14 +21,14 @@ class ChangeLogMessageBuilder(MessageBuilder):
       schema_info(SchemaInfo object): contain topic/schema_id.
       resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
     """
+
     def __init__(self, schema_info, event, position, register_dry_run=True):
         self.schema_info = schema_info
         self.event = event
         self.position = position
         self.register_dry_run = register_dry_run
-        self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
-    def create_payload(self, data):
+    def _create_payload(self, data):
         payload_data = {"table_schema": self.event.schema,
                         "table_name": self.event.table,
                         "id": data['id'],
@@ -47,7 +45,7 @@ class ChangeLogMessageBuilder(MessageBuilder):
         message_params = {
             "schema_id": self.schema_info.schema_id,
             "keys": tuple(self.schema_info.primary_keys),
-            "payload_data": self.create_payload(self._get_values(self.event.row)),
+            "payload_data": self._create_payload(self._get_values(self.event.row)),
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
             "timestamp": self.event.timestamp,
@@ -55,7 +53,7 @@ class ChangeLogMessageBuilder(MessageBuilder):
         }
 
         if self.event.message_type == UpdateMessage:
-            message_params["previous_payload_data"] = self.create_payload(
+            message_params["previous_payload_data"] = self._create_payload(
                 self.event.row["before_values"])
 
         return self.event.message_type(**message_params)
