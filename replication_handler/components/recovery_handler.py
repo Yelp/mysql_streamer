@@ -22,6 +22,7 @@ logger = logging.getLogger('replication_handler.components.recovery_handler')
 
 CLUSTER_CONFIG = 0
 
+
 class RecoveryHandler(object):
     """
     Handles the recovery procedure which may include recreating tables and

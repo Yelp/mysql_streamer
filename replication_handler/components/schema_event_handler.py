@@ -11,7 +11,7 @@ from replication_handler.config import source_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
-from replication_handler.util.misc import repltracker_cursor
+from replication_handler.util.misc import ReplTrackerCursor
 from replication_handler.util.misc import save_position
 
 
@@ -28,8 +28,9 @@ class SchemaEventHandler(BaseEventHandler):
 
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
+        self.schema_tracker_cursor = ReplTrackerCursor().repltracker_cursor
         self.schema_tracker = SchemaTracker(
-            schema_cursor=repltracker_cursor()
+            schema_cursor=self.schema_tracker_cursor
         )
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
 
@@ -71,7 +72,8 @@ class SchemaEventHandler(BaseEventHandler):
         )
         mysql_dump_handler.create_and_persist_schema_dump()
 
-        if isinstance(statement, AlterTableStatement) and not statement.does_rename_table():
+        if isinstance(statement,
+                      AlterTableStatement) and not statement.does_rename_table():
             if schema is None or len(schema.strip()) == 0:
                 database_name = statement.database_name
             else:
@@ -97,18 +99,14 @@ class SchemaEventHandler(BaseEventHandler):
                 table=table
             )
 
-            with rbr_state_session.connect_begin(ro=False) as session:
-                GlobalEventState.upsert(
-                    session=session,
-                    position=position.to_dict(),
-                    event_type=EventType.SCHEMA_EVENT,
-                    cluster_name=table.cluster_name,
-                    database_name=table.database_name,
-                    table_name=table.table_name,
-                )
-                mysql_dump_handler.delete_persisted_dump(
-                    session=session
-                )
+            _checkpoint(
+                position=position.to_dict(),
+                event_type=EventType.SCHEMA_EVENT,
+                cluster_name=table.cluster_name,
+                database_name=table.database_name,
+                table_name=table.table_name,
+                mysql_dump_handler=mysql_dump_handler
+            )
         else:
             if isinstance(statement, CreateDatabaseStatement):
                 database_name = None
@@ -118,18 +116,15 @@ class SchemaEventHandler(BaseEventHandler):
                 query=query,
                 database_name=database_name
             )
-            with rbr_state_session.connect_begin(ro=False) as session:
-                GlobalEventState.upsert(
-                    session=session,
-                    position=position.to_dict(),
-                    event_type=EventType.SCHEMA_EVENT,
-                    cluster_name=self.cluster_name,
-                    database_name=schema,
-                    table_name=None
-                )
-                mysql_dump_handler.delete_persisted_dump(
-                    session=session
-                )
+
+            _checkpoint(
+                position=position.to_dict(),
+                event_type=EventType.SCHEMA_EVENT,
+                cluster_name=self.cluster_name,
+                database_name=schema,
+                table_name=None,
+                mysql_dump_handler=mysql_dump_handler
+            )
 
     def _can_event_be_skipped(self, event, statement):
         blacklist = skipped = is_not_supported = False
@@ -192,3 +187,26 @@ class SchemaEventHandler(BaseEventHandler):
             query=query,
             database_name=database_name
         )
+
+
+def _checkpoint(
+        position,
+        event_type,
+        cluster_name,
+        database_name,
+        table_name,
+        mysql_dump_handler
+):
+    with rbr_state_session.connect_begin(ro=False) as session:
+        GlobalEventState.upsert(
+            session=session,
+            position=position,
+            event_type=event_type,
+            cluster_name=cluster_name,
+            database_name=database_name,
+            table_name=table_name
+        )
+        mysql_dump_handler.delete_persisted_dump(
+            session=session
+        )
+        session.commit()

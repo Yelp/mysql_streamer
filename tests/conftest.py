@@ -47,6 +47,15 @@ def services():
     ]
 
 
+@pytest.fixture(scope='session')
+def services_without_repl_handler():
+    return [
+        'rbrsource',
+        'schematracker',
+        'rbrstate'
+    ]
+
+
 @pytest.yield_fixture(scope='session')
 def containers(compose_file, services):
     with Containers(compose_file, services) as containers:
@@ -60,6 +69,17 @@ def containers(compose_file, services):
         for db in ["rbrsource", "schematracker", "rbrstate"]:
             db_health_check(containers, db, timeout_seconds)
         replication_handler_health_check(containers, timeout_seconds)
+        yield containers
+
+
+@pytest.yield_fixture(scope='session')
+def containers_without_repl_handler(
+        compose_file,
+        services_without_repl_handler
+):
+    with Containers(compose_file, services_without_repl_handler) as containers:
+        for db in ["rbrsource", "schematracker", "rbrstate"]:
+            db_health_check(containers, db, timeout_seconds)
         yield containers
 
 

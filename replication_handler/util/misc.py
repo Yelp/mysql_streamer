@@ -68,6 +68,16 @@ class DataEvent(object):
         self.message_type = message_type
 
 
+class ReplTrackerCursor(object):
+
+    @property
+    def repltracker_cursor(self):
+        if env_config.namespace != 'canary':
+            return ConnectionSet.schema_tracker_rw().repltracker.cursor()
+        else:
+            return ConnectionSet.schema_tracker_rw().repltracker_canary.cursor()
+
+
 def save_position(position_data, is_clean_shutdown=False):
     if not position_data or not position_data.last_published_message_position_info:
         log.info(
@@ -94,13 +104,7 @@ def save_position(position_data, is_clean_shutdown=False):
             topic_to_kafka_offset_map=topic_to_kafka_offset_map,
             cluster_name=position_info["cluster_name"]
         )
-
-
-def repltracker_cursor():
-    if env_config.namespace != 'canary':
-        return ConnectionSet.schema_tracker_rw().repltracker.cursor()
-    else:
-        return ConnectionSet.schema_tracker_rw().repltracker_canary.cursor()
+        session.commit()
 
 
 def create_mysql_passwd_file(secret_file, user, passwd):

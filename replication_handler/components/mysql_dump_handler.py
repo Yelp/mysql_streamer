@@ -14,7 +14,7 @@ from replication_handler.util.misc import delete_file
 from replication_handler.util.misc import get_dump_file
 
 
-logger = logging.getLogger('replication_handler.components._create_mysql_dump')
+logger = logging.getLogger('replication_handler.components.mysql_dump_handler')
 
 BLACKLISTED_DATABASES = ['information_schema', 'yelp_heartbeat']
 
@@ -83,7 +83,7 @@ class MySQLDumpHandler(object):
                 database_dump=database_dump,
                 cluster_name=self.cluster_name
             )
-            session.flush()
+            session.commit()
             return copy.copy(record)
         else:
             with rbr_state_session.connect_begin(ro=False) as session:
@@ -92,7 +92,7 @@ class MySQLDumpHandler(object):
                     database_dump=database_dump,
                     cluster_name=self.cluster_name
                 )
-                session.flush()
+                session.commit()
                 return copy.copy(record)
 
     def delete_persisted_dump(self, session=None):
@@ -107,14 +107,14 @@ class MySQLDumpHandler(object):
                 session=session,
                 cluster_name=self.cluster_name
             )
-            session.flush()
+            session.commit()
         else:
             with rbr_state_session.connect_begin(ro=False) as session:
                 MySQLDumps.delete_mysql_dump(
                     session=session,
                     cluster_name=self.cluster_name
                 )
-                session.flush()
+                session.commit()
 
     def mysql_dump_exists(self, session=None):
         """
@@ -171,9 +171,11 @@ class MySQLDumpHandler(object):
         with open(dump_file_path, 'w') as f:
             f.write(mysql_dump)
 
-        restore_cmd = "mysql --host={h} --port={p} < {dump_file_path}".format(
+        restore_cmd = "mysql --host={h} --port={p} --user={u} --password={pa} < {dump_file_path}".format(
             h=self.host,
             p=self.port,
+            u=self.user,
+            pa=self.password,
             dump_file_path=dump_file_path
         )
         logger.info("Running {restore_cmd} to restore dump file {dump}".format(
@@ -181,20 +183,10 @@ class MySQLDumpHandler(object):
             dump=dump_file_path
         ))
         p = Popen(restore_cmd, shell=True)
-        # TODO more meaningful name for 0 and raise exception if not 0
-        # TODO Grab stdout and stderr and place them in the log
         os.waitpid(p.pid, 0)
 
         delete_file(dump_file_path)
-        if p.returncode == 0:
-            logger.info("Successfully ran the restoration command")
-            return p.returncode
-        else:
-            logger.error("OOPS! Something went wrong while running restoration")
-            logger.error("Process existed with code {code}".format(
-                code=p.returncode
-            ))
-            return p.returncode
+        logger.info("Successfully ran the restoration command")
 
     def _create_database_dump(self, dump_file, secret_file):
         conn = pymysql.connect(

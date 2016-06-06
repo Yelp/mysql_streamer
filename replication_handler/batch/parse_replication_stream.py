@@ -203,7 +203,7 @@ class ParseReplicationStream(Batch):
         """
         sys.stdout.flush()
         sys.stderr.flush()
-        os._exit(n=0)
+        os._exit(0)
 
     def run(self):
         try:
@@ -224,6 +224,10 @@ class ParseReplicationStream(Batch):
                 logger.info("Starting to receive replication events")
                 last_event = None
                 for replication_handler_event in events:
+                    logger.info("[POSITION] is {p} and [EVENT] is {e}".format(
+                        p=replication_handler_event.position.__dict__,
+                        e=replication_handler_event.event.__dict__
+                    ))
                     self.process_event(
                         replication_handler_event=replication_handler_event,
                         handler_map=handler_map
@@ -231,7 +235,7 @@ class ParseReplicationStream(Batch):
                     last_event = replication_handler_event
 
                 logger.info("Normal shutdown")
-                event_type = self._get_event_type(last_event)
+                event_type = self._get_event_type(last_event, handler_map)
                 self._handle_graceful_termination(event_type=event_type)
         except Exception as exception:
             logger.exception(
@@ -277,6 +281,9 @@ class ParseReplicationStream(Batch):
         return handler_map
 
     def process_event(self, replication_handler_event, handler_map):
+        logger.info("Processing replication handler event {event}".format(
+            event=replication_handler_event
+        ))
         event_class = replication_handler_event.event.__class__
         handler_map[event_class].handler.handle_event(
             event=replication_handler_event.event,

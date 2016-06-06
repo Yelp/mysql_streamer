@@ -81,7 +81,7 @@ class EnvConfig(BaseConfig):
 
     @property
     def table_whitelist(self):
-        return staticconf.get('table_whitelist', default=None).value
+        return staticconf.get('table_whitelist').value
 
     @property
     def zookeeper_discovery_path(self):
@@ -181,7 +181,9 @@ class EnvConfig(BaseConfig):
 
 
 class DatabaseConfig(object):
-    """Used for reading database config out of topology.yaml in the environment"""
+    """
+    Used for reading database config out of topology.yaml in the environment
+    """
 
     def __init__(self, cluster_name, topology_path):
         load_default_config(topology_path)
@@ -202,13 +204,24 @@ class DatabaseConfig(object):
         return self._cluster_name
 
 
+class SourceDatabaseConfig(DatabaseConfig):
+
+    def __init__(self, cluster_name, topology_path):
+        DatabaseConfig.__init__(self, cluster_name, topology_path)
+
+
+class SchemaTrackingDatabaseConfig(DatabaseConfig):
+
+    def __init__(self, cluster_name, topology_path):
+        DatabaseConfig.__init__(self, cluster_name, topology_path)
+
 env_config = EnvConfig()
 
-source_database_config = DatabaseConfig(
+source_database_config = SourceDatabaseConfig(
     env_config.rbr_source_cluster,
     env_config.topology_path
 )
-schema_tracking_database_config = DatabaseConfig(
+schema_tracking_database_config = SchemaTrackingDatabaseConfig(
     env_config.schema_tracker_cluster,
     env_config.topology_path
 )

@@ -9,7 +9,7 @@ from pii_generator.components.pii_identifier import PIIIdentifier
 
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.config import env_config
-from replication_handler.util.misc import repltracker_cursor
+from replication_handler.util.misc import ReplTrackerCursor
 
 
 log = logging.getLogger('replication_handler.components.schema_wrapper')
@@ -45,8 +45,9 @@ class SchemaWrapper(object):
     def __init__(self, schematizer_client):
         self.reset_cache()
         self.schematizer_client = schematizer_client
+        self.schema_tracker_cursor = ReplTrackerCursor().repltracker_cursor
         self.schema_tracker = SchemaTracker(
-            repltracker_cursor()
+            self.schema_tracker_cursor
         )
         self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 

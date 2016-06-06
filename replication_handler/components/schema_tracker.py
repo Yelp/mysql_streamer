@@ -66,6 +66,9 @@ class SchemaTracker(object):
         query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(table.database_name, table.table_name)
         self.schema_tracker_cursor.execute(query_str)
         res = self.schema_tracker_cursor.fetchone()
-        create_res = ShowCreateResult(*res)
+        if type(res) is dict:
+            create_res = ShowCreateResult(*res.values())
+        else:
+            create_res = ShowCreateResult(*res)
         assert create_res.table == table.table_name
         return create_res
