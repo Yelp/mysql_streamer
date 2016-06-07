@@ -57,4 +57,4 @@ VOLUME  /tmp/logs
 
 WORKDIR /code
 ENV     BASEPATH /code
-CMD ["/usr/local/bin/dumb-init", "/code/virtualenv_run/bin/pypy", "/code/replication_handler/batch/parse_replication_stream.py", "-v", "--no-notification"]
+CMD ["/usr/local/bin/dumb-init", "/code/virtualenv_run/bin/pypy", "/code/replication_handler/batch/parse_replication_stream.py", "--no-notification"]
