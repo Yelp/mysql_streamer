@@ -163,7 +163,7 @@ class ParseReplicationStream(Batch):
             p=PROFILER_FILE_NAME
         ))
         vmprof.disable()
-        os.close(fd=self._profiler_fd)
+        os.close(self._profiler_fd)
         self._profiler_running = False
 
     def _enable_profiler(self):

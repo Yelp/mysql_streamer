@@ -41,6 +41,7 @@ class ReplicationStreamRestarter(object):
         """
         global_event_state = _get_global_event_state(self.cluster_name)
 
+        # TODO Finding the position here might not be required
         if position is None:
             position_finder = PositionFinder(
                 global_event_state=global_event_state

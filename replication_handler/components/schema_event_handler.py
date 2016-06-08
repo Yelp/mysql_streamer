@@ -5,6 +5,7 @@ from replication_handler.components.base_event_handler import Table
 from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.sql_handler import AlterTableStatement
+from replication_handler.components.sql_handler import RenameTableStatement
 from replication_handler.components.sql_handler import CreateDatabaseStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import source_database_config
@@ -108,6 +109,19 @@ class SchemaEventHandler(BaseEventHandler):
                 mysql_dump_handler=mysql_dump_handler
             )
         else:
+            if(isinstance(
+                    statement,
+                    AlterTableStatement
+            ) and statement.does_rename_table()) or isinstance(
+                statement,
+                RenameTableStatement
+            ):
+                logger.info(
+                    "Rename query {q} detected, clearing schema cache".format(
+                        q=query
+                    )
+                )
+                self.schema_wrapper.reset_cache()
             if isinstance(statement, CreateDatabaseStatement):
                 database_name = None
             else:

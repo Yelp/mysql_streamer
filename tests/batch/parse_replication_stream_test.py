@@ -16,17 +16,20 @@ from yelp_conn.connection_set import ConnectionSet
 import replication_handler.batch.parse_replication_stream
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.components.schema_event_handler import SchemaEventHandler
+from replication_handler.components.position_finder import PositionFinder
+from replication_handler.components.schema_event_handler import \
+    SchemaEventHandler
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
-from replication_handler.util.position import GtidPosition
+from replication_handler.util.position import GtidPosition, Position, \
+    LogPosition
 
 
 class TestParseReplicationStream(object):
 
-    @pytest.yield_fixture(autouse=True)
+    @pytest.yield_fixture
     def patch_zk(self):
         with mock.patch.object(
             replication_handler.batch.parse_replication_stream,
@@ -177,6 +180,7 @@ class TestParseReplicationStream(object):
         ) as mock_config:
             mock_config.register_dry_run = False
             mock_config.publish_dry_run = False
+            mock_config.resume_from_log_position = False
             mock_config.namespace = "test_namespace"
             yield mock_config
 
@@ -221,9 +225,9 @@ class TestParseReplicationStream(object):
         ]
         stream = self._init_and_run_batch()
         assert patch_schema_handle_event.call_args_list == \
-            [mock.call(schema_event, position_gtid_1)]
+            [mock.call(event=schema_event, position=position_gtid_1)]
         assert patch_data_handle_event.call_args_list == \
-            [mock.call(data_event, position_gtid_2)]
+            [mock.call(event=data_event, position=position_gtid_2)]
         assert patch_schema_handle_event.call_count == 1
         assert patch_data_handle_event.call_count == 1
         assert stream.register_dry_run is False
@@ -257,8 +261,8 @@ class TestParseReplicationStream(object):
         ]
         self._init_and_run_batch()
         assert patch_data_handle_event.call_args_list == [
-            mock.call(data_event, position_gtid_1),
-            mock.call(data_event, position_gtid_2)
+            mock.call(event=data_event, position=position_gtid_1),
+            mock.call(event=data_event, position=position_gtid_2)
         ]
         assert patch_data_handle_event.call_count == 2
         assert patch_save_position.call_count == 1
@@ -274,14 +278,19 @@ class TestParseReplicationStream(object):
         patch_producer,
         patch_exit,
     ):
-        patch_running.return_value = False
-        replication_stream = self._init_and_run_batch()
-        # ZKLock also calls patch_signal, so we have to work around it
-        assert [
-            mock.call(signal.SIGINT, replication_stream._handle_shutdown_signal),
-            mock.call(signal.SIGTERM, replication_stream._handle_shutdown_signal),
-            mock.call(signal.SIGUSR2, replication_stream._handle_profiler_signal),
-        ] in patch_signal.call_args_list
+        with mock.patch.object(
+                ParseReplicationStream,
+                '_get_event_type'
+        ) as mock_event:
+            mock_event.return_value = EventType.SCHEMA_EVENT
+            patch_running.return_value = False
+            replication_stream = self._init_and_run_batch()
+            # ZKLock also calls patch_signal, so we have to work around it
+            assert [
+                mock.call(signal.SIGINT, replication_stream._handle_shutdown_signal),
+                mock.call(signal.SIGTERM, replication_stream._handle_shutdown_signal),
+                mock.call(signal.SIGUSR2, replication_stream._handle_profiler_signal),
+            ] in patch_signal.call_args_list
 
     def test_graceful_exit_if_buffer_size_mismatch(
         self,
@@ -319,6 +328,7 @@ class TestParseReplicationStream(object):
             # Toggle profiling off
             replication_stream._handle_profiler_signal(None, None)
             assert vmprof_mock.disable.call_count == 1
+            os_mock.open.return_value
             os_mock.close.assert_called_once_with(
                 os_mock.open.return_value
             )
@@ -335,13 +345,18 @@ class TestParseReplicationStream(object):
         patch_running,
         patch_schema_tracker
     ):
-        patch_running.return_value = False
-        replication_stream = ParseReplicationStream()
-        replication_stream.current_event_type = EventType.DATA_EVENT
-        replication_stream.run()
-        assert producer.get_checkpoint_position_data.call_count == 1
-        assert producer.flush.call_count == 1
-        assert patch_exit.call_count == 1
+        with mock.patch.object(
+                ParseReplicationStream,
+                '_get_event_type'
+        ) as mock_event:
+            mock_event.return_value = EventType.DATA_EVENT
+            patch_running.return_value = False
+            replication_stream = ParseReplicationStream()
+            replication_stream.current_event_type = EventType.DATA_EVENT
+            replication_stream.run()
+            assert producer.get_checkpoint_position_data.call_count == 1
+            assert producer.flush.call_count == 1
+            assert patch_exit.call_count == 1
 
     def test_handle_graceful_termination_schema_event(
         self,
@@ -354,13 +369,18 @@ class TestParseReplicationStream(object):
         patch_running,
         patch_schema_tracker
     ):
-        patch_running.return_value = False
-        replication_stream = ParseReplicationStream()
-        replication_stream.current_event_type = EventType.SCHEMA_EVENT
-        replication_stream.run()
-        assert producer.get_checkpoint_position_data.call_count == 0
-        assert producer.flush.call_count == 0
-        assert patch_exit.call_count == 1
+        with mock.patch.object(
+                ParseReplicationStream,
+                '_get_event_type'
+        ) as mock_event:
+            mock_event.return_value = EventType.SCHEMA_EVENT
+            patch_running.return_value = False
+            replication_stream = ParseReplicationStream()
+            replication_stream.current_event_type = EventType.SCHEMA_EVENT
+            replication_stream.run()
+            assert producer.get_checkpoint_position_data.call_count == 0
+            assert producer.flush.call_count == 0
+            assert patch_exit.call_count == 1
 
     def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter):
         with mock.patch(

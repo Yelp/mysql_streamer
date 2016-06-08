@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import copy
 import logging
 
@@ -30,14 +34,15 @@ class RecoveryHandler(object):
     ready for consumption.
     """
 
-    def __init__(self,
-                 stream,
-                 producer,
-                 schema_wrapper,
-                 is_clean_shutdown=False,
-                 register_dry_run=False,
-                 publish_dry_run=False
-                 ):
+    def __init__(
+            self,
+            stream,
+            producer,
+            schema_wrapper,
+            is_clean_shutdown=False,
+            register_dry_run=False,
+            publish_dry_run=False
+    ):
         """
         Args:
             stream: (SimpleBinlogStreamReaderWrapper) stream reader
@@ -48,14 +53,14 @@ class RecoveryHandler(object):
                               for a message to be published
             publish_dry_run: Boolean for publishing a message or not
         """
-        self.cluster_name = source_database_config.cluster_name
-        self.entries = source_database_config.entries[CLUSTER_CONFIG]
         self.stream = stream
         self.producer = producer
         self.schema_wrapper = schema_wrapper
         self.is_clean_shutdown = is_clean_shutdown,
         self.register_dry_run = register_dry_run,
         self.publish_dry_run = publish_dry_run
+        self.cluster_name = source_database_config.cluster_name
+        self.entries = source_database_config.entries[CLUSTER_CONFIG]
 
         logger.info("Initiating recovery handler {j}".format(
             j=json.dumps(dict(
@@ -168,7 +173,8 @@ def _is_unsupported_event(event):
     statement = mysql_statement_factory(event.query)
     if isinstance(event, QueryEvent) and not statement.is_supported():
         logger.info("Filtering unsupported event {e} and query {q}".format(
-
+            e=event,
+            q=event.query
         ))
         return True
     return False
