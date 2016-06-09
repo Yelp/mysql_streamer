@@ -273,7 +273,7 @@ class TestParseReplicationStream(object):
         ) as mock_reset:
             self._init_and_run_batch()
             assert mock_flush.call_count == 0
-            assert mock_reset.call_count == 5
+            assert mock_reset.call_count == 4
 
     def test_meteorite_on(
         self,
@@ -315,7 +315,7 @@ class TestParseReplicationStream(object):
             self._init_and_run_batch()
             assert mock_flush.call_count == 2
             # note that this is only 2 because we mock the flush method, therefore we don't end up calling its internal reset
-            assert mock_reset.call_count == 3
+            assert mock_reset.call_count == 2
 
     def test_replication_stream_different_events(
         self,

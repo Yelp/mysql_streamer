@@ -182,12 +182,12 @@ class RecoveryHandler(object):
 
     def _build_messages(self, events):
         messages = []
+        Builder = (MessageBuilder
+                   if not self.changelog_mode else ChangeLogMessageBuilder)
         for event in events:
             # event here is ReplicationHandlerEvent
             schema_wrapper = (self._get_schema_wrapper(event)
                               if not self.changelog_mode else self.changelog_schema_wrapper)
-            Builder = (MessageBuilder
-                       if not self.changelog_mode else ChangeLogMessageBuilder)
             builder = Builder(
                 schema_wrapper,
                 event.event,
