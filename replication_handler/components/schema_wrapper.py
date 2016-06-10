@@ -52,7 +52,7 @@ class SchemaWrapper(object):
 
     def __getitem__(self, table):
         if table not in self.cache:
-            log.info("table '{}' is not in the cache")
+            log.info("table '{}' is not in the cache".format(table))
             self._fetch_schema_for_table(table)
         return self.cache[table]
 

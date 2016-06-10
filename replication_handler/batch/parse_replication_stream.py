@@ -23,6 +23,7 @@ from yelp_batch import Batch
 
 from replication_handler import config
 from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_wrapper import SchemaWrapper
@@ -63,6 +64,7 @@ class ParseReplicationStream(Batch):
         self.publish_dry_run = config.env_config.publish_dry_run
         self._running = True
         self._profiler_running = False
+        self._changelog_mode = config.env_config.changelog_mode
         if get_config().kafka_producer_buffer_size > config.env_config.recovery_queue_size:
             # Printing here, since this executes *before* logging is
             # configured.
@@ -134,17 +136,27 @@ class ParseReplicationStream(Batch):
         replication_stream_restarter.restart(
             self.producer,
             register_dry_run=self.register_dry_run,
+            changelog_mode=self._changelog_mode,
         )
         log.info("Replication stream successfully restarted.")
         return replication_stream_restarter.get_stream()
 
-    def _build_handler_map(self):
-        data_event_handler = DataEventHandler(
+    def _get_data_event_handler(self):
+        """Decides which data_event handler to choose as per changelog_mode
+        :returns: data_event_handler or change_log_data_event_handler
+                data_event_handler: Handler to be chosen for normal flow
+                change_log_data_event_handler: Handler for changelog flow
+        """
+        Handler = (DataEventHandler
+                   if not self._changelog_mode else ChangeLogDataEventHandler)
+        return Handler(
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
             stats_counter=self.counters['data_event_counter'],
             register_dry_run=self.register_dry_run,
         )
+
+    def _build_handler_map(self):
         schema_event_handler = SchemaEventHandler(
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
@@ -154,7 +166,7 @@ class ParseReplicationStream(Batch):
         handler_map = {
             DataEvent: HandlerInfo(
                 event_type=EventType.DATA_EVENT,
-                handler=data_event_handler
+                handler=self._get_data_event_handler()
             ),
             QueryEvent: HandlerInfo(
                 event_type=EventType.SCHEMA_EVENT,
@@ -175,6 +187,21 @@ class ParseReplicationStream(Batch):
         ) as producer:
             yield producer
 
+    def _get_data_event_counter(self):
+        """Decides which data_event counter to choose as per changelog_mode
+        :returns: data_event_counter or change_log_data_event_counter
+                data_event_counter: Counter to be chosen for normal flow
+                change_log_data_event_counter: Counter for changelog flow
+        """
+        event_type = 'data' if not self._changelog_mode else 'changelog'
+        return StatsCounter(
+            STAT_COUNTER_NAME,
+            event_type=event_type,
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            rbr_source_cluster=config.env_config.rbr_source_cluster,
+        )
+
     @contextmanager
     def _setup_counters(self):
         schema_event_counter = StatsCounter(
@@ -184,18 +211,12 @@ class ParseReplicationStream(Batch):
             container_env=config.env_config.container_env,
             rbr_source_cluster=config.env_config.rbr_source_cluster,
         )
-        data_event_counter = StatsCounter(
-            STAT_COUNTER_NAME,
-            event_type='data',
-            container_name=config.env_config.container_name,
-            container_env=config.env_config.container_env,
-            rbr_source_cluster=config.env_config.rbr_source_cluster,
-        )
+        data_event_counter = self._get_data_event_counter()
 
         try:
             yield {
                 'schema_event_counter': schema_event_counter,
-                'data_event_counter': data_event_counter
+                'data_event_counter': data_event_counter,
             }
         finally:
             if not config.env_config.disable_meteorite:

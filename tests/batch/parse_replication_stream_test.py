@@ -17,6 +17,7 @@ from yelp_conn.connection_set import ConnectionSet
 import replication_handler.batch.parse_replication_stream
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -180,7 +181,13 @@ class TestParseReplicationStream(object):
             mock_config.publish_dry_run = False
             mock_config.namespace = "test_namespace"
             mock_config.disable_meteorite = False
+            mock_config.changelog_mode = False
             yield mock_config
+
+    @pytest.yield_fixture
+    def patch_config_changelog_on(self, patch_config):
+            patch_config.changelog_mode = True
+            yield patch_config
 
     @pytest.yield_fixture
     def patch_config_meteorite_disabled(self, patch_config):
@@ -416,6 +423,29 @@ class TestParseReplicationStream(object):
     ):
         with pytest.raises(SystemExit):
             self._init_and_run_batch()
+
+    def test_changelog_ON_chooses_changelog_dataevent_handler(
+        self,
+        patch_config,
+        patch_config_changelog_on,
+        producer,
+    ):
+        replication_stream = ParseReplicationStream()
+        replication_stream.producer = producer
+        replication_stream.counters = mock.MagicMock()
+        handler_info = replication_stream._build_handler_map()[DataEvent]
+        assert isinstance(handler_info.handler, ChangeLogDataEventHandler)
+
+    def test_without_changelog_mode_dataevent_handler_is_default(
+        self,
+        patch_config,
+        producer,
+    ):
+        replication_stream = ParseReplicationStream()
+        replication_stream.producer = producer
+        replication_stream.counters = mock.MagicMock()
+        handler_info = replication_stream._build_handler_map()[DataEvent]
+        assert isinstance(handler_info.handler, DataEventHandler)
 
     def test_profiler_signal(
         self,
