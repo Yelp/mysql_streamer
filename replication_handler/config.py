@@ -11,27 +11,48 @@ from yelp_servlib import clog_util
 from yelp_servlib.config_util import load_default_config
 
 
-log = logging.getLogger('replication_handler.config')
+logger = logging.getLogger('replication_handler.config')
 
 
 class BaseConfig(object):
-    """Staticconf base object for managing config
-    TODO: (cheng|DATAPIPE-88) Removed the config reloading code, will work on that later.
+    """
+    Staticconf base object for managing config
+    TODO: (cheng|DATAPIPE-88) Removed the config reloading code,
+    will work on that later.
     """
 
-    def __init__(self, config_path='config.yaml', env_config_path='config-env-dev.yaml'):
-        SERVICE_CONFIG_PATH = os.environ.get('SERVICE_CONFIG_PATH', config_path)
-        SERVICE_ENV_CONFIG_PATH = os.environ.get('SERVICE_ENV_CONFIG_PATH', env_config_path)
-        log.info("SERVICE_CONFIG_PATH is {}".format(SERVICE_CONFIG_PATH))
-        log.info("SERVICE_ENV_CONFIG_PATH is {}".format(SERVICE_ENV_CONFIG_PATH))
-        load_default_config(SERVICE_CONFIG_PATH, SERVICE_ENV_CONFIG_PATH)
+    def __init__(
+            self,
+            config_path='config.yaml',
+            env_config_path='config-env-dev.yaml'
+    ):
+        self.service_config_path = os.environ.get(
+            'SERVICE_CONFIG_PATH',
+            config_path
+        )
+        self.service_env_config_path = os.environ.get(
+            'SERVICE_ENV_CONFIG_PATH', env_config_path
+        )
+        logger.info("loading service config from {s}".format(
+            s=self.service_config_path)
+        )
+        logger.info("Loading env service config from {s}".format(
+            s=self.service_env_config_path)
+        )
+        load_default_config(
+            self.service_config_path,
+            self.service_env_config_path
+        )
         yelp_conn.initialize()
         clog_util.initialize()
 
 
 class EnvConfig(BaseConfig):
-    """When we do staticconf.get(), we will get a ValueProxy object, sometimes it is
-    not accepted, so by calling value on that we will get its original value."""
+    """
+    When we do staticconf.get(), we will get a ValueProxy object,
+    sometimes it is not accepted, so by calling value on that we will get
+    its original value.
+    """
 
     @property
     def container_name(self):
@@ -81,8 +102,10 @@ class EnvConfig(BaseConfig):
 
     @property
     def table_whitelist(self):
-        return staticconf.get('table_whitelist').value
+        return staticconf.get('table_whitelist', default=None).value
 
+    # TODO This config is never used in setting up the replication handler.
+    # Its set in the clientlibs/data_pipeline hence to be removed.
     @property
     def zookeeper_discovery_path(self):
         return staticconf.get('zookeeper_discovery_path').value

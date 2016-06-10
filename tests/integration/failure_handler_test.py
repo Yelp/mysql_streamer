@@ -35,7 +35,7 @@ logger = logging.getLogger(
 TIMEOUT_SEC = 60
 
 
-@pytest.mark.itest
+@pytest.mark.functional_test
 class TestFailureHandler(object):
 
     @pytest.fixture

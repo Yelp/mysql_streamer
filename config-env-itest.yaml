@@ -12,7 +12,7 @@ disable_sensu: True
 
 topology_path: /nail/srv/configs/topology.yaml
 
-resume_stream: True
+resume_stream: False
 
 resume_from_log_position: True
 

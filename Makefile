@@ -1,4 +1,4 @@
-.PHONY: clean venv-dev test itest build-image compose-prefix
+.PHONY: clean venv-dev test itest functional_test build-image compose-prefix
 
 DOCKER_TAG ?= replication-handler-dev-$(USER)
 
