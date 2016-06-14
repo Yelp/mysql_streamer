@@ -16,6 +16,7 @@ from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import env_config
 from replication_handler.config import source_database_config
+from replication_handler.config import schema_tracking_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import DataEvent, save_position
@@ -59,8 +60,8 @@ class RecoveryHandler(object):
         self.is_clean_shutdown = is_clean_shutdown,
         self.register_dry_run = register_dry_run,
         self.publish_dry_run = publish_dry_run
-        self.cluster_name = source_database_config.cluster_name
-        self.entries = source_database_config.entries[CLUSTER_CONFIG]
+        self.cluster_name = schema_tracking_database_config.cluster_name
+        self.entries = schema_tracking_database_config.entries[CLUSTER_CONFIG]
 
         logger.info("Initiating recovery handler {j}".format(
             j=json.dumps(dict(
@@ -85,9 +86,13 @@ class RecoveryHandler(object):
             cluster_name=self.cluster_name,
             db_credentials=self.entries
         )
-        if mysql_dump_handler.mysql_dump_exists():
+        if mysql_dump_handler.mysql_dump_exists(
+                cluster_name=source_database_config.cluster_name
+        ):
             logger.info("Found a schema dump. Replaying the same")
-            mysql_dump_handler.recover()
+            mysql_dump_handler.recover(
+                cluster_name=source_database_config.cluster_name
+            )
 
     def _handle_unclean_shutdown(self):
         events = []

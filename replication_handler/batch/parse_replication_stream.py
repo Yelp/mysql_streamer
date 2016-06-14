@@ -8,7 +8,8 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 import vmprof
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError
 from data_pipeline.config import get_config
 from data_pipeline.expected_frequency import ExpectedFrequency
 from data_pipeline.producer import Producer
@@ -219,11 +220,12 @@ class ParseReplicationStream(Batch):
 
                 handler_map = self._build_handler_map()
                 stream = self._get_stream(position)
-                events = self._get_events(stream=stream)
 
                 logger.info("Starting to receive replication events")
                 last_event = None
-                for replication_handler_event in events:
+                for replication_handler_event in self._get_events(
+                        stream=stream
+                ):
                     logger.info("[POSITION] is {p} and [EVENT] is {e}".format(
                         p=replication_handler_event.position.__dict__,
                         e=replication_handler_event.event.__dict__
@@ -235,7 +237,9 @@ class ParseReplicationStream(Batch):
                     last_event = replication_handler_event
 
                 logger.info("Normal shutdown")
-                event_type = self._get_event_type(last_event, handler_map)
+                event_type = None
+                if last_event is not None:
+                    event_type = self._get_event_type(last_event, handler_map)
                 self._handle_graceful_termination(event_type=event_type)
         except Exception as exception:
             logger.exception(

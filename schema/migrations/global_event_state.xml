@@ -32,13 +32,44 @@
     </modifySql>
   </changeSet>
   <changeSet author="justinc" id="1443649459">
-      <dropNotNullConstraint
-          columnName="table_name"
-          tableName="global_event_state"
-          columnDataType="VARCHAR(255)"/>
-      <dropNotNullConstraint
-          columnName="database_name"
-          tableName="global_event_state"
-          columnDataType="VARCHAR(255)"/>
+    <dropNotNullConstraint
+      columnName="table_name"
+      tableName="global_event_state"
+      columnDataType="VARCHAR(255)"/>
+    <dropNotNullConstraint
+      columnName="database_name"
+      tableName="global_event_state"
+      columnDataType="VARCHAR(255)"/>
+  </changeSet>
+  <changeSet author="pxu" id="1465601479">
+    <renameTable 
+      newTableName="global_event_state_backup"
+      oldTableName="global_event_state"/>
+    <createTable tableName="global_event_state">
+      <column autoIncrement="true" name="id" type="INT(11)">
+        <constraints primaryKey="true"/>
+      </column>
+      <column name="position" type="TEXT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="is_clean_shutdown" type="TINYINT(1)" defaultValue="0">
+        <constraints nullable="false"/>
+      </column>
+      <column name="event_type" type="VARCHAR(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="cluster_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="database_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="table_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="time_updated" type="INT(11)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
   </changeSet>
 </databaseChangeLog>

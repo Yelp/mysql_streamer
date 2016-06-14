@@ -8,7 +8,7 @@ from replication_handler.components.sql_handler import AlterTableStatement
 from replication_handler.components.sql_handler import RenameTableStatement
 from replication_handler.components.sql_handler import CreateDatabaseStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
-from replication_handler.config import source_database_config
+from replication_handler.config import schema_tracking_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
@@ -69,7 +69,7 @@ class SchemaEventHandler(BaseEventHandler):
 
         mysql_dump_handler = MySQLDumpHandler(
             cluster_name=self.cluster_name,
-            db_credentials=source_database_config.entries[CLUSTER_CONFIG]
+            db_credentials=schema_tracking_database_config.entries[CLUSTER_CONFIG]
         )
         mysql_dump_handler.create_and_persist_schema_dump()
 

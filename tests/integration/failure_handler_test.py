@@ -15,6 +15,7 @@ from replication_handler.config import EnvConfig
 from replication_handler.config import SchemaTrackingDatabaseConfig
 from replication_handler.config import SourceDatabaseConfig
 from replication_handler.models.database import rbr_state_session
+from replication_handler.models.mysql_dumps import MySQLDumps
 from replication_handler.testing_helper.repl_handler_restart_helper import \
     ReplHandlerRestartHelper
 from replication_handler.testing_helper.util import RBR_SOURCE
@@ -37,14 +38,10 @@ TIMEOUT_SEC = 60
 
 @pytest.mark.functional_test
 class TestFailureHandler(object):
-
-    @pytest.fixture
-    def table_name(self):
-        return "Hogwarts"
-
-    @pytest.fixture
-    def table_name_two(self):
-        return "Drumstrang"
+    """
+    CAUTION: The tests below are very fragile, depend on each other and have a
+    few things hardcoded. Edit this only if you fully understand the working.
+    """
 
     @pytest.fixture
     def create_table_query(self):
@@ -62,10 +59,16 @@ class TestFailureHandler(object):
         """
 
     @pytest.fixture
-    def alter_table_query_one(self):
+    def alter_table_query(self):
         return """ALTER TABLE {table_name}
         ADD `MuggleBorn` BOOLEAN NOT NULL DEFAULT FALSE
         """
+
+    @pytest.fixture
+    def test_rbr_state_session(self, containers_without_repl_handler):
+        engine = get_db_engine(containers_without_repl_handler, RBR_STATE)
+        Session = sessionmaker(bind=engine)
+        return Session()
 
     @pytest.fixture
     def rbrsource_ip(self, containers_without_repl_handler):
@@ -241,7 +244,6 @@ class TestFailureHandler(object):
             RBR_SOURCE,
             verify_create_table_query
         )
-        print "Asserting Hogwarts is created"
         self.assert_expected_result(
             verify_create_table_result,
             expected_create_table_result
@@ -261,7 +263,9 @@ class TestFailureHandler(object):
             schema_blacklist,
             table_whitelist,
             repl_tracker_cursor,
-            second_restart
+            resume_stream,
+            resume_from_log_position,
+            end_time=30
     ):
         cwd = os.path.dirname(os.path.realpath('__file__'))
         with reconfigure(
@@ -303,8 +307,11 @@ class TestFailureHandler(object):
                     mock_force_exit.__get__ = mock.Mock(return_value=True)
                     mock_schema_blacklist.__get__ = mock.Mock(return_value=schema_blacklist)
                     mock_table_whitelist.__get__ = mock.Mock(return_value=table_whitelist)
-                    mock_resume_from_log_position.__get__ = mock.Mock(return_value=True)
-                    if second_restart:
+                    if resume_from_log_position:
+                        mock_resume_from_log_position.__get__ = mock.Mock(return_value=True)
+                    else:
+                        mock_resume_from_log_position.__get__ = mock.Mock(return_value=False)
+                    if resume_stream:
                         mock_resume_stream.__get__ = mock.Mock(return_value=True)
                     else:
                         mock_resume_stream.__get__ = mock.Mock(return_value=False)
@@ -330,11 +337,14 @@ class TestFailureHandler(object):
                         mock_schema_entries.__get__ = mock.Mock(return_value=schema_entries)
                         mock_schema_cluster_name.__get__ = mock.Mock(return_value='repltracker')
                         mock_state_session.return_value.__enter__.return_value = mock_rbrstate_session
-                        test_helper = ReplHandlerRestartHelper(num_of_queries_to_process)
+                        test_helper = ReplHandlerRestartHelper(
+                            num_queries_to_process=num_of_queries_to_process,
+                            end_time=end_time
+                        )
                         test_helper.start()
+                        return test_helper
 
     def increment_heartbeat(self, containers_without_repl_handler):
-        print "Incrementing heartbeat"
         increment_heartbeat(containers_without_repl_handler)
 
     def exec_query(
@@ -344,21 +354,18 @@ class TestFailureHandler(object):
             table_name,
             db_name=RBR_SOURCE
     ):
-        print "Executing query {query}".format(query=query)
         execute_query_get_one_row(
             containers=containers_without_repl_handler,
             db_name=db_name,
             query=query.format(table_name=table_name)
         )
 
-    def test_failure_handler(
+    def test_unclean_shutdown_processing_schema_events(
             self,
             containers_without_repl_handler,
             create_table_query,
             drop_table_query,
-            alter_table_query_one,
-            table_name,
-            table_name_two,
+            alter_table_query,
             schematizer_host_and_port,
             source_cluster_config,
             schema_cluster_config,
@@ -381,6 +388,8 @@ class TestFailureHandler(object):
             f.write("  - - \"{ip}\"\n".format(ip=zk_ip))
             f.write("    - 2181\n")
 
+        table_name = "Hogwarts"
+        table_name_two = "Durmstrang"
         with reconfigure(
                 zookeeper_discovery_path="{cwd}/zk.yaml".format(cwd=cwd)
         ):
@@ -394,11 +403,10 @@ class TestFailureHandler(object):
 
             self.exec_query(
                 containers_without_repl_handler,
-                alter_table_query_one,
+                alter_table_query,
                 table_name
             )
 
-            print 'Starting replication handler'
             self.start_repl_handler(
                 source_cluster_config,
                 schema_cluster_config,
@@ -412,10 +420,10 @@ class TestFailureHandler(object):
                 schema_blacklist,
                 table_whitelist,
                 repl_tracker_cursor,
-                False
+                False,
+                True
             )
 
-            print 'Verifying table exists'
             verification_thread = Thread(
                 target=self.verify_table_exists,
                 args=[
@@ -447,38 +455,121 @@ class TestFailureHandler(object):
                     schema_blacklist,
                     table_whitelist,
                     repl_tracker_cursor,
+                    True,
                     True
                 )
 
-                print 'Dropping created tables for replaying of dump'
-                self.exec_query(
-                    containers_without_repl_handler,
-                    drop_table_query,
-                    table_name_two
-                )
+            repl_handler = self.start_repl_handler(
+                source_cluster_config,
+                schema_cluster_config,
+                source_entries,
+                schema_entries,
+                mock_rbrstate_session,
+                schematizer_host_and_port,
+                1,
+                kafka_ip,
+                zookeeper_ip,
+                schema_blacklist,
+                table_whitelist,
+                repl_tracker_cursor,
+                True,
+                True
+            )
 
-                self.exec_query(
-                    containers_without_repl_handler,
-                    drop_table_query,
-                    table_name_two,
-                    SCHEMA_TRACKER
-                )
+            assert repl_handler.last_event_processed.event.query == create_table_query.format(
+                table_name=table_name_two
+            ).rstrip()
 
-                self.start_repl_handler(
-                    source_cluster_config,
-                    schema_cluster_config,
-                    source_entries,
-                    schema_entries,
-                    mock_rbrstate_session,
-                    schematizer_host_and_port,
-                    1,
-                    kafka_ip,
-                    zookeeper_ip,
-                    schema_blacklist,
-                    table_whitelist,
-                    repl_tracker_cursor,
-                    True
-                )
+        delete_file("{cwd}/zk.yaml".format(cwd=cwd))
+
+    def test_clean_shutdown(
+            self,
+            containers_without_repl_handler,
+            create_table_query,
+            alter_table_query,
+            schematizer_host_and_port,
+            source_cluster_config,
+            schema_cluster_config,
+            source_entries,
+            schema_entries,
+            mock_rbrstate_session,
+            kafka_ip,
+            zookeeper_ip,
+            schema_blacklist,
+            table_whitelist,
+            repl_tracker_cursor,
+    ):
+
+        zk_ip = Containers.get_container_ip_address(
+            project=containers_without_repl_handler.project,
+            service='zookeeper'
+        )
+        cwd = os.path.dirname(os.path.realpath('__file__'))
+        with open("{cwd}/zk.yaml".format(cwd=cwd), 'w') as f:
+            f.write("---\n")
+            f.write("  - - \"{ip}\"\n".format(ip=zk_ip))
+            f.write("    - 2181\n")
+
+        table_name = "Gryffindor"
+
+        with reconfigure(
+                zookeeper_discovery_path="{cwd}/zk.yaml".format(cwd=cwd)
+        ):
+            self.exec_query(
+                containers_without_repl_handler,
+                create_table_query,
+                table_name
+            )
+
+            self.start_repl_handler(
+                source_cluster_config,
+                schema_cluster_config,
+                source_entries,
+                schema_entries,
+                mock_rbrstate_session,
+                schematizer_host_and_port,
+                1,
+                kafka_ip,
+                zookeeper_ip,
+                schema_blacklist,
+                table_whitelist,
+                repl_tracker_cursor,
+                True,
+                False
+            )
+
+            verification_thread = Thread(
+                target=self.verify_table_exists,
+                args=[
+                    containers_without_repl_handler,
+                    table_name
+                ]
+            )
+            verification_thread.start()
+
+            self.exec_query(
+                containers_without_repl_handler,
+                alter_table_query,
+                table_name
+            )
+            repl_handler = self.start_repl_handler(
+                source_cluster_config,
+                schema_cluster_config,
+                source_entries,
+                schema_entries,
+                mock_rbrstate_session,
+                schematizer_host_and_port,
+                1,
+                kafka_ip,
+                zookeeper_ip,
+                schema_blacklist,
+                table_whitelist,
+                repl_tracker_cursor,
+                True,
+                False
+            )
+            assert repl_handler.processed_queries == 1
+            assert repl_handler.last_event_processed.event.query == alter_table_query.format(table_name=table_name).rstrip()
 
         delete_file("{cwd}/zk.yaml".format(cwd=cwd))
 
@@ -496,7 +587,6 @@ def mocked_checkpoint(
         table_name,
         mysql_dump_handler
 ):
-    print 'Mocking checkpoint'
     return True
 
 

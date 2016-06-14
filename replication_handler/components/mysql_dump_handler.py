@@ -116,49 +116,53 @@ class MySQLDumpHandler(object):
                 )
                 session.commit()
 
-    def mysql_dump_exists(self, session=None):
+    def mysql_dump_exists(self, cluster_name, session=None):
         """
         Checks the MySQLDump table to see if a row exists or not.
         Args:
             session: Database session to perform transactions.
                      Defaults to None
+            cluster_name: Name of the cluster which the replication
+                          handler is tracking.
         Returns: True if row exists else False.
         """
         logger.info("Checking if a schema dump exists or not")
         if session:
             ret = MySQLDumps.dump_exists(
                 session=session,
-                cluster_name=self.cluster_name
+                cluster_name=cluster_name
             )
             return ret
         else:
             with rbr_state_session.connect_begin(ro=True) as session:
                 ret = MySQLDumps.dump_exists(
                     session=session,
-                    cluster_name=self.cluster_name
+                    cluster_name=cluster_name
                 )
             return ret
 
-    def recover(self, session=None):
+    def recover(self, cluster_name, session=None):
         """
         Runs the recovery by retrieving the MySQL dump and replaying it.
         Args:
             session: Database session to perform transactions.
                      Defaults to None
+            cluster_name: Name of the cluster which the replication
+                          handler is tracking.
         Returns: The exit code of the process running the restoration command.
         """
         logger.info("Recovering stored mysql dump from db")
         if session:
             mysql_dump = MySQLDumps.get_latest_mysql_dump(
                 session=session,
-                cluster_name=self.cluster_name
+                cluster_name=cluster_name
             )
             mysql_dump = copy.copy(mysql_dump)
         else:
             with rbr_state_session.connect_begin(ro=True) as session:
                 mysql_dump = MySQLDumps.get_latest_mysql_dump(
                     session=session,
-                    cluster_name=self.cluster_name
+                    cluster_name=cluster_name
                 )
                 mysql_dump = copy.copy(mysql_dump)
 
@@ -187,6 +191,18 @@ class MySQLDumpHandler(object):
 
         delete_file(dump_file_path)
         logger.info("Successfully ran the restoration command")
+        logger.info("Deleting the mysql dump")
+        if session:
+            MySQLDumps.delete_mysql_dump(
+                session=session,
+                cluster_name=cluster_name
+            )
+        else:
+            with rbr_state_session.connect_begin(ro=True) as session:
+                MySQLDumps.delete_mysql_dump(
+                    session=session,
+                    cluster_name=cluster_name
+                )
 
     def _create_database_dump(self, dump_file, secret_file):
         conn = pymysql.connect(
