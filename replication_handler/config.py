@@ -77,6 +77,14 @@ class EnvConfig(BaseConfig):
         return staticconf.get('rbr_source_cluster').value
 
     @property
+    def changelog_schemaname(self):
+        return staticconf.get('changelog_schemaname').value
+
+    @property
+    def changelog_mode(self):
+        return staticconf.get('changelog_mode', False).value
+
+    @property
     def schema_tracker_cluster(self):
         return staticconf.get('schema_tracker_cluster').value
 

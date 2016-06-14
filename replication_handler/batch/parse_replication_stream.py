@@ -1,4 +1,7 @@
-import copy
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import logging
 import os
 import signal
@@ -73,6 +76,7 @@ class ParseReplicationStream(Batch):
         # TODO try to set this false here and set true after ZK lock
         self._running = True
         self._profiler_running = False
+        self._changelog_mode = config.env_config.changelog_mode
         if get_config().kafka_producer_buffer_size > config.env_config.recovery_queue_size:
             # Printing here, since this executes *before* logging is
             # configured.
@@ -109,9 +113,10 @@ class ParseReplicationStream(Batch):
             container_env=self.container_env,
             rbr_source_cluster=self.rbr_source_cluster
         )
+        event_type = 'data' if not self._changelog_mode else 'changelog'
         data_event_counter = StatsCounter(
             stat_counter_name=STATS_COUNTER_NAME,
-            event_type='data',
+            event_type=event_type,
             container_name=self.container_name,
             container_env=self.container_env,
             rbr_source_cluster=self.rbr_source_cluster
@@ -123,8 +128,12 @@ class ParseReplicationStream(Batch):
                 'data_event_counter': data_event_counter
             }
         finally:
-            schema_event_counter.flush()
-            data_event_counter.flush()
+            if not config.env_config.disable_meteorite:
+                schema_event_counter.flush()
+                data_event_counter.flush()
+            else:
+                schema_event_counter._reset()
+                data_event_counter._reset()
 
     @contextmanager
     def _register_signal_handlers(self):

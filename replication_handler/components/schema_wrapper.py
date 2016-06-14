@@ -17,7 +17,7 @@ log = logging.getLogger('replication_handler.components.schema_wrapper')
 
 SchemaWrapperEntry = namedtuple(
     'SchemaWrapperEntry',
-    ('topic', 'schema_id', 'primary_keys')
+    ('schema_id', 'primary_keys')
 )
 
 
@@ -53,7 +53,7 @@ class SchemaWrapper(object):
 
     def __getitem__(self, table):
         if table not in self.cache:
-            log.info("table '{}' is not in the cache")
+            log.info("table '{}' is not in the cache".format(table))
             self._fetch_schema_for_table(table)
         return self.cache[table]
 
@@ -120,7 +120,6 @@ class SchemaWrapper(object):
 
     def _populate_schema_cache(self, table, resp):
         self.cache[table] = SchemaWrapperEntry(
-            topic=str(resp.topic.name),
             schema_id=resp.schema_id,
             primary_keys=resp.primary_keys,
         )
@@ -128,4 +127,4 @@ class SchemaWrapper(object):
     @property
     def _dry_run_schema(self):
         """A schema wrapper to go with dry run mode."""
-        return SchemaWrapperEntry(topic=str('dry_run'), schema_id=1, primary_keys=[])
+        return SchemaWrapperEntry(schema_id=1, primary_keys=[])

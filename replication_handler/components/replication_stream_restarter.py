@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import copy
 import logging
 
@@ -25,7 +29,13 @@ class ReplicationStreamRestarter(object):
         self.cluster_name = cluster_name
         self.schema_wrapper = schema_wrapper
 
-    def restart(self, producer, register_dry_run=True, position=None):
+    def restart(
+        self,
+        producer,
+        register_dry_run=True,
+        changelog_mode = False,
+        position=None
+    ):
         """
         Use this to restart the replication stream. This will automatically
         cause recovery if required.
@@ -34,6 +44,8 @@ class ReplicationStreamRestarter(object):
             register_dry_run: Boolean to indicate if a schema has to be
                               registered for a message to be published or not.
                               Defaults to True
+            changelog_mode: Boolean, if True, executes change_log flow.
+                            Defaults to False
             position: The log position from where the replication handler needs
                       to start reading streams.
                       Defaults to None (Retrieves position from GlobalEventState
@@ -61,7 +73,8 @@ class ReplicationStreamRestarter(object):
                 producer=producer,
                 schema_wrapper=self.schema_wrapper,
                 is_clean_shutdown=global_event_state.is_clean_shutdown,
-                register_dry_run=register_dry_run
+                register_dry_run=register_dry_run,
+                changelog_mode=changelog_mode
             )
 
             if not global_event_state.is_clean_shutdown:

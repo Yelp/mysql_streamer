@@ -7,20 +7,19 @@ import logging
 from data_pipeline.message import UpdateMessage
 
 from replication_handler.config import source_database_config
+from replication_handler.util.message_builder import MessageBuilder
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
 
 
-class MessageBuilder(object):
+class ChangeLogMessageBuilder(MessageBuilder):
     """ This class knows how to convert a data event into a respective message.
 
     Args:
-      schema_info(SchemaInfo object): contain schema_id.
       event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
-      position(Position object): contains position information for this event in binlog.
-      register_dry_run(boolean, optional): whether a schema has to be registered for a message to be published.
-      Defaults to True.
+      schema_info(SchemaInfo object): contain topic/schema_id.
+      resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
     """
 
     def __init__(self, schema_info, event, position, register_dry_run=True):
@@ -28,6 +27,13 @@ class MessageBuilder(object):
         self.event = event
         self.position = position
         self.register_dry_run = register_dry_run
+
+    def _create_payload(self, data):
+        payload_data = {"table_schema": self.event.schema,
+                        "table_name": self.event.table,
+                        "id": data['id'],
+                        }
+        return payload_data
 
     def build_message(self):
         upstream_position_info = {
@@ -39,7 +45,7 @@ class MessageBuilder(object):
         message_params = {
             "schema_id": self.schema_info.schema_id,
             "keys": tuple(self.schema_info.primary_keys),
-            "payload_data": self._get_values(self.event.row),
+            "payload_data": self._create_payload(self._get_values(self.event.row)),
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
             "timestamp": self.event.timestamp,
@@ -47,16 +53,7 @@ class MessageBuilder(object):
         }
 
         if self.event.message_type == UpdateMessage:
-            message_params["previous_payload_data"] = self.event.row["before_values"]
+            message_params["previous_payload_data"] = self._create_payload(
+                self.event.row["before_values"])
 
         return self.event.message_type(**message_params)
-
-    def _get_values(self, row):
-        """Gets the new value of the row changed.  If add row occurs,
-           row['values'] contains the data.
-           If an update row occurs, row['after_values'] contains the data.
-        """
-        if 'values' in row:
-            return row['values']
-        elif 'after_values' in row:
-            return row['after_values']

@@ -73,18 +73,16 @@ class TestSchemaWrapper(object):
         base_schema_wrapper,
         test_response,
         table,
-        topic,
     ):
         base_schema_wrapper._populate_schema_cache(table, test_response)
         resp = base_schema_wrapper[table]
-        self._assert_expected_result(resp, topic)
+        self._assert_expected_result(resp)
 
-    def test_get_schema_already_cached(self, base_schema_wrapper, table, topic):
+    def test_get_schema_already_cached(self, base_schema_wrapper, table):
         resp = base_schema_wrapper[table]
-        self._assert_expected_result(resp, topic)
+        self._assert_expected_result(resp)
 
-    def _assert_expected_result(self, resp, topic):
-        assert resp.topic == topic.name
+    def _assert_expected_result(self, resp):
         assert resp.schema_id == 0
         assert resp.primary_keys == ['primary_key']
 

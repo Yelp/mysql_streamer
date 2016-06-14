@@ -24,6 +24,7 @@ from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import LogPosition
 
 
+@pytest.mark.usefixtures('patch_message_contains_pii')
 class TestRecoveryHandler(object):
 
     @pytest.fixture
@@ -46,11 +47,21 @@ class TestRecoveryHandler(object):
     def mock_schema_wrapper(self):
         mock_schema_wrapper = mock.MagicMock()
         mock_schema_wrapper.__getitem__.return_value = SchemaWrapperEntry(
-            topic=str("test_topic"),
             schema_id=1,
             primary_keys=['key']
         )
         return mock_schema_wrapper
+
+    @pytest.yield_fixture
+    def patch_message_topic(self, mock_schema_wrapper):
+        with mock.patch(
+            'data_pipeline.message.Message._schematizer'
+        ), mock.patch(
+            'data_pipeline.message.Message.topic',
+            new_callable=mock.PropertyMock
+        ) as mock_topic:
+            mock_topic.return_value = str("test_topic")
+            yield
 
     @pytest.fixture
     def session(self):
@@ -92,7 +103,7 @@ class TestRecoveryHandler(object):
     @pytest.fixture
     def data_event(self):
         data_event = mock.Mock(DataEvent)
-        data_event.row = {"values": {'a': 1}}
+        data_event.row = {"values": {'a': 1, 'id': 42}}
         data_event.message_type = CreateMessage
         data_event.table = 'business'
         data_event.schema = 'yelp'
@@ -225,6 +236,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_save_position,
         patch_config_recovery_queue_size,
+        patch_message_topic
     ):
         event_list = [
             rh_data_event_before_master_log_pos,
@@ -276,6 +288,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
+        patch_message_topic
     ):
         event_list = [
             rh_data_event_before_master_log_pos,
@@ -309,6 +322,44 @@ class TestRecoveryHandler(object):
                 producer.ensure_messages_published.call_args[1].get('messages')
             ) == 4
 
+    def test_recovery_process_catch_up_with_master_for_changelog_mode(
+        self,
+        stream,
+        producer,
+        rh_unsupported_query_event,
+        rh_data_event_before_master_log_pos,
+        rh_data_event_after_master_log_pos,
+        mock_schema_wrapper,
+        mock_rbr_source_cursor,
+        patch_rbr_source_connection,
+        patch_get_topic_to_kafka_offset_map,
+        patch_save_position,
+        patch_message_topic
+    ):
+        schematizer_client = mock_schema_wrapper.schematizer_client
+        schematizer_client.register_schema_from_schema_json.return_value = (
+            mock.MagicMock(schema_id=1))
+        event_list = [
+            rh_data_event_before_master_log_pos,
+            rh_unsupported_query_event,
+            rh_data_event_before_master_log_pos,
+            rh_data_event_before_master_log_pos,
+            rh_unsupported_query_event,
+            rh_data_event_after_master_log_pos,
+            rh_data_event_after_master_log_pos,
+        ]
+        self._setup_stream_and_recover_for_unclean_shutdown(
+            event_list,
+            stream,
+            producer,
+            mock_schema_wrapper,
+            mock_rbr_source_cursor,
+            changelog_mode=True,
+        )
+        # Even though we have 5 data events in the stream, the recovery process halted
+        # after we caught up to master
+        assert len(producer.ensure_messages_published.call_args[0][0]) == 4
+
     def test_recovery_process_with_supported_query_event(
         self,
         stream,
@@ -322,6 +373,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
+        patch_message_topic
     ):
         event_list = [
             rh_data_event_before_master_log_pos,
@@ -367,6 +419,7 @@ class TestRecoveryHandler(object):
         num_rbr_cursor_calls,
         patch_config_recovery_queue_size=None,
         max_size=None,
+        changelog_mode=False
     ):
         stream.peek.side_effect = event_list
         stream.next.side_effect = event_list
@@ -374,7 +427,8 @@ class TestRecoveryHandler(object):
             stream,
             producer,
             mock_schema_wrapper,
-            is_clean_shutdown=False
+            is_clean_shutdown=False,
+            changelog_mode=changelog_mode
         )
         recovery_handler.is_clean_shutdown = False
         recovery_handler.register_dry_run = False

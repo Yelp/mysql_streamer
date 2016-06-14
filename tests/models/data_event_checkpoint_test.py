@@ -2,7 +2,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import mock
 import pytest
+from data_pipeline.tools.meteorite_wrappers import StatTimer
 
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 
@@ -43,6 +45,30 @@ class TestDataEventCheckpoint(object):
             first_kafka_topic: first_kafka_offset,
             second_kafka_topic: second_kafka_offset,
         }
+
+    @pytest.yield_fixture
+    def patch_config(self):
+        with mock.patch(
+            'replication_handler.models.data_event_checkpoint.config.env_config'
+        ) as mock_config:
+            mock_config.namespace = "test_namespace"
+            mock_config.disable_meteorite = False
+            mock_config.container_name = 'none'
+            mock_config.container_env = 'raw'
+            mock_config.rbr_source_cluster = 'replhandler'
+            yield mock_config
+
+    @pytest.yield_fixture
+    def patch_config_meteorite_disabled(self):
+        with mock.patch(
+            'replication_handler.batch.parse_replication_stream.config.env_config'
+        ) as mock_config:
+            mock_config.namespace = "test_namespace"
+            mock_config.disable_meteorite = True
+            mock_config.container_name = 'none'
+            mock_config.container_env = 'raw'
+            mock_config.rbr_source_cluster = 'replhandler'
+            yield mock_config
 
     @pytest.yield_fixture
     def data_event_checkpoint(
@@ -124,7 +150,7 @@ class TestDataEventCheckpoint(object):
         first_kafka_offset,
     ):
         ts_before_upsert = self.get_time_updated(sandbox_session, cluster_name, first_kafka_topic)
-        
+
         DataEventCheckpoint.upsert_data_event_checkpoint(
             sandbox_session,
             topic_to_kafka_offset_map={first_kafka_topic: first_kafka_offset},
@@ -167,3 +193,51 @@ class TestDataEventCheckpoint(object):
 
         assert ts_before_upsert != ts_after_upsert
         assert topic_to_kafka_offset_map == expected_topic_to_kafka_offset_map
+
+    def test_meteorite_on(
+        self,
+        patch_config,
+        sandbox_session,
+        data_event_checkpoint,
+        cluster_name,
+        expected_topic_to_kafka_offset_map,
+        second_kafka_topic,
+    ):
+        with mock.patch.object(
+            StatTimer,
+            'start'
+        ) as mock_start, mock.patch.object(
+            StatTimer,
+            'stop'
+        ) as mock_stop:
+            DataEventCheckpoint.upsert_data_event_checkpoint(
+                sandbox_session,
+                topic_to_kafka_offset_map={second_kafka_topic: 300},
+                cluster_name=cluster_name,
+            )
+            assert mock_start.call_count == 1
+            assert mock_stop.call_count == 1
+
+    def test_meteorite_off(
+        self,
+        patch_config_meteorite_disabled,
+        sandbox_session,
+        data_event_checkpoint,
+        cluster_name,
+        expected_topic_to_kafka_offset_map,
+        second_kafka_topic,
+    ):
+        with mock.patch.object(
+            StatTimer,
+            'start'
+        ) as mock_start, mock.patch.object(
+            StatTimer,
+            'stop'
+        ) as mock_stop:
+            DataEventCheckpoint.upsert_data_event_checkpoint(
+                sandbox_session,
+                topic_to_kafka_offset_map={second_kafka_topic: 300},
+                cluster_name=cluster_name,
+            )
+            assert mock_start.call_count == 0
+            assert mock_stop.call_count == 0

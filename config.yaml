@@ -10,6 +10,10 @@ publish_dry_run: True
 
 topology_path: topology.yaml
 
+changelog_schemaname: changelog.v2
+
+changelog_mode: False
+
 schema_blacklist:
     - information_schema
     - mysql

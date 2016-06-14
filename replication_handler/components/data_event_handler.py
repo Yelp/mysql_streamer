@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import logging
 
+from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.util.message_builder import MessageBuilder
@@ -42,7 +43,8 @@ class DataEventHandler(BaseEventHandler):
         )
         message = builder.build_message()
         self.producer.publish(message)
-        self.stats_counter.increment(event.table)
+        if not config.env_config.disable_meteorite:
+            self.stats_counter.increment(event.table)
 
     def _get_payload_schema(self, table):
         """Get payload avro schema from schema wrapper or from schema store"""

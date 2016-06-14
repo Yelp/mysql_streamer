@@ -9,6 +9,7 @@ import simplejson as json
 from pymysqlreplication.event import QueryEvent
 
 from replication_handler.components.base_event_handler import Table
+from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from yelp_conn.connection_set import ConnectionSet
 
@@ -18,8 +19,10 @@ from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 from replication_handler.config import schema_tracking_database_config
 from replication_handler.models.database import rbr_state_session
+from replication_handler.util.change_log_message_builder import ChangeLogMessageBuilder
 from replication_handler.util.message_builder import MessageBuilder
-from replication_handler.util.misc import DataEvent, save_position
+from replication_handler.util.misc import DataEvent
+from replication_handler.util.misc import save_position
 from replication_handler.util.position import LogPosition
 
 
@@ -36,13 +39,14 @@ class RecoveryHandler(object):
     """
 
     def __init__(
-            self,
-            stream,
-            producer,
-            schema_wrapper,
-            is_clean_shutdown=False,
-            register_dry_run=False,
-            publish_dry_run=False
+        self,
+        stream,
+        producer,
+        schema_wrapper,
+        is_clean_shutdown=False,
+        register_dry_run=False,
+        publish_dry_run=False,
+        changelog_mode=False
     ):
         """
         Args:
@@ -53,6 +57,8 @@ class RecoveryHandler(object):
             register_dry_run: Boolean to know if schema has to be registered
                               for a message to be published
             publish_dry_run: Boolean for publishing a message or not
+            changelog_mode: Boolean, if True, executes change_log flow
+                            (default: False)
         """
         self.stream = stream
         self.producer = producer
@@ -62,13 +68,16 @@ class RecoveryHandler(object):
         self.publish_dry_run = publish_dry_run
         self.cluster_name = schema_tracking_database_config.cluster_name
         self.entries = schema_tracking_database_config.entries[CLUSTER_CONFIG]
+        self.changelog_mode = changelog_mode
+        self.changelog_schema_wrapper = self._get_changelog_schema_wrapper()
 
         logger.info("Initiating recovery handler {j}".format(
             j=json.dumps(dict(
                 is_clean_shutdown=self.is_clean_shutdown,
                 cluster_name=self.cluster_name,
                 register_dry_run=self.register_dry_run,
-                publish_dry_run=self.publish_dry_run
+                publish_dry_run=self.publish_dry_run,
+                changelog_mode=self.changelog_mode
             ))
         ))
 
@@ -159,6 +168,19 @@ class RecoveryHandler(object):
             ).build_message()
             messages.append(message)
         return messages
+
+    def _get_changelog_schema_wrapper(self):
+        """Get schema wrapper object for changelog flow. Note schema wrapper
+        for this flow is independent of event (and hence, independent of table)
+        """
+        if not self.changelog_mode:
+            return None
+        change_log_data_event_handler = ChangeLogDataEventHandler(
+            producer=self.producer,
+            schema_wrapper=self.schema_wrapper,
+            stats_counter=None,
+            register_dry_run=self.register_dry_run)
+        return change_log_data_event_handler.schema_wrapper_entry
 
 
 def _get_latest_source_log_position():

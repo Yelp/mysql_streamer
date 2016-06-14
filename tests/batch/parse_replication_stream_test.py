@@ -10,12 +10,15 @@ import mock
 import pytest
 from data_pipeline.producer import Producer
 from data_pipeline.schematizer_clientlib.schematizer import SchematizerClient
+from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
 
 import replication_handler.batch.parse_replication_stream
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.data_event_handler import DataEventHandler
+from replication_handler.components.change_log_data_event_handler import \
+    ChangeLogDataEventHandler
 from replication_handler.components.schema_event_handler import \
     SchemaEventHandler
 from replication_handler.models.database import rbr_state_session
@@ -27,7 +30,7 @@ from replication_handler.util.position import GtidPosition
 
 class TestParseReplicationStream(object):
 
-    @pytest.yield_fixture
+    @pytest.yield_fixture(autouse=True)
     def patch_zk(self):
         with mock.patch.object(
             replication_handler.batch.parse_replication_stream,
@@ -180,7 +183,19 @@ class TestParseReplicationStream(object):
             mock_config.publish_dry_run = False
             mock_config.resume_from_log_position = False
             mock_config.namespace = "test_namespace"
+            mock_config.disable_meteorite = False
+            mock_config.changelog_mode = False
             yield mock_config
+
+    @pytest.yield_fixture
+    def patch_config_changelog_on(self, patch_config):
+            patch_config.changelog_mode = True
+            yield patch_config
+
+    @pytest.yield_fixture
+    def patch_config_meteorite_disabled(self, patch_config):
+        patch_config.disable_meteorite = True
+        yield patch_config
 
     @pytest.yield_fixture
     def patch_config_with_small_recovery_queue_size(self):
@@ -193,7 +208,7 @@ class TestParseReplicationStream(object):
             mock_config.recovery_queue_size = 1
             yield mock_config
 
-    def test_replication_stream_different_events(
+    def _different_events_builder(
         self,
         schema_event,
         data_event,
@@ -221,6 +236,121 @@ class TestParseReplicationStream(object):
             schema_event_with_gtid,
             data_event_with_gtid,
         ]
+
+    def test_meteorite_off(
+        self,
+        schema_event,
+        data_event,
+        patch_config_meteorite_disabled,
+        position_gtid_1,
+        position_gtid_2,
+        patch_restarter,
+        patch_rbr_state_rw,
+        patch_schema_tracker,
+        patch_data_handle_event,
+        patch_schema_handle_event,
+        patch_producer,
+        patch_save_position,
+        patch_exit
+    ):
+        self._different_events_builder(
+            schema_event,
+            data_event,
+            patch_config_meteorite_disabled,
+            position_gtid_1,
+            position_gtid_2,
+            patch_restarter,
+            patch_rbr_state_rw,
+            patch_schema_tracker,
+            patch_data_handle_event,
+            patch_schema_handle_event,
+            patch_producer,
+            patch_save_position,
+            patch_exit)
+        with mock.patch.object(
+            StatsCounter,
+            'flush'
+        ) as mock_flush, mock.patch.object(
+            StatsCounter,
+            '_reset'
+        ) as mock_reset:
+            self._init_and_run_batch()
+            assert mock_flush.call_count == 0
+            assert mock_reset.call_count == 4
+
+    def test_meteorite_on(
+        self,
+        schema_event,
+        data_event,
+        patch_config,
+        position_gtid_1,
+        position_gtid_2,
+        patch_restarter,
+        patch_rbr_state_rw,
+        patch_schema_tracker,
+        patch_data_handle_event,
+        patch_schema_handle_event,
+        patch_producer,
+        patch_save_position,
+        patch_exit
+    ):
+        self._different_events_builder(
+            schema_event,
+            data_event,
+            patch_config,
+            position_gtid_1,
+            position_gtid_2,
+            patch_restarter,
+            patch_rbr_state_rw,
+            patch_schema_tracker,
+            patch_data_handle_event,
+            patch_schema_handle_event,
+            patch_producer,
+            patch_save_position,
+            patch_exit)
+        with mock.patch.object(
+            StatsCounter,
+            'flush'
+        ) as mock_flush, mock.patch.object(
+            StatsCounter,
+            '_reset'
+        ) as mock_reset:
+            self._init_and_run_batch()
+            assert mock_flush.call_count == 2
+            # note that this is only 2 because we mock the flush method, therefore we don't end up calling its internal reset
+            assert mock_reset.call_count == 2
+
+    def test_replication_stream_different_events(
+        self,
+        schema_event,
+        data_event,
+        patch_config,
+        position_gtid_1,
+        position_gtid_2,
+        patch_restarter,
+        patch_rbr_state_rw,
+        patch_schema_tracker,
+        patch_data_handle_event,
+        patch_schema_handle_event,
+        patch_producer,
+        patch_save_position,
+        patch_exit
+    ):
+        self._different_events_builder(
+            schema_event,
+            data_event,
+            patch_config,
+            position_gtid_1,
+            position_gtid_2,
+            patch_restarter,
+            patch_rbr_state_rw,
+            patch_schema_tracker,
+            patch_data_handle_event,
+            patch_schema_handle_event,
+            patch_producer,
+            patch_save_position,
+            patch_exit
+        )
         stream = self._init_and_run_batch()
         assert patch_schema_handle_event.call_args_list == \
             [mock.call(event=schema_event, position=position_gtid_1)]
@@ -301,6 +431,29 @@ class TestParseReplicationStream(object):
     ):
         with pytest.raises(SystemExit):
             self._init_and_run_batch()
+
+    def test_changelog_ON_chooses_changelog_dataevent_handler(
+        self,
+        patch_config,
+        patch_config_changelog_on,
+        producer,
+    ):
+        replication_stream = ParseReplicationStream()
+        replication_stream.producer = producer
+        replication_stream.counters = mock.MagicMock()
+        handler_info = replication_stream._build_handler_map()[DataEvent]
+        assert isinstance(handler_info.handler, ChangeLogDataEventHandler)
+
+    def test_without_changelog_mode_dataevent_handler_is_default(
+        self,
+        patch_config,
+        producer,
+    ):
+        replication_stream = ParseReplicationStream()
+        replication_stream.producer = producer
+        replication_stream.counters = mock.MagicMock()
+        handler_info = replication_stream._build_handler_map()[DataEvent]
+        assert isinstance(handler_info.handler, DataEventHandler)
 
     def test_profiler_signal(
         self,
