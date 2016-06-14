@@ -16,15 +16,13 @@ from yelp_conn.connection_set import ConnectionSet
 import replication_handler.batch.parse_replication_stream
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.schema_event_handler import \
     SchemaEventHandler
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
-from replication_handler.util.position import GtidPosition, Position, \
-    LogPosition
+from replication_handler.util.position import GtidPosition
 
 
 class TestParseReplicationStream(object):
@@ -346,9 +344,16 @@ class TestParseReplicationStream(object):
         patch_schema_tracker
     ):
         with mock.patch.object(
-                ParseReplicationStream,
-                '_get_event_type'
-        ) as mock_event:
+            ParseReplicationStream,
+            '_get_event_type'
+        ) as mock_event, mock.patch.object(
+            ParseReplicationStream,
+            '_get_events'
+        ) as mock_get_events, mock.patch.object(
+            ParseReplicationStream,
+            'process_event'
+        ):
+            mock_get_events.return_value = [mock.Mock()]
             mock_event.return_value = EventType.DATA_EVENT
             patch_running.return_value = False
             replication_stream = ParseReplicationStream()

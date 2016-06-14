@@ -10,8 +10,7 @@ from data_pipeline.producer import Producer
 from data_pipeline.schema_cache import SchematizerClient
 from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pii_generator.components.pii_identifier import PIIIdentifier
-from replication_handler.config import source_database_config, \
-    SourceDatabaseConfig
+from replication_handler.config import  SchemaTrackingDatabaseConfig
 from yelp_conn.connection_set import ConnectionSet
 
 import replication_handler.components.schema_event_handler
@@ -429,10 +428,10 @@ class TestSchemaEventHandler(object):
             MySQLDumpHandler,
             'create_and_persist_schema_dump'
         ) as mock_persist_dump, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'entries'
         ) as mock_entries, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'cluster_config'
         ) as mock_cluster_config, mock.patch(
             'replication_handler.components.schema_event_handler._checkpoint',
@@ -490,10 +489,10 @@ class TestSchemaEventHandler(object):
                 MySQLDumpHandler,
                 'create_and_persist_schema_dump'
         ) as mock_persist_dump, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'entries'
         ) as mock_entries, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'cluster_config'
         ) as mock_cluster_config, mock.patch(
             'replication_handler.components.schema_event_handler._checkpoint',
@@ -537,10 +536,10 @@ class TestSchemaEventHandler(object):
                 MySQLDumpHandler,
                 'create_and_persist_schema_dump'
         ) as mock_persist_dump, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'entries'
         ) as mock_entries, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'cluster_config'
         ) as mock_cluster_config, mock.patch(
             'replication_handler.components.schema_event_handler._checkpoint',
@@ -569,10 +568,10 @@ class TestSchemaEventHandler(object):
                 MySQLDumpHandler,
                 'create_and_persist_schema_dump'
         ) as mock_persist_dump, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'entries'
         ) as mock_entries, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'cluster_config'
         ) as mock_cluster_config, mock.patch(
             'replication_handler.components.schema_event_handler._checkpoint',
@@ -615,10 +614,10 @@ class TestSchemaEventHandler(object):
                 MySQLDumpHandler,
                 'create_and_persist_schema_dump'
         ) as mock_persist_dump, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'entries'
         ) as mock_entries, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'cluster_config'
         ) as mock_cluster_config, mock.patch(
             'replication_handler.components.schema_event_handler._checkpoint',
@@ -651,10 +650,10 @@ class TestSchemaEventHandler(object):
                 MySQLDumpHandler,
                 'create_and_persist_schema_dump'
         ) as mock_persist_dump, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'entries'
         ) as mock_entries, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'cluster_config'
         ) as mock_cluster_config, mock.patch(
             'replication_handler.components.schema_event_handler._checkpoint',
@@ -749,10 +748,10 @@ class TestSchemaEventHandler(object):
                 MySQLDumpHandler,
                 'create_and_persist_schema_dump'
         ) as mock_persist_dump, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'entries'
         ) as mock_entries, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'cluster_config'
         ) as mock_cluster_config, mock.patch(
             'replication_handler.components.schema_event_handler._checkpoint',
@@ -783,10 +782,10 @@ class TestSchemaEventHandler(object):
                 MySQLDumpHandler,
                 'create_and_persist_schema_dump'
         ) as mock_persist_dump, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'entries'
         ) as mock_entries, mock.patch.object(
-            SourceDatabaseConfig,
+            SchemaTrackingDatabaseConfig,
             'cluster_config'
         ) as mock_cluster_config, mock.patch(
             'replication_handler.components.schema_event_handler._checkpoint',

@@ -56,7 +56,7 @@ class TestEndToEnd(object):
         return {
             u'fields': [
                 {u'type': u'int', u'name': u'id'},
-                {u'default': None, u'maxlen': u'64', u'type': [u'null', u'string'], u'name': u'name'}
+                {u'default': None, u'maxlen': 64, u'type': [u'null', u'string'], u'name': u'name'}
             ],
             u'namespace': u'',
             u'name': table_name,

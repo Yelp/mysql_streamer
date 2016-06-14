@@ -286,7 +286,7 @@ class ParseReplicationStream(Batch):
 
     def process_event(self, replication_handler_event, handler_map):
         logger.info("Processing replication handler event {event}".format(
-            event=replication_handler_event
+            event=replication_handler_event.event
         ))
         event_class = replication_handler_event.event.__class__
         handler_map[event_class].handler.handle_event(
