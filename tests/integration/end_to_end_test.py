@@ -14,7 +14,6 @@ from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
 from replication_handler.testing_helper.util import RBR_SOURCE
 from replication_handler.testing_helper.util import SCHEMA_TRACKER
-
 from tests.integration.conftest import _fetch_messages
 from tests.integration.conftest import _generate_basic_model
 from tests.integration.conftest import _verify_messages
@@ -47,7 +46,7 @@ class TestEndToEnd(object):
         return {
             u'fields': [
                 {u'type': u'int', u'name': u'id'},
-                {u'default': None, u'maxlen': u'64', u'type': [u'null', u'string'], u'name': u'name'}
+                {u'default': None, u'maxlen': 64, u'type': [u'null', u'string'], u'name': u'name'}
             ],
             u'namespace': u'',
             u'name': table_name,
@@ -198,7 +197,7 @@ class TestEndToEnd(object):
         {
             'table_name': 'test_enum',
             'test_schema': [
-                # ColumnInfo("ENUM('ONE', 'TWO')", mysql.ENUM(['ONE', 'TWO']), 'ONE')
+                ColumnInfo("ENUM('ONE', 'TWO')", mysql.ENUM(['ONE', 'TWO']), 'ONE')
             ]
         },
         {
