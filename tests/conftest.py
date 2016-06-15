@@ -28,8 +28,8 @@ logging.basicConfig(
 )
 
 
-@pytest.fixture(scope='module')
-def compose_file(replhandler):
+@pytest.fixture(scope='session')
+def compose_file():
     return os.path.abspath(
         os.path.join(
             os.path.split(
@@ -40,7 +40,7 @@ def compose_file(replhandler):
     )
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def services(replhandler):
     return [
         replhandler,
@@ -59,7 +59,7 @@ def services_without_repl_handler():
     ]
 
 
-@pytest.yield_fixture(scope='module')
+@pytest.yield_fixture(scope='session')
 def containers(compose_file, services, replhandler):
     with Containers(compose_file, services) as containers:
         # Need to wait for all containers to spin up

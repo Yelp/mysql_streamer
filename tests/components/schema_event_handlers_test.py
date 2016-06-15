@@ -417,6 +417,7 @@ class TestSchemaEventHandler(object):
             upsert_global_event_state=patch_upsert_global_event_state,
             table_has_pii=patch_table_has_pii,
         )
+
     def _setup_handle_event_alter_table(
         self,
         namespace,
@@ -434,60 +435,22 @@ class TestSchemaEventHandler(object):
         table_with_schema_changes,
         alter_table_schema_store_response,
         test_schema,
-        mock_credentials
     ):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
         """
-        with mock.patch.object(
-            MySQLDumpHandler,
-            'create_and_persist_schema_dump'
-        ) as mock_persist_dump, mock.patch.object(
-            SchemaTrackingDatabaseConfig,
-            'entries'
-        ) as mock_entries, mock.patch.object(
-            SchemaTrackingDatabaseConfig,
-            'cluster_config'
-        ) as mock_cluster_config, mock.patch(
-            'replication_handler.components.schema_event_handler._checkpoint',
-            new=mocked_checkpoint
-        ):
-            mock_cluster_config.__get__ = mock.Mock(return_value={'entries': mock_credentials})
-            mock_entries.__get__ = mock.Mock(return_value=mock_credentials)
-            mock_persist_dump.new = mock_create_and_persist_dump
-            schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
-            schematizer_client.register_schema_from_mysql_stmts.return_value = \
-                alter_table_schema_store_response
-            new_create_table_stmt = show_create_result_after_alter.query
-            mysql_statements = {
-                "old_create_table_stmt": show_create_result_initial.query,
-                "alter_table_stmt": alter_table_schema_event.query,
-            }
-            external_patches.get_show_create_statement.side_effect = [
-                show_create_result_initial,
-                show_create_result_after_alter
-            ]
-
-            schema_event_handler.handle_event(alter_table_schema_event, test_position)
-            self.check_external_calls(
-                namespace,
-                schematizer_client,
-                producer,
-                alter_table_schema_event,
-                mock_schema_tracker_cursor,
-                table_with_schema_changes,
-                schema_event_handler,
-                new_create_table_stmt,
-                alter_table_schema_store_response,
-                external_patches,
-                test_schema,
-                mysql_statements=mysql_statements
-            )
-
-            assert producer.flush.call_count == 1
-            assert stats_counter.increment.call_count == 1
-            assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
-            assert save_position.call_count == 1
+        schema_event_handler.schema_wrapper.schematizer_client = schematizer_client
+        schematizer_client.register_schema_from_mysql_stmts.return_value = \
+            alter_table_schema_store_response
+        new_create_table_stmt = show_create_result_after_alter.query
+        mysql_statements = {
+            "old_create_table_stmt": show_create_result_initial.query,
+            "alter_table_stmt": alter_table_schema_event.query,
+        }
+        external_patches.get_show_create_statement.side_effect = [
+            show_create_result_initial,
+            show_create_result_after_alter
+        ]
         schema_event_handler.handle_event(alter_table_schema_event, test_position)
         self.check_external_calls(
             namespace,
@@ -523,25 +486,42 @@ class TestSchemaEventHandler(object):
         table_with_schema_changes,
         alter_table_schema_store_response,
         test_schema,
-        patch_config_meteorite_disabled_true
+        patch_config_meteorite_disabled_true,
+        mock_credentials
     ):
-        self._setup_handle_event_alter_table(
-            namespace,
-            producer,
-            stats_counter,
-            test_position,
-            save_position,
-            external_patches,
-            schema_event_handler,
-            schematizer_client,
-            alter_table_schema_event,
-            show_create_result_initial,
-            show_create_result_after_alter,
-            mock_schema_tracker_cursor,
-            table_with_schema_changes,
-            alter_table_schema_store_response,
-            test_schema
-        )
+        with mock.patch.object(
+                MySQLDumpHandler,
+                'create_and_persist_schema_dump'
+        ) as mock_persist_dump, mock.patch.object(
+            SchemaTrackingDatabaseConfig,
+            'entries'
+        ) as mock_entries, mock.patch.object(
+            SchemaTrackingDatabaseConfig,
+            'cluster_config'
+        ) as mock_cluster_config, mock.patch(
+            'replication_handler.components.schema_event_handler._checkpoint',
+            new=mocked_checkpoint
+        ):
+            mock_cluster_config.__get__ = mock.Mock(return_value={'entries': mock_credentials})
+            mock_entries.__get__ = mock.Mock(return_value=mock_credentials)
+            mock_persist_dump.new = mock_create_and_persist_dump
+            self._setup_handle_event_alter_table(
+                namespace,
+                producer,
+                stats_counter,
+                test_position,
+                save_position,
+                external_patches,
+                schema_event_handler,
+                schematizer_client,
+                alter_table_schema_event,
+                show_create_result_initial,
+                show_create_result_after_alter,
+                mock_schema_tracker_cursor,
+                table_with_schema_changes,
+                alter_table_schema_store_response,
+                test_schema
+            )
 
         assert stats_counter.increment.call_count == 0
 
@@ -562,25 +542,42 @@ class TestSchemaEventHandler(object):
         table_with_schema_changes,
         alter_table_schema_store_response,
         test_schema,
-        patch_config_meteorite_disabled_false
+        patch_config_meteorite_disabled_false,
+        mock_credentials
     ):
-        self._setup_handle_event_alter_table(
-            namespace,
-            producer,
-            stats_counter,
-            test_position,
-            save_position,
-            external_patches,
-            schema_event_handler,
-            schematizer_client,
-            alter_table_schema_event,
-            show_create_result_initial,
-            show_create_result_after_alter,
-            mock_schema_tracker_cursor,
-            table_with_schema_changes,
-            alter_table_schema_store_response,
-            test_schema
-        )
+        with mock.patch.object(
+            MySQLDumpHandler,
+            'create_and_persist_schema_dump'
+        ) as mock_persist_dump, mock.patch.object(
+            SchemaTrackingDatabaseConfig,
+            'entries'
+        ) as mock_entries, mock.patch.object(
+            SchemaTrackingDatabaseConfig,
+            'cluster_config'
+        ) as mock_cluster_config, mock.patch(
+            'replication_handler.components.schema_event_handler._checkpoint',
+            new=mocked_checkpoint
+        ):
+            mock_cluster_config.__get__ = mock.Mock(return_value={'entries': mock_credentials})
+            mock_entries.__get__ = mock.Mock(return_value=mock_credentials)
+            mock_persist_dump.new = mock_create_and_persist_dump
+            self._setup_handle_event_alter_table(
+                namespace,
+                producer,
+                stats_counter,
+                test_position,
+                save_position,
+                external_patches,
+                schema_event_handler,
+                schematizer_client,
+                alter_table_schema_event,
+                show_create_result_initial,
+                show_create_result_after_alter,
+                mock_schema_tracker_cursor,
+                table_with_schema_changes,
+                alter_table_schema_store_response,
+                test_schema
+            )
 
         assert stats_counter.increment.call_count == 1
         assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query

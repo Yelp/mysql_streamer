@@ -10,6 +10,7 @@ import traceback
 from collections import namedtuple
 from contextlib import contextmanager
 
+import copy
 import vmprof
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
@@ -23,6 +24,8 @@ from pymysqlreplication.event import QueryEvent
 from yelp_batch import Batch
 
 from replication_handler import config
+from replication_handler.components.change_log_data_event_handler import \
+    ChangeLogDataEventHandler
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.replication_stream_restarter import \
@@ -268,13 +271,22 @@ class ParseReplicationStream(Batch):
             if config.env_config.force_exit:
                 self._force_exit()
 
-    def _build_handler_map(self):
-        data_event_handler = DataEventHandler(
+    def _get_data_event_handler(self):
+        """Decides which data_event handler to choose as per changelog_mode
+        :returns: data_event_handler or change_log_data_event_handler
+                data_event_handler: Handler to be chosen for normal flow
+                change_log_data_event_handler: Handler for changelog flow
+        """
+        Handler = (DataEventHandler
+                   if not self._changelog_mode else ChangeLogDataEventHandler)
+        return Handler(
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
             stats_counter=self.counters['data_event_counter'],
             register_dry_run=self.register_dry_run,
         )
+
+    def _build_handler_map(self):
         schema_event_handler = SchemaEventHandler(
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
@@ -284,7 +296,7 @@ class ParseReplicationStream(Batch):
         handler_map = {
             DataEvent: HandlerInfo(
                 event_type=EventType.DATA_EVENT,
-                handler=data_event_handler
+                handler=self._get_data_event_handler()
             ),
             QueryEvent: HandlerInfo(
                 event_type=EventType.SCHEMA_EVENT,

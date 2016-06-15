@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import logging
 
+from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
@@ -65,7 +66,8 @@ class SchemaEventHandler(BaseEventHandler):
         ))
 
         logger.info("Incrementing counter for meteorite")
-        self.stats_counter.increment(query)
+        if not config.env_config.disable_meteorite:
+            self.stats_counter.increment(query)
 
         logger.info("Flushing all messages from producer and saving position")
         self.producer.flush()

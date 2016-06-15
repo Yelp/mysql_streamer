@@ -348,17 +348,29 @@ class TestRecoveryHandler(object):
             rh_data_event_after_master_log_pos,
             rh_data_event_after_master_log_pos,
         ]
-        self._setup_stream_and_recover_for_unclean_shutdown(
-            event_list,
-            stream,
-            producer,
-            mock_schema_wrapper,
-            mock_rbr_source_cursor,
-            changelog_mode=True,
-        )
-        # Even though we have 5 data events in the stream, the recovery process halted
-        # after we caught up to master
-        assert len(producer.ensure_messages_published.call_args[0][0]) == 4
+        with mock.patch.object(
+            MySQLDumpHandler,
+            'mysql_dump_exists'
+        ) as mock_dump_exists, mock.patch.object(
+            MessageBuilder,
+            'build_message'
+        ) as mock_message:
+            mock_dump_exists.return_value = False
+            mock_message.return_value = mock.Mock(spec=Message)
+            self._setup_stream_and_recover_for_unclean_shutdown(
+                event_list,
+                stream,
+                producer,
+                mock_schema_wrapper,
+                mock_rbr_source_cursor,
+                4,
+                changelog_mode=True
+            )
+        # Even though we have 5 data events in the stream, the recovery process
+        # halted after we caught up to master
+        assert len(
+            producer.ensure_messages_published.call_args[1].get('messages')
+        ) == 4
 
     def test_recovery_process_with_supported_query_event(
         self,
