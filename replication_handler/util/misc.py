@@ -93,7 +93,7 @@ def save_position(position_data, is_clean_shutdown=False):
 
 
 def repltracker_cursor():
-    if env_config.namespace != 'canary':
-        return ConnectionSet.schema_tracker_rw().repltracker.cursor()
-    else:
-        return ConnectionSet.schema_tracker_rw().repltracker_canary.cursor()
+    schema_tracker_cluster = env_config.schema_tracker_cluster
+    connection_set = ConnectionSet.schema_tracker_rw()
+    db = getattr(connection_set, schema_tracker_cluster)
+    return db.cursor()
