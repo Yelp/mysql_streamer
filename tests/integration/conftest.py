@@ -63,6 +63,7 @@ def _fetch_messages(
         messages = consumer.get_messages(message_count, blocking=True, timeout=60)
         assert len(messages) == message_count
     _assert_topic_set_in_messages(messages, topics[0].name)
+    _assert_contains_pii_set_in_messages(messages, topics[0].contains_pii)
     return messages
 
 
@@ -80,6 +81,11 @@ def _verify_messages(messages, expected_messages):
 def _assert_topic_set_in_messages(messages, topic_name):
     for message in messages:
         assert topic_name == message.topic
+
+
+def _assert_contains_pii_set_in_messages(messages, contains_pii):
+    for message in messages:
+        assert contains_pii == message.contains_pii
 
 
 def _assert_equal_dict(dict1, dict2):
