@@ -11,6 +11,9 @@ itest: cook-image
 itest_db:
 	tox -e itest_db
 
+functional_test: cook-image
+	DOCKER_TAG=$(DOCKER_TAG) tox -e functional_test
+
 cook-image:
 	docker build -t $(DOCKER_TAG) .
 

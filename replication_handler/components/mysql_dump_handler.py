@@ -17,6 +17,7 @@ from replication_handler.util.misc import get_dump_file
 logger = logging.getLogger('replication_handler.components.mysql_dump_handler')
 
 BLACKLISTED_DATABASES = ['information_schema', 'yelp_heartbeat']
+EMPTY_WAITING_OPTIONS = 0
 
 
 def _read_dump_content(dump_file):
@@ -95,26 +96,30 @@ class MySQLDumpHandler(object):
                 session.commit()
                 return copy.copy(record)
 
-    def delete_persisted_dump(self, session=None):
+    def delete_persisted_dump(self, commit=True, session=None):
         """
         Deletes the existing schema dump from MySQLDumps table.
         Args:
             session: Database session to perform transactions.
                      Defaults to None
+            commit: Boolean value to determine if the transaction has to be
+                    committed here or not
         """
         if session:
             MySQLDumps.delete_mysql_dump(
                 session=session,
                 cluster_name=self.cluster_name
             )
-            session.commit()
+            if commit:
+                session.commit()
         else:
             with rbr_state_session.connect_begin(ro=False) as session:
                 MySQLDumps.delete_mysql_dump(
                     session=session,
                     cluster_name=self.cluster_name
                 )
-                session.commit()
+                if commit:
+                    session.commit()
 
     def mysql_dump_exists(self, cluster_name, session=None):
         """
@@ -182,12 +187,12 @@ class MySQLDumpHandler(object):
             pa=self.password,
             dump_file_path=dump_file_path
         )
-        logger.info("Running {restore_cmd} to restore dump file {dump}".format(
-            restore_cmd=restore_cmd,
-            dump=dump_file_path
+        logger.info("Running restore on host {h} as user {u}".format(
+            h=self.host,
+            u=self.user
         ))
         p = Popen(restore_cmd, shell=True)
-        os.waitpid(p.pid, 0)
+        os.waitpid(p.pid, EMPTY_WAITING_OPTIONS)
 
         delete_file(dump_file_path)
         logger.info("Successfully ran the restoration command")
@@ -236,7 +241,7 @@ class MySQLDumpHandler(object):
                 db=databases
             ))
         p = Popen(dump_cmd, shell=True)
-        os.waitpid(p.pid, 0)
+        os.waitpid(p.pid, EMPTY_WAITING_OPTIONS)
         logger.info("Successfully created dump of the current state of dbs {db}".format(
                 db=databases
         ))

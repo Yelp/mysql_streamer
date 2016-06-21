@@ -10,7 +10,7 @@ from os.path import join, expanduser
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.config import env_config
-from replication_handler.config import source_database_config
+from replication_handler.config import schema_tracking_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -121,12 +121,15 @@ def create_mysql_passwd_file(secret_file, user, passwd):
     [mysqldump]
     user={user}
     password={password}""".format(user=user, password=passwd)
-    with os.fdopen(os.open(secret_file, os.O_WRONLY | os.O_CREAT, 0600), 'w') as f:
+    with os.fdopen(
+        os.open(secret_file, os.O_WRONLY | os.O_CREAT, 0600),
+        'w'
+    ) as f:
         f.write(secret_file_content)
 
 
 def get_dump_file():
-    cluster_name = source_database_config.cluster_name
+    cluster_name = schema_tracking_database_config.cluster_name
     home_dir = expanduser('~')
     dump_file = join(home_dir, '{}_{}.sql'.format(cluster_name, 'mysql_dump'))
     return dump_file
@@ -137,5 +140,6 @@ def delete_file(file_name):
     try:
         remove(file_name)
     except OSError:
-        # Its fine to pass over this error cause this just means the file didn't exist in the first place
+        # Its fine to pass over this error cause this just means the file didn't
+        # exist in the first place
         pass

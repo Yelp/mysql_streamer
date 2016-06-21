@@ -181,6 +181,8 @@ class ParseReplicationStream(Batch):
 
     def _enable_profiler(self):
         logger.info("Enabling profiler")
+        # We use os.open here cause we want the file to be created with
+        # certain specific flags.
         self._profiler_fd = os.open(
             file=PROFILER_FILE_NAME,
             flags=os.O_RDWR | os.O_CREAT | os.O_TRUNC
@@ -193,8 +195,8 @@ class ParseReplicationStream(Batch):
         Handles the shutdown in a graceful manner by:
         1. Flushing the producer
         2. Saving the current checkpoint
-        Does not consider handling SchemaEvent because there is a good
-        way to recover it.
+        Does not consider handling SchemaEvent because it is recovered by
+        replaying MySQL dumps.
         Args:
             event_type: (EventType) of the current event
         """

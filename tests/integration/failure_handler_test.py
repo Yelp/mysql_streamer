@@ -15,7 +15,6 @@ from replication_handler.config import EnvConfig
 from replication_handler.config import SchemaTrackingDatabaseConfig
 from replication_handler.config import SourceDatabaseConfig
 from replication_handler.models.database import rbr_state_session
-from replication_handler.models.mysql_dumps import MySQLDumps
 from replication_handler.testing_helper.repl_handler_restart_helper import \
     ReplHandlerRestartHelper
 from replication_handler.testing_helper.util import RBR_SOURCE
@@ -274,7 +273,11 @@ class TestFailureHandler(object):
                 kafka_broker_list=["{ip}:9092".format(ip=kafka_ip)],
                 kafka_zookeeper="{ip}:2181".format(ip=zookeeper_ip)
         ):
-            with mock.patch.object(ParseReplicationStream, 'process_commandline_options', set_args_and_options):
+            with mock.patch.object(
+                ParseReplicationStream,
+                'process_commandline_options',
+                set_args_and_options
+            ):
                 with mock.patch.object(
                         ReplTrackerCursor, 'repltracker_cursor'
                 ) as mock_repltracker_cursor, mock.patch.object(

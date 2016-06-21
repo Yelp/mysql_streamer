@@ -28,7 +28,7 @@ logging.basicConfig(
 )
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def compose_file():
     return os.path.abspath(
         os.path.join(
@@ -40,17 +40,17 @@ def compose_file():
     )
 
 
-@pytest.fixture(scope='session')
-def services(replhandler):
+@pytest.fixture(scope='module')
+def services():
     return [
-        replhandler,
+        'replicationhandlerchangelog',
         'rbrsource',
         'schematracker',
         'rbrstate'
     ]
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def services_without_repl_handler():
     return [
         'rbrsource',
@@ -59,15 +59,15 @@ def services_without_repl_handler():
     ]
 
 
-@pytest.yield_fixture(scope='session')
-def containers(compose_file, services, replhandler):
+@pytest.yield_fixture(scope='module')
+def containers(compose_file, services):
     with Containers(compose_file, services) as containers:
         # Need to wait for all containers to spin up
         replication_handler_ip = None
         while replication_handler_ip is None:
             replication_handler_ip = Containers.get_container_ip_address(
                 containers.project,
-                replhandler)
+                'replicationhandlerchangelog')
 
         for db in ["rbrsource", "schematracker", "rbrstate"]:
             db_health_check(containers, db, timeout_seconds)
@@ -75,7 +75,7 @@ def containers(compose_file, services, replhandler):
         yield containers
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.yield_fixture(scope='module')
 def containers_without_repl_handler(
         compose_file,
         services_without_repl_handler

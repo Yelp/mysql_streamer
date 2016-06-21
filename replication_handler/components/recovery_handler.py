@@ -5,21 +5,18 @@ from __future__ import unicode_literals
 import copy
 import logging
 
-import simplejson as json
 from pymysqlreplication.event import QueryEvent
+from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
-from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
-from yelp_conn.connection_set import ConnectionSet
-
 from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import env_config
-from replication_handler.config import source_database_config
 from replication_handler.config import schema_tracking_database_config
+from replication_handler.config import source_database_config
+from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
-from replication_handler.util.change_log_message_builder import ChangeLogMessageBuilder
 from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import save_position
@@ -71,15 +68,13 @@ class RecoveryHandler(object):
         self.changelog_mode = changelog_mode
         self.changelog_schema_wrapper = self._get_changelog_schema_wrapper()
 
-        logger.info("Initiating recovery handler {j}".format(
-            j=json.dumps(dict(
-                is_clean_shutdown=self.is_clean_shutdown,
-                cluster_name=self.cluster_name,
-                register_dry_run=self.register_dry_run,
-                publish_dry_run=self.publish_dry_run,
-                changelog_mode=self.changelog_mode
-            ))
-        ))
+        logger.info("Initiating recovery handler {}".format({
+            "is_clean_shutdown": self.is_clean_shutdown,
+            "cluster_name": self.cluster_name,
+            "register_dry_run": self.register_dry_run,
+            "publish_dry_run": self.publish_dry_run,
+            "changelog_mode": self.changelog_mode
+        }))
 
     def recover(self):
         """
@@ -150,10 +145,16 @@ class RecoveryHandler(object):
             return copy.copy(offsets)
 
     def _build_messages(self, events):
+        """
+        Constructs message objects from events.
+        Args:
+            events: ReplicationHandlerEvent
+
+        Returns: List of constructed messages
+        """
         messages = []
 
         for event in events:
-            # event here is a ReplicationHandlerEvent
             table = Table(
                 cluster_name=self.cluster_name,
                 table_name=event.event.table,
@@ -198,19 +199,19 @@ def _get_latest_source_log_position():
 
 def _is_unsupported_event(event):
     statement = mysql_statement_factory(event.query)
-    if isinstance(event, QueryEvent) and not statement.is_supported():
-        logger.info("Filtering unsupported event {e} and query {q}".format(
-            e=event,
-            q=event.query
-        ))
-        return True
-    return False
+    if not isinstance(event, QueryEvent) or statement.is_supported():
+        return False
+    logger.info("Filtering unsupported event {e} and query {q}".format(
+        e=event,
+        q=event.query
+    ))
+    return True
 
 
 def _already_caught_up(event):
     latest_source_log_position = _get_latest_source_log_position()
-    if(event.position.log_file == latest_source_log_position.log_file and
-       event.position.log_pos >= latest_source_log_position.log_pos
+    if (event.position.log_file == latest_source_log_position.log_file and
+        event.position.log_pos >= latest_source_log_position.log_pos
     ):
         logger.info("Woo! Caught up to real time. Stopping recovery")
         return True

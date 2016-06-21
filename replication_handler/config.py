@@ -113,6 +113,7 @@ class EnvConfig(BaseConfig):
         return staticconf.get('table_whitelist', default=None).value
 
     # TODO This config is never used in setting up the replication handler.
+    # DATAPIPE-1158
     # Its set in the clientlibs/data_pipeline hence to be removed.
     @property
     def zookeeper_discovery_path(self):
@@ -170,8 +171,8 @@ class EnvConfig(BaseConfig):
     @property
     def recovery_queue_size(self):
         # The recovery queue size have to be greater than data pipeline producer
-        # buffer size, otherwise we could potentially have stale checkpoint data which
-        # would cause the recovery process to fail.
+        # buffer size, otherwise we could potentially have stale checkpoint data
+        # which would cause the recovery process to fail.
         return staticconf.get('recovery_queue_size').value
 
     @property
@@ -238,12 +239,24 @@ class DatabaseConfig(object):
 class SourceDatabaseConfig(DatabaseConfig):
 
     def __init__(self, cluster_name, topology_path):
+        """
+        Stores the source database config
+        Args:
+            cluster_name: Name of the source cluster
+            topology_path: File path of the topology config for the cluster
+        """
         DatabaseConfig.__init__(self, cluster_name, topology_path)
 
 
 class SchemaTrackingDatabaseConfig(DatabaseConfig):
 
     def __init__(self, cluster_name, topology_path):
+        """
+        Stores the schema tracking config
+        Args:
+            cluster_name: Name of the source cluster
+            topology_path: File path of the topology config for the cluster
+        """
         DatabaseConfig.__init__(self, cluster_name, topology_path)
 
 env_config = EnvConfig()

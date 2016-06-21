@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 
 import logging
 
-from replication_handler.util.position import LogPosition
 from replication_handler.util.position import construct_position
+from replication_handler.util.position import LogPosition
 
 
 log = logging.getLogger('replication_handler.components.position_finder')

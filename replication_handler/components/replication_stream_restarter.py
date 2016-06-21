@@ -33,7 +33,7 @@ class ReplicationStreamRestarter(object):
         self,
         producer,
         register_dry_run=True,
-        changelog_mode = False,
+        changelog_mode=False,
         position=None
     ):
         """
@@ -46,7 +46,7 @@ class ReplicationStreamRestarter(object):
                               Defaults to True
             changelog_mode: Boolean, if True, executes change_log flow.
                             Defaults to False
-            position: The log position from where the replication handler needs
+            position: LogPosition from where the replication handler needs
                       to start reading streams.
                       Defaults to None (Retrieves position from GlobalEventState
                       table.

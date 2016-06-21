@@ -52,20 +52,14 @@ class SchemaEventHandler(BaseEventHandler):
         """
         statement = mysql_statement_factory(event.query)
 
-        if self._can_event_be_skipped(
-                event=event,
-                statement=statement
-        ):
+        if self._can_event_be_skipped(event=event, statement=statement):
             return
 
         query = event.query
         schema = event.schema
 
-        logger.info("Processing supported query {q}".format(
-            q=query
-        ))
+        logger.info("Processing supported query {q}".format(q=query))
 
-        logger.info("Incrementing counter for meteorite")
         if not config.env_config.disable_meteorite:
             self.stats_counter.increment(query)
 
@@ -81,7 +75,7 @@ class SchemaEventHandler(BaseEventHandler):
 
         if isinstance(statement,
                       AlterTableStatement) and not statement.does_rename_table():
-            if schema is None or len(schema.strip()) == 0:
+            if schema is None or not schema.strip():
                 database_name = statement.database_name
             else:
                 database_name = schema
@@ -101,10 +95,7 @@ class SchemaEventHandler(BaseEventHandler):
                 table_name=statement.table
             )
 
-            self._process_alter_table_event(
-                query=query,
-                table=table
-            )
+            self._process_alter_table_event(query=query, table=table)
 
             _checkpoint(
                 position=position.to_dict(),
@@ -132,10 +123,7 @@ class SchemaEventHandler(BaseEventHandler):
                 database_name = None
             else:
                 database_name = schema
-            self._execute_query(
-                query=query,
-                database_name=database_name
-            )
+            self._execute_query(query=query, database_name=database_name)
 
             _checkpoint(
                 position=position.to_dict(),
@@ -149,10 +137,7 @@ class SchemaEventHandler(BaseEventHandler):
     def _can_event_be_skipped(self, event, statement):
         blacklist = skipped = is_not_supported = False
 
-        if self.is_blacklisted(
-                event=event,
-                schema=event.schema
-        ):
+        if self.is_blacklisted(event=event, schema=event.schema):
             logger.info("The event {e} with schema {s} is blacklisted".format(
                 e=event,
                 s=event.schema
@@ -161,9 +146,7 @@ class SchemaEventHandler(BaseEventHandler):
 
         skippable_queries = {'BEGIN', 'COMMIT'}
         if event.query in skippable_queries:
-            logger.info("The query {q} can be skipped".format(
-                q=event.query
-            ))
+            logger.info("The query {q} can be skipped".format(q=event.query))
             skipped = True
 
         if not statement.is_supported():
@@ -182,16 +165,11 @@ class SchemaEventHandler(BaseEventHandler):
             query: Has to be an AlterTable query
             table: Table on which the query has to be executed on
         """
-        logger.info("Processing an alter table query {q}".format(
-            q=query
-        ))
+        logger.info("Processing an alter table query {q}".format(q=query))
         table_before_processing = self.schema_tracker.get_show_create_statement(
             table=table
         )
-        self._execute_query(
-            query=query,
-            database_name=table.database_name
-        )
+        self._execute_query(query=query, database_name=table.database_name)
         table_after_processing = self.schema_tracker.get_show_create_statement(
             table=table
         )
@@ -226,7 +204,5 @@ def _checkpoint(
             database_name=database_name,
             table_name=table_name
         )
-        mysql_dump_handler.delete_persisted_dump(
-            session=session
-        )
+        mysql_dump_handler.delete_persisted_dump(session=session, commit=False)
         session.commit()
