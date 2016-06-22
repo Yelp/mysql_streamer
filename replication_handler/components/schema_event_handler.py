@@ -10,9 +10,9 @@ from replication_handler.components.base_event_handler import Table
 from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.sql_handler import AlterTableStatement
-from replication_handler.components.sql_handler import RenameTableStatement
 from replication_handler.components.sql_handler import CreateDatabaseStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
+from replication_handler.components.sql_handler import RenameTableStatement
 from replication_handler.config import schema_tracking_database_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -82,9 +82,9 @@ class SchemaEventHandler(BaseEventHandler):
                 database_name = schema
 
             if self.is_blacklisted(event, database_name):
-                # This call has to be redone here, because if the statement
-                # doesn't have a concrete schema assigned, we won't know if
-                # it should be executed until this point.
+                # This blacklist check needs to be called again here, because if
+                # the statement doesn't have a concrete schema assigned, we
+                # won't know if it should be executed until this point.
                 logger.info("Event {e} is blacklisted, skip processing".format(
                     e=event
                 ))

@@ -54,6 +54,7 @@ class ReplicationStreamRestarter(object):
         global_event_state = _get_global_event_state(self.cluster_name)
 
         # TODO Finding the position here might not be required
+        # [DATAPIPE-1155]
         if position is None:
             position_finder = PositionFinder(
                 global_event_state=global_event_state
@@ -65,6 +66,7 @@ class ReplicationStreamRestarter(object):
         ))
 
         # TODO Fix this hack
+        # [DATAPIPE-1156]
         self.binlog_stream = SimpleBinlogStreamReaderWrapper(position=position)
 
         if global_event_state:

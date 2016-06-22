@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import copy
 import logging
 import os
@@ -78,23 +82,14 @@ class MySQLDumpHandler(object):
         Returns: The copy of the record that persists on MySQLDumps table
         """
         database_dump = self.create_schema_dump()
-        if session:
-            record = MySQLDumps.update_mysql_dump(
-                session=session,
-                database_dump=database_dump,
-                cluster_name=self.cluster_name
-            )
-            session.commit()
-            return copy.copy(record)
-        else:
-            with rbr_state_session.connect_begin(ro=False) as session:
-                record = MySQLDumps.update_mysql_dump(
-                    session=session,
-                    database_dump=database_dump,
-                    cluster_name=self.cluster_name
-                )
-                session.commit()
-                return copy.copy(record)
+        update_fn = _mysql_update_dump_fn()
+        return _execute_fn(
+            update_fn,
+            True,
+            session,
+            database_dump,
+            self.cluster_name
+        )
 
     def delete_persisted_dump(self, commit=True, session=None):
         """
@@ -105,21 +100,8 @@ class MySQLDumpHandler(object):
             commit: Boolean value to determine if the transaction has to be
                     committed here or not
         """
-        if session:
-            MySQLDumps.delete_mysql_dump(
-                session=session,
-                cluster_name=self.cluster_name
-            )
-            if commit:
-                session.commit()
-        else:
-            with rbr_state_session.connect_begin(ro=False) as session:
-                MySQLDumps.delete_mysql_dump(
-                    session=session,
-                    cluster_name=self.cluster_name
-                )
-                if commit:
-                    session.commit()
+        delete_fn = _mysql_delete_dump_fn()
+        _execute_fn(delete_fn, commit, session, self.cluster_name)
 
     def mysql_dump_exists(self, cluster_name, session=None):
         """
@@ -132,19 +114,8 @@ class MySQLDumpHandler(object):
         Returns: True if row exists else False.
         """
         logger.info("Checking if a schema dump exists or not")
-        if session:
-            ret = MySQLDumps.dump_exists(
-                session=session,
-                cluster_name=cluster_name
-            )
-            return ret
-        else:
-            with rbr_state_session.connect_begin(ro=True) as session:
-                ret = MySQLDumps.dump_exists(
-                    session=session,
-                    cluster_name=cluster_name
-                )
-            return ret
+        exists_fn = _mysql_dump_exists_fn()
+        return _execute_fn(exists_fn, False, session, cluster_name)
 
     def recover(self, cluster_name, session=None):
         """
@@ -157,18 +128,13 @@ class MySQLDumpHandler(object):
         Returns: The exit code of the process running the restoration command.
         """
         logger.info("Recovering stored mysql dump from db")
+        latest_fn = _mysql_latest_dump_fn()
         if session:
-            mysql_dump = MySQLDumps.get_latest_mysql_dump(
-                session=session,
-                cluster_name=cluster_name
-            )
+            mysql_dump = latest_fn(session, cluster_name)
             mysql_dump = copy.copy(mysql_dump)
         else:
             with rbr_state_session.connect_begin(ro=True) as session:
-                mysql_dump = MySQLDumps.get_latest_mysql_dump(
-                    session=session,
-                    cluster_name=cluster_name
-                )
+                mysql_dump = latest_fn(session, cluster_name)
                 mysql_dump = copy.copy(mysql_dump)
 
         dump_file_path = get_dump_file()
@@ -197,17 +163,14 @@ class MySQLDumpHandler(object):
         delete_file(dump_file_path)
         logger.info("Successfully ran the restoration command")
         logger.info("Deleting the mysql dump")
+        delete_fn = _mysql_delete_dump_fn()
         if session:
-            MySQLDumps.delete_mysql_dump(
-                session=session,
-                cluster_name=cluster_name
-            )
+            delete_fn(session, cluster_name)
+            session.commit()
         else:
             with rbr_state_session.connect_begin(ro=True) as session:
-                MySQLDumps.delete_mysql_dump(
-                    session=session,
-                    cluster_name=cluster_name
-                )
+                delete_fn(session, cluster_name)
+                session.commit()
 
     def _create_database_dump(self, dump_file, secret_file):
         conn = pymysql.connect(
@@ -237,11 +200,43 @@ class MySQLDumpHandler(object):
             dump_file
         )
         logger.info("Running command {cmd} to create dump of {db}".format(
-                cmd=dump_cmd,
-                db=databases
-            ))
+            cmd=dump_cmd,
+            db=databases
+        ))
         p = Popen(dump_cmd, shell=True)
         os.waitpid(p.pid, EMPTY_WAITING_OPTIONS)
         logger.info("Successfully created dump of the current state of dbs {db}".format(
-                db=databases
+            db=databases
         ))
+
+
+def _mysql_delete_dump_fn():
+    return MySQLDumps.delete_mysql_dump
+
+
+def _mysql_dump_exists_fn():
+    return MySQLDumps.dump_exists
+
+
+def _mysql_latest_dump_fn():
+    return MySQLDumps.get_latest_mysql_dump
+
+
+def _mysql_update_dump_fn():
+    return MySQLDumps.update_mysql_dump
+
+
+def _execute_fn(fn, commit=False, session=None, *args):
+    if session:
+        new_args = (session, ) + args
+        ret = fn(*new_args)
+        if commit:
+            session.commit()
+        return ret
+    else:
+        with rbr_state_session.connect_begin(ro=False) as session:
+            new_args = (session, ) + args
+            ret = fn(*new_args)
+            if commit:
+                session.commit()
+            return ret

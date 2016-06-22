@@ -108,14 +108,13 @@ class RecoveryHandler(object):
                     self.stream.next()
                     continue
                 logger.info(
-                    "Recovery halted! Non-data event {e} and query {q}".format(
-                        e=repr(event),
+                    "Recovery halted! Non-data event and query {q}".format(
                         q=event.query
                     )
                 )
                 break
             logger.info("Recovery event {e} for table {t}".format(
-                e=repr(event),
+                e=event,
                 t=event.table
             ))
             replication_handler_event = self.stream.next()
@@ -210,10 +209,9 @@ def _is_unsupported_event(event):
 
 def _already_caught_up(event):
     latest_source_log_position = _get_latest_source_log_position()
-    if (event.position.log_file == latest_source_log_position.log_file and
-        event.position.log_pos >= latest_source_log_position.log_pos
-    ):
+    if (event.position.log_pos >= latest_source_log_position.log_pos and
+        event.position.log_file == latest_source_log_position.log_file
+        ):
         logger.info("Woo! Caught up to real time. Stopping recovery")
         return True
     return False
-
