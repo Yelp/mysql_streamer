@@ -41,9 +41,9 @@ def compose_file():
 
 
 @pytest.fixture(scope='module')
-def services():
+def services(replhandler):
     return [
-        'replicationhandlerchangelog',
+        replhandler,
         'rbrsource',
         'schematracker',
         'rbrstate'
@@ -60,14 +60,14 @@ def services_without_repl_handler():
 
 
 @pytest.yield_fixture(scope='module')
-def containers(compose_file, services):
+def containers(compose_file, services, replhandler):
     with Containers(compose_file, services) as containers:
         # Need to wait for all containers to spin up
         replication_handler_ip = None
         while replication_handler_ip is None:
             replication_handler_ip = Containers.get_container_ip_address(
                 containers.project,
-                'replicationhandlerchangelog')
+                replhandler)
 
         for db in ["rbrsource", "schematracker", "rbrstate"]:
             db_health_check(containers, db, timeout_seconds)

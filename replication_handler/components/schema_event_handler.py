@@ -73,6 +73,7 @@ class SchemaEventHandler(BaseEventHandler):
         )
         mysql_dump_handler.create_and_persist_schema_dump()
 
+        # TODO [DATAPIPE-1163] Simplify the logic below
         if isinstance(statement,
                       AlterTableStatement) and not statement.does_rename_table():
             if schema is None or not schema.strip():

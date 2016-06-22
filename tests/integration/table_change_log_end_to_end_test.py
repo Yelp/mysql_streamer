@@ -18,6 +18,11 @@ pytestmark = pytest.mark.usefixtures("cleanup_avro_cache")
 
 
 @pytest.fixture(scope='module')
+def replhandler():
+    return 'replicationhandlerchangelog'
+
+
+@pytest.fixture(scope='module')
 def namespace():
     return 'changelog.v2'
 

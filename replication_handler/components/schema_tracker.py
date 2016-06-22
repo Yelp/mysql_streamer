@@ -71,8 +71,9 @@ class SchemaTracker(object):
         )
         self.schema_tracker_cursor.execute(query_str)
         res = self.schema_tracker_cursor.fetchone()
-        create_res = ShowCreateResult(*res.values()) if isinstance(
-            res, dict
-        ) else ShowCreateResult(*res)
+        if isinstance(res, dict):
+            create_res = ShowCreateResult(*res.values())
+        else:
+            create_res = ShowCreateResult(*res)
         assert create_res.table == table.table_name
         return create_res

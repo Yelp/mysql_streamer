@@ -143,10 +143,3 @@ def delete_file(file_name):
         # Its fine to pass over this error cause this just means the file didn't
         # exist in the first place
         pass
-
-
-def repltracker_cursor():
-    schema_tracker_cluster = env_config.schema_tracker_cluster
-    connection_set = ConnectionSet.schema_tracker_rw()
-    db = getattr(connection_set, schema_tracker_cluster)
-    return db.cursor()
