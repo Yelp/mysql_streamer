@@ -129,13 +129,8 @@ class MySQLDumpHandler(object):
         """
         logger.info("Recovering stored mysql dump from db")
         latest_fn = _mysql_latest_dump_fn()
-        if session:
-            mysql_dump = latest_fn(session, cluster_name)
-            mysql_dump = copy.copy(mysql_dump)
-        else:
-            with rbr_state_session.connect_begin(ro=True) as session:
-                mysql_dump = latest_fn(session, cluster_name)
-                mysql_dump = copy.copy(mysql_dump)
+        mysql_dump = _execute_fn(latest_fn, False, session, cluster_name)
+        mysql_dump = copy.copy(mysql_dump)
 
         dump_file_path = get_dump_file()
         delete_file(dump_file_path)
@@ -164,13 +159,7 @@ class MySQLDumpHandler(object):
         logger.info("Successfully ran the restoration command")
         logger.info("Deleting the mysql dump")
         delete_fn = _mysql_delete_dump_fn()
-        if session:
-            delete_fn(session, cluster_name)
-            session.commit()
-        else:
-            with rbr_state_session.connect_begin(ro=True) as session:
-                delete_fn(session, cluster_name)
-                session.commit()
+        _execute_fn(delete_fn, True, session, cluster_name)
 
     def _create_database_dump(self, dump_file, secret_file):
         conn = pymysql.connect(
