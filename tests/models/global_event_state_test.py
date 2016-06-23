@@ -8,8 +8,8 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 
 
-# @pytest.mark.itest
-# @pytest.mark.itest_db
+@pytest.mark.itest
+@pytest.mark.itest_db
 class TestGlobalEventState(object):
 
     @pytest.fixture

@@ -8,7 +8,7 @@ from collections import namedtuple
 import simplejson as json
 
 
-log = logging.getLogger('replication_handler.components.schema_tracker')
+logger = logging.getLogger('replication_handler.components.schema_tracker')
 
 
 ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
@@ -42,7 +42,7 @@ class SchemaTracker(object):
             Some query events do not have a schema name, for example:  `RENAME
             TABLE yelp.bad_business TO yelp_aux.bad_business;`.
         """
-        log.info(json.dumps(dict(
+        logger.info(json.dumps(dict(
             message="Executing query",
             query=query,
             database_name=database_name
@@ -57,7 +57,7 @@ class SchemaTracker(object):
         if not self.schema_tracker_cursor.execute(
             'SHOW TABLES LIKE \'{table}\''.format(table=table.table_name)
         ):
-            log.info(
+            logger.info(
                 "Table {table} doesn't exist in database {database}".format(
                     table=table.table_name,
                     database=table.database_name
@@ -71,9 +71,6 @@ class SchemaTracker(object):
         )
         self.schema_tracker_cursor.execute(query_str)
         res = self.schema_tracker_cursor.fetchone()
-        if isinstance(res, dict):
-            create_res = ShowCreateResult(*res.values())
-        else:
-            create_res = ShowCreateResult(*res)
+        create_res = ShowCreateResult(*res)
         assert create_res.table == table.table_name
         return create_res

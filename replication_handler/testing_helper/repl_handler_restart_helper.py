@@ -1,7 +1,9 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import sys
-
 import time
-
 from contextlib import nested
 
 from replication_handler.batch.parse_replication_stream import \
@@ -22,7 +24,6 @@ class ReplHandlerRestartHelper(ParseReplicationStream):
             handler_map
         )
         self.processed_queries += 1
-        print "PROCESSED EVENTS: ", self.processed_queries
 
     def start(self):
         self.starttime = time.time()

@@ -21,14 +21,14 @@ from replication_handler.config import SourceDatabaseConfig
 from replication_handler.models.database import rbr_state_session
 from replication_handler.testing_helper.repl_handler_restart_helper import \
     ReplHandlerRestartHelper
-from replication_handler.testing_helper.util import RBR_SOURCE
-from replication_handler.testing_helper.util import RBR_STATE
-from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import get_db_engine
 from replication_handler.testing_helper.util import increment_heartbeat
-from replication_handler.util.misc import ReplTrackerCursor
+from replication_handler.testing_helper.util import RBR_SOURCE
+from replication_handler.testing_helper.util import RBR_STATE
+from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from replication_handler.util.misc import delete_file
+from replication_handler.util.misc import ReplTrackerCursor
 from tests.util.config_revamp import reconfigure
 
 
@@ -208,8 +208,7 @@ class TestFailureHandler(object):
             user='yelpdev',
             password='',
             db='yelp',
-            charset='utf8mb4',
-            cursorclass=pymysql.cursors.DictCursor
+            charset='utf8mb4'
         )
         return connection.cursor()
 
@@ -439,6 +438,7 @@ class TestFailureHandler(object):
                 ]
             )
             verification_thread.start()
+            verification_thread.join()
 
             with mock.patch(
                     'replication_handler.components.schema_event_handler._checkpoint',
@@ -553,6 +553,7 @@ class TestFailureHandler(object):
                 ]
             )
             verification_thread.start()
+            verification_thread.join()
 
             self.exec_query(
                 containers_without_repl_handler,

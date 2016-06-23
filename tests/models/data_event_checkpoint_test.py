@@ -9,8 +9,8 @@ from data_pipeline.tools.meteorite_wrappers import StatTimer
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 
 
-# @pytest.mark.itest
-# @pytest.mark.itest_db
+@pytest.mark.itest
+@pytest.mark.itest_db
 class TestDataEventCheckpoint(object):
 
     @pytest.fixture
