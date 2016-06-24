@@ -99,6 +99,7 @@ class TestDataEventHandler(object):
         return SchemaWrapperEntry(
             schema_id=0,
             primary_keys=['primary_key'],
+	    contains_set=None
         )
 
     @pytest.yield_fixture

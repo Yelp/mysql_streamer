@@ -29,7 +29,7 @@ class ChangeLogDataEventHandler(DataEventHandler):
     def __init__(self, *args, **kwargs):
         super(ChangeLogDataEventHandler, self).__init__(*args, **kwargs)
         self.schema_wrapper_entry = SchemaWrapperEntry(
-            schema_id=self.schema_id, primary_keys=[])
+            schema_id=self.schema_id, primary_keys=[], contains_set=None)
 
     @cached_property
     def schema_id(self):

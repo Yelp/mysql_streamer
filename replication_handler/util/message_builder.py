@@ -36,10 +36,13 @@ class MessageBuilder(object):
             "database_name": self.event.schema,
             "table_name": self.event.table,
         }
+        payload_data = self._get_values(self.event.row)
+        if self.schema_info.contains_set:
+            self._convert_set_to_list(payload_data)
         message_params = {
             "schema_id": self.schema_info.schema_id,
             "keys": tuple(self.schema_info.primary_keys),
-            "payload_data": self._get_values(self.event.row),
+            "payload_data": payload_data,
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
             "timestamp": self.event.timestamp,
@@ -47,8 +50,10 @@ class MessageBuilder(object):
         }
 
         if self.event.message_type == UpdateMessage:
-            message_params["previous_payload_data"] = self.event.row["before_values"]
-
+            previous_payload_data = self.event.row["before_values"]
+            if self.schema_info.contains_set:
+                self._convert_set_to_list(previous_payload_data)
+            message_params["previous_payload_data"] = previous_payload_data
         return self.event.message_type(**message_params)
 
     def _get_values(self, row):
@@ -60,3 +65,10 @@ class MessageBuilder(object):
             return row['values']
         elif 'after_values' in row:
             return row['after_values']
+
+    def _convert_set_to_list(self, data):
+        """ Convert 'set' value to 'list' value in payload data dictionary
+        """
+        for key, value in data.iteritems():
+            if isinstance(value, set):
+                data[key] = list(value)

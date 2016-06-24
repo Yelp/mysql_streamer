@@ -17,7 +17,7 @@ log = logging.getLogger('replication_handler.components.schema_wrapper')
 
 SchemaWrapperEntry = namedtuple(
     'SchemaWrapperEntry',
-    ('schema_id', 'primary_keys')
+    ('schema_id', 'primary_keys', 'contains_set')
 )
 
 
@@ -35,8 +35,8 @@ class SchemaWrapper(object):
     """ This class is a wrapper for interacting with schematizer.
 
     Args:
-      schematizer_client(SchematizerClient object): a client that interacts with Schematizer
-      APIs with built-in caching features.
+        schematizer_client(SchematizerClient object): a client that interacts
+        with Schematizer APIs with built-in caching features.
     """
 
     __metaclass__ = SchemaWrapperSingleton
@@ -119,12 +119,35 @@ class SchemaWrapper(object):
         self.cache = {}
 
     def _populate_schema_cache(self, table, resp):
+        contains_set = False
+        if self._find_in_schema(resp.schema_json, "array"):
+            contains_set = True
         self.cache[table] = SchemaWrapperEntry(
             schema_id=resp.schema_id,
             primary_keys=resp.primary_keys,
+            contains_set=contains_set
         )
 
     @property
     def _dry_run_schema(self):
         """A schema wrapper to go with dry run mode."""
-        return SchemaWrapperEntry(schema_id=1, primary_keys=[])
+        return SchemaWrapperEntry(
+            schema_id=1,
+            primary_keys=[],
+            contains_set=False
+        )
+
+    def _find_in_schema(self, obj, target):
+        """ Return True if 'target' value exists in the avro schema else False.
+        """
+        found = False
+        if isinstance(obj, dict):
+            for key, value in obj.iteritems():
+                found = found or self._find_in_schema(value, target)
+        elif isinstance(obj, list):
+            for item in obj:
+                found = found or self._find_in_schema(item, target)
+        else:
+            if obj == target:
+                found = True
+        return found

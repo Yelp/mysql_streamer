@@ -29,10 +29,33 @@ class TestSchemaWrapper(object):
         return Table(cluster_name="yelp_main", database_name='yelp', table_name='bogus_table')
 
     @pytest.fixture
+    def test_table(self):
+        return Table(cluster_name="yelp_main", database_name='yelp', table_name='test_table')
+
+    @pytest.fixture
     def avro_schema(self):
         return '{"type": "record", "namespace": "yelp", "name": "business", "pkey": ["id"], \
             "fields": [ {"pkey": 1, "type": "int", "name": "id"}, \
             {"default": null, "maxlen": 64, "type": ["null", "string"], "name": "name"}]}'
+
+    @pytest.fixture
+    def avro_schema_with_array_field(self):
+        return {
+            u'fields': [
+                {u'name': u'id', u'pkey': 1, u'type': u'int'},
+                { u'default': None,
+                    u'name': u'test_name',
+                    u'type': [
+                        u'null',
+                        { u'items': {
+                                u'name': u'test_name', u'namespace': u'',
+                                u'symbols': [u'ONE', u'TWO'], u'type': u'enum'
+                            }, u'type': u'array'
+                        }
+                    ]
+                }], u'name': u'dummy', u'namespace': u'yelp', u'pkey': [u'id'],
+            u'type': u'record'
+        }
 
     @pytest.fixture
     def primary_keys(self):
@@ -55,6 +78,20 @@ class TestSchemaWrapper(object):
         return AvroSchema(
             schema_id=0,
             schema_json=avro_schema,
+            topic=topic,
+            base_schema_id=mock.Mock(),
+            status=mock.Mock(),
+            primary_keys=primary_keys,
+            note=mock.Mock(),
+            created_at=mock.Mock(),
+            updated_at=mock.Mock()
+        )
+
+    @pytest.fixture
+    def test_response_with_array_field(self, avro_schema_with_array_field, topic, primary_keys):
+        return AvroSchema(
+            schema_id=0,
+            schema_json=avro_schema_with_array_field,
             topic=topic,
             base_schema_id=mock.Mock(),
             status=mock.Mock(),
@@ -95,3 +132,13 @@ class TestSchemaWrapper(object):
         assert bogus_table not in base_schema_wrapper.cache
         base_schema_wrapper._populate_schema_cache(bogus_table, test_response)
         assert bogus_table in base_schema_wrapper.cache
+
+    def test_schema_cache_with_contains_set_true(
+        self,
+        base_schema_wrapper,
+        test_table,
+        test_response_with_array_field,
+    ):
+        assert test_table not in base_schema_wrapper.cache
+        base_schema_wrapper._populate_schema_cache(test_table, test_response_with_array_field)
+        assert base_schema_wrapper.cache[test_table].contains_set == True
