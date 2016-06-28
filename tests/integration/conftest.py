@@ -3,6 +3,7 @@ import time
 import pytest
 from data_pipeline.consumer import Consumer
 from data_pipeline.expected_frequency import ExpectedFrequency
+from decimal import Decimal
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -95,6 +96,9 @@ def _assert_equal_dict(dict1, dict2):
         v2 = dict2[key]
         if isinstance(v1, float) and isinstance(v2, float):
             assert abs(v1 - v2) < 0.000001
+        elif isinstance(v1, Decimal):
+            d_v2 = Decimal(str(v2))
+            assert v1.to_eng_string() == d_v2.to_eng_string()
         else:
             assert v1 == v2
 

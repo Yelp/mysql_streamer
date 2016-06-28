@@ -111,12 +111,12 @@ class TestEndToEnd(object):
         {
             'table_name': 'test_decimal',
             'test_schema': [
-                # ColumnInfo('DECIMAL(9, 2)', mysql.DECIMAL(precision=9, scale=2), 101.40),
-                # ColumnInfo('DECIMAL(9, 2) SIGNED', mysql.DECIMAL(precision=9, scale=2, unsigned=False), -80.00),
-                # ColumnInfo('DECIMAL(9, 2) UNSIGNED', mysql.DECIMAL(precision=9, scale=2, unsigned=True), 0.00),
-                # ColumnInfo('DECIMAL(9, 2) UNSIGNED ZEROFILL', mysql.DECIMAL(precision=9, scale=2, unsigned=True, zerofill=True), 5.22),
-                # ColumnInfo('DEC(9, 2)', mysql.DECIMAL(precision=9, scale=2), 5.432),
-                # ColumnInfo('FIXED(9, 2)', mysql.DECIMAL(precision=9, scale=2), 45.432)
+                ColumnInfo('DECIMAL(9, 2)', mysql.DECIMAL(precision=9, scale=2), 101.41),
+                ColumnInfo('DECIMAL(12, 11) SIGNED', mysql.DECIMAL(precision=12, scale=11, unsigned=False), -3.14159265359),
+                ColumnInfo('DECIMAL(2, 1) UNSIGNED', mysql.DECIMAL(precision=2, scale=1, unsigned=True), 0.0),
+                ColumnInfo('DECIMAL(9, 2) UNSIGNED ZEROFILL', mysql.DECIMAL(precision=9, scale=2, unsigned=True, zerofill=True), 5.22),
+                ColumnInfo('DEC(9, 3)', mysql.DECIMAL(precision=9, scale=3), 5.432),
+                ColumnInfo('FIXED(9, 3)', mysql.DECIMAL(precision=9, scale=3), 45.432)
             ]
         },
         {
