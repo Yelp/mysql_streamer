@@ -49,7 +49,7 @@ class TestRecoveryHandler(object):
         mock_schema_wrapper.__getitem__.return_value = SchemaWrapperEntry(
             schema_id=1,
             primary_keys=['key'],
-            contains_set=None
+            transform_required=False
         )
         return mock_schema_wrapper
 

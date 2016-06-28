@@ -12,11 +12,11 @@ class TestMessageBuilder(object):
 
     @pytest.fixture
     def event_row(self):
-        return {'values': {'a_number': 100, 'test_value':set(['ONE'])}}
+        return {'values': {'a_number': 100, 'test_value': set(['ONE'])}}
 
     @pytest.fixture
     def expected_payload(self):
-        return {'a_number': 100, 'test_value':['ONE']}
+        return {'a_number': 100, 'test_value': ['ONE']}
 
     def test_build_message_builds_proper_message(self, event_row, expected_payload):
         schema_info = mock.MagicMock(topic="topic", schema_id=42, primary_keys=[])

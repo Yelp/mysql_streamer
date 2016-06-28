@@ -306,12 +306,12 @@ class TestEndToEnd(object):
 
     @pytest.fixture
     def expected_complex_data(self, actual_complex_data):
-        expected_complext_data = {}
+        expected_complex_data_dict = {}
         for key, value in actual_complex_data.iteritems():
-            expected_complext_data[key] = (
+            expected_complex_data_dict[key] = (
                 sorted(value) if isinstance(value, set) else value
             )
-        return expected_complext_data
+        return expected_complex_data_dict
 
     def test_complex_table(
         self,

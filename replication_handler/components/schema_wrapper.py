@@ -17,7 +17,7 @@ log = logging.getLogger('replication_handler.components.schema_wrapper')
 
 SchemaWrapperEntry = namedtuple(
     'SchemaWrapperEntry',
-    ('schema_id', 'primary_keys', 'contains_set')
+    ('schema_id', 'primary_keys', 'transform_required')
 )
 
 
@@ -119,13 +119,15 @@ class SchemaWrapper(object):
         self.cache = {}
 
     def _populate_schema_cache(self, table, resp):
-        contains_set = False
-        if self._find_in_schema(resp.schema_json, "array"):
-            contains_set = True
+        transform_required = any(
+            column_type.startswith('set')
+            for column_type in self.schema_tracker.get_column_types(table)
+        )
+
         self.cache[table] = SchemaWrapperEntry(
             schema_id=resp.schema_id,
             primary_keys=resp.primary_keys,
-            contains_set=contains_set
+            transform_required=transform_required
         )
 
     @property
@@ -134,20 +136,5 @@ class SchemaWrapper(object):
         return SchemaWrapperEntry(
             schema_id=1,
             primary_keys=[],
-            contains_set=False
+            transform_required=False
         )
-
-    def _find_in_schema(self, obj, target):
-        """ Return True if 'target' value exists in the avro schema else False.
-        """
-        found = False
-        if isinstance(obj, dict):
-            for key, value in obj.iteritems():
-                found = found or self._find_in_schema(value, target)
-        elif isinstance(obj, list):
-            for item in obj:
-                found = found or self._find_in_schema(item, target)
-        else:
-            if obj == target:
-                found = True
-        return found
