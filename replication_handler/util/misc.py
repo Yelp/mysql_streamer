@@ -5,7 +5,8 @@ from __future__ import unicode_literals
 import logging
 import os
 from os import remove
-from os.path import join, expanduser
+from os.path import expanduser
+from os.path import join
 
 from yelp_conn.connection_set import ConnectionSet
 
@@ -72,10 +73,10 @@ class ReplTrackerCursor(object):
 
     @property
     def repltracker_cursor(self):
-        if env_config.namespace != 'canary':
-            return ConnectionSet.schema_tracker_rw().repltracker.cursor()
-        else:
-            return ConnectionSet.schema_tracker_rw().repltracker_canary.cursor()
+        schema_tracker_cluster = env_config.schema_tracker_cluster
+        connection_set = ConnectionSet.schema_tracker_rw()
+        db = getattr(connection_set, schema_tracker_cluster)
+        return db.cursor()
 
 
 def save_position(position_data, is_clean_shutdown=False):
