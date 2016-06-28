@@ -22,6 +22,8 @@ container_env: docker-compose
 
 force_exit: True
 
+pii_yaml_path: '/nail/etc/services/database_pii'
+
 schema_blacklist:
     - information_schema
     - mysql
@@ -36,3 +38,4 @@ module_env_config:
         kafka_cluster_name: uswest2-devc
         skip_messages_with_pii: False
         kafka_producer_buffer_size: 500
+        encryption_type: AES_MODE_CBC-1
