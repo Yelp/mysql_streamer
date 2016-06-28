@@ -23,11 +23,6 @@ class TestSchemaWrapper(object):
         schema_wrapper.schema_tracker.get_column_types.return_value = []
         yield schema_wrapper
 
-    # @pytest.fixture
-    # def base_schema_wrapper(self, schematizer_client):
-    #
-    #     return SchemaWrapper(schematizer_client=schematizer_client)
-
     @pytest.fixture
     def table(self):
         return Table(cluster_name="yelp_main", database_name='yelp', table_name='business')
@@ -38,11 +33,19 @@ class TestSchemaWrapper(object):
 
     @pytest.fixture
     def foo_table(self):
-        return Table(cluster_name="yelp_main", database_name='yelp', table_name='foo_table')
+        return Table(
+            cluster_name="yelp_main",
+            database_name='yelp',
+            table_name='foo_table'
+        )
 
     @pytest.fixture
     def bar_table(self):
-        return Table(cluster_name="yelp_main", database_name='yelp', table_name='bar_table')
+        return Table(
+            cluster_name="yelp_main",
+            database_name='yelp',
+            table_name='bar_table'
+        )
 
     @pytest.fixture
     def avro_schema(self):
@@ -101,7 +104,12 @@ class TestSchemaWrapper(object):
         )
 
     @pytest.fixture
-    def response_with_array_field(self, avro_schema_with_array_field, topic, primary_keys):
+    def response_with_array_field(
+        self,
+        avro_schema_with_array_field,
+        topic,
+        primary_keys
+    ):
         return AvroSchema(
             schema_id=0,
             schema_json=avro_schema_with_array_field,
@@ -147,31 +155,31 @@ class TestSchemaWrapper(object):
         assert bogus_table in base_schema_wrapper.cache
 
     def test_schema_cache_with_contains_set_true(
-            self,
-            base_schema_wrapper,
-            foo_table_column_types,
-            foo_table,
-        ):
-            base_schema_wrapper.schema_tracker.get_column_types.return_value = (
-                foo_table_column_types
-            )
-            assert foo_table not in base_schema_wrapper.cache
-            base_schema_wrapper._populate_schema_cache(foo_table, mock.Mock())
-            assert base_schema_wrapper.cache[foo_table].transform_required == (
-                True
-            )
+        self,
+        base_schema_wrapper,
+        foo_table_column_types,
+        foo_table,
+    ):
+        base_schema_wrapper.schema_tracker.get_column_types.return_value = (
+            foo_table_column_types
+        )
+        assert foo_table not in base_schema_wrapper.cache
+        base_schema_wrapper._populate_schema_cache(foo_table, mock.Mock())
+        assert base_schema_wrapper.cache[foo_table].transform_required == (
+            True
+        )
 
     def test_schema_cache_with_contains_set_false(
-            self,
-            base_schema_wrapper,
-            bar_table_column_types,
-            bar_table,
-        ):
-            base_schema_wrapper.schema_tracker.get_column_types.return_value = (
-                bar_table_column_types
-            )
-            assert bar_table not in base_schema_wrapper.cache
-            base_schema_wrapper._populate_schema_cache(bar_table, mock.Mock())
-            assert base_schema_wrapper.cache[bar_table].transform_required == (
-                False
-            )
+        self,
+        base_schema_wrapper,
+        bar_table_column_types,
+        bar_table,
+    ):
+        base_schema_wrapper.schema_tracker.get_column_types.return_value = (
+            bar_table_column_types
+        )
+        assert bar_table not in base_schema_wrapper.cache
+        base_schema_wrapper._populate_schema_cache(bar_table, mock.Mock())
+        assert base_schema_wrapper.cache[bar_table].transform_required == (
+            False
+        )
