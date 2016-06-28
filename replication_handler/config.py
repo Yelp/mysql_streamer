@@ -11,27 +11,48 @@ from yelp_servlib import clog_util
 from yelp_servlib.config_util import load_default_config
 
 
-log = logging.getLogger('replication_handler.config')
+logger = logging.getLogger('replication_handler.config')
 
 
 class BaseConfig(object):
-    """Staticconf base object for managing config
-    TODO: (cheng|DATAPIPE-88) Removed the config reloading code, will work on that later.
+    """
+    Staticconf base object for managing config
+    TODO: (cheng|DATAPIPE-88) Removed the config reloading code,
+    will work on that later.
     """
 
-    def __init__(self, config_path='config.yaml', env_config_path='config-env-dev.yaml'):
-        SERVICE_CONFIG_PATH = os.environ.get('SERVICE_CONFIG_PATH', config_path)
-        SERVICE_ENV_CONFIG_PATH = os.environ.get('SERVICE_ENV_CONFIG_PATH', env_config_path)
-        log.info("SERVICE_CONFIG_PATH is {}".format(SERVICE_CONFIG_PATH))
-        log.info("SERVICE_ENV_CONFIG_PATH is {}".format(SERVICE_ENV_CONFIG_PATH))
-        load_default_config(SERVICE_CONFIG_PATH, SERVICE_ENV_CONFIG_PATH)
+    def __init__(
+            self,
+            config_path='config.yaml',
+            env_config_path='config-env-dev.yaml'
+    ):
+        self.service_config_path = os.environ.get(
+            'SERVICE_CONFIG_PATH',
+            config_path
+        )
+        self.service_env_config_path = os.environ.get(
+            'SERVICE_ENV_CONFIG_PATH', env_config_path
+        )
+        logger.info("loading service config from {s}".format(
+            s=self.service_config_path)
+        )
+        logger.info("Loading env service config from {s}".format(
+            s=self.service_env_config_path)
+        )
+        load_default_config(
+            self.service_config_path,
+            self.service_env_config_path
+        )
         yelp_conn.initialize()
         clog_util.initialize()
 
 
 class EnvConfig(BaseConfig):
-    """When we do staticconf.get(), we will get a ValueProxy object, sometimes it is
-    not accepted, so by calling value on that we will get its original value."""
+    """
+    When we do staticconf.get(), we will get a ValueProxy object,
+    sometimes it is not accepted, so by calling value on that we will get
+    its original value.
+    """
 
     @property
     def container_name(self):
@@ -91,6 +112,9 @@ class EnvConfig(BaseConfig):
     def table_whitelist(self):
         return staticconf.get('table_whitelist', default=None).value
 
+    # TODO This config is never used in setting up the replication handler.
+    # DATAPIPE-1158
+    # Its set in the clientlibs/data_pipeline hence to be removed.
     @property
     def zookeeper_discovery_path(self):
         return staticconf.get('zookeeper_discovery_path').value
@@ -147,14 +171,14 @@ class EnvConfig(BaseConfig):
     @property
     def recovery_queue_size(self):
         # The recovery queue size have to be greater than data pipeline producer
-        # buffer size, otherwise we could potentially have stale checkpoint data which
-        # would cause the recovery process to fail.
+        # buffer size, otherwise we could potentially have stale checkpoint data
+        # which would cause the recovery process to fail.
         return staticconf.get('recovery_queue_size').value
 
     @property
     def resume_stream(self):
         """Controls if the replication handler will attempt to resume from
-        an existing position, or start from the beginning of replicaton.  This
+        an existing position, or start from the beginning of replication.  This
         should almost always be True.  The two exceptions are when dealing
         with a brand new database that has never had any tables created, or
         when running integration tests.
@@ -165,6 +189,17 @@ class EnvConfig(BaseConfig):
         this in practice.
         """
         return staticconf.get_bool('resume_stream', default=True).value
+
+    @property
+    def resume_from_log_position(self):
+        """
+        If set to true, when the replication handler restarts, it will resume
+        from the log position that is saved in the log_position_state table
+        """
+        return staticconf.get_bool(
+            'resume_from_log_position',
+            default=True
+        ).value
 
     @property
     def force_exit(self):
@@ -178,7 +213,9 @@ class EnvConfig(BaseConfig):
 
 
 class DatabaseConfig(object):
-    """Used for reading database config out of topology.yaml in the environment"""
+    """
+    Used for reading database config out of topology.yaml in the environment
+    """
 
     def __init__(self, cluster_name, topology_path):
         load_default_config(topology_path)
@@ -199,13 +236,36 @@ class DatabaseConfig(object):
         return self._cluster_name
 
 
+class SourceDatabaseConfig(DatabaseConfig):
+
+    def __init__(self, cluster_name, topology_path):
+        """
+        Stores the source database config
+        Args:
+            cluster_name: Name of the source cluster
+            topology_path: File path of the topology config for the cluster
+        """
+        DatabaseConfig.__init__(self, cluster_name, topology_path)
+
+
+class SchemaTrackingDatabaseConfig(DatabaseConfig):
+
+    def __init__(self, cluster_name, topology_path):
+        """
+        Stores the schema tracking config
+        Args:
+            cluster_name: Name of the source cluster
+            topology_path: File path of the topology config for the cluster
+        """
+        DatabaseConfig.__init__(self, cluster_name, topology_path)
+
 env_config = EnvConfig()
 
-source_database_config = DatabaseConfig(
+source_database_config = SourceDatabaseConfig(
     env_config.rbr_source_cluster,
     env_config.topology_path
 )
-schema_tracking_database_config = DatabaseConfig(
+schema_tracking_database_config = SchemaTrackingDatabaseConfig(
     env_config.schema_tracker_cluster,
     env_config.topology_path
 )

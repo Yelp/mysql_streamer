@@ -29,7 +29,7 @@ logging.basicConfig(
 
 
 @pytest.fixture(scope='module')
-def compose_file(replhandler):
+def compose_file():
     return os.path.abspath(
         os.path.join(
             os.path.split(
@@ -50,6 +50,15 @@ def services(replhandler):
     ]
 
 
+@pytest.fixture(scope='module')
+def services_without_repl_handler():
+    return [
+        'rbrsource',
+        'schematracker',
+        'rbrstate'
+    ]
+
+
 @pytest.yield_fixture(scope='module')
 def containers(compose_file, services, replhandler):
     with Containers(compose_file, services) as containers:
@@ -63,6 +72,17 @@ def containers(compose_file, services, replhandler):
         for db in ["rbrsource", "schematracker", "rbrstate"]:
             db_health_check(containers, db, timeout_seconds)
         replication_handler_health_check(containers, timeout_seconds)
+        yield containers
+
+
+@pytest.yield_fixture(scope='module')
+def containers_without_repl_handler(
+        compose_file,
+        services_without_repl_handler
+):
+    with Containers(compose_file, services_without_repl_handler) as containers:
+        for db in ["rbrsource", "schematracker", "rbrstate"]:
+            db_health_check(containers, db, timeout_seconds)
         yield containers
 
 

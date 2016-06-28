@@ -46,8 +46,11 @@ RUN     /code/virtualenv_run/bin/pip install \
 
 ADD     . /code
 
-RUN useradd batch
+RUN apt-get -y install mysql-client-5.5
+RUN useradd -m batch &&  echo "batch:batch" | chpasswd && adduser batch sudo
 RUN chown -R batch /code
+RUN mkdir -p /home/batch
+RUN chown -R batch /home/batch
 
 USER batch
 
