@@ -378,64 +378,14 @@ class TestEndToEnd(object):
             schematizer=schematizer
         )
 
+    @pytest.mark.parametrize("source", [
+        "basic_table",
+        "secret_table"
+    ], ids=['without contains pii', 'with contains pii'])
     def test_basic_table(
         self,
         containers,
-        create_table_query,
-        namespace,
-        schematizer,
-        rbr_source_session
-    ):
-        increment_heartbeat(containers)
-
-        source = "basic_table"
-        execute_query_get_one_row(
-            containers,
-            RBR_SOURCE,
-            create_table_query.format(table_name=source)
-        )
-
-        BasicModel = _generate_basic_model(source)
-        model_1 = BasicModel(id=1, name='insert')
-        model_2 = BasicModel(id=2, name='insert')
-        rbr_source_session.add(model_1)
-        rbr_source_session.add(model_2)
-        rbr_source_session.commit()
-        model_1.name = 'update'
-        rbr_source_session.delete(model_2)
-        rbr_source_session.commit()
-
-        messages = _fetch_messages(
-            containers,
-            schematizer,
-            namespace,
-            source,
-            4
-        )
-        expected_messages = [
-            {
-                'message_type': MessageType.create,
-                'payload_data': {'id': 1, 'name': 'insert'}
-            },
-            {
-                'message_type': MessageType.create,
-                'payload_data': {'id': 2, 'name': 'insert'}
-            },
-            {
-                'message_type': MessageType.update,
-                'payload_data': {'id': 1, 'name': 'update'},
-                'previous_payload_data': {'id': 1, 'name': 'insert'}
-            },
-            {
-                'message_type': MessageType.delete,
-                'payload_data': {'id': 2, 'name': 'insert'}
-            },
-        ]
-        _verify_messages(messages, expected_messages)
-
-    def test_table_with_contains_pii(
-        self,
-        containers,
+        source,
         create_table_query,
         namespace,
         schematizer,
@@ -447,7 +397,6 @@ class TestEndToEnd(object):
         ):
             increment_heartbeat(containers)
 
-            source = "secret_table"
             execute_query_get_one_row(
                 containers,
                 RBR_SOURCE,
@@ -460,13 +409,16 @@ class TestEndToEnd(object):
             rbr_source_session.add(model_1)
             rbr_source_session.add(model_2)
             rbr_source_session.commit()
+            model_1.name = 'update'
+            rbr_source_session.delete(model_2)
+            rbr_source_session.commit()
 
             messages = _fetch_messages(
                 containers,
                 schematizer,
                 namespace,
                 source,
-                2
+                4
             )
             expected_messages = [
                 {
@@ -476,7 +428,16 @@ class TestEndToEnd(object):
                 {
                     'message_type': MessageType.create,
                     'payload_data': {'id': 2, 'name': 'insert'}
-                }
+                },
+                {
+                    'message_type': MessageType.update,
+                    'payload_data': {'id': 1, 'name': 'update'},
+                    'previous_payload_data': {'id': 1, 'name': 'insert'}
+                },
+                {
+                    'message_type': MessageType.delete,
+                    'payload_data': {'id': 2, 'name': 'insert'}
+                },
             ]
             _verify_messages(messages, expected_messages)
 
