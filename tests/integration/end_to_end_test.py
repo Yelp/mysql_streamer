@@ -20,6 +20,7 @@ from tests.integration.conftest import _verify_messages
 from tests.integration.conftest import _wait_for_schematizer_topic
 from tests.integration.conftest import _wait_for_table
 from tests.integration.conftest import Base
+from tests.util.config_revamp import reconfigure
 
 
 ColumnInfo = namedtuple('ColumnInfo', ['type', 'sqla_obj', 'data'])
@@ -377,60 +378,68 @@ class TestEndToEnd(object):
             schematizer=schematizer
         )
 
+    @pytest.mark.parametrize("source", [
+        "basic_table",
+        "secret_table"
+    ], ids=['without contains pii', 'with contains pii'])
     def test_basic_table(
         self,
         containers,
+        source,
         create_table_query,
         namespace,
         schematizer,
         rbr_source_session
     ):
-        increment_heartbeat(containers)
+        with reconfigure(
+                encryption_type='AES_MODE_CBC-1',
+                key_location='acceptance/configs/data_pipeline/'
+        ):
+            increment_heartbeat(containers)
 
-        source = "basic_table"
-        execute_query_get_one_row(
-            containers,
-            RBR_SOURCE,
-            create_table_query.format(table_name=source)
-        )
+            execute_query_get_one_row(
+                containers,
+                RBR_SOURCE,
+                create_table_query.format(table_name=source)
+            )
 
-        BasicModel = _generate_basic_model(source)
-        model_1 = BasicModel(id=1, name='insert')
-        model_2 = BasicModel(id=2, name='insert')
-        rbr_source_session.add(model_1)
-        rbr_source_session.add(model_2)
-        rbr_source_session.commit()
-        model_1.name = 'update'
-        rbr_source_session.delete(model_2)
-        rbr_source_session.commit()
+            BasicModel = _generate_basic_model(source)
+            model_1 = BasicModel(id=1, name='insert')
+            model_2 = BasicModel(id=2, name='insert')
+            rbr_source_session.add(model_1)
+            rbr_source_session.add(model_2)
+            rbr_source_session.commit()
+            model_1.name = 'update'
+            rbr_source_session.delete(model_2)
+            rbr_source_session.commit()
 
-        messages = _fetch_messages(
-            containers,
-            schematizer,
-            namespace,
-            source,
-            4
-        )
-        expected_messages = [
-            {
-                'message_type': MessageType.create,
-                'payload_data': {'id': 1, 'name': 'insert'}
-            },
-            {
-                'message_type': MessageType.create,
-                'payload_data': {'id': 2, 'name': 'insert'}
-            },
-            {
-                'message_type': MessageType.update,
-                'payload_data': {'id': 1, 'name': 'update'},
-                'previous_payload_data': {'id': 1, 'name': 'insert'}
-            },
-            {
-                'message_type': MessageType.delete,
-                'payload_data': {'id': 2, 'name': 'insert'}
-            },
-        ]
-        _verify_messages(messages, expected_messages)
+            messages = _fetch_messages(
+                containers,
+                schematizer,
+                namespace,
+                source,
+                4
+            )
+            expected_messages = [
+                {
+                    'message_type': MessageType.create,
+                    'payload_data': {'id': 1, 'name': 'insert'}
+                },
+                {
+                    'message_type': MessageType.create,
+                    'payload_data': {'id': 2, 'name': 'insert'}
+                },
+                {
+                    'message_type': MessageType.update,
+                    'payload_data': {'id': 1, 'name': 'update'},
+                    'previous_payload_data': {'id': 1, 'name': 'insert'}
+                },
+                {
+                    'message_type': MessageType.delete,
+                    'payload_data': {'id': 2, 'name': 'insert'}
+                },
+            ]
+            _verify_messages(messages, expected_messages)
 
     def check_schematizer_has_correct_source_info(
         self,

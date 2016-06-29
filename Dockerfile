@@ -15,7 +15,8 @@ run apt-get update && apt-get upgrade -y && apt-get install -y \
    wget \
    language-pack-en-base \
    uuid-dev \
-   git-core
+   git-core \
+   mysql-client-5.5
 
 run locale-gen en_US en_US.UTF-8 && dpkg-reconfigure locales
 
@@ -46,7 +47,6 @@ RUN     /code/virtualenv_run/bin/pip install \
 
 ADD     . /code
 
-RUN apt-get -y install mysql-client-5.5
 RUN useradd -m batch &&  echo "batch:batch" | chpasswd && adduser batch sudo
 RUN chown -R batch /code
 RUN mkdir -p /home/batch
