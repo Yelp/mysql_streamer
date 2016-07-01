@@ -204,7 +204,7 @@ class TestEndToEnd(object):
         {
             'table_name': 'test_set',
             'test_schema': [
-                # ColumnInfo("SET('ONE', 'TWO')", mysql.SET(['ONE', 'TWO']), ['ONE', 'TWO'])
+                ColumnInfo("SET('ONE', 'TWO')", mysql.SET(['ONE', 'TWO']), set(['ONE', 'TWO']))
             ]
         }
     ], ids=['test_bit', 'test_tinyint', 'test_smallint', 'test_mediumint', 'test_int',
@@ -299,28 +299,37 @@ class TestEndToEnd(object):
         return Model
 
     @pytest.fixture
-    def complex_data(self, complex_table_schema):
+    def actual_complex_data(self, complex_table_schema):
         res = {'id': 1}
         for indx, complex_column_schema in enumerate(complex_table_schema):
             res.update({self._build_sql_column_name(indx): complex_column_schema.data})
         return res
+
+    @pytest.fixture
+    def expected_complex_data(self, actual_complex_data):
+        expected_complex_data_dict = {}
+        for key, value in actual_complex_data.iteritems():
+            expected_complex_data_dict[key] = (
+                sorted(value) if isinstance(value, set) else value
+            )
+        return expected_complex_data_dict
 
     def test_complex_table(
         self,
         containers,
         complex_table_name,
         ComplexModel,
-        complex_data,
+        actual_complex_data,
+        expected_complex_data,
         schematizer,
         namespace,
         rbr_source_session
     ):
         increment_heartbeat(containers)
 
-        complex_instance = ComplexModel(**complex_data)
+        complex_instance = ComplexModel(**actual_complex_data)
         rbr_source_session.add(complex_instance)
         rbr_source_session.commit()
-
         messages = _fetch_messages(
             containers,
             schematizer,
@@ -331,7 +340,7 @@ class TestEndToEnd(object):
         expected_messages = [
             {
                 'message_type': MessageType.create,
-                'payload_data': complex_data
+                'payload_data': expected_complex_data
             },
         ]
         _verify_messages(messages, expected_messages)

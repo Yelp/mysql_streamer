@@ -17,7 +17,7 @@ log = logging.getLogger('replication_handler.components.schema_wrapper')
 
 SchemaWrapperEntry = namedtuple(
     'SchemaWrapperEntry',
-    ('schema_id', 'primary_keys')
+    ('schema_id', 'primary_keys', 'transform_required')
 )
 
 
@@ -35,8 +35,8 @@ class SchemaWrapper(object):
     """ This class is a wrapper for interacting with schematizer.
 
     Args:
-      schematizer_client(SchematizerClient object): a client that interacts with Schematizer
-      APIs with built-in caching features.
+        schematizer_client(SchematizerClient object): a client that interacts
+        with Schematizer APIs with built-in caching features.
     """
 
     __metaclass__ = SchemaWrapperSingleton
@@ -119,12 +119,22 @@ class SchemaWrapper(object):
         self.cache = {}
 
     def _populate_schema_cache(self, table, resp):
+        set_transform_required = any(
+            column_type.startswith('set')
+            for column_type in self.schema_tracker.get_column_types(table)
+        )
+
         self.cache[table] = SchemaWrapperEntry(
             schema_id=resp.schema_id,
             primary_keys=resp.primary_keys,
+            transform_required=set_transform_required
         )
 
     @property
     def _dry_run_schema(self):
         """A schema wrapper to go with dry run mode."""
-        return SchemaWrapperEntry(schema_id=1, primary_keys=[])
+        return SchemaWrapperEntry(
+            schema_id=1,
+            primary_keys=[],
+            transform_required=False
+        )
