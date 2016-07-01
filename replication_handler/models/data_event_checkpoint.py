@@ -60,8 +60,9 @@ class DataEventCheckpoint(Base):
                 existing_record = existing_topics_to_records[topic]
                 if existing_record.kafka_offset != offset:
                     updated_checkpoints.append({
-                        'checkpoint_id': existing_record.id,
-                        'kafka_offset': offset
+                        'id': existing_record.id,
+                        'kafka_offset': offset,
+                        'cluster_name': cluster_name
                     })
             else:
                 new_checkpoints.append({
@@ -83,18 +84,14 @@ class DataEventCheckpoint(Base):
         # be closer.
         table = cls.__table__
         if new_checkpoints:
-            session.execute(table.insert(), new_checkpoints)
+            # session.execute(table.insert(), new_checkpoints)
+            session.bulk_insert_mappings(DataEventCheckpoint, new_checkpoints)
+
         if updated_checkpoints:
-            session.execute(
-                table.update().where(
-                    # Using checkpoint_id instead of id since id is reserved
-                    # by SQLA
-                    table.c.id == bindparam('checkpoint_id')
-                ).values(
-                    kafka_offset=bindparam('kafka_offset')
-                ),
-                updated_checkpoints
-            )
+            session.bulk_update_mappings(
+                    DataEventCheckpoint,
+                    updated_checkpoints
+                )
 
         timer.stop()
 

@@ -54,14 +54,20 @@ class TestDataEventCheckpoint(object):
             topic_to_kafka_offset_map=expected_topic_to_kafka_offset_map,
             cluster_name=cluster_name,
         )
-        sandbox_session.commit()
+        try:
+            sandbox_session.commit()
+        except:
+            sandbox_session.rollback()
         yield data_event_checkpoint
         sandbox_session.query(
             DataEventCheckpoint
         ).filter(
             DataEventCheckpoint.cluster_name == cluster_name
         ).delete()
-        sandbox_session.commit()
+        try:
+            sandbox_session.commit()
+        except:
+            sandbox_session.rollback()
 
     def test_get_topic_to_kafka_offset_map(
         self,
