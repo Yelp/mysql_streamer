@@ -119,7 +119,7 @@ class SchemaWrapper(object):
         self.cache = {}
 
     def _populate_schema_cache(self, table, resp):
-        transform_required = any(
+        set_transform_required = any(
             column_type.startswith('set')
             for column_type in self.schema_tracker.get_column_types(table)
         )
@@ -127,7 +127,7 @@ class SchemaWrapper(object):
         self.cache[table] = SchemaWrapperEntry(
             schema_id=resp.schema_id,
             primary_keys=resp.primary_keys,
-            transform_required=transform_required
+            transform_required=set_transform_required
         )
 
     @property
