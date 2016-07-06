@@ -3,10 +3,15 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import os
+from os import remove
+from os.path import expanduser
+from os.path import join
 
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.config import env_config
+from replication_handler.config import schema_tracking_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -64,6 +69,16 @@ class DataEvent(object):
         self.message_type = message_type
 
 
+class ReplTrackerCursor(object):
+
+    @property
+    def repltracker_cursor(self):
+        schema_tracker_cluster = env_config.schema_tracker_cluster
+        connection_set = ConnectionSet.schema_tracker_rw()
+        db = getattr(connection_set, schema_tracker_cluster)
+        return db.cursor()
+
+
 def save_position(position_data, is_clean_shutdown=False):
     if not position_data or not position_data.last_published_message_position_info:
         log.info(
@@ -90,10 +105,42 @@ def save_position(position_data, is_clean_shutdown=False):
             topic_to_kafka_offset_map=topic_to_kafka_offset_map,
             cluster_name=position_info["cluster_name"]
         )
+        session.commit()
 
 
-def repltracker_cursor():
-    if env_config.namespace != 'canary':
-        return ConnectionSet.schema_tracker_rw().repltracker.cursor()
-    else:
-        return ConnectionSet.schema_tracker_rw().repltracker_canary.cursor()
+def create_mysql_passwd_file(secret_file, user, passwd):
+    delete_file(secret_file)
+    secret_file_content = """
+    [client]
+    user={user}
+    password={password}
+
+    [mysql]
+    user={user}
+    password={password}
+
+    [mysqldump]
+    user={user}
+    password={password}""".format(user=user, password=passwd)
+    with os.fdopen(
+        os.open(secret_file, os.O_WRONLY | os.O_CREAT, 0600),
+        'w'
+    ) as f:
+        f.write(secret_file_content)
+
+
+def get_dump_file():
+    cluster_name = schema_tracking_database_config.cluster_name
+    home_dir = expanduser('~')
+    dump_file = join(home_dir, '{}_{}.sql'.format(cluster_name, 'mysql_dump'))
+    return dump_file
+
+
+def delete_file(file_name):
+    log.info("Deleting {file} if it exists".format(file=file_name))
+    try:
+        remove(file_name)
+    except OSError:
+        # Its fine to pass over this error cause this just means the file didn't
+        # exist in the first place
+        pass

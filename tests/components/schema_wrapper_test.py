@@ -16,9 +16,12 @@ class TestSchemaWrapper(object):
     def schematizer_client(self):
         return mock.Mock()
 
-    @pytest.fixture
+    @pytest.yield_fixture
     def base_schema_wrapper(self, schematizer_client):
-        return SchemaWrapper(schematizer_client=schematizer_client)
+        schema_wrapper = SchemaWrapper(schematizer_client=schematizer_client)
+        schema_wrapper.schema_tracker.get_column_types = mock.Mock()
+        schema_wrapper.schema_tracker.get_column_types.return_value = []
+        yield schema_wrapper
 
     @pytest.fixture
     def table(self):
@@ -29,10 +32,46 @@ class TestSchemaWrapper(object):
         return Table(cluster_name="yelp_main", database_name='yelp', table_name='bogus_table')
 
     @pytest.fixture
+    def foo_table(self):
+        return Table(
+            cluster_name="yelp_main",
+            database_name='yelp',
+            table_name='foo_table'
+        )
+
+    @pytest.fixture
+    def bar_table(self):
+        return Table(
+            cluster_name="yelp_main",
+            database_name='yelp',
+            table_name='bar_table'
+        )
+
+    @pytest.fixture
     def avro_schema(self):
         return '{"type": "record", "namespace": "yelp", "name": "business", "pkey": ["id"], \
             "fields": [ {"pkey": 1, "type": "int", "name": "id"}, \
             {"default": null, "maxlen": 64, "type": ["null", "string"], "name": "name"}]}'
+
+    @pytest.fixture
+    def foo_table_column_types(self):
+        return [
+            u'int(11)',
+            u'varchar(12)',
+            u'char(1)',
+            u'double',
+            u"set('a','b','c')",
+            u'int(10) unsigned'
+        ]
+
+    @pytest.fixture
+    def bar_table_column_types(self):
+        return [
+            u'int(11)',
+            u'varchar(12)',
+            u'double',
+            u'int(10) unsigned'
+        ]
 
     @pytest.fixture
     def primary_keys(self):
@@ -64,6 +103,25 @@ class TestSchemaWrapper(object):
             updated_at=mock.Mock()
         )
 
+    @pytest.fixture
+    def response_with_array_field(
+        self,
+        avro_schema_with_array_field,
+        topic,
+        primary_keys
+    ):
+        return AvroSchema(
+            schema_id=0,
+            schema_json=avro_schema_with_array_field,
+            topic=topic,
+            base_schema_id=mock.Mock(),
+            status=mock.Mock(),
+            primary_keys=primary_keys,
+            note=mock.Mock(),
+            created_at=mock.Mock(),
+            updated_at=mock.Mock()
+        )
+
     def test_schema_wrapper_singleton(self, base_schema_wrapper):
         new_schema_wrapper = SchemaWrapper()
         assert new_schema_wrapper is base_schema_wrapper
@@ -73,18 +131,16 @@ class TestSchemaWrapper(object):
         base_schema_wrapper,
         test_response,
         table,
-        topic,
     ):
         base_schema_wrapper._populate_schema_cache(table, test_response)
         resp = base_schema_wrapper[table]
-        self._assert_expected_result(resp, topic)
+        self._assert_expected_result(resp)
 
-    def test_get_schema_already_cached(self, base_schema_wrapper, table, topic):
+    def test_get_schema_already_cached(self, base_schema_wrapper, table):
         resp = base_schema_wrapper[table]
-        self._assert_expected_result(resp, topic)
+        self._assert_expected_result(resp)
 
-    def _assert_expected_result(self, resp, topic):
-        assert resp.topic == topic.name
+    def _assert_expected_result(self, resp):
         assert resp.schema_id == 0
         assert resp.primary_keys == ['primary_key']
 
@@ -97,3 +153,29 @@ class TestSchemaWrapper(object):
         assert bogus_table not in base_schema_wrapper.cache
         base_schema_wrapper._populate_schema_cache(bogus_table, test_response)
         assert bogus_table in base_schema_wrapper.cache
+
+    def test_schema_cache_with_contains_set_true(
+        self,
+        base_schema_wrapper,
+        foo_table_column_types,
+        foo_table,
+    ):
+        base_schema_wrapper.schema_tracker.get_column_types.return_value = (
+            foo_table_column_types
+        )
+        assert foo_table not in base_schema_wrapper.cache
+        base_schema_wrapper._populate_schema_cache(foo_table, mock.Mock())
+        assert base_schema_wrapper.cache[foo_table].transform_required == True
+
+    def test_schema_cache_with_contains_set_false(
+        self,
+        base_schema_wrapper,
+        bar_table_column_types,
+        bar_table,
+    ):
+        base_schema_wrapper.schema_tracker.get_column_types.return_value = (
+            bar_table_column_types
+        )
+        assert bar_table not in base_schema_wrapper.cache
+        base_schema_wrapper._populate_schema_cache(bar_table, mock.Mock())
+        assert base_schema_wrapper.cache[bar_table].transform_required == False

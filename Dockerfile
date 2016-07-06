@@ -15,17 +15,18 @@ run apt-get update && apt-get upgrade -y && apt-get install -y \
    wget \
    language-pack-en-base \
    uuid-dev \
-   git-core
+   git-core \
+   mysql-client-5.5
 
 run locale-gen en_US en_US.UTF-8 && dpkg-reconfigure locales
 
 # Setup pypy
 run mkdir /src
 workdir /src
-run wget https://bitbucket.org/pypy/pypy/downloads/pypy-5.1.0-linux64.tar.bz2 --no-check-certificate
-run bunzip2 pypy-5.1.0-linux64.tar.bz2
-run tar xvf pypy-5.1.0-linux64.tar
-ENV PATH $PATH:/src/pypy-5.1.0-linux64/bin/
+run wget https://bitbucket.org/pypy/pypy/downloads/pypy2-v5.3.0-linux64.tar.bz2 --no-check-certificate
+run bunzip2 pypy2-v5.3.0-linux64.tar.bz2
+run tar xvf pypy2-v5.3.0-linux64.tar
+ENV PATH $PATH:/src/pypy2-v5.3.0-linux64/bin/
 run wget https://bootstrap.pypa.io/get-pip.py --no-check-certificate
 run pypy get-pip.py
 
@@ -46,8 +47,10 @@ RUN     /code/virtualenv_run/bin/pip install \
 
 ADD     . /code
 
-RUN useradd batch
+RUN useradd -m batch &&  echo "batch:batch" | chpasswd && adduser batch sudo
 RUN chown -R batch /code
+RUN mkdir -p /home/batch
+RUN chown -R batch /home/batch
 
 USER batch
 
@@ -57,4 +60,4 @@ VOLUME  /tmp/logs
 
 WORKDIR /code
 ENV     BASEPATH /code
-CMD ["/usr/local/bin/dumb-init", "/code/virtualenv_run/bin/pypy", "/code/replication_handler/batch/parse_replication_stream.py", "-v", "--no-notification"]
+CMD ["/usr/local/bin/dumb-init", "/code/virtualenv_run/bin/pypy", "/code/replication_handler/batch/parse_replication_stream.py", "--no-notification"]

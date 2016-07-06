@@ -6,7 +6,6 @@ import logging
 import time
 
 from data_pipeline.tools.meteorite_wrappers import StatTimer
-from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -47,7 +46,8 @@ class DataEventCheckpoint(Base):
             container_env=config.env_config.container_env,
             rbr_source_cluster=config.env_config.rbr_source_cluster,
         )
-        timer.start()
+        if not config.env_config.disable_meteorite:
+            timer.start()
 
         existing_topics_to_records = cls._get_topic_to_checkpoint_record_map(
             session,
@@ -86,8 +86,8 @@ class DataEventCheckpoint(Base):
                     DataEventCheckpoint,
                     updated_checkpoints
                 )
-
-        timer.stop()
+        if not config.env_config.disable_meteorite:
+            timer.stop()
 
     @classmethod
     def _get_topic_to_checkpoint_record_map(cls, session, cluster_name):

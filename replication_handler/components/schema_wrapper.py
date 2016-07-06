@@ -9,7 +9,7 @@ from pii_generator.components.pii_identifier import PIIIdentifier
 
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.config import env_config
-from replication_handler.util.misc import repltracker_cursor
+from replication_handler.util.misc import ReplTrackerCursor
 
 
 log = logging.getLogger('replication_handler.components.schema_wrapper')
@@ -17,7 +17,7 @@ log = logging.getLogger('replication_handler.components.schema_wrapper')
 
 SchemaWrapperEntry = namedtuple(
     'SchemaWrapperEntry',
-    ('topic', 'schema_id', 'primary_keys')
+    ('schema_id', 'primary_keys', 'transform_required')
 )
 
 
@@ -35,8 +35,8 @@ class SchemaWrapper(object):
     """ This class is a wrapper for interacting with schematizer.
 
     Args:
-      schematizer_client(SchematizerClient object): a client that interacts with Schematizer
-      APIs with built-in caching features.
+        schematizer_client(SchematizerClient object): a client that interacts
+        with Schematizer APIs with built-in caching features.
     """
 
     __metaclass__ = SchemaWrapperSingleton
@@ -45,14 +45,15 @@ class SchemaWrapper(object):
     def __init__(self, schematizer_client):
         self.reset_cache()
         self.schematizer_client = schematizer_client
+        self.schema_tracker_cursor = ReplTrackerCursor().repltracker_cursor
         self.schema_tracker = SchemaTracker(
-            repltracker_cursor()
+            self.schema_tracker_cursor
         )
         self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
     def __getitem__(self, table):
         if table not in self.cache:
-            log.info("table '{}' is not in the cache")
+            log.info("table '{}' is not in the cache".format(table))
             self._fetch_schema_for_table(table)
         return self.cache[table]
 
@@ -118,13 +119,22 @@ class SchemaWrapper(object):
         self.cache = {}
 
     def _populate_schema_cache(self, table, resp):
+        set_transform_required = any(
+            column_type.startswith('set')
+            for column_type in self.schema_tracker.get_column_types(table)
+        )
+
         self.cache[table] = SchemaWrapperEntry(
-            topic=str(resp.topic.name),
             schema_id=resp.schema_id,
             primary_keys=resp.primary_keys,
+            transform_required=set_transform_required
         )
 
     @property
     def _dry_run_schema(self):
         """A schema wrapper to go with dry run mode."""
-        return SchemaWrapperEntry(topic=str('dry_run'), schema_id=1, primary_keys=[])
+        return SchemaWrapperEntry(
+            schema_id=1,
+            primary_keys=[],
+            transform_required=False
+        )

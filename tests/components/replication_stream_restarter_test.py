@@ -13,7 +13,7 @@ from replication_handler.components.replication_stream_restarter import Replicat
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
-from replication_handler.models.schema_event_state import SchemaEventState
+from replication_handler.util.position import LogPosition
 
 
 class TestReplicationStreamRestarter(object):
@@ -34,14 +34,6 @@ class TestReplicationStreamRestarter(object):
         ) as mock_session_connect_begin:
             mock_session_connect_begin.return_value.__enter__.return_value = mock.Mock()
             yield mock_session_connect_begin
-
-    @pytest.yield_fixture
-    def patch_get_pending_schema_event_state(self):
-        with mock.patch.object(
-            SchemaEventState,
-            'get_pending_schema_event_state'
-        ) as mock_get_pending_schema_event_state:
-            yield mock_get_pending_schema_event_state
 
     @pytest.yield_fixture
     def patch_get_global_event_state(self):
@@ -66,7 +58,7 @@ class TestReplicationStreamRestarter(object):
             PositionFinder,
             'get_position_to_resume_tailing_from',
         ) as mock_get_gtid_to_resume_tailing_from:
-            mock_get_gtid_to_resume_tailing_from.return_value = {}
+            mock_get_gtid_to_resume_tailing_from.return_value = LogPosition()
             yield mock_get_gtid_to_resume_tailing_from
 
     @pytest.yield_fixture
@@ -88,13 +80,12 @@ class TestReplicationStreamRestarter(object):
             cursor.fetchone.return_value = ('mysql-bin.000003', 1133)
             yield
 
-    def test_restart_with_clean_shutdown_and_no_pending_schema_event(
+    def test_restart_with_clean_shutdown(
         self,
         producer,
         mock_schema_wrapper,
         patch_session_connect_begin,
         patch_get_global_event_state,
-        patch_get_pending_schema_event_state,
         patch_stream_reader,
         patch_get_gtid_to_resume_tailing_from,
         patch_recover,
@@ -105,20 +96,21 @@ class TestReplicationStreamRestarter(object):
             event_type=EventType.SCHEMA_EVENT,
             is_clean_shutdown=True
         )
-        patch_get_pending_schema_event_state.return_value = None
-        restarter = ReplicationStreamRestarter(mock_schema_wrapper)
+        restarter = ReplicationStreamRestarter(
+            'test_cluster',
+            mock_schema_wrapper
+        )
         restarter.restart(producer)
         assert restarter.get_stream().next() == next_event
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
         assert patch_recover.call_count == 0
 
-    def test_restart_with_unclean_shutdown_and_no_pending_schema_event(
+    def test_restart_with_unclean_shutdown(
         self,
         producer,
         mock_schema_wrapper,
         patch_session_connect_begin,
         patch_get_global_event_state,
-        patch_get_pending_schema_event_state,
         patch_stream_reader,
         patch_get_gtid_to_resume_tailing_from,
         patch_recover,
@@ -127,29 +119,10 @@ class TestReplicationStreamRestarter(object):
             event_type=EventType.SCHEMA_EVENT,
             is_clean_shutdown=False
         )
-        patch_get_pending_schema_event_state.return_value = None
-        restarter = ReplicationStreamRestarter(mock_schema_wrapper)
-        restarter.restart(producer)
-        assert patch_get_gtid_to_resume_tailing_from.call_count == 1
-        assert patch_recover.call_count == 1
-
-    def test_restart_with_clean_shutdown_and_pending_schema_event(
-        self,
-        producer,
-        mock_schema_wrapper,
-        patch_session_connect_begin,
-        patch_get_global_event_state,
-        patch_get_pending_schema_event_state,
-        patch_stream_reader,
-        patch_get_gtid_to_resume_tailing_from,
-        patch_recover,
-    ):
-        patch_get_global_event_state.return_value = mock.Mock(
-            event_type=EventType.SCHEMA_EVENT,
-            is_clean_shutdown=True
+        restarter = ReplicationStreamRestarter(
+            'test_cluster',
+            mock_schema_wrapper
         )
-        patch_get_pending_schema_event_state.return_value = mock.Mock()
-        restarter = ReplicationStreamRestarter(mock_schema_wrapper)
         restarter.restart(producer)
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
         assert patch_recover.call_count == 1

@@ -8,20 +8,22 @@ from collections import namedtuple
 import simplejson as json
 
 
-log = logging.getLogger('replication_handler.components.schema_tracker')
+logger = logging.getLogger('replication_handler.components.schema_tracker')
 
 
 ShowCreateResult = namedtuple('ShowCreateResult', ('table', 'query'))
 
 
 class SchemaTracker(object):
-    """ This class handles running queries against schema tracker database. We need to keep the
-    schema tracker database in sync with the latest binlog stream reader position, and get
-    current schemas for tables to register schema with schematizer or retrieve schema
-    from schematizer.
+    """
+    This class handles running queries against schema tracker database.
+    We need to keep the schema tracker database in sync with the latest binlog
+    stream reader position, and get current schemas for tables to register
+    schema with schematizer or retrieve schema from schematizer.
 
     Args:
-      schema_cursor(Cursor object): a cursor with connection to schema tracker db.
+      schema_cursor(Cursor object): a cursor with connection to schema
+                                    tracker db.
     """
 
     def __init__(self, schema_cursor):
@@ -40,7 +42,7 @@ class SchemaTracker(object):
             Some query events do not have a schema name, for example:  `RENAME
             TABLE yelp.bad_business TO yelp_aux.bad_business;`.
         """
-        log.info(json.dumps(dict(
+        logger.info(json.dumps(dict(
             message="Executing query",
             query=query,
             database_name=database_name
@@ -55,7 +57,7 @@ class SchemaTracker(object):
         if not self.schema_tracker_cursor.execute(
             'SHOW TABLES LIKE \'{table}\''.format(table=table.table_name)
         ):
-            log.info(
+            logger.info(
                 "Table {table} doesn't exist in database {database}".format(
                     table=table.table_name,
                     database=table.database_name
@@ -63,9 +65,34 @@ class SchemaTracker(object):
             )
             return ShowCreateResult(table=table.table_name, query='')
 
-        query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(table.database_name, table.table_name)
+        query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(
+            table.database_name,
+            table.table_name
+        )
         self.schema_tracker_cursor.execute(query_str)
         res = self.schema_tracker_cursor.fetchone()
         create_res = ShowCreateResult(*res)
         assert create_res.table == table.table_name
         return create_res
+
+    def get_column_types(self, table):
+        self._use_db(table.database_name)
+
+        if not self.schema_tracker_cursor.execute(
+            'SHOW TABLES LIKE \'{table}\''.format(table=table.table_name)
+        ):
+            logger.info(
+                "Table {table} doesn't exist in database {database}".format(
+                    table=table.table_name,
+                    database=table.database_name
+                )
+            )
+            return []
+
+        query_str = "SHOW COLUMNS FROM `{0}`.`{1}`".format(
+            table.database_name,
+            table.table_name
+        )
+
+        self.schema_tracker_cursor.execute(query_str)
+        return [column[1] for column in self.schema_tracker_cursor.fetchall()]
