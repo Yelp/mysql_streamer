@@ -46,12 +46,13 @@ class TestEndToEnd(object):
     def avro_schema(self, table_name):
         return {
             u'fields': [
-                {u'type': u'int', u'name': u'id'},
+                {u'type': u'int', u'name': u'id', u'pkey': 1},
                 {u'default': None, u'maxlen': 64, u'type': [u'null', u'string'], u'name': u'name'}
             ],
             u'namespace': u'',
             u'name': table_name,
-            u'type': u'record'
+            u'type': u'record',
+            u'pkey': [u'id']
         }
 
     @pytest.fixture(params=[
