@@ -84,6 +84,7 @@ class TestDataEventCheckpoint(object):
             topic_to_kafka_offset_map=expected_topic_to_kafka_offset_map,
             cluster_name=cluster_name,
         )
+
         sandbox_session.commit()
         yield data_event_checkpoint
         sandbox_session.query(
@@ -119,20 +120,24 @@ class TestDataEventCheckpoint(object):
         )
         assert topic_to_kafka_offset_map == expected_topic_to_kafka_offset_map
 
-    def test_kafka_offset_update(
+    def test_kafka_offset_bulk_update(
         self,
         sandbox_session,
         data_event_checkpoint,
         cluster_name,
         expected_topic_to_kafka_offset_map,
+        first_kafka_topic,
         second_kafka_topic,
     ):
         DataEventCheckpoint.upsert_data_event_checkpoint(
             sandbox_session,
-            topic_to_kafka_offset_map={second_kafka_topic: 300},
+            topic_to_kafka_offset_map={
+                first_kafka_topic: 150,
+                second_kafka_topic: 300
+            },
             cluster_name=cluster_name,
         )
-
+        expected_topic_to_kafka_offset_map[first_kafka_topic] = 150
         expected_topic_to_kafka_offset_map[second_kafka_topic] = 300
         topic_to_kafka_offset_map = DataEventCheckpoint.get_topic_to_kafka_offset_map(
             sandbox_session,

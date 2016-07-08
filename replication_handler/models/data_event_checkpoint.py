@@ -6,7 +6,6 @@ import logging
 import time
 
 from data_pipeline.tools.meteorite_wrappers import StatTimer
-from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -61,8 +60,9 @@ class DataEventCheckpoint(Base):
                 existing_record = existing_topics_to_records[topic]
                 if existing_record.kafka_offset != offset:
                     updated_checkpoints.append({
-                        'checkpoint_id': existing_record.id,
-                        'kafka_offset': offset
+                        'id': existing_record.id,
+                        'kafka_offset': offset,
+                        'cluster_name': cluster_name
                     })
             else:
                 new_checkpoints.append({
@@ -77,25 +77,15 @@ class DataEventCheckpoint(Base):
                 format(offset, topic, int(time.time()))
             )
 
-        # TODO(justinc|DATAPIPE-920) Switch to the SQLAlchemy bulk save
-        # API, when it's available.  If you pick that up, you'll probably
-        # want to base the code off of commit
-        # c0632aacbfb54bfba8b35285dc5dd791b35f16a5 instead of this, since it'll
-        # be closer.
         table = cls.__table__
         if new_checkpoints:
-            session.execute(table.insert(), new_checkpoints)
+            session.bulk_insert_mappings(DataEventCheckpoint, new_checkpoints)
+
         if updated_checkpoints:
-            session.execute(
-                table.update().where(
-                    # Using checkpoint_id instead of id since id is reserved
-                    # by SQLA
-                    table.c.id == bindparam('checkpoint_id')
-                ).values(
-                    kafka_offset=bindparam('kafka_offset')
-                ),
-                updated_checkpoints
-            )
+            session.bulk_update_mappings(
+                    DataEventCheckpoint,
+                    updated_checkpoints
+                )
         if not config.env_config.disable_meteorite:
             timer.stop()
 
