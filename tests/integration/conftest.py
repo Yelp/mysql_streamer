@@ -96,7 +96,6 @@ def _assert_contains_pii_set_in_messages(messages, contains_pii):
 
 def _assert_keys_set_in_messages(messages, primary_keys):
     for message in messages:
-        assert len(primary_keys) == len(message.keys)
         assert primary_keys == message.keys.keys()
 
 
