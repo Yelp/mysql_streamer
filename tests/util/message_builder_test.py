@@ -19,7 +19,7 @@ class TestMessageBuilder(object):
         return {'a_number': 100, 'test_value': ['ONE']}
 
     def test_build_message_builds_proper_message(self, event_row, expected_payload):
-        schema_info = mock.MagicMock(topic="topic", schema_id=42, primary_keys=[])
+        schema_info = mock.MagicMock(topic="topic", schema_id=42)
         with mock.patch(
             'data_pipeline.message.CreateMessage'
         ) as create_mock_with_set_datatype:
@@ -36,7 +36,6 @@ class TestMessageBuilder(object):
             builder.build_message()
             create_mock_with_set_datatype.assert_called_once_with(
                 dry_run=True,
-                keys=(),
                 meta=['txn_id'],
                 payload_data=expected_payload,
                 schema_id=42,

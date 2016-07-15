@@ -142,7 +142,6 @@ class TestSchemaWrapper(object):
 
     def _assert_expected_result(self, resp):
         assert resp.schema_id == 0
-        assert resp.primary_keys == ['primary_key']
 
     def test_call_to_populate_schema(
         self,
@@ -165,7 +164,7 @@ class TestSchemaWrapper(object):
         )
         assert foo_table not in base_schema_wrapper.cache
         base_schema_wrapper._populate_schema_cache(foo_table, mock.Mock())
-        assert base_schema_wrapper.cache[foo_table].transform_required == True
+        assert base_schema_wrapper.cache[foo_table].transform_required is True
 
     def test_schema_cache_with_contains_set_false(
         self,
@@ -178,4 +177,4 @@ class TestSchemaWrapper(object):
         )
         assert bar_table not in base_schema_wrapper.cache
         base_schema_wrapper._populate_schema_cache(bar_table, mock.Mock())
-        assert base_schema_wrapper.cache[bar_table].transform_required == False
+        assert base_schema_wrapper.cache[bar_table].transform_required is False

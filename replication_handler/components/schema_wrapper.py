@@ -17,7 +17,7 @@ log = logging.getLogger('replication_handler.components.schema_wrapper')
 
 SchemaWrapperEntry = namedtuple(
     'SchemaWrapperEntry',
-    ('schema_id', 'primary_keys', 'transform_required')
+    ('schema_id', 'transform_required')
 )
 
 
@@ -126,7 +126,6 @@ class SchemaWrapper(object):
 
         self.cache[table] = SchemaWrapperEntry(
             schema_id=resp.schema_id,
-            primary_keys=resp.primary_keys,
             transform_required=set_transform_required
         )
 
@@ -135,6 +134,5 @@ class SchemaWrapper(object):
         """A schema wrapper to go with dry run mode."""
         return SchemaWrapperEntry(
             schema_id=1,
-            primary_keys=[],
             transform_required=False
         )

@@ -10,8 +10,8 @@ from cached_property import cached_property
 
 from replication_handler import config
 from replication_handler.components.data_event_handler import DataEventHandler
-from replication_handler.util.change_log_message_builder import ChangeLogMessageBuilder
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
+from replication_handler.util.change_log_message_builder import ChangeLogMessageBuilder
 
 
 log = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class ChangeLogDataEventHandler(DataEventHandler):
     def __init__(self, *args, **kwargs):
         super(ChangeLogDataEventHandler, self).__init__(*args, **kwargs)
         self.schema_wrapper_entry = SchemaWrapperEntry(
-            schema_id=self.schema_id, primary_keys=[], transform_required=False)
+            schema_id=self.schema_id, transform_required=False)
 
     @cached_property
     def schema_id(self):

@@ -44,7 +44,6 @@ class ChangeLogMessageBuilder(MessageBuilder):
         }
         message_params = {
             "schema_id": self.schema_info.schema_id,
-            "keys": tuple(self.schema_info.primary_keys),
             "payload_data": self._create_payload(self._get_values(self.event.row)),
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,

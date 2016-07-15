@@ -6,8 +6,8 @@ import time
 
 import mock
 import pytest
-from data_pipeline.message import Message
 from data_pipeline.message import CreateMessage
+from data_pipeline.message import Message
 from data_pipeline.producer import Producer
 from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
@@ -19,7 +19,8 @@ from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
 from replication_handler.util.message_builder import MessageBuilder
-from replication_handler.util.misc import DataEvent, get_dump_file
+from replication_handler.util.misc import DataEvent
+from replication_handler.util.misc import get_dump_file
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import LogPosition
 
@@ -48,7 +49,6 @@ class TestRecoveryHandler(object):
         mock_schema_wrapper = mock.MagicMock()
         mock_schema_wrapper.__getitem__.return_value = SchemaWrapperEntry(
             schema_id=1,
-            primary_keys=['key'],
             transform_required=False
         )
         return mock_schema_wrapper
@@ -453,4 +453,3 @@ class TestRecoveryHandler(object):
         assert mock_rbr_source_cursor.fetchone.call_count == num_rbr_cursor_calls
         assert producer.ensure_messages_published.call_count == 1
         assert producer.get_checkpoint_position_data.call_count == 1
-

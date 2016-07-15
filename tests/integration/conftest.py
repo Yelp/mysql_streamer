@@ -1,9 +1,13 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import time
+from decimal import Decimal
 
 import pytest
 from data_pipeline.consumer import Consumer
 from data_pipeline.expected_frequency import ExpectedFrequency
-from decimal import Decimal
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -65,6 +69,7 @@ def _fetch_messages(
         assert len(messages) == message_count
     _assert_topic_set_in_messages(messages, topics[0].name)
     _assert_contains_pii_set_in_messages(messages, topics[0].contains_pii)
+    _assert_keys_set_in_messages(messages, topics[0].primary_keys)
     return messages
 
 
@@ -87,6 +92,12 @@ def _assert_topic_set_in_messages(messages, topic_name):
 def _assert_contains_pii_set_in_messages(messages, contains_pii):
     for message in messages:
         assert contains_pii == message.contains_pii
+
+
+def _assert_keys_set_in_messages(messages, primary_keys):
+    for message in messages:
+        assert len(primary_keys) == len(message.keys)
+        assert primary_keys == message.keys.keys()
 
 
 def _assert_equal_dict(dict1, dict2):
