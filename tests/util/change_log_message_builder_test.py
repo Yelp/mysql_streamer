@@ -9,7 +9,7 @@ from replication_handler.util.change_log_message_builder import ChangeLogMessage
 
 @mock.patch('replication_handler.util.change_log_message_builder.UpdateMessage')
 def test_build_message_builds_proper_message(update_mock):
-    schema_info = mock.MagicMock(topic="topic", schema_id=42, primary_keys=[])
+    schema_info = mock.MagicMock(topic="topic", schema_id=42)
     event = mock.MagicMock(schema="schema",
                            table="table_name",
                            timestamp=42,
@@ -21,7 +21,6 @@ def test_build_message_builds_proper_message(update_mock):
     builder.build_message()
     update_mock.assert_called_once_with(
         dry_run=True,
-        keys=(),
         meta=['txn_id'],
         payload_data={
             'id': 42,

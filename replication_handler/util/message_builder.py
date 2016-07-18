@@ -41,7 +41,6 @@ class MessageBuilder(object):
             self._transform_data(payload_data)
         message_params = {
             "schema_id": self.schema_info.schema_id,
-            "keys": tuple(self.schema_info.primary_keys),
             "payload_data": payload_data,
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
