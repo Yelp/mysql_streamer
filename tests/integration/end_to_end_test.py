@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 from collections import namedtuple
 
 import pytest
+import time
 from data_pipeline.message_type import MessageType
 from sqlalchemy import Column
 from sqlalchemy import Integer
@@ -402,13 +403,28 @@ class TestEndToEnd(object):
             alter_table_query.format(table_name=table_name)
         )
 
+        time.sleep(2)
+
         # Check the schematracker db also has the table.
         verify_describe_table_query = "DESCRIBE {table_name}".format(
             table_name=table_name
         )
         verify_alter_table_result = execute_query_get_all_rows(containers, SCHEMA_TRACKER, verify_describe_table_query)
         expected_alter_table_result = execute_query_get_all_rows(containers, RBR_SOURCE, verify_describe_table_query)
-        self.assert_expected_result(verify_alter_table_result, expected_alter_table_result)
+
+        if 'address' in verify_alter_table_result[0].values():
+            actual_result = verify_alter_table_result[0]
+        elif 'address' in verify_alter_table_result[1].values():
+            actual_result = verify_alter_table_result[1]
+        else:
+            raise AssertionError('The alter table query did not succeed')
+
+        if 'address' in expected_alter_table_result[0].values():
+            expected_result = expected_alter_table_result[0]
+        else:
+            expected_result = expected_alter_table_result[1]
+
+        self.assert_expected_result(actual_result, expected_result)
 
     @pytest.mark.parametrize("source", [
         "basic_table",
