@@ -8,6 +8,8 @@ import re
 import sqlparse
 from sqlparse import tokens as Token
 from sqlparse.sql import Comment
+from sqlparse.sql import Identifier
+from sqlparse.sql import Token as TK
 
 
 log = logging.getLogger('replication_handler.components.sql_handler')
@@ -150,6 +152,13 @@ class TokenMatcher(object):
     def pop(self):
         next_val = self.peek()
         self.index += 1
+        if isinstance(next_val, Identifier):
+            tokens = next_val.tokens
+            if len(tokens) > 1 and tokens[1].value == '.':
+                str_token = tokens[0].value + tokens[1].value + tokens[2].value
+                return TK(Token.Name, str_token)
+            else:
+                return next_val.token_first()
         return next_val
 
     def peek(self, length=1):

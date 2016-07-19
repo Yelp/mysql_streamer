@@ -388,6 +388,27 @@ class TestEndToEnd(object):
             schematizer=schematizer
         )
 
+    def test_alter_table(
+        self,
+        containers,
+        alter_table_query,
+        table_name,
+    ):
+        increment_heartbeat(containers)
+        execute_query_get_one_row(
+            containers,
+            RBR_SOURCE,
+            alter_table_query.format(table_name=table_name)
+        )
+
+        # Check the schematracker db also has the table.
+        verify_describe_table_query = "DESCRIBE {table_name}".format(
+            table_name=table_name
+        )
+        verify_create_table_result = execute_query_get_one_row(containers, SCHEMA_TRACKER, verify_describe_table_query)
+        expected_create_table_result = execute_query_get_one_row(containers, RBR_SOURCE, verify_describe_table_query)
+        self.assert_expected_result(verify_create_table_result, expected_create_table_result)
+
     @pytest.mark.parametrize("source", [
         "basic_table",
         "secret_table"

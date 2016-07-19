@@ -1,9 +1,13 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import time
+from decimal import Decimal
 
 import pytest
 from data_pipeline.consumer import Consumer
 from data_pipeline.expected_frequency import ExpectedFrequency
-from decimal import Decimal
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -27,6 +31,11 @@ def create_table_query():
         `name` varchar(64) DEFAULT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8
     """
+
+
+@pytest.fixture(scope='module')
+def alter_table_query():
+    return "ALTER TABLE {table_name} CHANGE `name` `address` VARCHAR(64)"
 
 
 @pytest.fixture(scope='module')
