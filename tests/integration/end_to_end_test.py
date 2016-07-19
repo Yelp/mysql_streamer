@@ -11,6 +11,7 @@ from sqlalchemy import Integer
 from sqlalchemy.dialects import mysql
 
 from replication_handler.testing_helper.util import execute_query_get_one_row
+from replication_handler.testing_helper.util import execute_query_get_all_rows
 from replication_handler.testing_helper.util import increment_heartbeat
 from replication_handler.testing_helper.util import RBR_SOURCE
 from replication_handler.testing_helper.util import SCHEMA_TRACKER
@@ -387,6 +388,27 @@ class TestEndToEnd(object):
             namespace=namespace,
             schematizer=schematizer
         )
+
+    def test_alter_table(
+        self,
+        containers,
+        alter_table_query,
+        table_name,
+    ):
+        increment_heartbeat(containers)
+        execute_query_get_one_row(
+            containers,
+            RBR_SOURCE,
+            alter_table_query.format(table_name=table_name)
+        )
+
+        # Check the schematracker db also has the table.
+        verify_describe_table_query = "DESCRIBE {table_name}".format(
+            table_name=table_name
+        )
+        verify_alter_table_result = execute_query_get_all_rows(containers, SCHEMA_TRACKER, verify_describe_table_query)
+        expected_alter_table_result = execute_query_get_all_rows(containers, RBR_SOURCE, verify_describe_table_query)
+        self.assert_expected_result(verify_alter_table_result, expected_alter_table_result)
 
     @pytest.mark.parametrize("source", [
         "basic_table",

@@ -34,6 +34,11 @@ def create_table_query():
 
 
 @pytest.fixture(scope='module')
+def alter_table_query():
+    return "ALTER TABLE {table_name} CHANGE `name` `address` VARCHAR(64)"
+
+
+@pytest.fixture(scope='module')
 def rbr_source_session(containers):
     engine = get_db_engine(containers, RBR_SOURCE)
     Session = sessionmaker(bind=engine)

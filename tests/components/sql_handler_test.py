@@ -178,6 +178,7 @@ class TestAlterTableStatement(MysqlTableStatementBaseTest):
 
     @pytest.fixture(params=[
         'DROP test_col',
+        'CHANGE name to address varchar(255)',
         'ENGINE=INNODB'  # Added to test condition from DATAPIPE-588
     ])
     def operation(self, request):

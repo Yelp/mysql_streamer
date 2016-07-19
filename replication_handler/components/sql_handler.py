@@ -6,8 +6,10 @@ import logging
 import re
 
 import sqlparse
+from sqlparse.sql import Identifier
 from sqlparse import tokens as Token
 from sqlparse.sql import Comment
+from sqlparse.sql import Token as TK
 
 
 log = logging.getLogger('replication_handler.components.sql_handler')
@@ -150,6 +152,26 @@ class TokenMatcher(object):
     def pop(self):
         next_val = self.peek()
         self.index += 1
+        # We need to handle three cases here where the next_val could be:
+        # 1. <table_name> ('business')
+        # 2. <database_name>.<table_name> ('yelp.business')
+        # 3. <database_name>.<table_name> <extended_query>
+        # ('yelp.business change col_one col_two')
+        # In all the cases we should return a token consisting of only the table
+        # name or if the database name is present then the database name and the
+        # table name. Case #3 occurs because SQLParse incorrectly parses certain
+        # queries.
+        if isinstance(next_val, Identifier):
+            tokens = next_val.tokens
+            if len(tokens) > 1 and tokens[1].value == '.':
+                str_token = "{db_name}{punctuation}{table_name}".format(
+                    db_name=tokens[0].value,
+                    punctuation=tokens[1].value,
+                    table_name=tokens[2].value
+                )
+                return TK(Token.Name, str_token)
+            else:
+                return next_val.token_first()
         return next_val
 
     def peek(self, length=1):
