@@ -22,7 +22,6 @@ from tests.integration.conftest import _verify_messages
 from tests.integration.conftest import _wait_for_schematizer_topic
 from tests.integration.conftest import _wait_for_table
 from tests.integration.conftest import Base
-from tests.util.config_revamp import reconfigure
 
 
 ColumnInfo = namedtuple('ColumnInfo', ['type', 'sqla_obj', 'data'])
