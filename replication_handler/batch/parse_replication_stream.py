@@ -240,10 +240,6 @@ class ParseReplicationStream(Batch):
                 for replication_handler_event in self._get_events(
                         stream=stream
                 ):
-                    logger.debug("[POSITION] is {p} and [EVENT] is {e}".format(
-                        p=replication_handler_event.position.__dict__,
-                        e=replication_handler_event.event.__dict__
-                    ))
                     self.process_event(
                         replication_handler_event=replication_handler_event,
                         handler_map=handler_map
@@ -308,9 +304,6 @@ class ParseReplicationStream(Batch):
         return handler_map
 
     def process_event(self, replication_handler_event, handler_map):
-        logger.debug("Processing replication handler event {event}".format(
-            event=replication_handler_event.event
-        ))
         event_class = replication_handler_event.event.__class__
         handler_map[event_class].handler.handle_event(
             event=replication_handler_event.event,
