@@ -13,14 +13,14 @@ from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
-from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
+from replication_handler.components._pending_schema_event_recovery_handler import BadSchemaEventStateException
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
-from replication_handler.util.message_builder import MessageBuilder
+from replication_handler.models.schema_event_state import SchemaEventState
+from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import DataEvent
-from replication_handler.util.misc import get_dump_file
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import LogPosition
 
@@ -86,10 +86,6 @@ class TestRecoveryHandler(object):
         return mock.Mock()
 
     @pytest.fixture
-    def mock_rbr_state_cursor(self):
-        return mock.Mock()
-
-    @pytest.fixture
     def database_name(self):
         return "fake-db"
 
@@ -143,12 +139,71 @@ class TestRecoveryHandler(object):
             LogPosition(log_file='binlog.001', log_pos=50)
         )
 
+    @pytest.fixture
+    def pending_alter_schema_event_state(
+        self,
+        create_table_statement,
+        alter_table_statement,
+        database_name
+    ):
+        return SchemaEventState(
+            position={"gtid": "sid:12"},
+            status=SchemaEventStatus.PENDING,
+            query=alter_table_statement,
+            table_name="Business",
+            create_table_statement=create_table_statement,
+            database_name=database_name
+        )
+
+    @pytest.fixture
+    def pending_create_schema_event_state(
+        self,
+        create_table_statement,
+        database_name
+    ):
+        return SchemaEventState(
+            position={"gtid": "sid:12"},
+            status=SchemaEventStatus.PENDING,
+            query=create_table_statement,
+            table_name="Business",
+            create_table_statement=create_table_statement,
+            database_name=database_name
+        )
+
+    @pytest.fixture
+    def bad_schema_event_state(self, create_table_statement, alter_table_statement):
+        return SchemaEventState(
+            position={"gtid": "sid:13"},
+            status='BadState',
+            query=alter_table_statement,
+            table_name="Business",
+            create_table_statement=create_table_statement,
+        )
+
     @pytest.yield_fixture
     def patch_save_position(self):
         with mock.patch(
             'replication_handler.components.recovery_handler.save_position'
         ) as mock_save_position:
             yield mock_save_position
+
+    @pytest.yield_fixture
+    def patch_get_pending_schema_event_state(
+        self,
+    ):
+        with mock.patch.object(
+            SchemaEventState,
+            'get_pending_schema_event_state'
+        ) as mock_get_pending_schema_event_state:
+            yield mock_get_pending_schema_event_state
+
+    @pytest.yield_fixture
+    def patch_delete(self):
+        with mock.patch.object(
+            SchemaEventState,
+            'delete_schema_event_state_by_id'
+        ) as mock_delete:
+            yield mock_delete
 
     @pytest.yield_fixture
     def patch_schema_tracker_connection(self, mock_schema_tracker_cursor):
@@ -170,16 +225,6 @@ class TestRecoveryHandler(object):
             yield mock_connection
 
     @pytest.yield_fixture
-    def patch_rbr_state_connection(self, mock_rbr_state_cursor):
-        with mock.patch.object(
-            ConnectionSet,
-            'rbr_state_rw'
-        ) as mock_connection:
-            mock_rbr_state_cursor.fetchone.return_value = (1, 'baz')
-            mock_connection.return_value.refresh_primary.cursor.return_value = mock_rbr_state_cursor
-            yield mock_connection
-
-    @pytest.yield_fixture
     def patch_config(self):
         with mock.patch.object(
             config.DatabaseConfig,
@@ -188,15 +233,6 @@ class TestRecoveryHandler(object):
         ) as mock_cluster_name:
             mock_cluster_name.return_value = "yelp_main"
             yield mock_cluster_name
-
-    @pytest.yield_fixture
-    def patch_config_db(self):
-        with mock.patch.object(
-                config.DatabaseConfig,
-                "entries",
-                new_callable=mock.PropertyMock
-        ) as mock_entries:
-            yield mock_entries
 
     @pytest.yield_fixture
     def patch_config_recovery_queue_size(self):
@@ -215,17 +251,71 @@ class TestRecoveryHandler(object):
         ) as mock_get_topic_to_kafka_offset_map:
             yield mock_get_topic_to_kafka_offset_map
 
-    @pytest.fixture
-    def patch_open(self):
-        open_name = '{namespace}.open'.format(
-            namespace='replication_handler.components._pending_schema_event_recovery_handler'
+    def test_recovery_when_there_is_pending_alter_state(
+        self,
+        stream,
+        producer,
+        mock_schema_wrapper,
+        create_table_statement,
+        pending_alter_schema_event_state,
+        patch_delete,
+        patch_session_connect_begin,
+        patch_schema_tracker_connection,
+        patch_rbr_source_connection,
+        patch_config,
+        mock_schema_tracker_cursor,
+        database_name
+    ):
+        recovery_handler = RecoveryHandler(
+            stream,
+            producer,
+            mock_schema_wrapper,
+            is_clean_shutdown=True,
+            pending_schema_event=pending_alter_schema_event_state
         )
-        with mock.patch(open_name, create=True) as mock_open:
-            mock_open.return_value = mock.MagicMock(spec=file)
-            with open(get_dump_file(), 'w') as f:
-                f.write('baz')
+        assert recovery_handler.need_recovery is True
+        recovery_handler.recover()
+        assert mock_schema_tracker_cursor.execute.call_count == 4
+        assert mock_schema_tracker_cursor.execute.call_args_list == [
+            mock.call("USE %s" % database_name),
+            mock.call("DROP TABLE IF EXISTS `Business`"),
+            mock.call("USE %s" % database_name),
+            mock.call(create_table_statement)
+        ]
+        assert patch_delete.call_count == 1
 
-    def test_recovery_when_unclean_shutdown(
+    def test_recovery_when_there_is_pending_create_state(
+        self,
+        stream,
+        producer,
+        mock_schema_wrapper,
+        create_table_statement,
+        pending_create_schema_event_state,
+        patch_delete,
+        patch_session_connect_begin,
+        patch_schema_tracker_connection,
+        patch_rbr_source_connection,
+        patch_config,
+        mock_schema_tracker_cursor,
+        database_name
+    ):
+        recovery_handler = RecoveryHandler(
+            stream,
+            producer,
+            mock_schema_wrapper,
+            is_clean_shutdown=True,
+            pending_schema_event=pending_create_schema_event_state
+        )
+        assert recovery_handler.need_recovery is True
+        recovery_handler.recover()
+        assert mock_schema_tracker_cursor.execute.call_count == 2
+        assert mock_schema_tracker_cursor.execute.call_args_list == [
+            mock.call("USE %s" % database_name),
+            mock.call("DROP TABLE IF EXISTS `Business`"),
+        ]
+        assert patch_delete.call_count == 1
+
+    def test_recovery_when_unclean_shutdown_with_no_pending_state(
         self,
         stream,
         producer,
@@ -247,35 +337,22 @@ class TestRecoveryHandler(object):
             rh_unsupported_query_event,
             rh_data_event_before_master_log_pos,
         ]
-        # change the max_event_size from 1000 to 3 to make it easy for testing
+        # Change the max_event_size from 1000 to 3 to make it easy for testing
         max_message_size = 3
-        with mock.patch.object(
-                MySQLDumpHandler,
-                'mysql_dump_exists'
-        ) as mock_dump_exists, mock.patch.object(
-            MessageBuilder,
-            'build_message'
-        ) as mock_message:
-            mock_dump_exists.return_value = False
-            mock_message.return_value = mock.Mock(spec=Message)
-            self._setup_stream_and_recover_for_unclean_shutdown(
-                event_list,
-                stream,
-                producer,
-                mock_schema_wrapper,
-                mock_rbr_source_cursor,
-                3,
-                patch_config_recovery_queue_size,
-                max_size=max_message_size,
-            )
-            # Even though we have 4 data events in the stream,
-            # the recovery process halted
-            # after we got max_message_size(3) events.
-            assert len(
-                producer.ensure_messages_published.call_args[1].get('messages')
-            ) == max_message_size
-            assert patch_get_topic_to_kafka_offset_map.call_count == 1
-            assert patch_save_position.call_count == 1
+        self._setup_stream_and_recover_for_unclean_shutdown(
+            event_list,
+            stream,
+            producer,
+            mock_schema_wrapper,
+            mock_rbr_source_cursor,
+            patch_config_recovery_queue_size,
+            max_size=max_message_size,
+        )
+        # Even though we have 4 data events in the stream, the recovery process halted
+        # after we got max_message_size(3) events.
+        assert len(producer.ensure_messages_published.call_args[0][0]) == max_message_size
+        assert patch_get_topic_to_kafka_offset_map.call_count == 1
+        assert patch_save_position.call_count == 1
 
     def test_recovery_process_catch_up_with_master(
         self,
@@ -300,28 +377,16 @@ class TestRecoveryHandler(object):
             rh_data_event_after_master_log_pos,
             rh_data_event_after_master_log_pos,
         ]
-        with mock.patch.object(
-            MySQLDumpHandler,
-            'mysql_dump_exists'
-        ) as mock_dump_exists, mock.patch.object(
-            MessageBuilder,
-            'build_message'
-        ) as mock_message:
-            mock_dump_exists.return_value = False
-            mock_message.return_value = mock.Mock(spec=Message)
-            self._setup_stream_and_recover_for_unclean_shutdown(
-                event_list,
-                stream,
-                producer,
-                mock_schema_wrapper,
-                mock_rbr_source_cursor,
-                4
-            )
-            # Even though we have 5 data events in the stream,
-            # the recovery process halted after we caught up to master
-            assert len(
-                producer.ensure_messages_published.call_args[1].get('messages')
-            ) == 4
+        self._setup_stream_and_recover_for_unclean_shutdown(
+            event_list,
+            stream,
+            producer,
+            mock_schema_wrapper,
+            mock_rbr_source_cursor,
+        )
+        # Even though we have 5 data events in the stream, the recovery process halted
+        # after we caught up to master
+        assert len(producer.ensure_messages_published.call_args[0][0]) == 4
 
     def test_recovery_process_catch_up_with_master_for_changelog_mode(
         self,
@@ -349,29 +414,17 @@ class TestRecoveryHandler(object):
             rh_data_event_after_master_log_pos,
             rh_data_event_after_master_log_pos,
         ]
-        with mock.patch.object(
-            MySQLDumpHandler,
-            'mysql_dump_exists'
-        ) as mock_dump_exists, mock.patch.object(
-            MessageBuilder,
-            'build_message'
-        ) as mock_message:
-            mock_dump_exists.return_value = False
-            mock_message.return_value = mock.Mock(spec=Message)
-            self._setup_stream_and_recover_for_unclean_shutdown(
-                event_list,
-                stream,
-                producer,
-                mock_schema_wrapper,
-                mock_rbr_source_cursor,
-                4,
-                changelog_mode=True
-            )
-        # Even though we have 5 data events in the stream, the recovery process
-        # halted after we caught up to master
-        assert len(
-            producer.ensure_messages_published.call_args[1].get('messages')
-        ) == 4
+        self._setup_stream_and_recover_for_unclean_shutdown(
+            event_list,
+            stream,
+            producer,
+            mock_schema_wrapper,
+            mock_rbr_source_cursor,
+            changelog_mode=True,
+        )
+        # Even though we have 5 data events in the stream, the recovery process halted
+        # after we caught up to master
+        assert len(producer.ensure_messages_published.call_args[0][0]) == 4
 
     def test_recovery_process_with_supported_query_event(
         self,
@@ -397,30 +450,17 @@ class TestRecoveryHandler(object):
             rh_data_event_after_master_log_pos,
             rh_data_event_after_master_log_pos,
         ]
-        with mock.patch.object(
-                MySQLDumpHandler,
-                'mysql_dump_exists'
-        ) as mock_dump_exists, mock.patch.object(
-            MessageBuilder,
-            'build_message'
-        ) as mock_message:
-            mock_dump_exists.return_value = False
-            mock_message.return_value = mock.Mock(spec=Message)
-            self._setup_stream_and_recover_for_unclean_shutdown(
-                event_list,
-                stream,
-                producer,
-                mock_schema_wrapper,
-                mock_rbr_source_cursor,
-                3
-            )
+        self._setup_stream_and_recover_for_unclean_shutdown(
+            event_list,
+            stream,
+            producer,
+            mock_schema_wrapper,
+            mock_rbr_source_cursor,
+        )
 
-            # Even though we have 5 data events in the stream,
-            # the recovery process halted after we encounter a supported query
-            # event.
-            assert len(
-                producer.ensure_messages_published.call_args[1].get('messages')
-            ) == 3
+        # Even though we have 5 data events in the stream, the recovery process halted
+        # after we encounter a supported query event.
+        assert len(producer.ensure_messages_published.call_args[0][0]) == 3
 
     def _setup_stream_and_recover_for_unclean_shutdown(
         self,
@@ -429,7 +469,6 @@ class TestRecoveryHandler(object):
         producer,
         mock_schema_wrapper,
         mock_rbr_source_cursor,
-        num_rbr_cursor_calls,
         patch_config_recovery_queue_size=None,
         max_size=None,
         changelog_mode=False
@@ -441,15 +480,58 @@ class TestRecoveryHandler(object):
             producer,
             mock_schema_wrapper,
             is_clean_shutdown=False,
-            changelog_mode=changelog_mode
+            pending_schema_event=None,
+            changelog_mode=changelog_mode,
         )
-        recovery_handler.is_clean_shutdown = False
-        recovery_handler.register_dry_run = False
-        recovery_handler.publish_dry_run = False
         if max_size:
             patch_config_recovery_queue_size.return_value = max_size
+        assert recovery_handler.need_recovery is True
         recovery_handler.recover()
-        assert mock_rbr_source_cursor.execute.call_count == num_rbr_cursor_calls
-        assert mock_rbr_source_cursor.fetchone.call_count == num_rbr_cursor_calls
+        assert mock_rbr_source_cursor.execute.call_count == 1
+        assert mock_rbr_source_cursor.fetchone.call_count == 1
         assert producer.ensure_messages_published.call_count == 1
         assert producer.get_checkpoint_position_data.call_count == 1
+<<<<<<< HEAD
+=======
+
+    def test_bad_schema_event_state(
+        self,
+        stream,
+        producer,
+        mock_schema_wrapper,
+        create_table_statement,
+        bad_schema_event_state,
+        patch_delete,
+        patch_session_connect_begin,
+        patch_schema_tracker_connection,
+        patch_rbr_source_connection,
+        mock_schema_tracker_cursor
+    ):
+        stream.peek.return_value = mock.Mock(spec=QueryEvent)
+        recovery_handler = RecoveryHandler(
+            stream,
+            producer,
+            mock_schema_wrapper,
+            is_clean_shutdown=True,
+            pending_schema_event=bad_schema_event_state
+        )
+        with pytest.raises(BadSchemaEventStateException):
+            assert recovery_handler.need_recovery is True
+            recovery_handler.recover()
+
+    def test_no_recovery_is_needed(
+        self,
+        stream,
+        producer,
+        mock_schema_wrapper,
+        patch_rbr_source_connection,
+    ):
+        recovery_handler = RecoveryHandler(
+            stream,
+            producer,
+            mock_schema_wrapper,
+            is_clean_shutdown=True,
+            pending_schema_event=None
+        )
+        assert recovery_handler.need_recovery is False
+>>>>>>> parent of 100e54a... Merge branch 'master' into DATAPIPE-998-abrar-itest_contains_pii

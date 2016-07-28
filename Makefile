@@ -1,4 +1,4 @@
-.PHONY: clean venv-dev test itest functional_test build-image compose-prefix
+.PHONY: clean venv-dev test itest build-image compose-prefix
 
 DOCKER_TAG ?= replication-handler-dev-$(USER)
 
@@ -10,9 +10,6 @@ itest: cook-image
 
 itest_db:
 	tox -e itest_db
-
-functional_test: cook-image
-	DOCKER_TAG=$(DOCKER_TAG) tox -e functional_test
 
 cook-image:
 	docker build -t $(DOCKER_TAG) .

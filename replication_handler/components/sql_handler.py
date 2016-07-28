@@ -230,10 +230,9 @@ class MysqlQualifiedIdentifierParser(object):
 
         if self.index != len(self.identifier):
             log.error(
-                "ParseError: {} failed to parse with index {}.  Qualified: {}. "
+                "ParseError: {} failed to parse.  Qualified: {}. "
                 "Identifiers: {}".format(
                     self.identifier,
-                    self.index,
                     self.identifier_qualified,
                     identifiers,
                 )

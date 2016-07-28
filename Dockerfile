@@ -47,10 +47,8 @@ RUN     /code/virtualenv_run/bin/pip install \
 
 ADD     . /code
 
-RUN useradd -m batch &&  echo "batch:batch" | chpasswd && adduser batch sudo
+RUN useradd batch
 RUN chown -R batch /code
-RUN mkdir -p /home/batch
-RUN chown -R batch /home/batch
 
 USER batch
 

@@ -14,8 +14,6 @@ topology_path: /nail/srv/configs/topology.yaml
 
 resume_stream: False
 
-resume_from_log_position: True
-
 namespace: dev
 
 container_name: itest

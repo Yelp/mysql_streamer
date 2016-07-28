@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+  <changeSet author="cheng" id="1426537558">
+    <createTable tableName="schema_event_state">
+      <column autoIncrement="true" name="id" type="INT(11)">
+        <constraints primaryKey="true"/>
+      </column>
+      <column name="position" type="TEXT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="status" type="VARCHAR(20)" defaultValue="Pending">
+        <constraints nullable="false"/>
+      </column>
+      <column name="query" type="TEXT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="create_table_statement" type="TEXT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="cluster_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="database_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="table_name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="time_created" type="INT(11)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="time_updated" type="INT(11)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <modifySql dbms="mysql">
+      <append value=" ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci"/>
+    </modifySql>
+  </changeSet>
+</databaseChangeLog>
