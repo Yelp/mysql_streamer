@@ -184,8 +184,8 @@ class ParseReplicationStream(Batch):
         # We use os.open here cause we want the file to be created with
         # certain specific flags.
         self._profiler_fd = os.open(
-            file=PROFILER_FILE_NAME,
-            flags=os.O_RDWR | os.O_CREAT | os.O_TRUNC
+            PROFILER_FILE_NAME,
+            os.O_RDWR | os.O_CREAT | os.O_TRUNC
         )
         vmprof.enable(self._profiler_fd)
         self._profiler_running = True
