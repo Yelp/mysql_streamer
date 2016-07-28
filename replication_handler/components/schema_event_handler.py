@@ -139,7 +139,7 @@ class SchemaEventHandler(BaseEventHandler):
         blacklist = skipped = is_not_supported = False
 
         if self.is_blacklisted(event=event, schema=event.schema):
-            logger.info("The event {e} with schema {s} is blacklisted".format(
+            logger.debug("The event {e} with schema {s} is blacklisted".format(
                 e=event,
                 s=event.schema
             ))
@@ -147,11 +147,11 @@ class SchemaEventHandler(BaseEventHandler):
 
         skippable_queries = {'BEGIN', 'COMMIT'}
         if event.query in skippable_queries:
-            logger.info("The query {q} can be skipped".format(q=event.query))
+            logger.debug("The query {q} can be skipped".format(q=event.query))
             skipped = True
 
         if not statement.is_supported():
-            logger.info("The statement {s} is not supported".format(
+            logger.debug("The statement {s} is not supported".format(
                 s=event.query
             ))
             is_not_supported = True
