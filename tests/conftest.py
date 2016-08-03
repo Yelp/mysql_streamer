@@ -10,12 +10,15 @@ import pytest
 from data_pipeline.config import get_config
 from data_pipeline.helpers.yelp_avro_store import _AvroStringStore
 from data_pipeline.message import Message
-from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
+from data_pipeline.schematizer_clientlib.models.avro_schema import AvroSchema
 from data_pipeline.schematizer_clientlib.schematizer import _Cache
+from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
+from data_pipeline.schematizer_clientlib.schematizer import SchematizerClient
 from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
+from replication_handler.util.transaction_id import set_transaction_id_schema_id
 from testing import sandbox
 
 
@@ -113,3 +116,17 @@ def patch_message_contains_pii():
         side_effect=set_contains_pii
     ):
         yield
+
+
+@pytest.yield_fixture
+def patch_transaction_id_schema():
+    with mock.patch(
+        'replication_handler.util.transaction_id.get_schematizer'
+    ) as mock_schematizer:
+        avro_schema = mock.Mock(autospec=AvroSchema)
+        avro_schema.schema_id = 121
+        mock_schematizer.return_value = mock.Mock(autospec=SchematizerClient)
+        mock_schematizer.return_value.register_schema_from_schema_json.return_value = \
+            avro_schema
+        yield mock_schematizer
+        set_transaction_id_schema_id(None)

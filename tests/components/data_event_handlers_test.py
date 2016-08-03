@@ -34,6 +34,7 @@ DataHandlerExternalPatches = namedtuple(
         "patch_get_show_create_statement",
         "patch_execute_query",
         "patch_cluster_name",
+        "patch_transaction_id_schema"
     )
 )
 
@@ -227,7 +228,8 @@ class TestDataEventHandler(object):
         patch_get_show_create_statement,
         patch_execute_query,
         patch_cluster_name,
-        patch_message_contains_pii
+        patch_message_contains_pii,
+        patch_transaction_id_schema
     ):
         return DataHandlerExternalPatches(
             patch_rbr_state_rw=patch_rbr_state_rw,
@@ -237,6 +239,7 @@ class TestDataEventHandler(object):
             patch_get_show_create_statement=patch_get_show_create_statement,
             patch_execute_query=patch_execute_query,
             patch_cluster_name=patch_cluster_name,
+            patch_transaction_id_schema=patch_transaction_id_schema
         )
 
     @pytest.yield_fixture

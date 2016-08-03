@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from replication_handler.config import source_database_config
-from replication_handler.util.transaction_id import TransactionId
+from replication_handler.util.transaction_id import get_transaction_id
 
 
 class InvalidPositionDictException(Exception):
@@ -142,7 +142,7 @@ class LogPosition(Position):
 
     @property
     def transaction_id(self):
-        return TransactionId(self.cluster_name, self.log_file, self.log_pos)
+        return get_transaction_id(self.cluster_name, self.log_file, self.log_pos)
 
 
 def construct_position(position_dict):

@@ -7,13 +7,11 @@ import time
 import mock
 import pytest
 from data_pipeline.message import CreateMessage
-from data_pipeline.message import Message
 from data_pipeline.producer import Producer
 from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
-from replication_handler.components._pending_schema_event_recovery_handler import BadSchemaEventStateException
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
@@ -263,6 +261,7 @@ class TestRecoveryHandler(object):
         patch_schema_tracker_connection,
         patch_rbr_source_connection,
         patch_config,
+        patch_transaction_id_schema,
         mock_schema_tracker_cursor,
         database_name
     ):
@@ -297,6 +296,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_config,
         mock_schema_tracker_cursor,
+        patch_transaction_id_schema,
         database_name
     ):
         recovery_handler = RecoveryHandler(
@@ -327,6 +327,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_save_position,
         patch_config_recovery_queue_size,
+        patch_transaction_id_schema,
         patch_message_topic
     ):
         event_list = [
@@ -366,6 +367,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
+        patch_transaction_id_schema,
         patch_message_topic
     ):
         event_list = [
@@ -400,6 +402,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
+        patch_transaction_id_schema,
         patch_message_topic
     ):
         schematizer_client = mock_schema_wrapper.schematizer_client
@@ -439,6 +442,7 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
+        patch_transaction_id_schema,
         patch_message_topic
     ):
         event_list = [

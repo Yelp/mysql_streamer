@@ -10,7 +10,7 @@ PyYAML==3.11
 SQLAlchemy==1.0.12
 boto==2.36.0
 contextdecorator==0.10.0
-data_pipeline==0.4.3
+data_pipeline==0.4.6
 dateglob==0.1
 enum34==1.0.4
 future==0.14.3

@@ -11,7 +11,7 @@ from replication_handler.util.position import HeartbeatPosition
 from replication_handler.util.position import InvalidPositionDictException
 from replication_handler.util.position import LogPosition
 from replication_handler.util.position import Position
-from replication_handler.util.transaction_id import TransactionId
+from replication_handler.util.transaction_id import get_transaction_id
 
 
 class TestPostion(object):
@@ -91,13 +91,20 @@ class TestLogPosition(object):
         }
         assert p.to_dict() == expected_dict
 
-    def test_transaction_id(self):
+    def test_transaction_id(self, patch_transaction_id_schema):
         p = LogPosition(log_pos=100, log_file="binlog")
-        assert p.transaction_id == TransactionId(
+        actual_transaction_id = p.transaction_id
+        expected_transaction_id = get_transaction_id(
             unicode(source_database_config.cluster_name),
             u"binlog",
             100
         )
+        assert actual_transaction_id.schema_id == expected_transaction_id.schema_id
+        assert actual_transaction_id.payload_data == expected_transaction_id.payload_data
+        # assert that _transaction_id_schema_id is populated from schematizer
+        # only once. The second time when get_transaction_id is called
+        # _transaction_id_schema_id is fetched from cache.
+        assert patch_transaction_id_schema.call_count == 1
 
 
 class TestConstructPosition(object):
