@@ -91,7 +91,7 @@ class TestLogPosition(object):
         }
         assert p.to_dict() == expected_dict
 
-    def test_transaction_id(self, patch_transaction_id_schema):
+    def test_transaction_id(self, load_avro_schema_store):
         p = LogPosition(log_pos=100, log_file="binlog")
         actual_transaction_id = p.transaction_id
         expected_transaction_id = get_transaction_id(
@@ -101,10 +101,6 @@ class TestLogPosition(object):
         )
         assert actual_transaction_id.schema_id == expected_transaction_id.schema_id
         assert actual_transaction_id.payload_data == expected_transaction_id.payload_data
-        # assert that _transaction_id_schema_id is populated from schematizer
-        # only once. The second time when get_transaction_id is called
-        # _transaction_id_schema_id is fetched from cache.
-        assert patch_transaction_id_schema.call_count == 1
 
 
 class TestConstructPosition(object):

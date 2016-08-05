@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import logging
 import os
+import random
 
 import mock
 import pytest
@@ -13,12 +14,11 @@ from data_pipeline.message import Message
 from data_pipeline.schematizer_clientlib.models.avro_schema import AvroSchema
 from data_pipeline.schematizer_clientlib.schematizer import _Cache
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
-from data_pipeline.schematizer_clientlib.schematizer import SchematizerClient
 from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
-from replication_handler.util.transaction_id import set_transaction_id_schema_id
+from replication_handler.util.avro_schema_store import AvroSchemaStore
 from testing import sandbox
 
 
@@ -119,14 +119,20 @@ def patch_message_contains_pii():
 
 
 @pytest.yield_fixture
-def patch_transaction_id_schema():
+def patch_avro_schema_store():
     with mock.patch(
-        'replication_handler.util.transaction_id.get_schematizer'
-    ) as mock_schematizer:
+        'replication_handler.util.avro_schema_store.AvroSchemaStore._register_schema'
+    ) as mock_register_avro_schema:
         avro_schema = mock.Mock(autospec=AvroSchema)
-        avro_schema.schema_id = 121
-        mock_schematizer.return_value = mock.Mock(autospec=SchematizerClient)
-        mock_schematizer.return_value.register_schema_from_schema_json.return_value = \
-            avro_schema
-        yield mock_schematizer
-        set_transaction_id_schema_id(None)
+        avro_schema.schema_id = random.randint(100, 200)
+        mock_register_avro_schema.return_value = avro_schema
+        yield mock_register_avro_schema
+
+
+@pytest.yield_fixture
+def load_avro_schema_store(
+    patch_avro_schema_store
+):
+    AvroSchemaStore().load()
+    yield
+    AvroSchemaStore().unload()

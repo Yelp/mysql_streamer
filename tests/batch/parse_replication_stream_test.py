@@ -16,8 +16,8 @@ from yelp_conn.connection_set import ConnectionSet
 
 import replication_handler.batch.parse_replication_stream
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
-from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
+from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -186,8 +186,8 @@ class TestParseReplicationStream(object):
 
     @pytest.yield_fixture
     def patch_config_changelog_on(self, patch_config):
-            patch_config.changelog_mode = True
-            yield patch_config
+        patch_config.changelog_mode = True
+        yield patch_config
 
     @pytest.yield_fixture
     def patch_config_meteorite_disabled(self, patch_config):
@@ -248,7 +248,8 @@ class TestParseReplicationStream(object):
         patch_schema_handle_event,
         patch_producer,
         patch_save_position,
-        patch_exit
+        patch_exit,
+        patch_avro_schema_store
     ):
         self._different_events_builder(
             schema_event,
@@ -289,7 +290,8 @@ class TestParseReplicationStream(object):
         patch_schema_handle_event,
         patch_producer,
         patch_save_position,
-        patch_exit
+        patch_exit,
+        patch_avro_schema_store
     ):
         self._different_events_builder(
             schema_event,
@@ -331,7 +333,8 @@ class TestParseReplicationStream(object):
         patch_schema_handle_event,
         patch_producer,
         patch_save_position,
-        patch_exit
+        patch_exit,
+        patch_avro_schema_store
     ):
         self._different_events_builder(
             schema_event,
@@ -371,6 +374,7 @@ class TestParseReplicationStream(object):
         patch_producer,
         patch_exit,
         patch_save_position,
+        patch_avro_schema_store
     ):
         data_event_with_gtid_1 = ReplicationHandlerEvent(
             position=position_gtid_1,
@@ -402,6 +406,7 @@ class TestParseReplicationStream(object):
         patch_running,
         patch_producer,
         patch_exit,
+        patch_avro_schema_store
     ):
         patch_running.return_value = False
         replication_stream = self._init_and_run_batch()
@@ -420,6 +425,7 @@ class TestParseReplicationStream(object):
         patch_data_handle_event,
         patch_schema_tracker,
         patch_save_position,
+        patch_avro_schema_store
     ):
         with pytest.raises(SystemExit):
             self._init_and_run_batch()
@@ -429,6 +435,7 @@ class TestParseReplicationStream(object):
         patch_config,
         patch_config_changelog_on,
         producer,
+        patch_avro_schema_store
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.producer = producer
@@ -440,6 +447,7 @@ class TestParseReplicationStream(object):
         self,
         patch_config,
         producer,
+        patch_avro_schema_store
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.producer = producer
@@ -449,7 +457,8 @@ class TestParseReplicationStream(object):
 
     def test_profiler_signal(
         self,
-        patch_config
+        patch_config,
+        patch_avro_schema_store
     ):
         replication_stream = ParseReplicationStream()
         with mock.patch.object(
@@ -485,7 +494,8 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_exit,
         patch_running,
-        patch_schema_tracker
+        patch_schema_tracker,
+        patch_avro_schema_store
     ):
         patch_running.return_value = False
         replication_stream = ParseReplicationStream()
@@ -504,7 +514,8 @@ class TestParseReplicationStream(object):
         patch_data_handle_event,
         patch_exit,
         patch_running,
-        patch_schema_tracker
+        patch_schema_tracker,
+        patch_avro_schema_store
     ):
         patch_running.return_value = False
         replication_stream = ParseReplicationStream()
@@ -514,7 +525,12 @@ class TestParseReplicationStream(object):
         assert producer.flush.call_count == 0
         assert patch_exit.call_count == 1
 
-    def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter):
+    def test_with_dry_run_options(
+        self,
+        patch_rbr_state_rw,
+        patch_restarter,
+        patch_avro_schema_store
+    ):
         with mock.patch(
             'replication_handler.batch.parse_replication_stream.config.env_config'
         ) as mock_config:
@@ -532,6 +548,7 @@ class TestParseReplicationStream(object):
         patch_schema_tracker,
         patch_zk,
         patch_process_event,
+        patch_avro_schema_store
     ):
         # ZK will exit the proc if it can't acquire a lock using sys.exit
         patch_zk.side_effect = SystemExit
@@ -547,7 +564,8 @@ class TestParseReplicationStream(object):
         self,
         patch_config,
         patch_restarter,
-        patch_zk
+        patch_zk,
+        patch_avro_schema_store
     ):
         patch_restarter.return_value.get_stream.return_value.__iter__.side_effect = Exception
         with pytest.raises(Exception):

@@ -2,46 +2,19 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import os
-
-import simplejson
 from data_pipeline.meta_attribute import MetaAttribute
-from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 
-
-transaction_id_schema_id = None
-
-
-def set_transaction_id_schema_id(value):
-    global transaction_id_schema_id
-    transaction_id_schema_id = value
-
-
-def _load_transaction_id_avro_schema_file():
-    schema_path = os.path.join(
-        os.path.dirname(__file__),
-        os.pardir,
-        os.pardir,
-        'schema/avro_schema/transaction_id_v1.avsc'
-    )
-    with open(schema_path, 'r') as f:
-        return simplejson.loads(f.read())
+from replication_handler.util.avro_schema_store import AvroSchemaStore
+from replication_handler.util.avro_schema_store import TRANSACTION_ID_V1_AVSC_INFO
 
 
 def _get_transaction_id_schema_id():
-    if transaction_id_schema_id:
-        return transaction_id_schema_id
-
-    avro_schema_json = _load_transaction_id_avro_schema_file()
-    schema_info = get_schematizer().register_schema_from_schema_json(
-        namespace='yelp.replication_handler',
-        source='transaction_id',
-        schema_json=avro_schema_json,
-        source_owner_email='bam+replication_handler@yelp.com',
-        contains_pii=False
+    schema_info = AvroSchemaStore().get_value(
+        TRANSACTION_ID_V1_AVSC_INFO.id
     )
-    set_transaction_id_schema_id(schema_info.schema_id)
-    return transaction_id_schema_id
+    if not schema_info:
+        raise ValueError("transaction_id_v1 avro schema is not registered")
+    return schema_info.schema_id
 
 
 def _verify_init_params(cluster_name, log_file, log_pos):

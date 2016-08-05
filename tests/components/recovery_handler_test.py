@@ -24,6 +24,7 @@ from replication_handler.util.position import LogPosition
 
 
 @pytest.mark.usefixtures('patch_message_contains_pii')
+@pytest.mark.usefixtures('load_avro_schema_store')
 class TestRecoveryHandler(object):
 
     @pytest.fixture
@@ -261,7 +262,6 @@ class TestRecoveryHandler(object):
         patch_schema_tracker_connection,
         patch_rbr_source_connection,
         patch_config,
-        patch_transaction_id_schema,
         mock_schema_tracker_cursor,
         database_name
     ):
@@ -296,7 +296,6 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_config,
         mock_schema_tracker_cursor,
-        patch_transaction_id_schema,
         database_name
     ):
         recovery_handler = RecoveryHandler(
@@ -327,7 +326,6 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_save_position,
         patch_config_recovery_queue_size,
-        patch_transaction_id_schema,
         patch_message_topic
     ):
         event_list = [
@@ -367,7 +365,6 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
-        patch_transaction_id_schema,
         patch_message_topic
     ):
         event_list = [
@@ -402,7 +399,6 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
-        patch_transaction_id_schema,
         patch_message_topic
     ):
         schematizer_client = mock_schema_wrapper.schematizer_client
@@ -442,7 +438,6 @@ class TestRecoveryHandler(object):
         patch_rbr_source_connection,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
-        patch_transaction_id_schema,
         patch_message_topic
     ):
         event_list = [

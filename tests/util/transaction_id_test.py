@@ -7,7 +7,7 @@ import pytest
 from replication_handler.util.transaction_id import get_transaction_id
 
 
-@pytest.mark.usefixtures("patch_transaction_id_schema")
+@pytest.mark.usefixtures("load_avro_schema_store")
 class TestTransactionId(object):
 
     @pytest.fixture(params=[
