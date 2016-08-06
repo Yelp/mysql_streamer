@@ -41,5 +41,5 @@ class TestTransactionId(object):
     def expected_to_dict(self, request):
         return request.param
 
-    def test_transaction_id_payload(self, transaction_id, expected_to_dict):
+    def test_transaction_id_payload_data(self, transaction_id, expected_to_dict):
         assert transaction_id.payload_data == expected_to_dict
