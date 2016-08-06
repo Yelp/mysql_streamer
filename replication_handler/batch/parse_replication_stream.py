@@ -28,7 +28,6 @@ from replication_handler.components.replication_stream_restarter import Replicat
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.models.global_event_state import EventType
-from replication_handler.util.avro_schema_store import AvroSchemaStore
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
 from replication_handler.util.misc import REPLICATION_HANDLER_TEAM_NAME
@@ -72,8 +71,6 @@ class ParseReplicationStream(Batch):
             print "Shutting down because kafka_producer_buffer_size was greater than \
                     recovery_queue_size"
             sys.exit(1)
-        self.avro_schema_store = AvroSchemaStore()
-        self.avro_schema_store.load()
 
     @property
     def running(self):
@@ -98,7 +95,6 @@ class ParseReplicationStream(Batch):
                     self.process_event(replication_handler_event)
 
                 log.info("Normal shutdown")
-                self.avro_schema_store.unload()
                 # Graceful shutdown needs to happen inside the contextmanagers,
                 # since it needs to be able to access the producer
                 self._handle_graceful_termination()

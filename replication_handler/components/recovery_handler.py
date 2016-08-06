@@ -11,6 +11,7 @@ from yelp_conn.connection_set import ConnectionSet
 from replication_handler.components._pending_schema_event_recovery_handler import PendingSchemaEventRecoveryHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
+from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import env_config
 from replication_handler.config import source_database_config
@@ -74,6 +75,7 @@ class RecoveryHandler(object):
         self.latest_source_log_position = self.get_latest_source_log_position()
         self.changelog_mode = changelog_mode
         self.changelog_schema_wrapper = self._get_changelog_schema_wrapper()
+        self.transaction_id_schema_id = self._get_transaction_id_schema_id()
 
     @property
     def need_recovery(self):
@@ -92,6 +94,21 @@ class RecoveryHandler(object):
             stats_counter=None,
             register_dry_run=self.register_dry_run)
         return change_log_data_event_handler.schema_wrapper_entry
+
+    def _get_transaction_id_schema_id(self):
+        if not self.changelog_mode:
+            data_event_handler = DataEventHandler(
+                producer=self.producer,
+                schema_wrapper=self.schema_wrapper,
+                stats_counter=None,
+                register_dry_run=self.register_dry_run)
+        else:
+            data_event_handler = ChangeLogDataEventHandler(
+                producer=self.producer,
+                schema_wrapper=self.schema_wrapper,
+                stats_counter=None,
+                register_dry_run=self.register_dry_run)
+        return data_event_handler.transaction_id_schema_id
 
     def get_latest_source_log_position(self):
         refresh_source_cursor = ConnectionSet.rbr_source_ro().refresh_primary.cursor()
@@ -191,6 +208,7 @@ class RecoveryHandler(object):
             builder = Builder(
                 schema_wrapper,
                 event.event,
+                self.transaction_id_schema_id,
                 event.position,
                 self.register_dry_run,
             )

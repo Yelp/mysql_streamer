@@ -4,21 +4,19 @@ from __future__ import unicode_literals
 
 import logging
 import os
-import random
 
 import mock
 import pytest
 from data_pipeline.config import get_config
 from data_pipeline.helpers.yelp_avro_store import _AvroStringStore
 from data_pipeline.message import Message
-from data_pipeline.schematizer_clientlib.models.avro_schema import AvroSchema
 from data_pipeline.schematizer_clientlib.schematizer import _Cache
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.testing_helpers.containers import Containers
 
+from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
-from replication_handler.util.avro_schema_store import AvroSchemaStore
 from testing import sandbox
 
 
@@ -118,21 +116,17 @@ def patch_message_contains_pii():
         yield
 
 
-@pytest.yield_fixture
-def patch_avro_schema_store():
-    with mock.patch(
-        'replication_handler.util.avro_schema_store.AvroSchemaStore._register_schema'
-    ) as mock_register_avro_schema:
-        avro_schema = mock.Mock(autospec=AvroSchema)
-        avro_schema.schema_id = random.randint(100, 200)
-        mock_register_avro_schema.return_value = avro_schema
-        yield mock_register_avro_schema
+@pytest.fixture
+def fake_transaction_id_schema_id():
+    return 999
 
 
 @pytest.yield_fixture
-def load_avro_schema_store(
-    patch_avro_schema_store
-):
-    AvroSchemaStore().load()
-    yield
-    AvroSchemaStore().unload()
+def patch_transaction_id_schema_id(fake_transaction_id_schema_id):
+    with mock.patch.object(
+        DataEventHandler,
+        'transaction_id_schema_id',
+        new_callable=mock.PropertyMock,
+        return_value=fake_transaction_id_schema_id
+    ) as mock_transaction_id_schema_id:
+        yield mock_transaction_id_schema_id

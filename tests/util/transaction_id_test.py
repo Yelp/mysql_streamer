@@ -7,7 +7,6 @@ import pytest
 from replication_handler.util.transaction_id import get_transaction_id
 
 
-@pytest.mark.usefixtures("load_avro_schema_store")
 class TestTransactionId(object):
 
     @pytest.fixture(params=[
@@ -18,15 +17,19 @@ class TestTransactionId(object):
     def invalid_params(self, request):
         return request.param
 
-    def test_transaction_id_rejects_invalid_params(self, invalid_params):
+    def test_transaction_id_rejects_invalid_params(
+        self, fake_transaction_id_schema_id, invalid_params
+    ):
+        invalid_params = [fake_transaction_id_schema_id] + invalid_params
         with pytest.raises(TypeError):
             get_transaction_id(*invalid_params)
 
     @pytest.fixture(params=[
         ['cluster1', 'bin_log1', 10],
     ])
-    def valid_params(self, request):
-        return request.param
+    def valid_params(self, request, fake_transaction_id_schema_id):
+        params = [fake_transaction_id_schema_id] + request.param
+        return params
 
     @pytest.fixture
     def transaction_id(self, valid_params):

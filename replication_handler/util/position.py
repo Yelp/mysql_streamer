@@ -140,9 +140,10 @@ class LogPosition(Position):
             position_dict["log_file"] = self.log_file
         return position_dict
 
-    @property
-    def transaction_id(self):
-        return get_transaction_id(self.cluster_name, self.log_file, self.log_pos)
+    def get_transaction_id(self, transaction_id_schema_id):
+        return get_transaction_id(
+            transaction_id_schema_id, self.cluster_name, self.log_file, self.log_pos
+        )
 
 
 def construct_position(position_dict):

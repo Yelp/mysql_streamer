@@ -16,6 +16,7 @@ from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 
 
+@pytest.mark.usefixtures('patch_transaction_id_schema_id')
 class TestReplicationStreamRestarter(object):
 
     @pytest.fixture

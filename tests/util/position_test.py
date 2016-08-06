@@ -91,10 +91,11 @@ class TestLogPosition(object):
         }
         assert p.to_dict() == expected_dict
 
-    def test_transaction_id(self, load_avro_schema_store):
+    def test_transaction_id(self, fake_transaction_id_schema_id):
         p = LogPosition(log_pos=100, log_file="binlog")
-        actual_transaction_id = p.transaction_id
+        actual_transaction_id = p.get_transaction_id(fake_transaction_id_schema_id)
         expected_transaction_id = get_transaction_id(
+            fake_transaction_id_schema_id,
             unicode(source_database_config.cluster_name),
             u"binlog",
             100
