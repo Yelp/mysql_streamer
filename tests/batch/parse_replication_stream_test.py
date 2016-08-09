@@ -12,7 +12,6 @@ from data_pipeline.producer import Producer
 from data_pipeline.schematizer_clientlib.schematizer import SchematizerClient
 from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pymysqlreplication.event import QueryEvent
-from yelp_conn.connection_set import ConnectionSet
 
 import replication_handler.batch.parse_replication_stream
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
@@ -24,6 +23,11 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
+
+try:
+    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
+except Exception:
+    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 class TestParseReplicationStream(object):
@@ -130,11 +134,11 @@ class TestParseReplicationStream(object):
     @pytest.yield_fixture
     def patch_schema_tracker(self):
         with mock.patch.object(
-            ConnectionSet,
-            'schema_tracker_rw'
-        ) as mock_schema_tracker_rw:
-            mock_schema_tracker_rw.return_value.repltracker.cursor.return_value = mock.Mock()
-            yield mock_schema_tracker_rw
+            Cursors,
+            'get_repltracker_cursor'
+        ) as mock_cursor:
+            mock_cursor.return_value = mock.Mock()
+            yield mock_cursor
 
     @pytest.yield_fixture
     def patch_exit(self):

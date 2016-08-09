@@ -1,13 +1,22 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import simplejson as json
 from sqlalchemy import types
-
-from yelp_conn.session import declarative_base
-from yelp_conn.session import scoped_session
-from yelp_conn.session import sessionmaker
 from yelp_lib import dates
 
 from replication_handler.config import env_config
+
+try:
+    from yelp_conn.session import declarative_base
+    from replication_handler.models.yelp_sqla import get_tracker_session
+    from replication_handler.models.yelp_sqla import get_state_session
+except Exception:
+    # falling back to SQLAlchamy
+    from sqlalchemy.ext.declarative import declarative_base
+    from replication_handler.models.default_sqla import get_tracker_session
+    from replication_handler.models.default_sqla import get_state_session
 
 
 CLUSTER_NAME = env_config.rbr_state_cluster
@@ -16,15 +25,8 @@ CLUSTER_NAME = env_config.rbr_state_cluster
 Base = declarative_base()
 Base.__cluster__ = CLUSTER_NAME
 
-schema_tracker_session = scoped_session(
-    sessionmaker(master_connection_set_name="schema_tracker_rw")
-)
-rbr_state_session = scoped_session(
-    sessionmaker(
-        master_connection_set_name="rbr_state_rw",
-        slave_connection_set_name="rbr_state_ro"
-    )
-)
+schema_tracker_session = get_tracker_session()
+rbr_state_session = get_state_session()
 
 
 class UnixTimeStampType(types.TypeDecorator):

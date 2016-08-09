@@ -6,7 +6,6 @@ import logging
 
 import simplejson as json
 from pymysqlreplication.event import QueryEvent
-from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components._pending_schema_event_recovery_handler import PendingSchemaEventRecoveryHandler
 from replication_handler.components.base_event_handler import Table
@@ -21,6 +20,11 @@ from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import save_position
 from replication_handler.util.position import LogPosition
+
+try:
+    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
+except Exception:
+    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 log = logging.getLogger('replication_handler.components.recovery_handler')
@@ -94,7 +98,7 @@ class RecoveryHandler(object):
         return change_log_data_event_handler.schema_wrapper_entry
 
     def get_latest_source_log_position(self):
-        refresh_source_cursor = ConnectionSet.rbr_source_ro().refresh_primary.cursor()
+        refresh_source_cursor = Cursors().get_rbr_source_cursor()
         refresh_source_cursor.execute("show master status")
         result = refresh_source_cursor.fetchone()
         # result is a tuple with file name at pos 0, and position at pos 1.

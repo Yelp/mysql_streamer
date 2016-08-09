@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import contextlib
-import mock
 from glob import glob
 
+import mock
 from yelp_conn.testing import sandbox as db_sandbox
 
 from replication_handler.models import database

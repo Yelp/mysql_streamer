@@ -6,7 +6,6 @@ import mock
 import pytest
 from data_pipeline.producer import Producer
 
-import replication_handler.components.recovery_handler
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
@@ -14,6 +13,11 @@ from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
+
+try:
+    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
+except Exception:
+    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 class TestReplicationStreamRestarter(object):
@@ -80,11 +84,11 @@ class TestReplicationStreamRestarter(object):
     @pytest.yield_fixture(autouse=True)
     def patch_rbr_source(self):
         with mock.patch.object(
-            replication_handler.components.recovery_handler,
-            'ConnectionSet'
-        ) as mock_connection_set:
+            Cursors,
+            'get_rbr_source_cursor'
+        ) as mock_cursor:
             cursor = mock.Mock()
-            mock_connection_set.rbr_source_ro.return_value.refresh_primary.cursor.return_value = cursor
+            mock_cursor.return_value = cursor
             cursor.fetchone.return_value = ('mysql-bin.000003', 1133)
             yield
 

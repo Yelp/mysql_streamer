@@ -10,13 +10,17 @@ import pytest
 from data_pipeline.config import get_config
 from data_pipeline.helpers.yelp_avro_store import _AvroStringStore
 from data_pipeline.message import Message
-from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.schematizer_clientlib.schematizer import _Cache
+from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
-from testing import sandbox
+
+try:
+    from replication_handler_testing import yelp_sandbox as sandbox
+except Exception:
+    from replication_handler_testing import default_sandbox as sandbox
 
 
 timeout_seconds = 60

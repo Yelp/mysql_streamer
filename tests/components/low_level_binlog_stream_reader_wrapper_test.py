@@ -1,19 +1,22 @@
 # -*- coding: utf-8 -*-
-import mock
-import pytest
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import time
 
+import mock
+import pytest
+from data_pipeline.message import RefreshMessage
 from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
 from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 
-from data_pipeline.message import RefreshMessage
 from replication_handler import config
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
-from testing.events import RowsEvent
+from replication_handler_testing.events import RowsEvent
 
 
 class TestLowLevelBinlogStreamReaderWrapper(object):

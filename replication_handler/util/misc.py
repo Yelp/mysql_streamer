@@ -4,8 +4,6 @@ from __future__ import unicode_literals
 
 import logging
 
-from yelp_conn.connection_set import ConnectionSet
-
 from replication_handler.config import env_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
@@ -90,10 +88,3 @@ def save_position(position_data, is_clean_shutdown=False):
             topic_to_kafka_offset_map=topic_to_kafka_offset_map,
             cluster_name=position_info["cluster_name"]
         )
-
-
-def repltracker_cursor():
-    schema_tracker_cluster = env_config.schema_tracker_cluster
-    connection_set = ConnectionSet.schema_tracker_rw()
-    db = getattr(connection_set, schema_tracker_cluster)
-    return db.cursor()

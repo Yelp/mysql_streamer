@@ -6,9 +6,14 @@ import logging
 import os
 
 import staticconf
-import yelp_conn
 from yelp_servlib import clog_util
 from yelp_servlib.config_util import load_default_config
+
+try:
+    import yelp_conn
+    yelp_conn.initialize()
+except Exception:
+    pass
 
 
 log = logging.getLogger('replication_handler.config')
@@ -25,7 +30,6 @@ class BaseConfig(object):
         log.info("SERVICE_CONFIG_PATH is {}".format(SERVICE_CONFIG_PATH))
         log.info("SERVICE_ENV_CONFIG_PATH is {}".format(SERVICE_ENV_CONFIG_PATH))
         load_default_config(SERVICE_CONFIG_PATH, SERVICE_ENV_CONFIG_PATH)
-        yelp_conn.initialize()
         clog_util.initialize()
 
 
@@ -207,5 +211,9 @@ source_database_config = DatabaseConfig(
 )
 schema_tracking_database_config = DatabaseConfig(
     env_config.schema_tracker_cluster,
+    env_config.topology_path
+)
+state_database_config = DatabaseConfig(
+    env_config.rbr_state_cluster,
     env_config.topology_path
 )

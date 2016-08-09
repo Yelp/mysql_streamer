@@ -21,9 +21,12 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from replication_handler.util.misc import repltracker_cursor
 from replication_handler.util.misc import save_position
 
+try:
+    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
+except Exception:
+    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 log = logging.getLogger('replication_handler.components.schema_event_handler')
 
@@ -34,7 +37,7 @@ class SchemaEventHandler(BaseEventHandler):
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
         self.schema_tracker = SchemaTracker(
-            repltracker_cursor()
+            Cursors().get_repltracker_cursor()
         )
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
 

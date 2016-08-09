@@ -21,8 +21,8 @@ from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.database import rbr_state_session
 from replication_handler.util.position import LogPosition
-from testing.events import make_data_create_event
-from testing.events import make_data_update_event
+from replication_handler_testing.events import make_data_create_event
+from replication_handler_testing.events import make_data_update_event
 
 
 DataHandlerExternalPatches = namedtuple(

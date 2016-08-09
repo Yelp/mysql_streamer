@@ -7,11 +7,15 @@ import calendar
 from dateutil.tz import tzlocal
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import UpdateRowsEvent
-from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.position import HeartbeatPosition
+
+try:
+    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
+except Exception:
+    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 class HeartbeatSearcher(object):
@@ -35,7 +39,7 @@ class HeartbeatSearcher(object):
             'passwd': source_config['passwd']
         }
         if db_cnct is None:
-            self.db_cnct = ConnectionSet.rbr_source_ro().refresh_primary
+            self.db_cnct = Cursors().get_rbr_source_cursor()
         else:
             self.db_cnct = db_cnct
 
@@ -62,7 +66,7 @@ class HeartbeatSearcher(object):
         """Returns a list of all the log files names on the configured
         db connection
         """
-        cursor = self.db_cnct.cursor()
+        cursor = self.db_cnct.cursor() if self.db_cnct else self.db_cursor
         cursor.execute('SHOW BINARY LOGS;')
         names = []
         for row in cursor.fetchall():
@@ -74,7 +78,7 @@ class HeartbeatSearcher(object):
         binlog. This process isn't exactly free so it is used as little as
         possible in the search.
         """
-        cursor = self.db_cnct.cursor()
+        cursor = self.db_cnct.cursor() if self.db_cnct else self.db_cursor
         cursor.execute('SHOW BINLOG EVENTS IN \'{}\';'.format(binlog))
         # Each event is a tuple of the form
         # (0:Log_name 1:Pos 2:Event_type 3:Server_id 4:End_log_pos 5:Info)

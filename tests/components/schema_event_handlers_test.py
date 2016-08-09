@@ -10,7 +10,6 @@ from data_pipeline.producer import Producer
 from data_pipeline.schema_cache import SchematizerClient
 from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pii_generator.components.pii_identifier import PIIIdentifier
-from yelp_conn.connection_set import ConnectionSet
 
 import replication_handler.components.schema_event_handler
 from replication_handler import config
@@ -22,7 +21,12 @@ from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.util.position import GtidPosition
-from testing.events import QueryEvent
+from replication_handler_testing.events import QueryEvent
+
+try:
+    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
+except Exception:
+    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 SchemaHandlerExternalPatches = namedtuple(
@@ -265,19 +269,21 @@ class TestSchemaEventHandler(object):
 
     @pytest.yield_fixture
     def patch_schema_tracker_rw(self, mock_schema_tracker_cursor):
-        with mock.patch.object(ConnectionSet, 'schema_tracker_rw') as mock_schema_tracker_rw:
-            mock_schema_tracker_rw.return_value.repltracker.cursor.return_value \
-                = mock_schema_tracker_cursor
-            yield mock_schema_tracker_rw
+        with mock.patch.object(
+            Cursors,
+            'get_repltracker_cursor'
+        ) as mock_cursor:
+            mock_cursor.return_value = mock_schema_tracker_cursor
+            yield mock_cursor
 
     @pytest.yield_fixture
     def patch_rbr_source_ro(self, mock_rbr_source_cursor):
         with mock.patch.object(
-            ConnectionSet,
-            'rbr_source_ro'
-        ) as mock_rbr_source_ro:
-            mock_rbr_source_ro.return_value.refresh_primary.cursor.return_value = mock_rbr_source_cursor
-            yield mock_rbr_source_ro
+            Cursors,
+            'get_rbr_source_cursor'
+        ) as mock_cursor:
+            mock_cursor.return_value = mock_rbr_source_cursor
+            yield mock_cursor
 
     @pytest.yield_fixture
     def patch_config_db(self, test_schema):
@@ -425,6 +431,7 @@ class TestSchemaEventHandler(object):
             upsert_global_event_state=patch_upsert_global_event_state,
             table_has_pii=patch_table_has_pii,
         )
+
     def _setup_handle_event_alter_table(
         self,
         namespace,

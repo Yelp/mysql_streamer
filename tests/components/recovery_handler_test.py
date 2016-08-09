@@ -7,13 +7,10 @@ import time
 import mock
 import pytest
 from data_pipeline.message import CreateMessage
-from data_pipeline.message import Message
 from data_pipeline.producer import Producer
 from pymysqlreplication.event import QueryEvent
-from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
-from replication_handler.components._pending_schema_event_recovery_handler import BadSchemaEventStateException
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
@@ -23,6 +20,11 @@ from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import LogPosition
+
+try:
+    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
+except Exception:
+    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 @pytest.mark.usefixtures('patch_message_contains_pii')
@@ -205,24 +207,53 @@ class TestRecoveryHandler(object):
         ) as mock_delete:
             yield mock_delete
 
+    # @pytest.yield_fixture
+    # def patch_schema_tracker_connection(self, mock_schema_tracker_cursor):
+    #     with mock.patch.object(
+    #         ConnectionSet,
+    #         'schema_tracker_rw'
+    #     ) as mock_connection:
+    #         mock_connection.return_value.repltracker.cursor.return_value = mock_schema_tracker_cursor
+    #         yield mock_connection
+
+    # @pytest.yield_fixture
+    # def patch_rbr_source_connection(self, mock_rbr_source_cursor):
+    #     with mock.patch.object(
+    #         ConnectionSet,
+    #         'rbr_source_ro'
+    #     ) as mock_connection:
+    #         mock_rbr_source_cursor.fetchone.return_value = ('binlog.001', 200)
+    #         mock_connection.return_value.refresh_primary.cursor.return_value = mock_rbr_source_cursor
+    #         yield mock_connection
+
     @pytest.yield_fixture
     def patch_schema_tracker_connection(self, mock_schema_tracker_cursor):
         with mock.patch.object(
-            ConnectionSet,
-            'schema_tracker_rw'
-        ) as mock_connection:
-            mock_connection.return_value.repltracker.cursor.return_value = mock_schema_tracker_cursor
-            yield mock_connection
+            Cursors,
+            'get_repltracker_cursor'
+        ) as mock_cursor:
+            mock_cursor.return_value = mock_schema_tracker_cursor
+            yield mock_cursor
 
     @pytest.yield_fixture
     def patch_rbr_source_connection(self, mock_rbr_source_cursor):
         with mock.patch.object(
-            ConnectionSet,
-            'rbr_source_ro'
-        ) as mock_connection:
+            Cursors,
+            'get_rbr_source_cursor'
+        ) as mock_cursor:
             mock_rbr_source_cursor.fetchone.return_value = ('binlog.001', 200)
-            mock_connection.return_value.refresh_primary.cursor.return_value = mock_rbr_source_cursor
-            yield mock_connection
+            mock_cursor.return_value = mock_rbr_source_cursor
+            yield mock_cursor
+
+    @pytest.yield_fixture
+    def patch_rbr_state_connection(self, mock_rbr_state_cursor):
+        with mock.object.object(
+            Cursors,
+            'get_rbr_state_cursor'
+        ) as mock_cursor:
+            mock_rbr_state_cursor.fetchone.return_value = (1, 'baz')
+            mock_cursor.return_value = mock_rbr_state_cursor
+            yield mock_cursor
 
     @pytest.yield_fixture
     def patch_config(self):
