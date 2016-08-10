@@ -23,7 +23,7 @@ from replication_handler.util.position import LogPosition
 
 try:
     from replication_handler.util.yelp_cursors import YelpCursors as Cursors
-except Exception:
+except ImportError:
     from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
@@ -206,25 +206,6 @@ class TestRecoveryHandler(object):
             'delete_schema_event_state_by_id'
         ) as mock_delete:
             yield mock_delete
-
-    # @pytest.yield_fixture
-    # def patch_schema_tracker_connection(self, mock_schema_tracker_cursor):
-    #     with mock.patch.object(
-    #         ConnectionSet,
-    #         'schema_tracker_rw'
-    #     ) as mock_connection:
-    #         mock_connection.return_value.repltracker.cursor.return_value = mock_schema_tracker_cursor
-    #         yield mock_connection
-
-    # @pytest.yield_fixture
-    # def patch_rbr_source_connection(self, mock_rbr_source_cursor):
-    #     with mock.patch.object(
-    #         ConnectionSet,
-    #         'rbr_source_ro'
-    #     ) as mock_connection:
-    #         mock_rbr_source_cursor.fetchone.return_value = ('binlog.001', 200)
-    #         mock_connection.return_value.refresh_primary.cursor.return_value = mock_rbr_source_cursor
-    #         yield mock_connection
 
     @pytest.yield_fixture
     def patch_schema_tracker_connection(self, mock_schema_tracker_cursor):

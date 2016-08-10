@@ -15,8 +15,8 @@ from pymysqlreplication.event import QueryEvent
 
 import replication_handler.batch.parse_replication_stream
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
-from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
+from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
@@ -26,7 +26,7 @@ from replication_handler.util.position import GtidPosition
 
 try:
     from replication_handler.util.yelp_cursors import YelpCursors as Cursors
-except Exception:
+except ImportError:
     from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
@@ -190,8 +190,8 @@ class TestParseReplicationStream(object):
 
     @pytest.yield_fixture
     def patch_config_changelog_on(self, patch_config):
-            patch_config.changelog_mode = True
-            yield patch_config
+        patch_config.changelog_mode = True
+        yield patch_config
 
     @pytest.yield_fixture
     def patch_config_meteorite_disabled(self, patch_config):

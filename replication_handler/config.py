@@ -11,8 +11,7 @@ from yelp_servlib.config_util import load_default_config
 
 try:
     import yelp_conn
-    yelp_conn.initialize()
-except Exception:
+except ImportError:
     pass
 
 
@@ -30,6 +29,8 @@ class BaseConfig(object):
         log.info("SERVICE_CONFIG_PATH is {}".format(SERVICE_CONFIG_PATH))
         log.info("SERVICE_ENV_CONFIG_PATH is {}".format(SERVICE_ENV_CONFIG_PATH))
         load_default_config(SERVICE_CONFIG_PATH, SERVICE_ENV_CONFIG_PATH)
+        if 'yelp_conn' in globals():
+            yelp_conn.initialize()
         clog_util.initialize()
 
 

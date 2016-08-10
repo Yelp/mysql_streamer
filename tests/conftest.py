@@ -19,7 +19,7 @@ from replication_handler.testing_helper.util import replication_handler_health_c
 
 try:
     from replication_handler_testing import yelp_sandbox as sandbox
-except Exception:
+except ImportError:
     from replication_handler_testing import default_sandbox as sandbox
 
 

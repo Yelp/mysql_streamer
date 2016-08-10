@@ -12,7 +12,7 @@ try:
     from yelp_conn.session import declarative_base
     from replication_handler.models.yelp_sqla import get_tracker_session
     from replication_handler.models.yelp_sqla import get_state_session
-except Exception:
+except ImportError:
     # falling back to SQLAlchamy
     from sqlalchemy.ext.declarative import declarative_base
     from replication_handler.models.default_sqla import get_tracker_session

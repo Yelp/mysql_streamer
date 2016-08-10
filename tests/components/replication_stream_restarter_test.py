@@ -16,7 +16,7 @@ from replication_handler.models.schema_event_state import SchemaEventState
 
 try:
     from replication_handler.util.yelp_cursors import YelpCursors as Cursors
-except Exception:
+except ImportError:
     from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
