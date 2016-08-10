@@ -2,17 +2,17 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import time
 from collections import namedtuple
 
 import pytest
-import time
 from data_pipeline.message_type import MessageType
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy.dialects import mysql
 
-from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import execute_query_get_all_rows
+from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
 from replication_handler.testing_helper.util import RBR_SOURCE
 from replication_handler.testing_helper.util import SCHEMA_TRACKER
@@ -147,8 +147,8 @@ class TestEndToEnd(object):
         {
             'table_name': 'test_date_time',
             'test_schema': [
-                # ColumnInfo('DATE', mysql.DATE(), '1901-01-01'),
-                # ColumnInfo('DATE', mysql.DATE(), '2100-12-31'),
+                ColumnInfo('DATE', mysql.DATE(), '1901-01-01'),
+                ColumnInfo('DATE', mysql.DATE(), '2100-12-31'),
 
                 # ColumnInfo('DATETIME', mysql.DATETIME(), '2014-03-24 02:03:46'),
                 # ColumnInfo('DATETIME(6)', mysql.DATETIME(fsp=6), '2014-03-24 02:03:46.001212'),
@@ -157,7 +157,6 @@ class TestEndToEnd(object):
                 # ColumnInfo('TIMESTAMP(6)', mysql.TIMESTAMP(fsp=6), '2014-03-24 02:03:46.001212'),
 
                 # ColumnInfo('TIME', mysql.TIME(), '02:03:46'),
-                # ColumnInfo('TIME(6)', mysql.TIME(fsp=6), '02:03:46.001212'),
 
                 ColumnInfo('YEAR', mysql.YEAR(), 2000),
                 ColumnInfo('YEAR(4)', mysql.YEAR(display_width=4), 2000),

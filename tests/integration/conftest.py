@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import datetime
 import time
 from decimal import Decimal
 
@@ -124,6 +125,9 @@ def _assert_equal_dict(dict1, dict2):
         elif isinstance(v1, Decimal):
             d_v2 = Decimal(str(v2))
             assert v1.to_eng_string() == d_v2.to_eng_string()
+        elif isinstance(v1, datetime.date):
+            d_v1 = str(v1)
+            assert d_v1 == v2
         else:
             assert v1 == v2
 
