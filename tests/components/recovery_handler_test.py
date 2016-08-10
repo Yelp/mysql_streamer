@@ -24,7 +24,6 @@ from replication_handler.util.position import LogPosition
 
 
 @pytest.mark.usefixtures('patch_message_contains_pii')
-@pytest.mark.usefixtures('patch_transaction_id_schema_id')
 class TestRecoveryHandler(object):
 
     @pytest.fixture

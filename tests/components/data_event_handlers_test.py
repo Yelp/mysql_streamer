@@ -38,7 +38,6 @@ DataHandlerExternalPatches = namedtuple(
 )
 
 
-@pytest.mark.usefixtures('patch_transaction_id_schema_id')
 class TestDataEventHandler(object):
 
     @pytest.fixture

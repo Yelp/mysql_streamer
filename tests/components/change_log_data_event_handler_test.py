@@ -8,7 +8,6 @@ import pytest
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 
 
-@pytest.mark.usefixtures('patch_transaction_id_schema_id')
 class TestChangeLogDataEventHandler(object):
 
     @pytest.fixture
