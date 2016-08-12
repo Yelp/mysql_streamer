@@ -17,8 +17,10 @@ class ChangeLogMessageBuilder(MessageBuilder):
     """ This class knows how to convert a data event into a respective message.
 
     Args:
-      event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
       schema_info(SchemaInfo object): contain topic/schema_id.
+      event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
+      transaction_id_schema_id(int): schema id for transaction id meta attribute.
+      position(Position object): contains position information for this event in binlog.
       resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
     """
 

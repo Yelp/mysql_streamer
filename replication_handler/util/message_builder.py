@@ -18,6 +18,7 @@ class MessageBuilder(object):
     Args:
       schema_info(SchemaInfo object): contain schema_id.
       event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
+      transaction_id_schema_id(int): schema id for transaction id meta attribute.
       position(Position object): contains position information for this event in binlog.
       register_dry_run(boolean, optional): whether a schema has to be registered for a message to be published.
       Defaults to True.
