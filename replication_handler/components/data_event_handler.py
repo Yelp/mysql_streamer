@@ -8,6 +8,7 @@ from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.util.message_builder import MessageBuilder
+from replication_handler.util.misc import get_transaction_id_schema_id
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -18,6 +19,7 @@ class DataEventHandler(BaseEventHandler):
 
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
+        self.transaction_id_schema_id = get_transaction_id_schema_id()
         super(DataEventHandler, self).__init__(*args, **kwargs)
 
     def handle_event(self, event, position):
@@ -38,6 +40,7 @@ class DataEventHandler(BaseEventHandler):
         builder = MessageBuilder(
             schema_wrapper_entry,
             event,
+            self.transaction_id_schema_id,
             position,
             self.register_dry_run
         )

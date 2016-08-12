@@ -56,6 +56,7 @@ class ChangeLogDataEventHandler(DataEventHandler):
         builder = ChangeLogMessageBuilder(
             schema_wrapper_entry,
             event,
+            self.transaction_id_schema_id,
             position,
             self.register_dry_run
         )

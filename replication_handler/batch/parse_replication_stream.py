@@ -22,8 +22,8 @@ from pymysqlreplication.event import QueryEvent
 from yelp_batch import Batch
 
 from replication_handler import config
-from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
+from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_wrapper import SchemaWrapper

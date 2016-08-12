@@ -7,13 +7,11 @@ import time
 import mock
 import pytest
 from data_pipeline.message import CreateMessage
-from data_pipeline.message import Message
 from data_pipeline.producer import Producer
 from pymysqlreplication.event import QueryEvent
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler import config
-from replication_handler.components._pending_schema_event_recovery_handler import BadSchemaEventStateException
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint

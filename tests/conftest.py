@@ -10,10 +10,12 @@ import pytest
 from data_pipeline.config import get_config
 from data_pipeline.helpers.yelp_avro_store import _AvroStringStore
 from data_pipeline.message import Message
-from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.schematizer_clientlib.schematizer import _Cache
+from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.testing_helpers.containers import Containers
 
+from replication_handler.components import data_event_handler
+from replication_handler.components import recovery_handler
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
 from testing import sandbox
@@ -112,4 +114,23 @@ def patch_message_contains_pii():
         autospec=True,
         side_effect=set_contains_pii
     ):
+        yield
+
+
+@pytest.fixture
+def fake_transaction_id_schema_id():
+    return 911
+
+
+@pytest.yield_fixture(autouse=True)
+def patch_transaction_id_schema_id(fake_transaction_id_schema_id):
+    with mock.patch.object(
+        data_event_handler,
+        'get_transaction_id_schema_id'
+    ) as mock_data_event_transaction_id_schema_id, mock.patch.object(
+        recovery_handler,
+        'get_transaction_id_schema_id'
+    ) as mock_recovery_transaction_id_schema_id:
+        mock_data_event_transaction_id_schema_id.return_value = 911
+        mock_recovery_transaction_id_schema_id.return_value = 911
         yield

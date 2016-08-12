@@ -9,6 +9,7 @@ from decimal import Decimal
 import pytest
 from data_pipeline.consumer import Consumer
 from data_pipeline.expected_frequency import ExpectedFrequency
+from data_pipeline.meta_attribute import MetaAttribute
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -76,6 +77,7 @@ def _fetch_messages(
     _assert_topic_set_in_messages(messages, topics[0].name)
     _assert_contains_pii_set_in_messages(messages, topics[0].contains_pii)
     _assert_keys_set_in_messages(messages, topics[0].primary_keys)
+    _assert_meta_in_messages(messages)
     return messages
 
 
@@ -103,6 +105,14 @@ def _assert_contains_pii_set_in_messages(messages, contains_pii):
 def _assert_keys_set_in_messages(messages, primary_keys):
     for message in messages:
         assert primary_keys == message.keys.keys()
+
+
+def _assert_meta_in_messages(messages):
+    for message in messages:
+        for meta in message.meta:
+            assert isinstance(meta, MetaAttribute)
+            assert isinstance(meta.schema_id, int)
+            assert isinstance(meta.payload, bytes)
 
 
 def _assert_equal_dict(dict1, dict2):

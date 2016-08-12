@@ -18,14 +18,18 @@ class MessageBuilder(object):
     Args:
       schema_info(SchemaInfo object): contain schema_id.
       event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
+      transaction_id_schema_id(int): schema id for transaction id meta attribute.
       position(Position object): contains position information for this event in binlog.
       register_dry_run(boolean, optional): whether a schema has to be registered for a message to be published.
       Defaults to True.
     """
 
-    def __init__(self, schema_info, event, position, register_dry_run=True):
+    def __init__(
+        self, schema_info, event, transaction_id_schema_id, position, register_dry_run=True
+    ):
         self.schema_info = schema_info
         self.event = event
+        self.transaction_id_schema_id = transaction_id_schema_id
         self.position = position
         self.register_dry_run = register_dry_run
 
@@ -45,7 +49,7 @@ class MessageBuilder(object):
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
             "timestamp": self.event.timestamp,
-            "meta": [self.position.transaction_id],
+            "meta": [self.position.get_transaction_id(self.transaction_id_schema_id)],
         }
 
         if self.event.message_type == UpdateMessage:

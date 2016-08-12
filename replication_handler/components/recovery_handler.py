@@ -19,6 +19,7 @@ from replication_handler.models.database import rbr_state_session
 from replication_handler.util.change_log_message_builder import ChangeLogMessageBuilder
 from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import DataEvent
+from replication_handler.util.misc import get_transaction_id_schema_id
 from replication_handler.util.misc import save_position
 from replication_handler.util.position import LogPosition
 
@@ -74,6 +75,7 @@ class RecoveryHandler(object):
         self.latest_source_log_position = self.get_latest_source_log_position()
         self.changelog_mode = changelog_mode
         self.changelog_schema_wrapper = self._get_changelog_schema_wrapper()
+        self.transaction_id_schema_id = get_transaction_id_schema_id()
 
     @property
     def need_recovery(self):
@@ -191,6 +193,7 @@ class RecoveryHandler(object):
             builder = Builder(
                 schema_wrapper,
                 event.event,
+                self.transaction_id_schema_id,
                 event.position,
                 self.register_dry_run,
             )
