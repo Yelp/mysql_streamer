@@ -12,7 +12,6 @@ from replication_handler.components.base_event_handler import Table
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import env_config
-from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import connection_object
 from replication_handler.models.database import rbr_state_session
@@ -57,7 +56,7 @@ class RecoveryHandler(object):
         log.info("Recovery Handler Starting: %s" % json.dumps(dict(
             is_clean_shutdown=is_clean_shutdown,
             pending_schema_event=repr(pending_schema_event),
-            cluster_name=source_database_config.cluster_name,
+            cluster_name=env_config.rbr_source_cluster,
             register_dry_run=register_dry_run,
             publish_dry_run=publish_dry_run,
             changelog_mode=changelog_mode,
@@ -67,7 +66,7 @@ class RecoveryHandler(object):
         self.producer = producer
         self.is_clean_shutdown = is_clean_shutdown
         self.pending_schema_event = pending_schema_event
-        self.cluster_name = source_database_config.cluster_name
+        self.cluster_name = env_config.rbr_source_cluster
         self.register_dry_run = register_dry_run
         self.publish_dry_run = publish_dry_run
         self.schema_wrapper = schema_wrapper

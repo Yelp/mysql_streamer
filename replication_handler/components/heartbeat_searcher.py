@@ -8,7 +8,6 @@ from dateutil.tz import tzlocal
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import UpdateRowsEvent
 
-from replication_handler import config
 from replication_handler.models.database import connection_object
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.position import HeartbeatPosition
@@ -27,13 +26,6 @@ class HeartbeatSearcher(object):
 
     def __init__(self, db_cnct=None):
         # Set up database configuration info and connection
-        source_config = config.source_database_config.entries[0]
-        self.connection_config = {
-            'host': source_config['host'],
-            'port': source_config['port'],
-            'user': source_config['user'],
-            'passwd': source_config['passwd']
-        }
         if db_cnct is None:
             self.db_cnct = connection_object.get_source_cursor()
         else:
@@ -95,7 +87,7 @@ class HeartbeatSearcher(object):
         at log_pos 4.
         """
         return BinLogStreamReader(
-            connection_settings=self.connection_config,
+            connection_settings=connection_object.source_database_config,
             server_id=1,
             blocking=False,
             resume_stream=True,

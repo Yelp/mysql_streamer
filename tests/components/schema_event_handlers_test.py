@@ -320,8 +320,8 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def patch_cluster_name(self, test_schema):
         with mock.patch.object(
-            config.DatabaseConfig,
-            'cluster_name',
+            config.EnvConfig,
+            'rbr_source_cluster',
             new_callable=mock.PropertyMock
         ) as mock_cluster_name:
             mock_cluster_name.return_value = "yelp_main"

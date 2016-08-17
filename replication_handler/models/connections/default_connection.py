@@ -10,13 +10,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.scoping import ScopedSession
 
-from replication_handler.config import schema_tracking_database_config
-from replication_handler.config import source_database_config
-from replication_handler.config import state_database_config
 from replication_handler.models.connections.base_connection import BaseConnection
 
 
 class DefaultConnection(BaseConnection):
+
+    def __init__(self):
+        super(DefaultConnection, self).__init__()
 
     def _get_engine(self, config):
         return create_engine(
@@ -38,27 +38,21 @@ class DefaultConnection(BaseConnection):
         return declarative_base()
 
     def get_tracker_session(self):
-        config = schema_tracking_database_config.entries[0]
+        config = self.tracker_database_config
         return _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
 
     def get_state_session(self):
-        config = state_database_config.entries[0]
+        config = self.state_database_config
         return _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
 
     def get_tracker_cursor(self):
-        return self._get_cursor(
-            schema_tracking_database_config.entries[0]
-        )
+        return self._get_cursor(self.tracker_database_config)
 
     def get_state_cursor(self):
-        return self._get_cursor(
-            state_database_config.entries[0]
-        )
+        return self._get_cursor(self.state_database_config)
 
     def get_source_cursor(self):
-        return self._get_cursor(
-            source_database_config.entries[0]
-        )
+        return self._get_cursor(self.source_database_config)
 
 
 class _RHScopedSession(ScopedSession):

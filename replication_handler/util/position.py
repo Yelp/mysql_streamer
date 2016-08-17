@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from replication_handler.config import source_database_config
+from replication_handler.config import env_config
 from replication_handler.util.transaction_id import TransactionId
 
 
@@ -119,7 +119,7 @@ class LogPosition(Position):
         self.offset = offset
         self.hb_serial = hb_serial
         self.hb_timestamp = hb_timestamp
-        self.cluster_name = unicode(source_database_config.cluster_name)
+        self.cluster_name = unicode(env_config.rbr_source_cluster)
 
     def to_dict(self):
         position_dict = {}

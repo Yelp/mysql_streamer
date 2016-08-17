@@ -6,13 +6,9 @@ import logging
 import os
 
 import staticconf
+from cached_property import cached_property
 from yelp_servlib import clog_util
 from yelp_servlib.config_util import load_default_config
-
-try:
-    import yelp_conn
-except ImportError:
-    pass
 
 
 log = logging.getLogger('replication_handler.config')
@@ -29,8 +25,6 @@ class BaseConfig(object):
         log.info("SERVICE_CONFIG_PATH is {}".format(SERVICE_CONFIG_PATH))
         log.info("SERVICE_ENV_CONFIG_PATH is {}".format(SERVICE_ENV_CONFIG_PATH))
         load_default_config(SERVICE_CONFIG_PATH, SERVICE_ENV_CONFIG_PATH)
-        if 'yelp_conn' in globals():
-            yelp_conn.initialize()
         clog_util.initialize()
 
 
@@ -56,7 +50,7 @@ class EnvConfig(BaseConfig):
     def namespace(self):
         return staticconf.get('namespace').value
 
-    @property
+    @cached_property
     def rbr_source_cluster(self):
         return staticconf.get('rbr_source_cluster').value
 
@@ -68,11 +62,11 @@ class EnvConfig(BaseConfig):
     def changelog_mode(self):
         return staticconf.get('changelog_mode', False).value
 
-    @property
+    @cached_property
     def schema_tracker_cluster(self):
         return staticconf.get('schema_tracker_cluster').value
 
-    @property
+    @cached_property
     def rbr_state_cluster(self):
         return staticconf.get('rbr_state_cluster').value
 
@@ -186,39 +180,4 @@ class EnvConfig(BaseConfig):
         return staticconf.get('database_connection_type', default='yelp_conn').value
 
 
-class DatabaseConfig(object):
-    """Used for reading database config out of topology.yaml in the environment"""
-
-    def __init__(self, cluster_name, topology_path):
-        load_default_config(topology_path)
-        self._cluster_name = cluster_name
-
-    @property
-    def cluster_config(self):
-        for topo_item in staticconf.get('topology'):
-            if topo_item.get('cluster') == self.cluster_name:
-                return topo_item
-
-    @property
-    def entries(self):
-        return self.cluster_config['entries']
-
-    @property
-    def cluster_name(self):
-        return self._cluster_name
-
-
 env_config = EnvConfig()
-
-source_database_config = DatabaseConfig(
-    env_config.rbr_source_cluster,
-    env_config.topology_path
-)
-schema_tracking_database_config = DatabaseConfig(
-    env_config.schema_tracker_cluster,
-    env_config.topology_path
-)
-state_database_config = DatabaseConfig(
-    env_config.rbr_state_cluster,
-    env_config.topology_path
-)

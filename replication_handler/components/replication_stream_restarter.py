@@ -8,7 +8,7 @@ import logging
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
-from replication_handler.config import source_database_config
+from replication_handler.config import env_config
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
@@ -29,7 +29,7 @@ class ReplicationStreamRestarter(object):
     def __init__(self, schema_wrapper):
         # Both global_event_state and pending_schema_event are information about
         # last shutdown, we need them to do recovery process.
-        cluster_name = source_database_config.cluster_name
+        cluster_name = env_config.rbr_source_cluster
         self.global_event_state = self._get_global_event_state(cluster_name)
         self.pending_schema_event = self._get_pending_schema_event_state(
             cluster_name,

@@ -20,6 +20,7 @@ from pymysqlreplication.row_event import WriteRowsEvent
 
 from replication_handler import config
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
+from replication_handler.models.database import connection_object
 from replication_handler.util.misc import DataEvent
 
 
@@ -44,14 +45,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     def __init__(self, position):
         super(LowLevelBinlogStreamReaderWrapper, self).__init__()
         self.refresh_table_suffix = '_data_pipeline_refresh'
-        source_config = config.source_database_config.entries[0]
         only_tables = self._get_only_tables()
-        connection_config = {
-            'host': source_config['host'],
-            'port': source_config['port'],
-            'user': source_config['user'],
-            'passwd': source_config['passwd']
-        }
         allowed_event_types = [
             GtidEvent,
             QueryEvent,
@@ -60,7 +54,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             DeleteRowsEvent,
         ]
 
-        self._seek(connection_config, allowed_event_types, position, only_tables)
+        self._seek(allowed_event_types, position, only_tables)
 
     def _get_only_tables(self):
         only_tables = config.env_config.table_whitelist
@@ -121,10 +115,10 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             ) for row in row_event.rows
         ]
 
-    def _seek(self, connection_config, allowed_event_types, position, only_tables):
+    def _seek(self, allowed_event_types, position, only_tables):
         # server_id doesn't seem to matter but must be set.
         self.stream = BinLogStreamReader(
-            connection_settings=connection_config,
+            connection_settings=connection_object.source_database_config,
             server_id=1,
             only_events=allowed_event_types,
             resume_stream=config.env_config.resume_stream,

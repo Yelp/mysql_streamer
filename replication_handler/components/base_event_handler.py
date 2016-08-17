@@ -6,7 +6,6 @@ import logging
 from collections import namedtuple
 
 from replication_handler.config import env_config
-from replication_handler.config import source_database_config
 
 
 Table = namedtuple('Table', ('cluster_name', 'database_name', 'table_name'))
@@ -27,7 +26,7 @@ class BaseEventHandler(object):
 
     def __init__(self, producer, schema_wrapper, stats_counter):
         self.schema_wrapper = schema_wrapper
-        self.cluster_name = source_database_config.cluster_name
+        self.cluster_name = env_config.rbr_source_cluster
         self.producer = producer
         self.stats_counter = stats_counter
 

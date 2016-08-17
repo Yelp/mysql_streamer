@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import yelp_conn
 from yelp_conn.connection_set import ConnectionSet
 from yelp_conn.session import declarative_base
 from yelp_conn.session import scoped_session
@@ -12,6 +13,10 @@ from replication_handler.models.connections.base_connection import BaseConnectio
 
 
 class YelpConnConnection(BaseConnection):
+
+    def __init__(self):
+        yelp_conn.initialize()
+        super(YelpConnConnection, self).__init__()
 
     def get_base_model(self):
         return declarative_base()
