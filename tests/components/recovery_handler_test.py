@@ -14,17 +14,13 @@ from replication_handler import config
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
+from replication_handler.models.database import connection_object
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import LogPosition
-
-try:
-    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
-except ImportError:
-    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 @pytest.mark.usefixtures('patch_message_contains_pii')
@@ -210,8 +206,8 @@ class TestRecoveryHandler(object):
     @pytest.yield_fixture
     def patch_schema_tracker_connection(self, mock_schema_tracker_cursor):
         with mock.patch.object(
-            Cursors,
-            'get_repltracker_cursor'
+            connection_object,
+            'get_tracker_cursor'
         ) as mock_cursor:
             mock_cursor.return_value = mock_schema_tracker_cursor
             yield mock_cursor
@@ -219,8 +215,8 @@ class TestRecoveryHandler(object):
     @pytest.yield_fixture
     def patch_rbr_source_connection(self, mock_rbr_source_cursor):
         with mock.patch.object(
-            Cursors,
-            'get_rbr_source_cursor'
+            connection_object,
+            'get_source_cursor'
         ) as mock_cursor:
             mock_rbr_source_cursor.fetchone.return_value = ('binlog.001', 200)
             mock_cursor.return_value = mock_rbr_source_cursor
@@ -229,8 +225,8 @@ class TestRecoveryHandler(object):
     @pytest.yield_fixture
     def patch_rbr_state_connection(self, mock_rbr_state_cursor):
         with mock.object.object(
-            Cursors,
-            'get_rbr_state_cursor'
+            connection_object,
+            'get_state_cursor'
         ) as mock_cursor:
             mock_rbr_state_cursor.fetchone.return_value = (1, 'baz')
             mock_cursor.return_value = mock_rbr_state_cursor

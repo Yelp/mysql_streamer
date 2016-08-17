@@ -16,17 +16,13 @@ from replication_handler.components.sql_handler import AlterTableStatement
 from replication_handler.components.sql_handler import CreateDatabaseStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.components.sql_handler import RenameTableStatement
+from replication_handler.models.database import connection_object
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import save_position
-
-try:
-    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
-except ImportError:
-    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 log = logging.getLogger('replication_handler.components.schema_event_handler')
 
@@ -37,7 +33,7 @@ class SchemaEventHandler(BaseEventHandler):
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
         self.schema_tracker = SchemaTracker(
-            Cursors().get_repltracker_cursor()
+            connection_object.get_tracker_cursor()
         )
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
 

@@ -9,11 +9,7 @@ from pii_generator.components.pii_identifier import PIIIdentifier
 
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.config import env_config
-
-try:
-    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
-except ImportError:
-    from replication_handler.util.default_cursors import DefaultCursors as Cursors
+from replication_handler.models.database import connection_object
 
 
 log = logging.getLogger('replication_handler.components.schema_wrapper')
@@ -50,7 +46,7 @@ class SchemaWrapper(object):
         self.reset_cache()
         self.schematizer_client = schematizer_client
         self.schema_tracker = SchemaTracker(
-            Cursors().get_repltracker_cursor()
+            connection_object.get_tracker_cursor()
         )
         self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 

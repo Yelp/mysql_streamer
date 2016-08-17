@@ -9,13 +9,9 @@ from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import UpdateRowsEvent
 
 from replication_handler import config
+from replication_handler.models.database import connection_object
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.position import HeartbeatPosition
-
-try:
-    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
-except ImportError:
-    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 class HeartbeatSearcher(object):
@@ -39,7 +35,7 @@ class HeartbeatSearcher(object):
             'passwd': source_config['passwd']
         }
         if db_cnct is None:
-            self.db_cnct = Cursors().get_rbr_source_cursor()
+            self.db_cnct = connection_object.get_source_cursor()
         else:
             self.db_cnct = db_cnct
 

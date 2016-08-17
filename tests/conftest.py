@@ -16,11 +16,7 @@ from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
-
-try:
-    from replication_handler_testing import yelp_sandbox as sandbox
-except ImportError:
-    from replication_handler_testing import default_sandbox as sandbox
+from replication_handler_testing import default_sandbox as sandbox
 
 
 timeout_seconds = 60

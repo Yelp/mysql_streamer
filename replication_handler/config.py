@@ -181,6 +181,10 @@ class EnvConfig(BaseConfig):
         """
         return staticconf.get_bool('force_exit').value
 
+    @property
+    def database_connection_type(self):
+        return staticconf.get('database_connection_type', default='yelp_conn').value
+
 
 class DatabaseConfig(object):
     """Used for reading database config out of topology.yaml in the environment"""

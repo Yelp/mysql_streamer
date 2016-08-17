@@ -92,6 +92,7 @@ def database_sandbox_session():
     _session_prev_engine = database.rbr_state_session.bind
 
     database.rbr_state_session.bind = _per_process_mysql_daemon.engine
+    database.rbr_state_session.enforce_read_only = False
     yield database.rbr_state_session
     database.rbr_state_session.bind = _session_prev_engine
 

@@ -14,17 +14,13 @@ from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
+from replication_handler.models.database import connection_object
 from replication_handler.models.database import rbr_state_session
 from replication_handler.util.change_log_message_builder import ChangeLogMessageBuilder
 from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import save_position
 from replication_handler.util.position import LogPosition
-
-try:
-    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
-except ImportError:
-    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 log = logging.getLogger('replication_handler.components.recovery_handler')
@@ -98,7 +94,7 @@ class RecoveryHandler(object):
         return change_log_data_event_handler.schema_wrapper_entry
 
     def get_latest_source_log_position(self):
-        refresh_source_cursor = Cursors().get_rbr_source_cursor()
+        refresh_source_cursor = connection_object.get_source_cursor()
         refresh_source_cursor.execute("show master status")
         result = refresh_source_cursor.fetchone()
         # result is a tuple with file name at pos 0, and position at pos 1.

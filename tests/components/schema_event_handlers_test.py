@@ -18,15 +18,11 @@ from replication_handler.components.schema_event_handler import SchemaEventHandl
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_tracker import ShowCreateResult
 from replication_handler.components.schema_wrapper import SchemaWrapper
+from replication_handler.models.database import connection_object
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.util.position import GtidPosition
 from replication_handler_testing.events import QueryEvent
-
-try:
-    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
-except ImportError:
-    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 SchemaHandlerExternalPatches = namedtuple(
@@ -270,8 +266,8 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def patch_schema_tracker_rw(self, mock_schema_tracker_cursor):
         with mock.patch.object(
-            Cursors,
-            'get_repltracker_cursor'
+            connection_object,
+            'get_tracker_cursor'
         ) as mock_cursor:
             mock_cursor.return_value = mock_schema_tracker_cursor
             yield mock_cursor
@@ -279,8 +275,8 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def patch_rbr_source_ro(self, mock_rbr_source_cursor):
         with mock.patch.object(
-            Cursors,
-            'get_rbr_source_cursor'
+            connection_object,
+            'get_source_cursor'
         ) as mock_cursor:
             mock_cursor.return_value = mock_rbr_source_cursor
             yield mock_cursor

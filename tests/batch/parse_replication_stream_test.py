@@ -18,16 +18,12 @@ from replication_handler.batch.parse_replication_stream import ParseReplicationS
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
+from replication_handler.models.database import connection_object
 from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
-
-try:
-    from replication_handler.util.yelp_cursors import YelpCursors as Cursors
-except ImportError:
-    from replication_handler.util.default_cursors import DefaultCursors as Cursors
 
 
 class TestParseReplicationStream(object):
@@ -134,8 +130,8 @@ class TestParseReplicationStream(object):
     @pytest.yield_fixture
     def patch_schema_tracker(self):
         with mock.patch.object(
-            Cursors,
-            'get_repltracker_cursor'
+            connection_object,
+            'get_tracker_cursor'
         ) as mock_cursor:
             mock_cursor.return_value = mock.Mock()
             yield mock_cursor

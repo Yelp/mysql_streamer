@@ -7,26 +7,19 @@ from sqlalchemy import types
 from yelp_lib import dates
 
 from replication_handler.config import env_config
+from replication_handler.models.connections import get_connection_obj
 
-try:
-    from yelp_conn.session import declarative_base
-    from replication_handler.models.yelp_sqla import get_tracker_session
-    from replication_handler.models.yelp_sqla import get_state_session
-except ImportError:
-    # falling back to SQLAlchamy
-    from sqlalchemy.ext.declarative import declarative_base
-    from replication_handler.models.default_sqla import get_tracker_session
-    from replication_handler.models.default_sqla import get_state_session
 
+connection_object = get_connection_obj()
 
 CLUSTER_NAME = env_config.rbr_state_cluster
 
 # The common declarative base used by every data model.
-Base = declarative_base()
+Base = connection_object.get_base_model()
 Base.__cluster__ = CLUSTER_NAME
 
-schema_tracker_session = get_tracker_session()
-rbr_state_session = get_state_session()
+schema_tracker_session = connection_object.get_tracker_session()
+rbr_state_session = connection_object.get_state_session()
 
 
 class UnixTimeStampType(types.TypeDecorator):
