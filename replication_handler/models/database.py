@@ -18,6 +18,7 @@ CLUSTER_NAME = env_config.rbr_state_cluster
 Base = connection_object.get_base_model()
 Base.__cluster__ = CLUSTER_NAME
 
+source_session = connection_object.get_source_session()
 schema_tracker_session = connection_object.get_tracker_session()
 rbr_state_session = connection_object.get_state_session()
 

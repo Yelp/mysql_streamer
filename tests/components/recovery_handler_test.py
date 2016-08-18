@@ -233,16 +233,6 @@ class TestRecoveryHandler(object):
             yield mock_cursor
 
     @pytest.yield_fixture
-    def patch_config(self):
-        with mock.patch.object(
-            config.DatabaseConfig,
-            'cluster_name',
-            new_callable=mock.PropertyMock
-        ) as mock_cluster_name:
-            mock_cluster_name.return_value = "yelp_main"
-            yield mock_cluster_name
-
-    @pytest.yield_fixture
     def patch_config_recovery_queue_size(self):
         with mock.patch.object(
             config.EnvConfig,
@@ -270,7 +260,6 @@ class TestRecoveryHandler(object):
         patch_session_connect_begin,
         patch_schema_tracker_connection,
         patch_rbr_source_connection,
-        patch_config,
         mock_schema_tracker_cursor,
         database_name
     ):
@@ -303,7 +292,6 @@ class TestRecoveryHandler(object):
         patch_session_connect_begin,
         patch_schema_tracker_connection,
         patch_rbr_source_connection,
-        patch_config,
         mock_schema_tracker_cursor,
         database_name
     ):

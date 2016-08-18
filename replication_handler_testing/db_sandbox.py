@@ -6,11 +6,11 @@ import atexit
 import contextlib
 from glob import glob
 
-import testing.mysqld
 from cached_property import cached_property
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker as sessionmaker_sa
 
+import testing.mysqld
 from replication_handler.models import database
 
 
@@ -33,7 +33,7 @@ class PerProcessMySQLDaemon(object):
         fixtures = glob('schema/tables/*.sql')
         conn = self.engine.connect()
         with conn.begin():
-            conn.execute('use %s' % self._db_name)
+            conn.execute('use {db}'.format(db=self._db_name))
             for fixture in fixtures:
                 with open(fixture, 'r') as fh:
                     conn.execute(fh.read())
@@ -95,9 +95,3 @@ def database_sandbox_session():
     database.rbr_state_session.enforce_read_only = False
     yield database.rbr_state_session
     database.rbr_state_session.bind = _session_prev_engine
-
-
-@contextlib.contextmanager
-def database_sandbox_master_connection_set():
-    with database_sandbox_session() as scoped_session:
-        yield scoped_session

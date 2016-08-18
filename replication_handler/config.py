@@ -52,6 +52,8 @@ class EnvConfig(BaseConfig):
 
     @cached_property
     def rbr_source_cluster(self):
+        """serves as the key to identify the source database in topology.yaml
+        """
         return staticconf.get('rbr_source_cluster').value
 
     @property
@@ -64,10 +66,14 @@ class EnvConfig(BaseConfig):
 
     @cached_property
     def schema_tracker_cluster(self):
+        """serves as the key to identify the tracker database in topology.yaml
+        """
         return staticconf.get('schema_tracker_cluster').value
 
     @cached_property
     def rbr_state_cluster(self):
+        """serves as the key to identify the state database in topology.yaml
+        """
         return staticconf.get('rbr_state_cluster').value
 
     @property

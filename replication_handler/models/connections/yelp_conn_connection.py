@@ -21,6 +21,11 @@ class YelpConnConnection(BaseConnection):
     def get_base_model(self):
         return declarative_base()
 
+    def get_source_session(self):
+        return scoped_session(
+            sessionmaker(slave_connection_set_name=str("rbr_source_ro"))
+        )
+
     def get_tracker_session(self):
         return scoped_session(
             sessionmaker(master_connection_set_name=str("schema_tracker_rw"))
