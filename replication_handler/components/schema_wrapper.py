@@ -119,7 +119,9 @@ class SchemaWrapper(object):
 
     def _populate_schema_cache(self, table, resp):
         set_transform_required = any(
-            column_type.startswith('set')
+            (column_type.startswith('set')
+            or column_type.startswith('timestamp')
+            or column_type.startswith('time'))
             for column_type in self.schema_tracker.get_column_types(table)
         )
 

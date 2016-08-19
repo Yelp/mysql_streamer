@@ -2,11 +2,14 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import datetime
 import logging
 
+import pytz
 from data_pipeline.message import UpdateMessage
 
 from replication_handler.config import source_database_config
+from replication_handler.util.misc import transform_time_to_number_of_microseconds
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -75,3 +78,7 @@ class MessageBuilder(object):
         for key, value in data.iteritems():
             if isinstance(value, set):
                 data[key] = list(value)
+            elif isinstance(value, datetime.datetime):
+                data[key] = value.replace(tzinfo=pytz.utc)
+            elif isinstance(value, datetime.time):
+                data[key] = transform_time_to_number_of_microseconds(value)
