@@ -42,6 +42,8 @@ STAT_COUNTER_NAME = 'replication_handler_counter'
 
 PROFILER_FILE_NAME = "repl.vmprof"
 
+STATS_FLUSH_INTERVAL = 10
+
 
 class ParseReplicationStream(Batch):
     """Batch that follows the replication stream and continuously publishes
@@ -196,6 +198,7 @@ class ParseReplicationStream(Batch):
         event_type = 'data' if not self._changelog_mode else 'changelog'
         return StatsCounter(
             STAT_COUNTER_NAME,
+            message_count_timer=STATS_FLUSH_INTERVAL,
             event_type=event_type,
             container_name=config.env_config.container_name,
             container_env=config.env_config.container_env,
@@ -206,6 +209,7 @@ class ParseReplicationStream(Batch):
     def _setup_counters(self):
         schema_event_counter = StatsCounter(
             STAT_COUNTER_NAME,
+            message_count_timer=STATS_FLUSH_INTERVAL,
             event_type='schema',
             container_name=config.env_config.container_name,
             container_env=config.env_config.container_env,
