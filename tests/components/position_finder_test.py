@@ -6,7 +6,6 @@ import mock
 import pytest
 
 from replication_handler.components.position_finder import PositionFinder
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
@@ -45,21 +44,11 @@ class TestPositionFinder(object):
         ) as mock_get_latest_schema_event_state:
             yield mock_get_latest_schema_event_state
 
-    @pytest.yield_fixture
-    def patch_session_connect_begin(self):
-        with mock.patch.object(
-            rbr_state_session,
-            'connect_begin'
-        ) as mock_session_connect_begin:
-            mock_session_connect_begin.return_value.__enter__.return_value = mock.Mock()
-            yield mock_session_connect_begin
-
     def test_get_position_to_resume_tailing(
         self,
         schema_event_position,
         patch_get_latest_schema_event_state,
         completed_schema_event_state,
-        patch_session_connect_begin,
         position_dict
     ):
         global_event_state = mock.Mock(

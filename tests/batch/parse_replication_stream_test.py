@@ -18,8 +18,6 @@ from replication_handler.batch.parse_replication_stream import ParseReplicationS
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
-from replication_handler.models.database import connection_object
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
@@ -55,7 +53,7 @@ class TestParseReplicationStream(object):
     @pytest.yield_fixture
     def patch_save_position(self):
         with mock.patch(
-            'replication_handler.batch.parse_replication_stream.save_position'
+            'replication_handler.util.misc.SavePosition.save_position'
         ) as mock_save_position:
             yield mock_save_position
 
@@ -118,23 +116,12 @@ class TestParseReplicationStream(object):
             yield mock_schematizer
 
     @pytest.yield_fixture
-    def patch_rbr_state_rw(self, mock_rbr_state_session):
-        with mock.patch.object(
-            rbr_state_session,
-            'connect_begin'
-        ) as mock_session_connect_begin:
-            mock_session_connect_begin.return_value.__enter__.return_value = \
-                mock_rbr_state_session
-            yield mock_session_connect_begin
-
-    @pytest.yield_fixture
-    def patch_schema_tracker(self):
-        with mock.patch.object(
-            connection_object,
-            'get_tracker_cursor'
-        ) as mock_cursor:
-            mock_cursor.return_value = mock.Mock()
-            yield mock_cursor
+    def patch_db_connections(self, mock_db_connections):
+        with mock.patch(
+            'replication_handler.batch.parse_replication_stream.get_connection_obj'
+        ) as mock_get_db_conn:
+            mock_get_db_conn.return_value = mock_db_connections
+            yield mock_get_db_conn
 
     @pytest.yield_fixture
     def patch_exit(self):
@@ -159,10 +146,6 @@ class TestParseReplicationStream(object):
             'signal'
         ) as mock_signal:
             yield mock_signal
-
-    @pytest.fixture
-    def mock_rbr_state_session(self):
-        return mock.Mock()
 
     @pytest.fixture
     def position_gtid_1(self):
@@ -213,8 +196,7 @@ class TestParseReplicationStream(object):
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_data_handle_event,
         patch_schema_handle_event,
         patch_producer,
@@ -242,8 +224,7 @@ class TestParseReplicationStream(object):
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_data_handle_event,
         patch_schema_handle_event,
         patch_producer,
@@ -257,8 +238,7 @@ class TestParseReplicationStream(object):
             position_gtid_1,
             position_gtid_2,
             patch_restarter,
-            patch_rbr_state_rw,
-            patch_schema_tracker,
+            patch_db_connections,
             patch_data_handle_event,
             patch_schema_handle_event,
             patch_producer,
@@ -283,8 +263,7 @@ class TestParseReplicationStream(object):
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_data_handle_event,
         patch_schema_handle_event,
         patch_producer,
@@ -298,8 +277,7 @@ class TestParseReplicationStream(object):
             position_gtid_1,
             position_gtid_2,
             patch_restarter,
-            patch_rbr_state_rw,
-            patch_schema_tracker,
+            patch_db_connections,
             patch_data_handle_event,
             patch_schema_handle_event,
             patch_producer,
@@ -325,8 +303,7 @@ class TestParseReplicationStream(object):
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_data_handle_event,
         patch_schema_handle_event,
         patch_producer,
@@ -340,8 +317,7 @@ class TestParseReplicationStream(object):
             position_gtid_1,
             position_gtid_2,
             patch_restarter,
-            patch_rbr_state_rw,
-            patch_schema_tracker,
+            patch_db_connections,
             patch_data_handle_event,
             patch_schema_handle_event,
             patch_producer,
@@ -365,8 +341,7 @@ class TestParseReplicationStream(object):
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_data_handle_event,
         patch_producer,
         patch_exit,
@@ -395,8 +370,7 @@ class TestParseReplicationStream(object):
     def test_register_signal_handler(
         self,
         patch_config,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_restarter,
         patch_signal,
         patch_running,
@@ -418,7 +392,7 @@ class TestParseReplicationStream(object):
         patch_config_with_small_recovery_queue_size,
         patch_restarter,
         patch_data_handle_event,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_save_position,
     ):
         with pytest.raises(SystemExit):
@@ -440,6 +414,7 @@ class TestParseReplicationStream(object):
         self,
         patch_config,
         producer,
+        patch_db_connections
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.producer = producer
@@ -449,7 +424,8 @@ class TestParseReplicationStream(object):
 
     def test_profiler_signal(
         self,
-        patch_config
+        patch_config,
+        patch_db_connections
     ):
         replication_stream = ParseReplicationStream()
         with mock.patch.object(
@@ -485,7 +461,7 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_exit,
         patch_running,
-        patch_schema_tracker
+        patch_db_connections
     ):
         patch_running.return_value = False
         replication_stream = ParseReplicationStream()
@@ -504,7 +480,7 @@ class TestParseReplicationStream(object):
         patch_data_handle_event,
         patch_exit,
         patch_running,
-        patch_schema_tracker
+        patch_db_connections
     ):
         patch_running.return_value = False
         replication_stream = ParseReplicationStream()
@@ -514,7 +490,7 @@ class TestParseReplicationStream(object):
         assert producer.flush.call_count == 0
         assert patch_exit.call_count == 1
 
-    def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter):
+    def test_with_dry_run_options(self, patch_db_connections, patch_restarter):
         with mock.patch(
             'replication_handler.batch.parse_replication_stream.config.env_config'
         ) as mock_config:
@@ -529,7 +505,7 @@ class TestParseReplicationStream(object):
         patch_config,
         patch_exit,
         patch_restarter,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_zk,
         patch_process_event,
     ):
@@ -547,6 +523,7 @@ class TestParseReplicationStream(object):
         self,
         patch_config,
         patch_restarter,
+        patch_db_connections,
         patch_zk
     ):
         patch_restarter.return_value.get_stream.return_value.__iter__.side_effect = Exception

@@ -40,6 +40,7 @@ setproctitle==1.1.8
 simplejson==3.6.5
 six==1.9.0
 -e git://github.com/Yelp/sqlparse.git@4fbab9c395752294225f60393cc0a19d6fb62d54#egg=sqlparse
+testing.mysqld
 thriftpy==0.1.15
 vmprof==0.2.7
 wheel==0.24.0
@@ -51,5 +52,3 @@ yelp-lib==10.0.5
 yelp-logging==1.1.2
 yelp_kafka>=4.2.0
 yelp-servlib==4.3.0
-
-testing.mysqld

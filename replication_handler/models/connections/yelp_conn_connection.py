@@ -18,21 +18,26 @@ class YelpConnConnection(BaseConnection):
         yelp_conn.initialize()
         super(YelpConnConnection, self).__init__()
 
+    def __del__(self):
+        yelp_conn.reset_module()
+        super(YelpConnConnection, self).__del__()
+
+    @classmethod
     def get_base_model(self):
         return declarative_base()
 
-    def get_source_session(self):
-        return scoped_session(
+    def _set_source_session(self):
+        self._source_session = scoped_session(
             sessionmaker(slave_connection_set_name=str("rbr_source_ro"))
         )
 
-    def get_tracker_session(self):
-        return scoped_session(
+    def _set_tracker_session(self):
+        self._tracker_session = scoped_session(
             sessionmaker(master_connection_set_name=str("schema_tracker_rw"))
         )
 
-    def get_state_session(self):
-        return scoped_session(
+    def _set_state_session(self):
+        self._state_session = scoped_session(
             sessionmaker(
                 master_connection_set_name=str("rbr_state_rw"),
                 slave_connection_set_name=str("rbr_state_ro")

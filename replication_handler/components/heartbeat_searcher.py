@@ -8,7 +8,6 @@ from dateutil.tz import tzlocal
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import UpdateRowsEvent
 
-from replication_handler.models.database import connection_object
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.position import HeartbeatPosition
 
@@ -24,12 +23,10 @@ class HeartbeatSearcher(object):
         or None if it wasnt found
     """
 
-    def __init__(self, db_cnct=None):
+    def __init__(self, source_cursor, source_database_config):
         # Set up database configuration info and connection
-        if db_cnct is None:
-            self.db_cnct = connection_object.get_source_cursor()
-        else:
-            self.db_cnct = db_cnct
+        self.source_cursor = source_cursor
+        self.source_database_config = source_database_config
 
         # Load in a list of every log file
         self.all_logs = self._get_log_file_list()
@@ -54,7 +51,7 @@ class HeartbeatSearcher(object):
         """Returns a list of all the log files names on the configured
         db connection
         """
-        cursor = self.db_cnct.cursor() if self.db_cnct else self.db_cursor
+        cursor = self.source_cursor
         cursor.execute('SHOW BINARY LOGS;')
         names = []
         for row in cursor.fetchall():
@@ -66,7 +63,7 @@ class HeartbeatSearcher(object):
         binlog. This process isn't exactly free so it is used as little as
         possible in the search.
         """
-        cursor = self.db_cnct.cursor() if self.db_cnct else self.db_cursor
+        cursor = self.source_cursor
         cursor.execute('SHOW BINLOG EVENTS IN \'{}\';'.format(binlog))
         # Each event is a tuple of the form
         # (0:Log_name 1:Pos 2:Event_type 3:Server_id 4:End_log_pos 5:Info)
@@ -87,7 +84,7 @@ class HeartbeatSearcher(object):
         at log_pos 4.
         """
         return BinLogStreamReader(
-            connection_settings=connection_object.source_database_config,
+            connection_settings=self.source_database_config,
             server_id=1,
             blocking=False,
             resume_stream=True,

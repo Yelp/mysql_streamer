@@ -16,20 +16,21 @@ class RHConnection(BaseConnection):
     def __init__(self):
         super(RHConnection, self).__init__()
 
+    @classmethod
     def get_base_model(self):
         return declarative_base()
 
-    def get_source_session(self):
+    def _set_source_session(self):
         config = self.source_database_config
-        return _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
+        self._source_session = _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
 
-    def get_tracker_session(self):
+    def _set_tracker_session(self):
         config = self.tracker_database_config
-        return _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
+        self._tracker_session = _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
 
-    def get_state_session(self):
+    def _set_state_session(self):
         config = self.state_database_config
-        return _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
+        self._state_session = _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
 
     def get_tracker_cursor(self):
         return self._get_cursor(self.tracker_database_config)

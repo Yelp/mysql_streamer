@@ -8,23 +8,39 @@ from cached_property import cached_property
 from sqlalchemy import create_engine
 
 from replication_handler.config import env_config
-from replication_handler.helpers.singleton import Singleton
 
 
 class BaseConnection(object):
 
-    __metaclass__ = Singleton
-
     def __init__(self):
         staticconf.YamlConfiguration(env_config.topology_path)
+        self._set_source_session()
+        self._set_tracker_session()
+        self._set_state_session()
 
+    @classmethod
     def get_base_model(self):
         raise NotImplementedError
 
-    def get_tracker_session(self):
+    @property
+    def source_session(self):
+        return self._source_session
+
+    @property
+    def tracker_session(self):
+        return self._tracker_session
+
+    @property
+    def state_session(self):
+        return self._state_session
+
+    def _set_source_session(self):
         raise NotImplementedError
 
-    def get_state_session(self):
+    def _set_tracker_session(self):
+        raise NotImplementedError
+
+    def _set_state_session(self):
         raise NotImplementedError
 
     def get_tracker_cursor(self):

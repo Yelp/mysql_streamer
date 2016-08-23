@@ -20,7 +20,6 @@ from pymysqlreplication.row_event import WriteRowsEvent
 
 from replication_handler import config
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
-from replication_handler.models.database import connection_object
 from replication_handler.util.misc import DataEvent
 
 
@@ -42,8 +41,9 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
       position(Position object): use to specify where the stream should resume.
     """
 
-    def __init__(self, position):
+    def __init__(self, source_database_config, position):
         super(LowLevelBinlogStreamReaderWrapper, self).__init__()
+        self.source_database_config = source_database_config
         self.refresh_table_suffix = '_data_pipeline_refresh'
         only_tables = self._get_only_tables()
         allowed_event_types = [
@@ -118,7 +118,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     def _seek(self, allowed_event_types, position, only_tables):
         # server_id doesn't seem to matter but must be set.
         self.stream = BinLogStreamReader(
-            connection_settings=connection_object.source_database_config,
+            connection_settings=self.source_database_config,
             server_id=1,
             only_events=allowed_event_types,
             resume_stream=config.env_config.resume_stream,

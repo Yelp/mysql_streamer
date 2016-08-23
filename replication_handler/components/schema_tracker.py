@@ -21,16 +21,16 @@ class SchemaTracker(object):
     from schematizer.
 
     Args:
-      schema_cursor(Cursor object): a cursor with connection to schema tracker db.
+      tracker_cursor(Cursor object): a cursor with connection to schema tracker db.
     """
 
-    def __init__(self, schema_cursor):
-        self.schema_tracker_cursor = schema_cursor
+    def __init__(self, tracker_cursor):
+        self.tracker_cursor = tracker_cursor
 
     def _use_db(self, database_name):
         if database_name is not None and len(database_name.strip()) > 0:
             use_db_query = "USE {0}".format(database_name)
-            self.schema_tracker_cursor.execute(use_db_query)
+            self.tracker_cursor.execute(use_db_query)
 
     def execute_query(self, query, database_name):
         """Executes the given query against the schema tracker database.
@@ -47,12 +47,12 @@ class SchemaTracker(object):
         )))
         self._use_db(database_name)
 
-        self.schema_tracker_cursor.execute(query)
+        self.tracker_cursor.execute(query)
 
     def get_show_create_statement(self, table):
         self._use_db(table.database_name)
 
-        if not self.schema_tracker_cursor.execute(
+        if not self.tracker_cursor.execute(
             'SHOW TABLES LIKE \'{table}\''.format(table=table.table_name)
         ):
             log.info(
@@ -64,8 +64,8 @@ class SchemaTracker(object):
             return ShowCreateResult(table=table.table_name, query='')
 
         query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(table.database_name, table.table_name)
-        self.schema_tracker_cursor.execute(query_str)
-        res = self.schema_tracker_cursor.fetchone()
+        self.tracker_cursor.execute(query_str)
+        res = self.tracker_cursor.fetchone()
         create_res = ShowCreateResult(*res)
         assert create_res.table == table.table_name
         return create_res
@@ -73,7 +73,7 @@ class SchemaTracker(object):
     def get_column_types(self, table):
         self._use_db(table.database_name)
 
-        if not self.schema_tracker_cursor.execute(
+        if not self.tracker_cursor.execute(
             'SHOW TABLES LIKE \'{table}\''.format(table=table.table_name)
         ):
             logger.info(
@@ -89,5 +89,5 @@ class SchemaTracker(object):
             table.table_name
         )
 
-        self.schema_tracker_cursor.execute(query_str)
-        return [column[1] for column in self.schema_tracker_cursor.fetchall()]
+        self.tracker_cursor.execute(query_str)
+        return [column[1] for column in self.tracker_cursor.fetchall()]

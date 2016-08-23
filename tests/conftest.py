@@ -7,6 +7,7 @@ import os
 
 import mock
 import pytest
+import yaml
 from data_pipeline.config import get_config
 from data_pipeline.helpers.yelp_avro_store import _AvroStringStore
 from data_pipeline.message import Message
@@ -14,9 +15,9 @@ from data_pipeline.schematizer_clientlib.schematizer import _Cache
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.testing_helpers.containers import Containers
 
+from replication_handler.models.connections.base_connection import BaseConnection
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
-from replication_handler_testing import db_sandbox as sandbox
 
 
 timeout_seconds = 60
@@ -50,8 +51,13 @@ def services(replhandler):
     ]
 
 
+@pytest.fixture(scope='module')
+def dbs(replhandler):
+    return ["rbrsource", "schematracker", "rbrstate"]
+
+
 @pytest.yield_fixture(scope='module')
-def containers(compose_file, services, replhandler):
+def containers(compose_file, services, dbs, replhandler):
     with Containers(compose_file, services) as containers:
         # Need to wait for all containers to spin up
         replication_handler_ip = None
@@ -60,7 +66,7 @@ def containers(compose_file, services, replhandler):
                 containers.project,
                 replhandler)
 
-        for db in ["rbrsource", "schematracker", "rbrstate"]:
+        for db in dbs:
             db_health_check(containers, db, timeout_seconds)
         replication_handler_health_check(containers, timeout_seconds)
         yield containers
@@ -86,12 +92,6 @@ def schematizer():
     return schematizer
 
 
-@pytest.yield_fixture(scope='module')
-def sandbox_session():
-    with sandbox.database_sandbox_session() as sandbox_session:
-        yield sandbox_session
-
-
 @pytest.fixture(scope='module')
 def cleanup_avro_cache():
     # This is needed as _AvroStringStore is a Singleton and doesn't delete
@@ -113,3 +113,83 @@ def patch_message_contains_pii():
         side_effect=set_contains_pii
     ):
         yield
+
+
+@pytest.fixture(scope="class")
+def db_config():
+    return """
+        charset: utf8
+        use_unicode: true
+        host: {host}
+        db: yelp
+        user: yelpdev
+        passwd: ""
+        port: 3306
+    """
+
+
+@pytest.fixture
+def mock_source_database_config(db_config):
+    return yaml.load(db_config.format(host='rbrsource'))
+
+
+@pytest.fixture
+def mock_tracker_database_config(db_config):
+    return yaml.load(db_config.format(host='schematracker'))
+
+
+@pytest.fixture
+def mock_state_database_config(db_config):
+    return yaml.load(db_config.format(host='rbrstate'))
+
+
+@pytest.fixture
+def mock_source_cursor():
+    return mock.Mock()
+
+
+@pytest.fixture
+def mock_tracker_cursor():
+    return mock.Mock()
+
+
+@pytest.fixture
+def mock_state_cursor():
+    return mock.Mock()
+
+
+@pytest.fixture
+def mock_db_connections(
+    mock_source_cursor,
+    mock_tracker_cursor,
+    mock_state_cursor,
+    mock_source_database_config,
+    mock_tracker_database_config,
+    mock_state_database_config
+):
+    db_connections = mock.Mock(
+        spec_set=BaseConnection
+    )
+    db_connections.source_session = mock.PropertyMock()
+    db_connections.tracker_session = mock.PropertyMock()
+    db_connections.state_session = mock.PropertyMock()
+
+    db_connections.source_session.connect_begin.return_value.__enter__.return_value = mock.Mock()
+    db_connections.tracker_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
+    db_connections.state_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
+
+    db_connections.get_source_cursor.return_value = mock_source_cursor
+    db_connections.get_tracker_cursor.return_value = mock_tracker_cursor
+    db_connections.get_state_cursor.return_value = mock_state_cursor
+
+    db_connections.source_database_config = mock.PropertyMock(
+        return_value=mock_source_database_config
+    )
+    db_connections.tracker_database_config = mock.PropertyMock(
+        return_value=mock_tracker_database_config
+    )
+    db_connections.state_database_config = mock.PropertyMock(
+        return_value=mock_state_database_config
+    )
+
+    return db_connections

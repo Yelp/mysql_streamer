@@ -37,9 +37,9 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
       gtid_enabled(bool): use to indicate if gtid is enabled in the system.
     """
 
-    def __init__(self, position, gtid_enabled=False):
+    def __init__(self, source_database_config, position, gtid_enabled=False):
         super(SimpleBinlogStreamReaderWrapper, self).__init__()
-        self.stream = LowLevelBinlogStreamReaderWrapper(position)
+        self.stream = LowLevelBinlogStreamReaderWrapper(source_database_config, position)
         self.gtid_enabled = gtid_enabled
         self._upstream_position = position
         self._offset = 0

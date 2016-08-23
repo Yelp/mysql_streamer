@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import mock
 import pytest
-
 from data_pipeline.producer import Producer
 from data_pipeline.tools.meteorite_wrappers import StatsCounter
 
@@ -12,23 +14,26 @@ from replication_handler.components.schema_wrapper import SchemaWrapper
 
 class TestBaseEventHandler(object):
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def producer(self):
         return mock.Mock(autospect=Producer)
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def mock_schematizer_client(self):
         return mock.Mock()
 
-    @pytest.fixture(scope="class")
-    def schema_wrapper(self, mock_schematizer_client):
-        return SchemaWrapper(schematizer_client=mock_schematizer_client)
+    @pytest.fixture
+    def schema_wrapper(self, mock_db_connections, mock_schematizer_client):
+        return SchemaWrapper(
+            db_connections=mock_db_connections,
+            schematizer_client=mock_schematizer_client
+        )
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def stats_counter(self):
         return mock.Mock(autospect=StatsCounter)
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def base_event_handler(self, producer, schema_wrapper, stats_counter):
         return BaseEventHandler(producer, schema_wrapper, stats_counter)
 

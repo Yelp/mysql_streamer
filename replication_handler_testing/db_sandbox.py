@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker as sessionmaker_sa
 
 import testing.mysqld
-from replication_handler.models import database
+from replication_handler.models.connections import get_connection_obj
 
 
 # Generate Mysqld class which shares the generated database
@@ -88,10 +88,11 @@ class PerProcessMySQLDaemon(object):
 
 @contextlib.contextmanager
 def database_sandbox_session():
+    db_connections = get_connection_obj()
     _per_process_mysql_daemon = PerProcessMySQLDaemon()
-    _session_prev_engine = database.rbr_state_session.bind
+    _session_prev_engine = db_connections.state_session.bind
 
-    database.rbr_state_session.bind = _per_process_mysql_daemon.engine
-    database.rbr_state_session.enforce_read_only = False
-    yield database.rbr_state_session
-    database.rbr_state_session.bind = _session_prev_engine
+    db_connections.state_session.bind = _per_process_mysql_daemon.engine
+    db_connections.state_session.enforce_read_only = False
+    yield db_connections.state_session
+    db_connections.state_session.bind = _session_prev_engine

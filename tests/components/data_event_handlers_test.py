@@ -19,7 +19,6 @@ from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
-from replication_handler.models.database import rbr_state_session
 from replication_handler.util.position import LogPosition
 from replication_handler_testing.events import make_data_create_event
 from replication_handler_testing.events import make_data_update_event
@@ -27,8 +26,6 @@ from replication_handler_testing.events import make_data_update_event
 
 DataHandlerExternalPatches = namedtuple(
     "DataHandlerExternalPatches", (
-        "patch_rbr_state_rw",
-        "mock_rbr_state_session",
         'table_has_pii',
         "patch_dry_run_config",
         "patch_get_show_create_statement",
@@ -45,8 +42,11 @@ class TestDataEventHandler(object):
         return mock.Mock()
 
     @pytest.fixture
-    def schema_wrapper(self, mock_schematizer_client):
-        return SchemaWrapper(schematizer_client=mock_schematizer_client)
+    def schema_wrapper(self, mock_db_connections, mock_schematizer_client):
+        return SchemaWrapper(
+            db_connections=mock_db_connections,
+            schematizer_client=mock_schematizer_client
+        )
 
     @pytest.fixture
     def test_gtid(self):
@@ -158,20 +158,6 @@ class TestDataEventHandler(object):
         return producer
 
     @pytest.yield_fixture
-    def patch_rbr_state_rw(self, mock_rbr_state_session):
-        with mock.patch.object(
-            rbr_state_session,
-            'connect_begin'
-        ) as mock_session_connect_begin:
-            mock_session_connect_begin.return_value.__enter__.return_value = \
-                mock_rbr_state_session
-            yield mock_session_connect_begin
-
-    @pytest.fixture
-    def mock_rbr_state_session(self):
-        return mock.Mock()
-
-    @pytest.yield_fixture
     def patch_table_has_pii(self):
         with mock.patch.object(
             PIIIdentifier,
@@ -220,8 +206,6 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def patches(
         self,
-        patch_rbr_state_rw,
-        mock_rbr_state_session,
         patch_table_has_pii,
         patch_config_register_dry_run,
         patch_get_show_create_statement,
@@ -230,8 +214,6 @@ class TestDataEventHandler(object):
         patch_message_contains_pii
     ):
         return DataHandlerExternalPatches(
-            patch_rbr_state_rw=patch_rbr_state_rw,
-            mock_rbr_state_session=mock_rbr_state_session,
             table_has_pii=patch_table_has_pii,
             patch_dry_run_config=patch_config_register_dry_run,
             patch_get_show_create_statement=patch_get_show_create_statement,

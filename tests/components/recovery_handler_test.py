@@ -14,8 +14,6 @@ from replication_handler import config
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
-from replication_handler.models.database import connection_object
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import DataEvent
@@ -61,27 +59,6 @@ class TestRecoveryHandler(object):
         ) as mock_topic:
             mock_topic.return_value = str("test_topic")
             yield
-
-    @pytest.fixture
-    def session(self):
-        return mock.Mock()
-
-    @pytest.yield_fixture
-    def patch_session_connect_begin(self, session):
-        with mock.patch.object(
-            rbr_state_session,
-            'connect_begin'
-        ) as mock_session_connect_begin:
-            mock_session_connect_begin.return_value.__enter__.return_value = session
-            yield mock_session_connect_begin
-
-    @pytest.fixture
-    def mock_schema_tracker_cursor(self):
-        return mock.Mock()
-
-    @pytest.fixture
-    def mock_rbr_source_cursor(self):
-        return mock.Mock()
 
     @pytest.fixture
     def database_name(self):
@@ -181,7 +158,7 @@ class TestRecoveryHandler(object):
     @pytest.yield_fixture
     def patch_save_position(self):
         with mock.patch(
-            'replication_handler.components.recovery_handler.save_position'
+            'replication_handler.util.misc.SavePosition.save_position'
         ) as mock_save_position:
             yield mock_save_position
 
@@ -204,32 +181,13 @@ class TestRecoveryHandler(object):
             yield mock_delete
 
     @pytest.yield_fixture
-    def patch_schema_tracker_connection(self, mock_schema_tracker_cursor):
+    def patch_source_cursor(self, mock_db_connections, mock_source_cursor):
         with mock.patch.object(
-            connection_object,
-            'get_tracker_cursor'
-        ) as mock_cursor:
-            mock_cursor.return_value = mock_schema_tracker_cursor
-            yield mock_cursor
-
-    @pytest.yield_fixture
-    def patch_rbr_source_connection(self, mock_rbr_source_cursor):
-        with mock.patch.object(
-            connection_object,
+            mock_db_connections,
             'get_source_cursor'
         ) as mock_cursor:
-            mock_rbr_source_cursor.fetchone.return_value = ('binlog.001', 200)
-            mock_cursor.return_value = mock_rbr_source_cursor
-            yield mock_cursor
-
-    @pytest.yield_fixture
-    def patch_rbr_state_connection(self, mock_rbr_state_cursor):
-        with mock.object.object(
-            connection_object,
-            'get_state_cursor'
-        ) as mock_cursor:
-            mock_rbr_state_cursor.fetchone.return_value = (1, 'baz')
-            mock_cursor.return_value = mock_rbr_state_cursor
+            mock_source_cursor.fetchone.return_value = ('binlog.001', 200)
+            mock_cursor.return_value = mock_source_cursor
             yield mock_cursor
 
     @pytest.yield_fixture
@@ -254,26 +212,26 @@ class TestRecoveryHandler(object):
         stream,
         producer,
         mock_schema_wrapper,
+        mock_db_connections,
         create_table_statement,
         pending_alter_schema_event_state,
         patch_delete,
-        patch_session_connect_begin,
-        patch_schema_tracker_connection,
-        patch_rbr_source_connection,
-        mock_schema_tracker_cursor,
+        patch_source_cursor,
+        mock_tracker_cursor,
         database_name
     ):
         recovery_handler = RecoveryHandler(
             stream,
             producer,
             mock_schema_wrapper,
+            db_connections=mock_db_connections,
             is_clean_shutdown=True,
             pending_schema_event=pending_alter_schema_event_state
         )
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
-        assert mock_schema_tracker_cursor.execute.call_count == 4
-        assert mock_schema_tracker_cursor.execute.call_args_list == [
+        assert mock_tracker_cursor.execute.call_count == 4
+        assert mock_tracker_cursor.execute.call_args_list == [
             mock.call("USE %s" % database_name),
             mock.call("DROP TABLE IF EXISTS `Business`"),
             mock.call("USE %s" % database_name),
@@ -286,26 +244,26 @@ class TestRecoveryHandler(object):
         stream,
         producer,
         mock_schema_wrapper,
+        mock_db_connections,
         create_table_statement,
         pending_create_schema_event_state,
         patch_delete,
-        patch_session_connect_begin,
-        patch_schema_tracker_connection,
-        patch_rbr_source_connection,
-        mock_schema_tracker_cursor,
+        patch_source_cursor,
+        mock_tracker_cursor,
         database_name
     ):
         recovery_handler = RecoveryHandler(
             stream,
             producer,
             mock_schema_wrapper,
+            db_connections=mock_db_connections,
             is_clean_shutdown=True,
             pending_schema_event=pending_create_schema_event_state
         )
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
-        assert mock_schema_tracker_cursor.execute.call_count == 2
-        assert mock_schema_tracker_cursor.execute.call_args_list == [
+        assert mock_tracker_cursor.execute.call_count == 2
+        assert mock_tracker_cursor.execute.call_args_list == [
             mock.call("USE %s" % database_name),
             mock.call("DROP TABLE IF EXISTS `Business`"),
         ]
@@ -318,9 +276,10 @@ class TestRecoveryHandler(object):
         rh_data_event_before_master_log_pos,
         rh_unsupported_query_event,
         mock_schema_wrapper,
-        mock_rbr_source_cursor,
+        mock_db_connections,
         patch_get_topic_to_kafka_offset_map,
-        patch_rbr_source_connection,
+        mock_source_cursor,
+        patch_source_cursor,
         patch_save_position,
         patch_config_recovery_queue_size,
         patch_message_topic
@@ -340,7 +299,8 @@ class TestRecoveryHandler(object):
             stream,
             producer,
             mock_schema_wrapper,
-            mock_rbr_source_cursor,
+            mock_db_connections,
+            mock_source_cursor,
             patch_config_recovery_queue_size,
             max_size=max_message_size,
         )
@@ -358,8 +318,9 @@ class TestRecoveryHandler(object):
         rh_data_event_before_master_log_pos,
         rh_data_event_after_master_log_pos,
         mock_schema_wrapper,
-        mock_rbr_source_cursor,
-        patch_rbr_source_connection,
+        mock_db_connections,
+        mock_source_cursor,
+        patch_source_cursor,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
         patch_message_topic
@@ -378,7 +339,8 @@ class TestRecoveryHandler(object):
             stream,
             producer,
             mock_schema_wrapper,
-            mock_rbr_source_cursor,
+            mock_db_connections,
+            mock_source_cursor,
         )
         # Even though we have 5 data events in the stream, the recovery process halted
         # after we caught up to master
@@ -392,8 +354,9 @@ class TestRecoveryHandler(object):
         rh_data_event_before_master_log_pos,
         rh_data_event_after_master_log_pos,
         mock_schema_wrapper,
-        mock_rbr_source_cursor,
-        patch_rbr_source_connection,
+        mock_db_connections,
+        mock_source_cursor,
+        patch_source_cursor,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
         patch_message_topic
@@ -415,7 +378,8 @@ class TestRecoveryHandler(object):
             stream,
             producer,
             mock_schema_wrapper,
-            mock_rbr_source_cursor,
+            mock_db_connections,
+            mock_source_cursor,
             changelog_mode=True,
         )
         # Even though we have 5 data events in the stream, the recovery process halted
@@ -431,8 +395,9 @@ class TestRecoveryHandler(object):
         rh_data_event_before_master_log_pos,
         rh_data_event_after_master_log_pos,
         mock_schema_wrapper,
-        mock_rbr_source_cursor,
-        patch_rbr_source_connection,
+        mock_db_connections,
+        mock_source_cursor,
+        patch_source_cursor,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
         patch_message_topic
@@ -451,7 +416,8 @@ class TestRecoveryHandler(object):
             stream,
             producer,
             mock_schema_wrapper,
-            mock_rbr_source_cursor,
+            mock_db_connections,
+            mock_source_cursor,
         )
 
         # Even though we have 5 data events in the stream, the recovery process halted
@@ -464,7 +430,8 @@ class TestRecoveryHandler(object):
         stream,
         producer,
         mock_schema_wrapper,
-        mock_rbr_source_cursor,
+        mock_db_connections,
+        mock_source_cursor,
         patch_config_recovery_queue_size=None,
         max_size=None,
         changelog_mode=False
@@ -475,6 +442,7 @@ class TestRecoveryHandler(object):
             stream,
             producer,
             mock_schema_wrapper,
+            db_connections=mock_db_connections,
             is_clean_shutdown=False,
             pending_schema_event=None,
             changelog_mode=changelog_mode,
@@ -483,7 +451,7 @@ class TestRecoveryHandler(object):
             patch_config_recovery_queue_size.return_value = max_size
         assert recovery_handler.need_recovery is True
         recovery_handler.recover()
-        assert mock_rbr_source_cursor.execute.call_count == 1
-        assert mock_rbr_source_cursor.fetchone.call_count == 1
+        assert mock_source_cursor.execute.call_count == 1
+        assert mock_source_cursor.fetchone.call_count == 1
         assert producer.ensure_messages_published.call_count == 1
         assert producer.get_checkpoint_position_data.call_count == 1

@@ -18,7 +18,6 @@ from replication_handler.components.schema_event_handler import SchemaEventHandl
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_tracker import ShowCreateResult
 from replication_handler.components.schema_wrapper import SchemaWrapper
-from replication_handler.models.database import connection_object
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.util.position import GtidPosition
@@ -27,8 +26,6 @@ from replication_handler_testing.events import QueryEvent
 
 SchemaHandlerExternalPatches = namedtuple(
     'SchemaHandlerExternalPatches', (
-        'schema_tracking_db_conn',
-        'rbr_source_ro_db_conn',
         'database_config',
         'dry_run_config',
         'cluster_name',
@@ -53,16 +50,25 @@ class TestSchemaEventHandler(object):
         return mock.Mock(autospect=SchematizerClient)
 
     @pytest.fixture
-    def schema_wrapper(self, schematizer_client):
-        return SchemaWrapper(schematizer_client=schematizer_client)
+    def schema_wrapper(self, mock_db_connections, schematizer_client):
+        return SchemaWrapper(
+            db_connections=mock_db_connections,
+            schematizer_client=schematizer_client
+        )
 
     @pytest.fixture
     def stats_counter(self):
         return mock.Mock(autospect=StatsCounter)
 
     @pytest.fixture
-    def schema_event_handler(self, producer, schema_wrapper, stats_counter):
+    def schema_event_handler(self,
+                             mock_db_connections,
+                             producer,
+                             schema_wrapper,
+                             stats_counter
+                             ):
         return SchemaEventHandler(
+            db_connections=mock_db_connections,
             producer=producer,
             schema_wrapper=schema_wrapper,
             stats_counter=stats_counter,
@@ -70,8 +76,14 @@ class TestSchemaEventHandler(object):
         )
 
     @pytest.fixture
-    def dry_run_schema_event_handler(self, producer, schema_wrapper, stats_counter):
+    def dry_run_schema_event_handler(self,
+                                     mock_db_connections,
+                                     producer,
+                                     schema_wrapper,
+                                     stats_counter
+                                     ):
         return SchemaEventHandler(
+            db_connections=mock_db_connections,
             producer=producer,
             schema_wrapper=schema_wrapper,
             stats_counter=stats_counter,
@@ -81,7 +93,7 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def save_position(self):
         with mock.patch.object(
-            replication_handler.components.schema_event_handler,
+            replication_handler.util.misc.SavePosition,
             'save_position'
         ) as save_position_mock:
             yield save_position_mock
@@ -264,24 +276,6 @@ class TestSchemaEventHandler(object):
         return mock.Mock()
 
     @pytest.yield_fixture
-    def patch_schema_tracker_rw(self, mock_schema_tracker_cursor):
-        with mock.patch.object(
-            connection_object,
-            'get_tracker_cursor'
-        ) as mock_cursor:
-            mock_cursor.return_value = mock_schema_tracker_cursor
-            yield mock_cursor
-
-    @pytest.yield_fixture
-    def patch_rbr_source_ro(self, mock_rbr_source_cursor):
-        with mock.patch.object(
-            connection_object,
-            'get_source_cursor'
-        ) as mock_cursor:
-            mock_cursor.return_value = mock_rbr_source_cursor
-            yield mock_cursor
-
-    @pytest.yield_fixture
     def patch_config_db(self, test_schema):
         with mock.patch.object(
             config.EnvConfig,
@@ -400,8 +394,6 @@ class TestSchemaEventHandler(object):
     @pytest.fixture
     def external_patches(
         self,
-        patch_schema_tracker_rw,
-        patch_rbr_source_ro,
         patch_config_db,
         patch_config_register_dry_run,
         patch_cluster_name,
@@ -414,8 +406,6 @@ class TestSchemaEventHandler(object):
         patch_table_has_pii,
     ):
         return SchemaHandlerExternalPatches(
-            schema_tracking_db_conn=patch_schema_tracker_rw,
-            rbr_source_ro_db_conn=patch_rbr_source_ro,
             database_config=patch_config_db,
             dry_run_config=patch_config_register_dry_run,
             cluster_name=patch_cluster_name,

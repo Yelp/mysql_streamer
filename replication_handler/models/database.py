@@ -7,20 +7,14 @@ from sqlalchemy import types
 from yelp_lib import dates
 
 from replication_handler.config import env_config
-from replication_handler.models.connections import get_connection_obj
+from replication_handler.models.connections import get_base_model
 
-
-connection_object = get_connection_obj()
 
 CLUSTER_NAME = env_config.rbr_state_cluster
 
 # The common declarative base used by every data model.
-Base = connection_object.get_base_model()
+Base = get_base_model()
 Base.__cluster__ = CLUSTER_NAME
-
-source_session = connection_object.get_source_session()
-schema_tracker_session = connection_object.get_tracker_session()
-rbr_state_session = connection_object.get_state_session()
 
 
 class UnixTimeStampType(types.TypeDecorator):
