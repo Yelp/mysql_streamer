@@ -73,7 +73,10 @@ class MessageBuilder(object):
             return row['after_values']
 
     def _transform_data(self, data):
-        """ Converts 'set' value to 'list' value in payload data dictionary
+        """Following can happen in payload data dictionary
+        Converts 'set' value to 'list' value
+        Converts naive 'datetime.datetime' to UTC aware 'datetime.datetime'
+        Converts 'datetime.time' to lomg, as offset from 00:00:00.000000
         """
         for key, value in data.iteritems():
             if isinstance(value, set):

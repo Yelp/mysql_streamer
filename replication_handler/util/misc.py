@@ -120,7 +120,7 @@ def get_transaction_id_schema_id():
 
 
 def transform_time_to_number_of_microseconds(value):
-    return value.hour * 3600000000 + \
-        value.minute * 60000000 + \
-        value.second * 1000000 + \
-        value.microsecond
+    return ((value.hour * 3600000000) +
+            (value.minute * 60000000) +
+            (value.second * 1000000) +
+            (value.microsecond))
