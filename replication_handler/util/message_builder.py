@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import datetime
 import logging
 
 import pytz
@@ -79,9 +78,11 @@ class MessageBuilder(object):
         Converts 'datetime.time' to lomg, as offset from 00:00:00.000000
         """
         for key, value in data.iteritems():
-            if isinstance(value, set):
+            if self.schema_info.column_type_map[key].startswith('set'):
                 data[key] = list(value)
-            elif isinstance(value, datetime.datetime):
+            elif self.schema_info.column_type_map[key].startswith('timestamp'):
                 data[key] = value.replace(tzinfo=pytz.utc)
-            elif isinstance(value, datetime.time):
+            elif self.schema_info.column_type_map[key].startswith('datetime'):
+                data[key] = value.isoformat()
+            elif self.schema_info.column_type_map[key].startswith('time'):
                 data[key] = transform_time_to_number_of_microseconds(value)

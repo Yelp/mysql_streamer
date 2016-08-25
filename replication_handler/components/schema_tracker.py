@@ -70,13 +70,13 @@ class SchemaTracker(object):
         assert create_res.table == table.table_name
         return create_res
 
-    def get_column_types(self, table):
+    def get_column_type_map(self, table):
         self._use_db(table.database_name)
 
         if not self.schema_tracker_cursor.execute(
             'SHOW TABLES LIKE \'{table}\''.format(table=table.table_name)
         ):
-            logger.info(
+            log.info(
                 "Table {table} doesn't exist in database {database}".format(
                     table=table.table_name,
                     database=table.database_name
@@ -90,4 +90,7 @@ class SchemaTracker(object):
         )
 
         self.schema_tracker_cursor.execute(query_str)
-        return [column[1] for column in self.schema_tracker_cursor.fetchall()]
+        column_type_map = {}
+        for column in self.schema_tracker_cursor.fetchall():
+            column_type_map[column[0]] = column[1]
+        return column_type_map

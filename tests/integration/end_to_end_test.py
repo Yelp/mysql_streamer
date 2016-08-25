@@ -153,8 +153,10 @@ class TestEndToEnd(object):
                 ColumnInfo('DATE', mysql.DATE(), datetime.date(1901, 1, 1)),
                 ColumnInfo('DATE', mysql.DATE(), datetime.date(2050, 12, 31)),
 
-                # ColumnInfo('DATETIME', mysql.DATETIME(), '2014-03-24 02:03:46'),
-                # ColumnInfo('DATETIME(6)', mysql.DATETIME(fsp=6), '2014-03-24 02:03:46.001212'),
+                ColumnInfo('DATETIME', mysql.DATETIME(), datetime.datetime(1970, 1, 1, 0, 0, 1, 0)),
+                ColumnInfo('DATETIME', mysql.DATETIME(), datetime.datetime(2038, 1, 19, 3, 14, 7, 0)),
+                ColumnInfo('DATETIME(6)', mysql.DATETIME(fsp=6), datetime.datetime(1970, 1, 1, 0, 0, 1, 111111)),
+                ColumnInfo('DATETIME(6)', mysql.DATETIME(fsp=6), datetime.datetime(2038, 1, 19, 3, 14, 7, 999999)),
 
                 ColumnInfo('TIMESTAMP', mysql.TIMESTAMP(), datetime.datetime(1970, 1, 1, 0, 0, 1, 0)),
                 ColumnInfo('TIMESTAMP', mysql.TIMESTAMP(), datetime.datetime(2038, 1, 19, 3, 14, 7, 0)),
@@ -313,6 +315,8 @@ class TestEndToEnd(object):
         for indx, complex_column_schema in enumerate(complex_table_schema):
             if isinstance(complex_column_schema.sqla_obj, mysql.DATE):
                 data = complex_column_schema.data.strftime('%Y-%m-%d')
+            elif isinstance(complex_column_schema.sqla_obj, mysql.DATETIME):
+                data = complex_column_schema.data.strftime('%Y-%m-%d %H:%M:%S.%f')
             elif isinstance(complex_column_schema.sqla_obj, mysql.TIMESTAMP):
                 data = complex_column_schema.data.strftime('%Y-%m-%d %H:%M:%S.%f')
             elif isinstance(complex_column_schema.sqla_obj, mysql.TIME):
@@ -330,6 +334,10 @@ class TestEndToEnd(object):
             if isinstance(complex_column_schema.sqla_obj, mysql.SET):
                 expected_complex_data_dict[column_name] = \
                     sorted(actual_complex_data[column_name])
+            elif isinstance(complex_column_schema.sqla_obj, mysql.DATETIME):
+                date_time_obj = \
+                    complex_column_schema.data.isoformat()
+                expected_complex_data_dict[column_name] = date_time_obj
             elif isinstance(complex_column_schema.sqla_obj, mysql.TIMESTAMP):
                 date_time_obj = \
                     complex_column_schema.data.replace(tzinfo=pytz.utc)
