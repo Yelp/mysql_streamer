@@ -93,7 +93,7 @@ class TestLogPosition(object):
 
     def test_transaction_id(self):
         p = LogPosition(log_pos=100, log_file="binlog")
-        assert p.transaction_id == TransactionId(
+        assert p.get_transaction_id(unicode(env_config.rbr_source_cluster)) == TransactionId(
             unicode(env_config.rbr_source_cluster),
             u"binlog",
             100

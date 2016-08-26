@@ -7,7 +7,17 @@ from sqlalchemy import types
 from yelp_lib import dates
 
 from replication_handler.config import env_config
-from replication_handler.models.connections import get_base_model
+
+
+def get_base_model():
+    try:
+        if not env_config.force_avoid_yelp_conn:
+            from yelp_conn.session import declarative_base
+            return declarative_base()
+    except ImportError:
+        pass
+    from sqlalchemy.ext.declarative import declarative_base
+    return declarative_base()
 
 
 CLUSTER_NAME = env_config.rbr_state_cluster

@@ -34,8 +34,12 @@ class TestBaseEventHandler(object):
         return mock.Mock(autospect=StatsCounter)
 
     @pytest.fixture
-    def base_event_handler(self, producer, schema_wrapper, stats_counter):
-        return BaseEventHandler(producer, schema_wrapper, stats_counter)
+    def base_event_handler(
+        self, mock_db_connections, producer, schema_wrapper, stats_counter
+    ):
+        return BaseEventHandler(
+            mock_db_connections, producer, schema_wrapper, stats_counter
+        )
 
     @pytest.yield_fixture
     def patch_config(self):

@@ -27,7 +27,7 @@ class DataEventHandler(BaseEventHandler):
             return
         schema_wrapper_entry = self._get_payload_schema(
             Table(
-                cluster_name=self.cluster_name,
+                cluster_name=self.db_connections.source_cluster_name,
                 database_name=event.schema,
                 table_name=event.table
             )
@@ -41,7 +41,9 @@ class DataEventHandler(BaseEventHandler):
             position,
             self.register_dry_run
         )
-        message = builder.build_message()
+        message = builder.build_message(
+            self.db_connections.source_cluster_name
+        )
         self.producer.publish(message)
         if not config.env_config.disable_meteorite:
             self.stats_counter.increment(event.table)

@@ -43,7 +43,6 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def __init__(self, source_database_config, position):
         super(LowLevelBinlogStreamReaderWrapper, self).__init__()
-        self.source_database_config = source_database_config
         self.refresh_table_suffix = '_data_pipeline_refresh'
         only_tables = self._get_only_tables()
         allowed_event_types = [
@@ -54,7 +53,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             DeleteRowsEvent,
         ]
 
-        self._seek(allowed_event_types, position, only_tables)
+        self._seek(source_database_config, allowed_event_types, position, only_tables)
 
     def _get_only_tables(self):
         only_tables = config.env_config.table_whitelist
@@ -115,10 +114,10 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             ) for row in row_event.rows
         ]
 
-    def _seek(self, allowed_event_types, position, only_tables):
+    def _seek(self, source_database_config, allowed_event_types, position, only_tables):
         # server_id doesn't seem to matter but must be set.
         self.stream = BinLogStreamReader(
-            connection_settings=self.source_database_config,
+            connection_settings=source_database_config,
             server_id=1,
             only_events=allowed_event_types,
             resume_stream=config.env_config.resume_stream,

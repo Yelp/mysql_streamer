@@ -118,7 +118,7 @@ class TestParseReplicationStream(object):
     @pytest.yield_fixture
     def patch_db_connections(self, mock_db_connections):
         with mock.patch(
-            'replication_handler.batch.parse_replication_stream.get_connection_obj'
+            'replication_handler.batch.parse_replication_stream.get_connection'
         ) as mock_get_db_conn:
             mock_get_db_conn.return_value = mock_db_connections
             yield mock_get_db_conn
@@ -165,6 +165,7 @@ class TestParseReplicationStream(object):
             mock_config.namespace = "test_namespace"
             mock_config.disable_meteorite = False
             mock_config.changelog_mode = False
+            mock_config.topology_path = 'topology.yaml'
             yield mock_config
 
     @pytest.yield_fixture
@@ -403,6 +404,7 @@ class TestParseReplicationStream(object):
         patch_config,
         patch_config_changelog_on,
         producer,
+        patch_db_connections
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.producer = producer

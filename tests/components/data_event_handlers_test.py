@@ -29,8 +29,7 @@ DataHandlerExternalPatches = namedtuple(
         'table_has_pii',
         "patch_dry_run_config",
         "patch_get_show_create_statement",
-        "patch_execute_query",
-        "patch_cluster_name",
+        "patch_execute_query"
     )
 )
 
@@ -57,13 +56,20 @@ class TestDataEventHandler(object):
         return mock.Mock(autospect=StatsCounter)
 
     @pytest.fixture
+    def mock_source_cluster_name(self):
+        return 'yelp_main'
+
+    @pytest.fixture
     def data_event_handler(
         self,
+        mock_source_cluster_name,
+        mock_db_connections,
         schema_wrapper,
         producer,
         stats_counter,
     ):
         return DataEventHandler(
+            mock_db_connections,
             producer,
             schema_wrapper=schema_wrapper,
             stats_counter=stats_counter,
@@ -73,11 +79,14 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def dry_run_data_event_handler(
         self,
+        mock_source_cluster_name,
+        mock_db_connections,
         schema_wrapper,
         stats_counter,
         producer
     ):
         return DataEventHandler(
+            mock_db_connections,
             producer,
             schema_wrapper=schema_wrapper,
             stats_counter=stats_counter,
@@ -193,16 +202,6 @@ class TestDataEventHandler(object):
         ) as mock_execute_query:
             yield mock_execute_query
 
-    @pytest.yield_fixture
-    def patch_cluster_name(self):
-        with mock.patch.object(
-            config.EnvConfig,
-            'rbr_source_cluster',
-            new_callable=mock.PropertyMock
-        ) as mock_cluster_name:
-            mock_cluster_name.return_value = "yelp_main"
-            yield mock_cluster_name
-
     @pytest.fixture
     def patches(
         self,
@@ -210,15 +209,13 @@ class TestDataEventHandler(object):
         patch_config_register_dry_run,
         patch_get_show_create_statement,
         patch_execute_query,
-        patch_cluster_name,
         patch_message_contains_pii
     ):
         return DataHandlerExternalPatches(
             table_has_pii=patch_table_has_pii,
             patch_dry_run_config=patch_config_register_dry_run,
             patch_get_show_create_statement=patch_get_show_create_statement,
-            patch_execute_query=patch_execute_query,
-            patch_cluster_name=patch_cluster_name,
+            patch_execute_query=patch_execute_query
         )
 
     @pytest.yield_fixture

@@ -51,10 +51,9 @@ class HeartbeatSearcher(object):
         """Returns a list of all the log files names on the configured
         db connection
         """
-        cursor = self.source_cursor
-        cursor.execute('SHOW BINARY LOGS;')
+        self.source_cursor.execute('SHOW BINARY LOGS;')
         names = []
-        for row in cursor.fetchall():
+        for row in self.source_cursor.fetchall():
             names.append(row[0])
         return names
 
@@ -63,11 +62,10 @@ class HeartbeatSearcher(object):
         binlog. This process isn't exactly free so it is used as little as
         possible in the search.
         """
-        cursor = self.source_cursor
-        cursor.execute('SHOW BINLOG EVENTS IN \'{}\';'.format(binlog))
+        self.source_cursor.execute('SHOW BINLOG EVENTS IN \'{}\';'.format(binlog))
         # Each event is a tuple of the form
         # (0:Log_name 1:Pos 2:Event_type 3:Server_id 4:End_log_pos 5:Info)
-        return cursor.fetchall()[-1][4]
+        return self.source_cursor.fetchall()[-1][4]
 
     def _reaches_bound(self, current_log, current_position):
         """Returns true if the stream has hit the last element of the last log

@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 from contextlib import contextmanager
 
-from sqlalchemy.ext.declarative import declarative_base
+import pymysql
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.scoping import ScopedSession
 
@@ -13,12 +13,8 @@ from replication_handler.models.connections.base_connection import BaseConnectio
 
 class RHConnection(BaseConnection):
 
-    def __init__(self):
-        super(RHConnection, self).__init__()
-
-    @classmethod
-    def get_base_model(self):
-        return declarative_base()
+    def __init__(self, *args, **kwargs):
+        super(RHConnection, self).__init__(*args, **kwargs)
 
     def _set_source_session(self):
         config = self.source_database_config
@@ -41,11 +37,17 @@ class RHConnection(BaseConnection):
     def get_source_cursor(self):
         return self._get_cursor(self.source_database_config)
 
+    def _get_cursor(self, config):
+        return pymysql.connect(
+            host=config['host'],
+            passwd=config['passwd'],
+            user=config['user']
+        ).cursor()
+
 
 class _RHScopedSession(ScopedSession):
     """This is a custom subclass of ``sqlalchemy.orm.scoping.ScopedSession``
-    that is returned from ``scoped_session``. Use ``scoped_session`` rather
-    than this.
+    that is returned from ``scoped_session``.
 
     This passes through most functions through to the underlying session.
     """

@@ -24,9 +24,9 @@ class BaseEventHandler(object):
       stats_counter(StatsCounter object): a wrapper for communication with meteorite.
     """
 
-    def __init__(self, producer, schema_wrapper, stats_counter):
+    def __init__(self, db_connections, producer, schema_wrapper, stats_counter):
+        self.db_connections = db_connections
         self.schema_wrapper = schema_wrapper
-        self.cluster_name = env_config.rbr_source_cluster
         self.producer = producer
         self.stats_counter = stats_counter
 

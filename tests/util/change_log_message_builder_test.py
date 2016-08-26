@@ -8,17 +8,18 @@ from replication_handler.util.change_log_message_builder import ChangeLogMessage
 
 
 @mock.patch('replication_handler.util.change_log_message_builder.UpdateMessage')
-def test_build_message_builds_proper_message(update_mock):
+def test_build_message_builds_proper_message(update_mock, mock_source_cluster_name):
     schema_info = mock.MagicMock(topic="topic", schema_id=42)
     event = mock.MagicMock(schema="schema",
                            table="table_name",
                            timestamp=42,
                            row={'before_values': {'id': 41}, 'after_values': {'id': 42}},
                            message_type=update_mock)
-    position = mock.MagicMock(transaction_id="txn_id")
+    position = mock.MagicMock()
     position.to_dict.return_value = {"foo_pos": 42}
+    position.get_transaction_id.return_value = 'txn_id'
     builder = ChangeLogMessageBuilder(schema_info, event, position)
-    builder.build_message()
+    builder.build_message(mock_source_cluster_name)
     update_mock.assert_called_once_with(
         dry_run=True,
         meta=['txn_id'],

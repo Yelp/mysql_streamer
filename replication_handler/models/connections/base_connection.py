@@ -2,25 +2,80 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import pymysql
 import staticconf
-from cached_property import cached_property
 from sqlalchemy import create_engine
-
-from replication_handler.config import env_config
 
 
 class BaseConnection(object):
 
-    def __init__(self):
-        staticconf.YamlConfiguration(env_config.topology_path)
+    def __init__(
+        self,
+        topology_path,
+        source_cluster_name,
+        tracker_cluster_name,
+        state_cluster_name
+    ):
+        staticconf.YamlConfiguration(topology_path)
+
+        self._set_source_cluster_name(source_cluster_name)
+        self._set_tracker_cluster_name(tracker_cluster_name)
+        self._set_state_cluster_name(state_cluster_name)
+
+        self._set_source_database_config()
+        self._set_tracker_database_config()
+        self._set_state_database_config()
+
         self._set_source_session()
         self._set_tracker_session()
         self._set_state_session()
 
-    @classmethod
-    def get_base_model(self):
-        raise NotImplementedError
+    def _set_source_cluster_name(self, source_cluster_name):
+        self._source_cluster_name = source_cluster_name
+
+    def _set_tracker_cluster_name(self, tracker_cluster_name):
+        self._tracker_cluster_name = tracker_cluster_name
+
+    def _set_state_cluster_name(self, state_cluster_name):
+        self._state_cluster_name = state_cluster_name
+
+    @property
+    def source_cluster_name(self):
+        return self._source_cluster_name
+
+    @property
+    def tracker_cluster_name(self):
+        return self._tracker_cluster_name
+
+    @property
+    def state_cluster_name(self):
+        return self._state_cluster_name
+
+    def _set_source_database_config(self):
+        self._source_database_config = self._get_cluster_config(
+            self.source_cluster_name
+        )
+
+    def _set_tracker_database_config(self):
+        self._tracker_database_config = self._get_cluster_config(
+            self.tracker_cluster_name
+        )
+
+    def _set_state_database_config(self):
+        self._state_database_config = self._get_cluster_config(
+            self.state_cluster_name
+        )
+
+    @property
+    def source_database_config(self):
+        return self._source_database_config
+
+    @property
+    def tracker_database_config(self):
+        return self._tracker_database_config
+
+    @property
+    def state_database_config(self):
+        return self._state_database_config
 
     @property
     def source_session(self):
@@ -61,34 +116,36 @@ class BaseConnection(object):
             )
         )
 
-    def _get_cursor(self, config):
-        return pymysql.connect(
-            host=config['host'],
-            passwd=config['passwd'],
-            user=config['user']
-        ).cursor()
-
     def _get_cluster_config(self, cluster_name):
         for topo_item in staticconf.get('topology'):
             if topo_item.get('cluster') == cluster_name:
                 return topo_item['entries'][0]
-        raise ValueError("Database configuration for {cluster_name} not find.".format(
+        raise ValueError("Database configuration for {cluster_name} not found.".format(
             cluster_name=cluster_name))
 
-    @cached_property
-    def tracker_database_config(self):
-        return self._get_cluster_config(
-            env_config.schema_tracker_cluster
-        )
 
-    @cached_property
-    def state_database_config(self):
-        return self._get_cluster_config(
-            env_config.rbr_state_cluster
-        )
-
-    @cached_property
-    def source_database_config(self):
-        return self._get_cluster_config(
-            env_config.rbr_source_cluster
-        )
+def get_connection(
+    topology_path,
+    source_cluster_name,
+    tracker_cluster_name,
+    state_cluster_name,
+    force_avoid_yelp_conn
+):
+    try:
+        if not force_avoid_yelp_conn:
+            from replication_handler.models.connections.yelp_conn_connection import YelpConnConnection
+            return YelpConnConnection(
+                topology_path,
+                source_cluster_name,
+                tracker_cluster_name,
+                state_cluster_name
+            )
+    except ImportError:
+        pass
+    from replication_handler.models.connections.rh_connection import RHConnection
+    return RHConnection(
+        topology_path,
+        source_cluster_name,
+        tracker_cluster_name,
+        state_cluster_name
+    )

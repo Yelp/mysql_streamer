@@ -6,7 +6,6 @@ import logging
 import os
 
 import staticconf
-from cached_property import cached_property
 from yelp_servlib import clog_util
 from yelp_servlib.config_util import load_default_config
 
@@ -50,7 +49,7 @@ class EnvConfig(BaseConfig):
     def namespace(self):
         return staticconf.get('namespace').value
 
-    @cached_property
+    @property
     def rbr_source_cluster(self):
         """serves as the key to identify the source database in topology.yaml
         """
@@ -64,13 +63,13 @@ class EnvConfig(BaseConfig):
     def changelog_mode(self):
         return staticconf.get('changelog_mode', False).value
 
-    @cached_property
+    @property
     def schema_tracker_cluster(self):
         """serves as the key to identify the tracker database in topology.yaml
         """
         return staticconf.get('schema_tracker_cluster').value
 
-    @cached_property
+    @property
     def rbr_state_cluster(self):
         """serves as the key to identify the state database in topology.yaml
         """
@@ -183,7 +182,7 @@ class EnvConfig(BaseConfig):
 
     @property
     def force_avoid_yelp_conn(self):
-        return staticconf.get('force_avoid_yelp_conn', default=False).value
+        return staticconf.get('force_avoid_yelp_conn', default=True).value
 
 
 env_config = EnvConfig()

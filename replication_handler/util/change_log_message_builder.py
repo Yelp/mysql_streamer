@@ -6,7 +6,6 @@ import logging
 
 from data_pipeline.message import UpdateMessage
 
-from replication_handler.config import env_config
 from replication_handler.util.message_builder import MessageBuilder
 
 
@@ -35,10 +34,10 @@ class ChangeLogMessageBuilder(MessageBuilder):
                         }
         return payload_data
 
-    def build_message(self):
+    def build_message(self, source_cluster_name):
         upstream_position_info = {
             "position": self.position.to_dict(),
-            "cluster_name": env_config.rbr_source_cluster,
+            "cluster_name": source_cluster_name,
             "database_name": self.event.schema,
             "table_name": self.event.table,
         }
@@ -48,7 +47,7 @@ class ChangeLogMessageBuilder(MessageBuilder):
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
             "timestamp": self.event.timestamp,
-            "meta": [self.position.transaction_id],
+            "meta": [self.position.get_transaction_id(source_cluster_name)],
         }
 
         if self.event.message_type == UpdateMessage:

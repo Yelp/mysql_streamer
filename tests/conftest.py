@@ -15,7 +15,6 @@ from data_pipeline.schematizer_clientlib.schematizer import _Cache
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.testing_helpers.containers import Containers
 
-from replication_handler.models.connections.base_connection import BaseConnection
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
 
@@ -129,6 +128,21 @@ def db_config():
 
 
 @pytest.fixture
+def mock_source_cluster_name():
+    return 'refresh_primary'
+
+
+@pytest.fixture
+def mock_tracker_cluster_name():
+    return 'repltracker'
+
+
+@pytest.fixture
+def mock_state_cluster_name():
+    return 'replhandler'
+
+
+@pytest.fixture
 def mock_source_database_config(db_config):
     return yaml.load(db_config.format(host='rbrsource'))
 
@@ -160,6 +174,9 @@ def mock_state_cursor():
 
 @pytest.fixture
 def mock_db_connections(
+    mock_source_cluster_name,
+    mock_tracker_cluster_name,
+    mock_state_cluster_name,
     mock_source_cursor,
     mock_tracker_cursor,
     mock_state_cursor,
@@ -167,9 +184,12 @@ def mock_db_connections(
     mock_tracker_database_config,
     mock_state_database_config
 ):
-    db_connections = mock.Mock(
-        spec_set=BaseConnection
-    )
+    db_connections = mock.Mock()
+
+    db_connections.source_cluster_name = mock_source_cluster_name
+    db_connections.tracker_cluster_name = mock_tracker_cluster_name
+    db_connections.state_cluster_name = mock_state_cluster_name
+
     db_connections.source_session = mock.PropertyMock()
     db_connections.tracker_session = mock.PropertyMock()
     db_connections.state_session = mock.PropertyMock()

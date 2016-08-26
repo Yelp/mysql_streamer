@@ -28,7 +28,6 @@ SchemaHandlerExternalPatches = namedtuple(
     'SchemaHandlerExternalPatches', (
         'database_config',
         'dry_run_config',
-        'cluster_name',
         'get_show_create_statement',
         'execute_query',
         'populate_schema_cache',
@@ -61,12 +60,18 @@ class TestSchemaEventHandler(object):
         return mock.Mock(autospect=StatsCounter)
 
     @pytest.fixture
-    def schema_event_handler(self,
-                             mock_db_connections,
-                             producer,
-                             schema_wrapper,
-                             stats_counter
-                             ):
+    def mock_source_cluster_name(self):
+        return 'yelp_main'
+
+    @pytest.fixture
+    def schema_event_handler(
+        self,
+        mock_source_cluster_name,
+        mock_db_connections,
+        producer,
+        schema_wrapper,
+        stats_counter
+    ):
         return SchemaEventHandler(
             db_connections=mock_db_connections,
             producer=producer,
@@ -76,12 +81,14 @@ class TestSchemaEventHandler(object):
         )
 
     @pytest.fixture
-    def dry_run_schema_event_handler(self,
-                                     mock_db_connections,
-                                     producer,
-                                     schema_wrapper,
-                                     stats_counter
-                                     ):
+    def dry_run_schema_event_handler(
+        self,
+        mock_source_cluster_name,
+        mock_db_connections,
+        producer,
+        schema_wrapper,
+        stats_counter
+    ):
         return SchemaEventHandler(
             db_connections=mock_db_connections,
             producer=producer,
@@ -311,16 +318,6 @@ class TestSchemaEventHandler(object):
             mock_config_meteorite_disabled_false.disable_meteorite = False
             yield mock_config_meteorite_disabled_false
 
-    @pytest.yield_fixture
-    def patch_cluster_name(self, test_schema):
-        with mock.patch.object(
-            config.EnvConfig,
-            'rbr_source_cluster',
-            new_callable=mock.PropertyMock
-        ) as mock_cluster_name:
-            mock_cluster_name.return_value = "yelp_main"
-            yield mock_cluster_name
-
     @pytest.fixture()
     def namespace(self):
         return "main1"
@@ -396,7 +393,6 @@ class TestSchemaEventHandler(object):
         self,
         patch_config_db,
         patch_config_register_dry_run,
-        patch_cluster_name,
         patch_get_show_create_statement,
         patch_execute_query,
         patch_populate_schema_cache,
@@ -408,7 +404,6 @@ class TestSchemaEventHandler(object):
         return SchemaHandlerExternalPatches(
             database_config=patch_config_db,
             dry_run_config=patch_config_register_dry_run,
-            cluster_name=patch_cluster_name,
             get_show_create_statement=patch_get_show_create_statement,
             execute_query=patch_execute_query,
             populate_schema_cache=patch_populate_schema_cache,

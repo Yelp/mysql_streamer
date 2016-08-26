@@ -29,12 +29,11 @@ class SchemaEventHandler(BaseEventHandler):
     """Handles schema change events: create table and alter table"""
 
     def __init__(self, *args, **kwargs):
-        self.db_connections = kwargs.pop('db_connections')
         self.register_dry_run = kwargs.pop('register_dry_run')
+        super(SchemaEventHandler, self).__init__(*args, **kwargs)
         self.schema_tracker = SchemaTracker(
             self.db_connections.get_tracker_cursor()
         )
-        super(SchemaEventHandler, self).__init__(*args, **kwargs)
 
     def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
@@ -90,14 +89,14 @@ class SchemaEventHandler(BaseEventHandler):
                 return
 
             table = Table(
-                cluster_name=self.cluster_name,
+                cluster_name=self.db_connections.source_cluster_name,
                 database_name=database_name,
                 table_name=statement.table
             )
 
             log.info(json.dumps(dict(
                 message="Using table info",
-                cluster_name=self.cluster_name,
+                cluster_name=self.db_connections.source_cluster_name,
                 database_name=database_name,
                 table_name=statement.table,
             )))
@@ -142,7 +141,7 @@ class SchemaEventHandler(BaseEventHandler):
                 session=session,
                 position=position.to_dict(),
                 event_type=EventType.SCHEMA_EVENT,
-                cluster_name=self.cluster_name,
+                cluster_name=self.db_connections.source_cluster_name,
                 database_name=event.schema,
                 table_name=None
             )

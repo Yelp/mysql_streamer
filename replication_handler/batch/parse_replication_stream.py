@@ -27,7 +27,7 @@ from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_wrapper import SchemaWrapper
-from replication_handler.models.connections import get_connection_obj
+from replication_handler.models.connections.base_connection import get_connection
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
@@ -58,7 +58,13 @@ class ParseReplicationStream(Batch):
 
     def __init__(self):
         super(ParseReplicationStream, self).__init__()
-        self.db_connections = get_connection_obj()
+        self.db_connections = get_connection(
+            config.env_config.topology_path,
+            config.env_config.rbr_source_cluster,
+            config.env_config.schema_tracker_cluster,
+            config.env_config.rbr_state_cluster,
+            config.env_config.force_avoid_yelp_conn
+        )
         self.schema_wrapper = SchemaWrapper(
             db_connections=self.db_connections,
             schematizer_client=get_schematizer()
@@ -156,6 +162,7 @@ class ParseReplicationStream(Batch):
         Handler = (DataEventHandler
                    if not self._changelog_mode else ChangeLogDataEventHandler)
         return Handler(
+            db_connections=self.db_connections,
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
             stats_counter=self.counters['data_event_counter'],

@@ -53,10 +53,11 @@ class RecoveryHandler(object):
         publish_dry_run=False,
         changelog_mode=False,
     ):
+        self.db_connections = db_connections
         log.info("Recovery Handler Starting: %s" % json.dumps(dict(
             is_clean_shutdown=is_clean_shutdown,
             pending_schema_event=repr(pending_schema_event),
-            cluster_name=env_config.rbr_source_cluster,
+            source_cluster_name=self.db_connections.source_cluster_name,
             register_dry_run=register_dry_run,
             publish_dry_run=publish_dry_run,
             changelog_mode=changelog_mode,
@@ -66,11 +67,9 @@ class RecoveryHandler(object):
         self.producer = producer
         self.is_clean_shutdown = is_clean_shutdown
         self.pending_schema_event = pending_schema_event
-        self.cluster_name = env_config.rbr_source_cluster
         self.register_dry_run = register_dry_run
         self.publish_dry_run = publish_dry_run
         self.schema_wrapper = schema_wrapper
-        self.db_connections = db_connections
         self.latest_source_log_position = self.get_latest_source_log_position()
         self.changelog_mode = changelog_mode
         self.changelog_schema_wrapper = self._get_changelog_schema_wrapper()
@@ -87,6 +86,7 @@ class RecoveryHandler(object):
         if not self.changelog_mode:
             return None
         change_log_data_event_handler = ChangeLogDataEventHandler(
+            db_connections=self.db_connections,
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
             stats_counter=None,
@@ -181,7 +181,7 @@ class RecoveryHandler(object):
         """Get schema wrapper object for the current event.
         """
         table = Table(
-            cluster_name=self.cluster_name,
+            cluster_name=self.db_connections.source_cluster_name,
             table_name=event.event.table,
             database_name=event.event.schema
         )
@@ -202,13 +202,15 @@ class RecoveryHandler(object):
                 self.register_dry_run,
             )
 
-            messages.append(builder.build_message())
+            messages.append(builder.build_message(
+                self.db_connections.source_cluster_name
+            ))
         return messages
 
     def _get_topic_offsets_map_for_cluster(self):
         with self.db_connections.state_session.connect_begin(ro=True) as session:
             topic_offsets = DataEventCheckpoint.get_topic_to_kafka_offset_map(
                 session,
-                self.cluster_name
+                self.db_connections.source_cluster_name
             )
         return topic_offsets
