@@ -47,8 +47,8 @@ class TestChangeLogDataEventHandler(object):
     @mock.patch('replication_handler.components.change_log_data_event_handler.'
                 'ChangeLogMessageBuilder', autospec=True)
     def test_handle_row_calls_ChangeLogMessageBuilder(
-            self, ChangeLogMessageBuilder, event_handler):
+            self, ChangeLogMessageBuilder, event_handler, fake_transaction_id_schema_id):
         event = mock.MagicMock(table="table")
         event_handler._handle_row("schema_wrapper_entry", event, "position")
         ChangeLogMessageBuilder.assert_called_once_with(
-            "schema_wrapper_entry", event, "position", False)
+            "schema_wrapper_entry", event, fake_transaction_id_schema_id, "position", False)

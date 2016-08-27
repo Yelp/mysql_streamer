@@ -4,14 +4,13 @@ from __future__ import unicode_literals
 
 import pytest
 
-from replication_handler.config import env_config
 from replication_handler.util.position import construct_position
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import HeartbeatPosition
 from replication_handler.util.position import InvalidPositionDictException
 from replication_handler.util.position import LogPosition
 from replication_handler.util.position import Position
-from replication_handler.util.transaction_id import TransactionId
+from replication_handler.util.transaction_id import get_transaction_id
 
 
 class TestPostion(object):
@@ -91,13 +90,20 @@ class TestLogPosition(object):
         }
         assert p.to_dict() == expected_dict
 
-    def test_transaction_id(self):
+    def test_transaction_id(self, fake_transaction_id_schema_id, mock_source_cluster_name):
         p = LogPosition(log_pos=100, log_file="binlog")
-        assert p.get_transaction_id(unicode(env_config.rbr_source_cluster)) == TransactionId(
-            unicode(env_config.rbr_source_cluster),
+        actual_transaction_id = p.get_transaction_id(
+            fake_transaction_id_schema_id,
+            unicode(mock_source_cluster_name)
+        )
+        expected_transaction_id = get_transaction_id(
+            fake_transaction_id_schema_id,
+            unicode(mock_source_cluster_name),
             u"binlog",
             100
         )
+        assert actual_transaction_id.schema_id == expected_transaction_id.schema_id
+        assert actual_transaction_id.payload_data == expected_transaction_id.payload_data
 
 
 class TestConstructPosition(object):

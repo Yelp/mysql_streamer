@@ -16,14 +16,19 @@ class ChangeLogMessageBuilder(MessageBuilder):
     """ This class knows how to convert a data event into a respective message.
 
     Args:
-      event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
       schema_info(SchemaInfo object): contain topic/schema_id.
+      event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
+      transaction_id_schema_id(int): schema id for transaction id meta attribute.
+      position(Position object): contains position information for this event in binlog.
       resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
     """
 
-    def __init__(self, schema_info, event, position, register_dry_run=True):
+    def __init__(
+        self, schema_info, event, transaction_id_schema_id, position, register_dry_run=True
+    ):
         self.schema_info = schema_info
         self.event = event
+        self.transaction_id_schema_id = transaction_id_schema_id
         self.position = position
         self.register_dry_run = register_dry_run
 
@@ -47,7 +52,9 @@ class ChangeLogMessageBuilder(MessageBuilder):
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
             "timestamp": self.event.timestamp,
-            "meta": [self.position.get_transaction_id(source_cluster_name)],
+            "meta": [self.position.get_transaction_id(
+                self.transaction_id_schema_id, source_cluster_name
+            )],
         }
 
         if self.event.message_type == UpdateMessage:

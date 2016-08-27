@@ -30,7 +30,7 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
         result_dict = {
             'name': 'replication_handler_real_time_check',
             'output': 'Replication Handler has caught up with real time.',
-            'runbook': 'y/datapipeline',
+            'runbook': ' y/replication_handler ',
             'status': 0,
             'team': 'bam',
             'page': False,

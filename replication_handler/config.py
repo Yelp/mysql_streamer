@@ -6,6 +6,7 @@ import logging
 import os
 
 import staticconf
+from cached_property import cached_property_with_ttl
 from yelp_servlib import clog_util
 from yelp_servlib.config_util import load_default_config
 
@@ -144,7 +145,7 @@ class EnvConfig(BaseConfig):
     def disable_sensu(self):
         return staticconf.get('disable_sensu').value
 
-    @property
+    @cached_property_with_ttl(ttl=60)
     def disable_meteorite(self):
         return staticconf.get('disable_meteorite').value
 
@@ -182,7 +183,7 @@ class EnvConfig(BaseConfig):
 
     @property
     def force_avoid_yelp_conn(self):
-        return staticconf.get('force_avoid_yelp_conn', default=True).value
+        return staticconf.get('force_avoid_yelp_conn', default=False).value
 
 
 env_config = EnvConfig()

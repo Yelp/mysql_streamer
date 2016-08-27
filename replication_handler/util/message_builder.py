@@ -2,9 +2,13 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import datetime
 import logging
 
+import pytz
 from data_pipeline.message import UpdateMessage
+
+from replication_handler.util.misc import transform_time_to_number_of_microseconds
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -16,14 +20,18 @@ class MessageBuilder(object):
     Args:
       schema_info(SchemaInfo object): contain schema_id.
       event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
+      transaction_id_schema_id(int): schema id for transaction id meta attribute.
       position(Position object): contains position information for this event in binlog.
       register_dry_run(boolean, optional): whether a schema has to be registered for a message to be published.
       Defaults to True.
     """
 
-    def __init__(self, schema_info, event, position, register_dry_run=True):
+    def __init__(
+        self, schema_info, event, transaction_id_schema_id, position, register_dry_run=True
+    ):
         self.schema_info = schema_info
         self.event = event
+        self.transaction_id_schema_id = transaction_id_schema_id
         self.position = position
         self.register_dry_run = register_dry_run
 
@@ -43,7 +51,9 @@ class MessageBuilder(object):
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
             "timestamp": self.event.timestamp,
-            "meta": [self.position.get_transaction_id(source_cluster_name)],
+            "meta": [self.position.get_transaction_id(
+                self.transaction_id_schema_id, source_cluster_name
+            )],
         }
 
         if self.event.message_type == UpdateMessage:
@@ -64,8 +74,15 @@ class MessageBuilder(object):
             return row['after_values']
 
     def _transform_data(self, data):
-        """ Converts 'set' value to 'list' value in payload data dictionary
+        """Following can happen in payload data dictionary
+        Converts 'set' value to 'list' value
+        Converts naive 'datetime.datetime' to UTC aware 'datetime.datetime'
+        Converts 'datetime.time' to lomg, as offset from 00:00:00.000000
         """
         for key, value in data.iteritems():
             if isinstance(value, set):
                 data[key] = list(value)
+            elif isinstance(value, datetime.datetime):
+                data[key] = value.replace(tzinfo=pytz.utc)
+            elif isinstance(value, datetime.time):
+                data[key] = transform_time_to_number_of_microseconds(value)

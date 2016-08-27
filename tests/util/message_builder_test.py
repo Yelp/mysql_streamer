@@ -18,7 +18,9 @@ class TestMessageBuilder(object):
     def expected_payload(self):
         return {'a_number': 100, 'test_value': ['ONE']}
 
-    def test_build_message_builds_proper_message(self, event_row, expected_payload, mock_source_cluster_name):
+    def test_build_message_builds_proper_message(
+        self, event_row, expected_payload, fake_transaction_id_schema_id, mock_source_cluster_name
+    ):
         schema_info = mock.MagicMock(topic="topic", schema_id=42)
         with mock.patch(
             'data_pipeline.message.CreateMessage'
@@ -33,7 +35,9 @@ class TestMessageBuilder(object):
             position = mock.MagicMock()
             position.to_dict.return_value = {"foo_pos": 42}
             position.get_transaction_id.return_value = 'txn_id'
-            builder = MessageBuilder(schema_info, event, position)
+            builder = MessageBuilder(
+                schema_info, event, fake_transaction_id_schema_id, position
+            )
             builder.build_message(mock_source_cluster_name)
             create_mock_with_set_datatype.assert_called_once_with(
                 dry_run=True,
