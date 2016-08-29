@@ -38,7 +38,7 @@ def replhandler():
     return 'replicationhandler'
 
 
-# @pytest.mark.itest
+@pytest.mark.itest
 class TestEndToEnd(object):
     timeout_seconds = 60
 
