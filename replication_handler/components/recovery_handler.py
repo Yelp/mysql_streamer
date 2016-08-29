@@ -17,7 +17,7 @@ from replication_handler.util.change_log_message_builder import ChangeLogMessage
 from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import get_transaction_id_schema_id
-from replication_handler.util.misc import SavePosition
+from replication_handler.util.misc import save_position
 from replication_handler.util.position import LogPosition
 
 
@@ -151,9 +151,8 @@ class RecoveryHandler(object):
         messages = self._build_messages(events)
         self.producer.ensure_messages_published(messages, topic_offsets)
         position_data = self.producer.get_checkpoint_position_data()
-        SavePosition(
-            self.db_connections.state_session
-        ).save_position(
+        save_position(
+            state_session=self.db_connections.state_session,
             position_data=position_data
         )
 

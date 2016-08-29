@@ -20,7 +20,7 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from replication_handler.util.misc import SavePosition
+from replication_handler.util.misc import save_position
 
 log = logging.getLogger('replication_handler.components.schema_event_handler')
 
@@ -62,9 +62,10 @@ class SchemaEventHandler(BaseEventHandler):
         # We'll probably want to get more aggressive about filtering query
         # events, since this makes applying them kind of expensive.
         self.producer.flush()
-        SavePosition(
-            self.db_connections.state_session
-        ).save_position(self.producer.get_checkpoint_position_data())
+        save_position(
+            position_data=self.producer.get_checkpoint_position_data(),
+            state_session=self.db_connections.state_session
+        )
 
         # If it's a rename query, don't handle it, just let it pass through.
         # We also reset the cache on the schema wrapper singleton, which will

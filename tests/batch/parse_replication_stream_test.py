@@ -53,7 +53,7 @@ class TestParseReplicationStream(object):
     @pytest.yield_fixture
     def patch_save_position(self):
         with mock.patch(
-            'replication_handler.util.misc.SavePosition.save_position'
+            'replication_handler.batch.parse_replication_stream.save_position'
         ) as mock_save_position:
             yield mock_save_position
 

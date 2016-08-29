@@ -8,6 +8,7 @@ import signal
 import sys
 from collections import namedtuple
 from contextlib import contextmanager
+from functools import partial
 
 import vmprof
 from concurrent.futures import ThreadPoolExecutor
@@ -32,7 +33,7 @@ from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
 from replication_handler.util.misc import REPLICATION_HANDLER_TEAM_NAME
-from replication_handler.util.misc import SavePosition
+from replication_handler.util.misc import save_position
 
 
 log = logging.getLogger('replication_handler.batch.parse_replication_stream')
@@ -193,15 +194,17 @@ class ParseReplicationStream(Batch):
 
     @contextmanager
     def _setup_producer(self):
+        save_position_partial = partial(
+            save_position,
+            state_session=self.db_connections.state_session
+        )
         with Producer(
             producer_name=REPLICATION_HANDLER_PRODUCER_NAME,
             team_name=REPLICATION_HANDLER_TEAM_NAME,
             expected_frequency_seconds=ExpectedFrequency.constantly,
             monitoring_enabled=False,
             dry_run=self.publish_dry_run,
-            position_data_callback=SavePosition(
-                self.db_connections.state_session
-            ).save_position,
+            position_data_callback=save_position_partial,
         ) as producer:
             yield producer
 
@@ -301,9 +304,11 @@ class ParseReplicationStream(Batch):
         if self.current_event_type == EventType.DATA_EVENT:
             self.producer.flush()
             position_data = self.producer.get_checkpoint_position_data()
-            SavePosition(
-                self.db_connections.state_session
-            ).save_position(position_data, is_clean_shutdown=True)
+            save_position(
+                position_data=position_data,
+                is_clean_shutdown=True,
+                state_session=self.db_connections.state_session
+            )
         log.info("Gracefully shutting down")
 
     def _force_exit(self):

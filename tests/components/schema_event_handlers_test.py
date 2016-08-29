@@ -100,7 +100,7 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def save_position(self):
         with mock.patch.object(
-            replication_handler.util.misc.SavePosition,
+            replication_handler.components.schema_event_handler,
             'save_position'
         ) as save_position_mock:
             yield save_position_mock

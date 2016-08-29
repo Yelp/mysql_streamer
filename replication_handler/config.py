@@ -183,6 +183,9 @@ class EnvConfig(BaseConfig):
 
     @property
     def force_avoid_yelp_conn(self):
+        """Set this config to true to force replication handler to not use
+        yelp_conn but rather use rh_connection.
+        """
         return staticconf.get('force_avoid_yelp_conn', default=False).value
 
 
