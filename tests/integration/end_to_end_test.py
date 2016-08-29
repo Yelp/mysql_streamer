@@ -38,7 +38,7 @@ def replhandler():
     return 'replicationhandler'
 
 
-@pytest.mark.itest
+# @pytest.mark.itest
 class TestEndToEnd(object):
     timeout_seconds = 60
 
@@ -429,6 +429,11 @@ class TestEndToEnd(object):
             containers,
             RBR_SOURCE,
             alter_table_query.format(table_name=table_name)
+        )
+        execute_query_get_one_row(
+            containers,
+            RBR_SOURCE,
+            "ALTER TABLE {name} ROW_FORMAT=COMPRESSED".format(name=table_name)
         )
 
         time.sleep(2)

@@ -208,6 +208,19 @@ class TestAlterTableStatement(MysqlTableStatementBaseTest):
         statement = mysql_statement_factory(rename_query)
         assert statement.does_rename_table()
 
+    def test_alter_row_format_compressed(self):
+        statement = 'alter table foo ROW_FORMAT=COMPRESSED'
+        try:
+            mysql_statement_factory(statement)
+        except ParseError:
+            pytest.fail("Failed to parse alter statement")
+
+    def test_alter_row_format_dynamic(self):
+        statement = 'alter table foo row_format=dynamic'
+        try:
+            mysql_statement_factory(statement)
+        except ParseError:
+            pytest.fail("Failed to parse alter statement")
 
 class TestDropTableStatement(MysqlTableStatementBaseTest):
     @pytest.fixture
