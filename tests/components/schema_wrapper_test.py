@@ -33,9 +33,22 @@ class TestSchemaWrapper(object):
 
     @pytest.fixture
     def avro_schema(self):
-        return '{"type": "record", "namespace": "yelp", "name": "business", "pkey": ["id"], \
-            "fields": [ {"pkey": 1, "type": "int", "name": "id"}, \
-            {"default": null, "maxlen": 64, "type": ["null", "string"], "name": "name"}]}'
+        return ''' {
+            "type": "record",
+            "namespace": "yelp",
+            "name": "business",
+            "pkey": ["id"],
+            "fields": [{
+                "pkey": 1,
+                "type": "int",
+                "name": "id"
+            }, {
+                "default": null,
+                "maxlen": 64,
+                "type": ["null", "string"],
+                "name": "name"
+            }]
+        } '''
 
     @pytest.fixture
     def bar_table(self):
@@ -191,9 +204,8 @@ class TestSchemaWrapper(object):
         )
         assert foo_table not in base_schema_wrapper.cache
         base_schema_wrapper._populate_schema_cache(foo_table, mock.Mock())
-        assert base_schema_wrapper.cache[foo_table].transform_required
-        assert isinstance(base_schema_wrapper.cache[foo_table].column_type_map, dict)
-        assert len(base_schema_wrapper.cache[foo_table].column_type_map) == 2
+        assert isinstance(base_schema_wrapper.cache[foo_table].transformation_map, dict)
+        assert len(base_schema_wrapper.cache[foo_table].transformation_map) == 1
 
     def test_schema_cache_with_contains_set_false(
         self,
@@ -206,6 +218,5 @@ class TestSchemaWrapper(object):
         )
         assert bar_table not in base_schema_wrapper.cache
         base_schema_wrapper._populate_schema_cache(bar_table, mock.Mock())
-        assert not base_schema_wrapper.cache[bar_table].transform_required
-        assert isinstance(base_schema_wrapper.cache[bar_table].column_type_map, dict)
-        assert len(base_schema_wrapper.cache[bar_table].column_type_map) == 4
+        assert isinstance(base_schema_wrapper.cache[bar_table].transformation_map, dict)
+        assert len(base_schema_wrapper.cache[bar_table].transformation_map) == 0

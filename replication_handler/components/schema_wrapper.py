@@ -17,7 +17,7 @@ log = logging.getLogger('replication_handler.components.schema_wrapper')
 
 SchemaWrapperEntry = namedtuple(
     'SchemaWrapperEntry',
-    ('schema_id', 'transform_required', 'column_type_map')
+    ('schema_id', 'transformation_map')
 )
 
 
@@ -119,18 +119,20 @@ class SchemaWrapper(object):
 
     def _populate_schema_cache(self, table, resp):
         column_type_map = self.schema_tracker.get_column_type_map(table)
-        transform_required = any(
-            (column_type.startswith('set') or
+        transformation_map = {
+            column_name: column_type
+            for column_name, column_type in column_type_map.iteritems()
+            if (
+                column_type.startswith('set') or
                 column_type.startswith('timestamp') or
                 column_type.startswith('datetime') or
-                column_type.startswith('time'))
-            for column_name, column_type in column_type_map.iteritems()
-        )
+                column_type.startswith('time')
+            )
+        }
 
         self.cache[table] = SchemaWrapperEntry(
             schema_id=resp.schema_id,
-            column_type_map=column_type_map,
-            transform_required=transform_required
+            transformation_map=transformation_map
         )
 
     @property
@@ -138,6 +140,5 @@ class SchemaWrapper(object):
         """A schema wrapper to go with dry run mode."""
         return SchemaWrapperEntry(
             schema_id=1,
-            column_type_map={},
-            transform_required=False
+            transformation_map={}
         )

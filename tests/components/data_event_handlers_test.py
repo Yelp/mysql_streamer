@@ -98,8 +98,7 @@ class TestDataEventHandler(object):
     def schema_wrapper_entry(self, schema_in_json):
         return SchemaWrapperEntry(
             schema_id=0,
-            column_type_map={},
-            transform_required=False
+            transformation_map={}
         )
 
     @pytest.yield_fixture

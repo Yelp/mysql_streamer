@@ -47,8 +47,7 @@ class TestRecoveryHandler(object):
         mock_schema_wrapper = mock.MagicMock()
         mock_schema_wrapper.__getitem__.return_value = SchemaWrapperEntry(
             schema_id=1,
-            column_type_map={},
-            transform_required=False
+            transformation_map={}
         )
         return mock_schema_wrapper
 

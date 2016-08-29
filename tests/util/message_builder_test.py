@@ -29,7 +29,9 @@ class TestMessageBuilder(object):
         return {
             'test_int': 100,
             'test_set': ['ONE'],
-            'test_timestamp': datetime.datetime(2015, 12, 31, 0, 59, 59, 999999, tzinfo=pytz.utc),
+            'test_timestamp': datetime.datetime(
+                2015, 12, 31, 0, 59, 59, 999999, tzinfo=pytz.utc
+            ),
             'test_datetime': '2015-12-31T00:59:59.999999',
             'test_time': transform_time_to_number_of_microseconds(
                 datetime.time(0, 59, 59, 999999)
@@ -41,14 +43,12 @@ class TestMessageBuilder(object):
     ):
         schema_info = mock.MagicMock(
             schema_id=42,
-            column_type_map={
-                'test_int': 'int(11)',
+            transformation_map={
                 'test_set': 'set',
                 'test_timestamp': 'timestamp(6)',
                 'test_datetime': 'datetime(6)',
                 'test_time': 'time(6)'
-            },
-            transform_required=True
+            }
         )
         with mock.patch(
             'data_pipeline.message.CreateMessage'

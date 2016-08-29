@@ -90,7 +90,8 @@ class SchemaTracker(object):
         )
 
         self.schema_tracker_cursor.execute(query_str)
-        column_type_map = {}
-        for column in self.schema_tracker_cursor.fetchall():
-            column_type_map[column[0]] = column[1]
-        return column_type_map
+
+        return {
+            column[0]: column[1]
+            for column in self.schema_tracker_cursor.fetchall()
+        }
