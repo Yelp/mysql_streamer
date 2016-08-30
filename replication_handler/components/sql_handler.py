@@ -17,8 +17,6 @@ log = logging.getLogger('replication_handler.components.sql_handler')
 
 def mysql_statement_factory(query):
     log.info("Parsing incoming query: {}".format(query))
-    pattern = re.compile('(?:ROW_FORMAT=(?:COMPRESSED|DYNAMIC))', re.IGNORECASE)
-    query = pattern.sub('', query)
     parsed_query = sqlparse.parse(query, dialect='mysql')
     assert len(parsed_query) == 1
     statement = parsed_query[0]
@@ -217,8 +215,8 @@ class MysqlQualifiedIdentifierParser(object):
         # This is a workaround for DATAPIPE-588
         # TODO(DATAPIPE-490|justinc): We'll probably need to replace SQLParse
         # to get rid of this.
-        # https://regex101.com/r/mZ5oS9/1
-        match = re.match('^(.+?)(\s+engine$)', identifier, re.I)
+        # https://regex101.com/r/qC3tB7/4
+        match = re.match('^(.+?)(\s+engine$|\s+ROW_FORMAT)+', identifier, re.I)
         if match:
             identifier = match.group(1)
 
