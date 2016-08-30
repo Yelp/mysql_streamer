@@ -179,7 +179,8 @@ class TestAlterTableStatement(MysqlTableStatementBaseTest):
     @pytest.fixture(params=[
         'DROP test_col',
         'CHANGE name to address varchar(255)',
-        'ENGINE=INNODB'  # Added to test condition from DATAPIPE-588
+        'ENGINE=INNODB',  # Added to test condition from DATAPIPE-588
+        'ROW_FORMAT=COMPRESSED'  # Added to test condition from DATAPIPE-1456
     ])
     def operation(self, request):
         return request.param
@@ -208,19 +209,6 @@ class TestAlterTableStatement(MysqlTableStatementBaseTest):
         statement = mysql_statement_factory(rename_query)
         assert statement.does_rename_table()
 
-    def test_alter_row_format_compressed(self):
-        statement = 'alter table foo ROW_FORMAT=COMPRESSED'
-        try:
-            mysql_statement_factory(statement)
-        except ParseError:
-            pytest.fail("Failed to parse alter statement")
-
-    def test_alter_row_format_dynamic(self):
-        statement = 'alter table foo row_format=dynamic'
-        try:
-            mysql_statement_factory(statement)
-        except ParseError:
-            pytest.fail("Failed to parse alter statement")
 
 class TestDropTableStatement(MysqlTableStatementBaseTest):
     @pytest.fixture
