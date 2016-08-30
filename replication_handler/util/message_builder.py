@@ -76,7 +76,7 @@ class MessageBuilder(object):
         Converts mysql set datum to python 'list' datun
         Converts mysql timestamp to python UTC aware datetime object
         Converts mysql datetime to python string
-        Converts mysql time' to lomg, as offset from 00:00:00.000000
+        Converts mysql time' to long, as offset from 00:00:00.000000
         """
         for column_name, column_type in self.schema_info.transformation_map.iteritems():
             value = data[column_name]
