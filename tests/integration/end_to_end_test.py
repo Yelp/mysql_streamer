@@ -418,6 +418,30 @@ class TestEndToEnd(object):
             schematizer=schematizer
         )
 
+    def test_create_table_with_row_format(
+        self,
+        containers
+    ):
+        table_name = 'row_format_tester'
+        create_table_stmt = """
+        CREATE TABLE {name}
+        ( id int(11) primary key) ROW_FORMAT=COMPRESSED ENGINE=InnoDB
+        """.format(name=table_name)
+        increment_heartbeat(containers)
+        execute_query_get_one_row(
+            containers,
+            RBR_SOURCE,
+            create_table_stmt
+        )
+
+        _wait_for_table(containers, SCHEMA_TRACKER, table_name)
+        # Check the schematracker db also has the table.
+        verify_create_table_query = "SHOW CREATE TABLE {table_name}".format(
+            table_name=table_name)
+        verify_create_table_result = execute_query_get_one_row(containers, SCHEMA_TRACKER, verify_create_table_query)
+        expected_create_table_result = execute_query_get_one_row(containers, RBR_SOURCE, verify_create_table_query)
+        self.assert_expected_result(verify_create_table_result, expected_create_table_result)
+
     def test_alter_table(
         self,
         containers,
