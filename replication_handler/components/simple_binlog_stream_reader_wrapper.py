@@ -11,14 +11,15 @@ from dateutil.tz import tzlocal
 from dateutil.tz import tzutc
 from pymysqlreplication.event import GtidEvent
 
+from data_pipeline.tools.meteorite_gauge_manager import MeteoriteGaugeManager
+from data_pipeline.tools.sensu_alert_manager import SensuAlertManager
+from replication_handler import config
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
-from replication_handler.util.meteorite_gauge_manager import MeteoriteGaugeManager
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
-from replication_handler.util.sensu_alert_manager import SensuAlertManager
 
 
 log = logging.getLogger('replication_handler.components.simple_binlog_stream_reader_wrapper')
@@ -39,13 +40,44 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def __init__(self, position, gtid_enabled=False):
         super(SimpleBinlogStreamReaderWrapper, self).__init__()
+
         self.stream = LowLevelBinlogStreamReaderWrapper(position)
         self.gtid_enabled = gtid_enabled
         self._upstream_position = position
         self._offset = 0
-        self.sensu_alert_manager = SensuAlertManager(sensu_alert_interval_in_seconds)
-        self.meteorite_gauge_manager = MeteoriteGaugeManager(meteorite_interval_in_seconds)
+        self._setup_sensu_alert_manager()
+        self.meteorite_gauge_manager = MeteoriteGaugeManager(
+            meteorite_interval_in_seconds,
+            stats_gauge_name='replication_handler_delay_seconds',
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            disable=config.env_config.disable_meteorite,
+            rbr_source_cluster=config.env_config.rbr_source_cluster
+        )
         self._seek(self._upstream_position.offset)
+
+    def _setup_sensu_alert_manager(self):
+        sensu_result_dict = {
+            'name': 'replication_handler_real_time_check',
+            'output': 'Replication Handler has caught up with real time.',
+            'runbook': ' y/replication_handler ',
+            'status': 0,
+            'team': 'bam',
+            'page': False,
+            'notification_email': 'bam+sensu@yelp.com',
+            'check_every': '{time}s'.format(time=sensu_alert_interval_in_seconds),
+            'alert_after': '5m',
+            'ttl': '300s',
+            'sensu_host': config.env_config.sensu_host,
+            'source': config.env_config.sensu_source,
+        }
+        self.sensu_alert_manager = SensuAlertManager(
+            sensu_alert_interval_in_seconds,
+            service_name='replication_handler',
+            result_dict=sensu_result_dict,
+            max_delay_seconds=config.env_config.max_delay_allowed_in_minutes,
+            disable=config.env_config.disable_sensu,
+        )
 
     def __iter__(self):
         return self

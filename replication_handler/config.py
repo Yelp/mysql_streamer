@@ -113,6 +113,10 @@ class EnvConfig(BaseConfig):
         return staticconf.get('max_delay_allowed_in_minutes').value
 
     @property
+    def max_delay_allowed_in_seconds(self):
+        return staticconf.get('max_delay_allowed_in_seconds').value
+
+    @property
     def sensu_host(self):
         """If we're running in Paasta, use the paasta cluster from the
         environment directly as laid out in PAASTA-1579.  This makes it so that
