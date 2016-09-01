@@ -73,9 +73,9 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         }
         self.sensu_alert_manager = SensuAlertManager(
             sensu_alert_interval_in_seconds,
-            service_name='replication_handler',
+            service_name='Replication Handler',
             result_dict=sensu_result_dict,
-            max_delay_seconds=config.env_config.max_delay_allowed_in_minutes,
+            max_delay_seconds=config.env_config.max_delay_allowed_in_seconds,
             disable=config.env_config.disable_sensu,
         )
 
