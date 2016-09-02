@@ -53,7 +53,8 @@ class ChangeLogMessageBuilder(MessageBuilder):
             "dry_run": self.register_dry_run,
             "timestamp": self.event.timestamp,
             "meta": [self.position.get_transaction_id(
-                self.transaction_id_schema_id, source_cluster_name
+                self.transaction_id_schema_id,
+                source_cluster_name
             )],
         }
 

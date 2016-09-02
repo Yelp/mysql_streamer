@@ -69,7 +69,7 @@ class DataEvent(object):
         self.message_type = message_type
 
 
-def save_position(position_data, is_clean_shutdown=False, state_session=None):
+def save_position(position_data, state_session, is_clean_shutdown=False):
     if not position_data or not position_data.last_published_message_position_info:
         log.info(
             "Unable to save position with invalid position_data: ".format(

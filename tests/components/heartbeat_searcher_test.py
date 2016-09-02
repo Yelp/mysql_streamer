@@ -354,10 +354,10 @@ class TestHeartbeatSearcher(object):
         return MockBinLogEvents()
 
     @pytest.fixture
-    def heartbeat_searcher(self, mock_cursor, mock_source_database_config):
+    def heartbeat_searcher(self, mock_cursor, mock_db_connections):
         return HeartbeatSearcher(
             source_cursor=mock_cursor,
-            source_database_config=mock_source_database_config
+            source_database_config=mock_db_connections.source_database_config
         )
 
     def test_is_heartbeat(

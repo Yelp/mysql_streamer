@@ -140,7 +140,10 @@ class LogPosition(Position):
 
     def get_transaction_id(self, transaction_id_schema_id, cluster_name):
         return get_transaction_id(
-            transaction_id_schema_id, unicode(cluster_name), self.log_file, self.log_pos
+            transaction_id_schema_id,
+            unicode(cluster_name),
+            self.log_file,
+            self.log_pos
         )
 
 

@@ -7,7 +7,6 @@ import os
 
 import mock
 import pytest
-import yaml
 from data_pipeline.config import get_config
 from data_pipeline.helpers.yelp_avro_store import _AvroStringStore
 from data_pipeline.message import Message
@@ -17,6 +16,7 @@ from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.components import data_event_handler
 from replication_handler.components import recovery_handler
+from replication_handler.models.connections.base_connection import BaseConnection
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
 
@@ -116,19 +116,6 @@ def patch_message_contains_pii():
         yield
 
 
-@pytest.fixture(scope="class")
-def db_config():
-    return """
-        charset: utf8
-        use_unicode: true
-        host: {host}
-        db: yelp
-        user: yelpdev
-        passwd: ""
-        port: 3306
-    """
-
-
 @pytest.fixture
 def mock_source_cluster_name():
     return 'refresh_primary'
@@ -145,18 +132,55 @@ def mock_state_cluster_name():
 
 
 @pytest.fixture
-def mock_source_database_config(db_config):
-    return yaml.load(db_config.format(host='rbrsource'))
+def topology(
+    mock_source_cluster_name,
+    mock_tracker_cluster_name,
+    mock_state_cluster_name
+):
+    return """
+        topology:
+        -   cluster: {0}
+            replica: master
+            entries:
+                - charset: utf8
+                  use_unicode: true
+                  host: rbrsource
+                  db: yelp
+                  user: yelpdev
+                  passwd: ""
+                  port: 3306
+        -   cluster: {1}
+            replica: master
+            entries:
+                - charset: utf8
+                  use_unicode: true
+                  host: schematracker
+                  db: yelp
+                  user: yelpdev
+                  passwd: ""
+                  port: 3306
+        -   cluster: {2}
+            replica: master
+            entries:
+                - charset: utf8
+                  use_unicode: true
+                  host: rbrstate
+                  db: yelp
+                  user: yelpdev
+                  passwd: ""
+                  port: 3306
+    """.format(
+        mock_source_cluster_name,
+        mock_tracker_cluster_name,
+        mock_state_cluster_name
+    )
 
 
 @pytest.fixture
-def mock_tracker_database_config(db_config):
-    return yaml.load(db_config.format(host='schematracker'))
-
-
-@pytest.fixture
-def mock_state_database_config(db_config):
-    return yaml.load(db_config.format(host='rbrstate'))
+def topology_path(tmpdir, topology):
+    local = tmpdir.mkdir("dummy").join("topology.yaml")
+    local.write(topology)
+    return local.strpath
 
 
 @pytest.fixture
@@ -176,45 +200,54 @@ def mock_state_cursor():
 
 @pytest.fixture
 def mock_db_connections(
+    topology_path,
     mock_source_cluster_name,
     mock_tracker_cluster_name,
     mock_state_cluster_name,
     mock_source_cursor,
     mock_tracker_cursor,
-    mock_state_cursor,
-    mock_source_database_config,
-    mock_tracker_database_config,
-    mock_state_database_config
+    mock_state_cursor
 ):
-    db_connections = mock.Mock()
+    with mock.patch.object(
+        BaseConnection,
+        'set_sessions'
+    ), mock.patch.object(
+        BaseConnection,
+        'source_session',
+        new_callable=mock.PropertyMock
+    ) as patch_source_session, mock.patch.object(
+        BaseConnection,
+        'tracker_session',
+        new_callable=mock.PropertyMock
+    ) as patch_tracker_session, mock.patch.object(
+        BaseConnection,
+        'state_session',
+        new_callable=mock.PropertyMock
+    ) as patch_state_session, mock.patch.object(
+        BaseConnection,
+        'get_source_cursor'
+    ) as patch_get_source_cursor, mock.patch.object(
+        BaseConnection,
+        'get_tracker_cursor'
+    ) as patch_get_tracker_cursor, mock.patch.object(
+        BaseConnection,
+        'get_state_cursor'
+    ) as patch_get_state_cursor:
+        patch_source_session.connect_begin.return_value.__enter__.return_value = mock.Mock()
+        patch_tracker_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
+        patch_state_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
 
-    db_connections.source_cluster_name = mock_source_cluster_name
-    db_connections.tracker_cluster_name = mock_tracker_cluster_name
-    db_connections.state_cluster_name = mock_state_cluster_name
+        patch_get_source_cursor.return_value = mock_source_cursor
+        patch_get_tracker_cursor.return_value = mock_tracker_cursor
+        patch_get_state_cursor.return_value = mock_state_cursor
 
-    db_connections.source_session = mock.PropertyMock()
-    db_connections.tracker_session = mock.PropertyMock()
-    db_connections.state_session = mock.PropertyMock()
-
-    db_connections.source_session.connect_begin.return_value.__enter__.return_value = mock.Mock()
-    db_connections.tracker_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
-    db_connections.state_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
-
-    db_connections.get_source_cursor.return_value = mock_source_cursor
-    db_connections.get_tracker_cursor.return_value = mock_tracker_cursor
-    db_connections.get_state_cursor.return_value = mock_state_cursor
-
-    db_connections.source_database_config = mock.PropertyMock(
-        return_value=mock_source_database_config
-    )
-    db_connections.tracker_database_config = mock.PropertyMock(
-        return_value=mock_tracker_database_config
-    )
-    db_connections.state_database_config = mock.PropertyMock(
-        return_value=mock_state_database_config
-    )
-
-    return db_connections
+        db_connections = BaseConnection(
+            topology_path=topology_path,
+            source_cluster_name=mock_source_cluster_name,
+            tracker_cluster_name=mock_tracker_cluster_name,
+            state_cluster_name=mock_state_cluster_name
+        )
+        yield db_connections
 
 
 @pytest.fixture

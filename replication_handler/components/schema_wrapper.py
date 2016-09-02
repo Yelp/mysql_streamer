@@ -109,7 +109,7 @@ class SchemaWrapper(object):
             **table_stmt_kwargs
         )
         log.debug(
-            "Got response of {} from schematizer".format(resp)
+            "Got response of {0} from schematizer for table: {1}".format(resp, table.table_name)
         )
         self._populate_schema_cache(table, resp)
 

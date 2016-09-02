@@ -11,9 +11,9 @@ pytestmark = pytest.mark.usefixtures("cleanup_avro_cache")
 
 
 @pytest.fixture(scope='module')
-def replhandler():
-    return 'replicationhandler'
+def replhandler(request):
+    return 'replicationhandleropensource'
 
 
-class TestEndToEnd(EndToEndBaseTest):
+class TestEndToEndOpen(EndToEndBaseTest):
     pass

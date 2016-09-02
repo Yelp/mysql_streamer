@@ -21,6 +21,7 @@ class ReplicationStreamRestarter(object):
     if needed.
 
     Args:
+      db_connections(BaseConnection object): a wrapper for communication with mysql db.
       schema_wrapper(SchemaWrapper object): a wrapper for communication with schematizer.
     """
 

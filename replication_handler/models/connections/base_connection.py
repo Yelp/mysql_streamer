@@ -2,8 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import staticconf
-from sqlalchemy import create_engine
+import yaml
 
 
 class BaseConnection(object):
@@ -15,67 +14,33 @@ class BaseConnection(object):
         tracker_cluster_name,
         state_cluster_name
     ):
-        staticconf.YamlConfiguration(topology_path)
+        self.topology = yaml.load(
+            file(topology_path, 'r')
+        )
 
-        self._set_source_cluster_name(source_cluster_name)
-        self._set_tracker_cluster_name(tracker_cluster_name)
-        self._set_state_cluster_name(state_cluster_name)
+        self.source_cluster_name = source_cluster_name
+        self.tracker_cluster_name = tracker_cluster_name
+        self.state_cluster_name = state_cluster_name
 
-        self._set_source_database_config()
-        self._set_tracker_database_config()
-        self._set_state_database_config()
-
-        self._set_source_session()
-        self._set_tracker_session()
-        self._set_state_session()
-
-    def _set_source_cluster_name(self, source_cluster_name):
-        self._source_cluster_name = source_cluster_name
-
-    def _set_tracker_cluster_name(self, tracker_cluster_name):
-        self._tracker_cluster_name = tracker_cluster_name
-
-    def _set_state_cluster_name(self, state_cluster_name):
-        self._state_cluster_name = state_cluster_name
-
-    @property
-    def source_cluster_name(self):
-        return self._source_cluster_name
-
-    @property
-    def tracker_cluster_name(self):
-        return self._tracker_cluster_name
-
-    @property
-    def state_cluster_name(self):
-        return self._state_cluster_name
-
-    def _set_source_database_config(self):
-        self._source_database_config = self._get_cluster_config(
+        self.source_database_config = self._get_cluster_config(
             self.source_cluster_name
         )
-
-    def _set_tracker_database_config(self):
-        self._tracker_database_config = self._get_cluster_config(
+        self.tracker_database_config = self._get_cluster_config(
             self.tracker_cluster_name
         )
-
-    def _set_state_database_config(self):
-        self._state_database_config = self._get_cluster_config(
+        self.state_database_config = self._get_cluster_config(
             self.state_cluster_name
         )
 
-    @property
-    def source_database_config(self):
-        return self._source_database_config
+        self.set_sessions()
 
-    @property
-    def tracker_database_config(self):
-        return self._tracker_database_config
+    def __del__(self):
+        self.topology = {}
 
-    @property
-    def state_database_config(self):
-        return self._state_database_config
+    def set_sessions(self):
+        self._set_source_session()
+        self._set_tracker_session()
+        self._set_state_session()
 
     @property
     def source_session(self):
@@ -107,17 +72,8 @@ class BaseConnection(object):
     def get_source_cursor(self):
         raise NotImplementedError
 
-    def _get_engine(self, config):
-        return create_engine(
-            'mysql://{db_user}@{db_host}/{db_database}'.format(
-                db_user=config['user'],
-                db_host=config['host'],
-                db_database=config['db']
-            )
-        )
-
     def _get_cluster_config(self, cluster_name):
-        for topo_item in staticconf.get('topology'):
+        for topo_item in self.topology.get('topology'):
             if topo_item.get('cluster') == cluster_name:
                 return topo_item['entries'][0]
         raise ValueError("Database configuration for {cluster_name} not found.".format(

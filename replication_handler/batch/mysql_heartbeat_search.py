@@ -33,9 +33,9 @@ class MySQLHeartbeatSearchBatch(Batch):
         self.hb_serial = hb_serial
         self.db_connections = get_connection(
             config.env_config.topology_path,
-            config.env_config.source_cluster_name,
-            config.env_config.tracker_cluster_name,
-            config.env_config.state_cluster_name,
+            config.env_config.rbr_source_cluster,
+            config.env_config.schema_tracker_cluster,
+            config.env_config.rbr_state_cluster,
             config.env_config.force_avoid_yelp_conn
         )
 

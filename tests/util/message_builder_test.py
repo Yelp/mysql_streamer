@@ -19,7 +19,11 @@ class TestMessageBuilder(object):
         return {'a_number': 100, 'test_value': ['ONE']}
 
     def test_build_message_builds_proper_message(
-        self, event_row, expected_payload, fake_transaction_id_schema_id, mock_source_cluster_name
+        self,
+        event_row,
+        expected_payload,
+        fake_transaction_id_schema_id,
+        mock_source_cluster_name
     ):
         schema_info = mock.MagicMock(topic="topic", schema_id=42)
         with mock.patch(

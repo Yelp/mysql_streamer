@@ -33,6 +33,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     events with position information attached.
 
     Args:
+      source_database_config(dict): source database connection configuration.
       position(Position object): use to specify where the stream should resume.
       gtid_enabled(bool): use to indicate if gtid is enabled in the system.
     """

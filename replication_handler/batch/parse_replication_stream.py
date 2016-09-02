@@ -194,7 +194,7 @@ class ParseReplicationStream(Batch):
 
     @contextmanager
     def _setup_producer(self):
-        save_position_partial = partial(
+        save_position_callback = partial(
             save_position,
             state_session=self.db_connections.state_session
         )
@@ -204,7 +204,7 @@ class ParseReplicationStream(Batch):
             expected_frequency_seconds=ExpectedFrequency.constantly,
             monitoring_enabled=False,
             dry_run=self.publish_dry_run,
-            position_data_callback=save_position_partial,
+            position_data_callback=save_position_callback,
         ) as producer:
             yield producer
 

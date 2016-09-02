@@ -181,14 +181,10 @@ class TestRecoveryHandler(object):
             yield mock_delete
 
     @pytest.yield_fixture
-    def patch_source_cursor(self, mock_db_connections, mock_source_cursor):
-        with mock.patch.object(
-            mock_db_connections,
-            'get_source_cursor'
-        ) as mock_cursor:
-            mock_source_cursor.fetchone.return_value = ('binlog.001', 200)
-            mock_cursor.return_value = mock_source_cursor
-            yield mock_cursor
+    def mock_source_cursor(self):
+        mock_cursor = mock.Mock()
+        mock_cursor.fetchone.return_value = ('binlog.001', 200)
+        return mock_cursor
 
     @pytest.yield_fixture
     def patch_config_recovery_queue_size(self):
@@ -216,7 +212,6 @@ class TestRecoveryHandler(object):
         create_table_statement,
         pending_alter_schema_event_state,
         patch_delete,
-        patch_source_cursor,
         mock_tracker_cursor,
         database_name
     ):
@@ -248,7 +243,6 @@ class TestRecoveryHandler(object):
         create_table_statement,
         pending_create_schema_event_state,
         patch_delete,
-        patch_source_cursor,
         mock_tracker_cursor,
         database_name
     ):
@@ -279,7 +273,6 @@ class TestRecoveryHandler(object):
         mock_db_connections,
         patch_get_topic_to_kafka_offset_map,
         mock_source_cursor,
-        patch_source_cursor,
         patch_save_position,
         patch_config_recovery_queue_size,
         patch_message_topic
@@ -320,7 +313,6 @@ class TestRecoveryHandler(object):
         mock_schema_wrapper,
         mock_db_connections,
         mock_source_cursor,
-        patch_source_cursor,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
         patch_message_topic
@@ -356,7 +348,6 @@ class TestRecoveryHandler(object):
         mock_schema_wrapper,
         mock_db_connections,
         mock_source_cursor,
-        patch_source_cursor,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
         patch_message_topic
@@ -397,7 +388,6 @@ class TestRecoveryHandler(object):
         mock_schema_wrapper,
         mock_db_connections,
         mock_source_cursor,
-        patch_source_cursor,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
         patch_message_topic

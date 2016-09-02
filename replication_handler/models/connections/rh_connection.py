@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 from contextlib import contextmanager
 
 import pymysql
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.scoping import ScopedSession
 
@@ -12,9 +13,6 @@ from replication_handler.models.connections.base_connection import BaseConnectio
 
 
 class RHConnection(BaseConnection):
-
-    def __init__(self, *args, **kwargs):
-        super(RHConnection, self).__init__(*args, **kwargs)
 
     def _set_source_session(self):
         config = self.source_database_config
@@ -44,13 +42,17 @@ class RHConnection(BaseConnection):
             user=config['user']
         ).cursor()
 
+    def _get_engine(self, config):
+        return create_engine(
+            'mysql://{db_user}@{db_host}/{db_database}'.format(
+                db_user=config['user'],
+                db_host=config['host'],
+                db_database=config['db']
+            )
+        )
+
 
 class _RHScopedSession(ScopedSession):
-    """This is a custom subclass of ``sqlalchemy.orm.scoping.ScopedSession``
-    that is returned from ``scoped_session``.
-
-    This passes through most functions through to the underlying session.
-    """
     @contextmanager
     def connect_begin(self, *args, **kwargs):
         session = self()
