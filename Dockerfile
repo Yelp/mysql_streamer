@@ -39,11 +39,13 @@ RUN chmod +x /usr/local/bin/dumb-init
 # Add the service code
 WORKDIR /code
 ADD     requirements.txt /code/requirements.txt
+ADD     requirements.d/ /code/requirements.d/
 ADD     setup.py /code/setup.py
 RUN     virtualenv -p pypy /code/virtualenv_run
 RUN     /code/virtualenv_run/bin/pip install \
             -i https://pypi.yelpcorp.com/simple/ \
-            -r /code/requirements.txt
+            -r /code/requirements.txt \
+            -r /code/requirements.d/internal.txt
 
 ADD     . /code
 
