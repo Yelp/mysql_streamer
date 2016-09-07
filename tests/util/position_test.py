@@ -2,17 +2,16 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import datetime
 import pytest
 
 from replication_handler.config import source_database_config
-from replication_handler.util.position import InvalidPositionDictException
+from replication_handler.util.position import construct_position
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import HeartbeatPosition
+from replication_handler.util.position import InvalidPositionDictException
 from replication_handler.util.position import LogPosition
 from replication_handler.util.position import Position
-from replication_handler.util.position import construct_position
-from replication_handler.util.transaction_id import TransactionId
+from replication_handler.util.transaction_id import get_transaction_id
 
 
 class TestPostion(object):
@@ -64,14 +63,14 @@ class TestLogPosition(object):
             log_file="binlog",
             offset=10,
             hb_serial=123,
-            hb_timestamp=datetime.datetime(2011, 10, 21, 0, 1)
+            hb_timestamp=1447354877
         )
         expected_dict = {
             "log_pos": 100,
             "log_file": "binlog",
             "offset": 10,
             "hb_serial": 123,
-            "hb_timestamp": '2011-10-21 00:01:00',
+            "hb_timestamp": 1447354877,
         }
         assert p.to_dict() == expected_dict
 
@@ -81,24 +80,28 @@ class TestLogPosition(object):
             log_file="binlog",
             offset=0,
             hb_serial=123,
-            hb_timestamp=datetime.datetime(2011, 10, 21, 0, 1)
+            hb_timestamp=1447354877,
         )
         expected_dict = {
             "log_pos": 100,
             "log_file": "binlog",
             "offset": 0,
             "hb_serial": 123,
-            "hb_timestamp": '2011-10-21 00:01:00',
+            "hb_timestamp": 1447354877,
         }
         assert p.to_dict() == expected_dict
 
-    def test_transaction_id(self):
+    def test_transaction_id(self, fake_transaction_id_schema_id):
         p = LogPosition(log_pos=100, log_file="binlog")
-        assert p.transaction_id == TransactionId(
+        actual_transaction_id = p.get_transaction_id(fake_transaction_id_schema_id)
+        expected_transaction_id = get_transaction_id(
+            fake_transaction_id_schema_id,
             unicode(source_database_config.cluster_name),
             u"binlog",
             100
         )
+        assert actual_transaction_id.schema_id == expected_transaction_id.schema_id
+        assert actual_transaction_id.payload_data == expected_transaction_id.payload_data
 
 
 class TestConstructPosition(object):

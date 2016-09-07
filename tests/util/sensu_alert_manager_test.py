@@ -92,10 +92,10 @@ class TestSensuAlertManager(object):
         result = patch_sensu_send_event.call_args[1]
         assert result['status'] == expected_status
         assert result['name'] == 'replication_handler_real_time_check'
-        assert result['runbook'] == 'y/datapipeline'
+        assert result['runbook'] == ' y/replication_handler '
         assert result['team'] == 'bam'
         assert result['notification_email'] == 'bam+sensu@yelp.com'
         assert result['check_every'] == '30s'
         assert result['alert_after'] == '5m'
         assert result['ttl'] == '300s'
-        assert result['source'] == 'replication_handler_real_time_check'
+        assert result['source'] == 'replication_handler_raw_dev'

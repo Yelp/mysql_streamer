@@ -1,5 +1,6 @@
 replicationhandler:
   build: .
+  image: $DOCKER_TAG
   links:
     - kafka
     - zookeeper:zk
@@ -9,6 +10,24 @@ replicationhandler:
     - schematizer
   volumes_from:
     - replicationhandlerconfigs
+  command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -vv --no-notification
+  environment:
+    - SERVICE_ENV_CONFIG_PATH=config-env-itest.yaml
+replicationhandlerchangelog:
+  build: .
+  image: $DOCKER_TAG
+  links:
+    - kafka
+    - zookeeper:zk
+    - rbrsource
+    - schematracker
+    - rbrstate
+    - schematizer
+  volumes_from:
+    - replicationhandlerconfigs
+  command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -vv --no-notification
+  environment:
+    - SERVICE_ENV_CONFIG_PATH=config-env-changelog-itest.yaml
 replicationhandlerconfigs:
   build: acceptance/configs/
 # Replication Handler databases

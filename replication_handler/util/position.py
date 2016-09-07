@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from replication_handler.config import source_database_config
-from replication_handler.util.transaction_id import TransactionId
+from replication_handler.util.transaction_id import get_transaction_id
 
 
 class InvalidPositionDictException(Exception):
@@ -100,7 +100,7 @@ class LogPosition(Position):
       log_file(string): binlog name.
       offset(int): offset within a pymysqlreplication RowEvent.
       hb_serial(int): the serial number of this heartbeat.
-      hb_timestamp(str): the timestamp when the hearbeat is inserted.
+      hb_timestamp(int): the utc timestamp when the hearbeat is inserted.
 
     TODO(DATAPIPE-312|cheng): clean up and unify LogPosition and HeartbeatSearcher.
     TODO(DATAPIPE-315|cheng): create a data structure for hb_serial and hb_timestamp.
@@ -130,7 +130,7 @@ class LogPosition(Position):
             position_dict["offset"] = self.offset
         if self.hb_serial and self.hb_timestamp:
             position_dict["hb_serial"] = self.hb_serial
-            position_dict["hb_timestamp"] = str(self.hb_timestamp)
+            position_dict["hb_timestamp"] = self.hb_timestamp
         return position_dict
 
     def to_replication_dict(self):
@@ -140,9 +140,10 @@ class LogPosition(Position):
             position_dict["log_file"] = self.log_file
         return position_dict
 
-    @property
-    def transaction_id(self):
-        return TransactionId(self.cluster_name, self.log_file, self.log_pos)
+    def get_transaction_id(self, transaction_id_schema_id):
+        return get_transaction_id(
+            transaction_id_schema_id, self.cluster_name, self.log_file, self.log_pos
+        )
 
 
 def construct_position(position_dict):

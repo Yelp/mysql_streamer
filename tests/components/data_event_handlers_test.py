@@ -9,7 +9,6 @@ import mock
 import pytest
 from data_pipeline.message import CreateMessage
 from data_pipeline.message import UpdateMessage
-from data_pipeline.position_data import PositionData
 from data_pipeline.producer import Producer
 from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pii_generator.components.pii_identifier import PIIIdentifier
@@ -20,10 +19,7 @@ from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
-from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
-from replication_handler.models.global_event_state import EventType
-from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.util.position import LogPosition
 from testing.events import make_data_create_event
 from testing.events import make_data_update_event
@@ -33,9 +29,6 @@ DataHandlerExternalPatches = namedtuple(
     "DataHandlerExternalPatches", (
         "patch_rbr_state_rw",
         "mock_rbr_state_session",
-        "patch_upsert_data_event_checkpoint",
-        "patch_checkpoint_size",
-        "patch_upsert_global_event_state",
         'table_has_pii',
         "patch_dry_run_config",
         "patch_get_show_create_statement",
@@ -67,7 +60,6 @@ class TestDataEventHandler(object):
     def data_event_handler(
         self,
         schema_wrapper,
-        patch_checkpoint_size,
         producer,
         stats_counter,
     ):
@@ -82,7 +74,6 @@ class TestDataEventHandler(object):
     def dry_run_data_event_handler(
         self,
         schema_wrapper,
-        patch_checkpoint_size,
         stats_counter,
         producer
     ):
@@ -106,10 +97,36 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def schema_wrapper_entry(self, schema_in_json):
         return SchemaWrapperEntry(
-            topic=str("fake_topic"),
             schema_id=0,
-            primary_keys=['primary_key'],
+            transformation_map={}
         )
+
+    @pytest.yield_fixture
+    def patch_message_topic(self, schema_wrapper_entry):
+        with mock.patch(
+            'data_pipeline.message.Message._schematizer'
+        ), mock.patch(
+            'data_pipeline.message.Message.topic',
+            new_callable=mock.PropertyMock
+        ) as mock_topic:
+            mock_topic.return_value = str("fake_topic")
+            yield
+
+    @pytest.yield_fixture
+    def patch_config_meteorite_disabled_true(self):
+        with mock.patch(
+            'replication_handler.components.data_event_handler.config.env_config'
+        ) as mock_config_meteorite_disabled_true:
+            mock_config_meteorite_disabled_true.disable_meteorite = True
+            yield mock_config_meteorite_disabled_true
+
+    @pytest.yield_fixture
+    def patch_config_meteorite_disabled_false(self):
+        with mock.patch(
+            'replication_handler.components.data_event_handler.config.env_config'
+        ) as mock_config_meteorite_disabled_false:
+            mock_config_meteorite_disabled_false.disable_meteorite = False
+            yield mock_config_meteorite_disabled_false
 
     @pytest.fixture
     def data_create_events(self):
@@ -136,78 +153,9 @@ class TestDataEventHandler(object):
         return 20
 
     @pytest.fixture
-    def first_test_position(self, test_gtid, test_table):
-        return {
-            "position": {"gtid": test_gtid, "offset": 1},
-            "cluster_name": test_table.cluster_name,
-            "database_name": test_table.database_name,
-            "table_name": test_table.table_name,
-        }
-
-    @pytest.fixture
-    def second_test_position(self, test_gtid, test_table):
-        return {
-            "position": {"gtid": test_gtid, "offset": 3},
-            "cluster_name": test_table.cluster_name,
-            "database_name": test_table.database_name,
-            "table_name": test_table.table_name,
-        }
-
-    @pytest.fixture
-    def first_position_info(
-        self,
-        first_test_position,
-        test_topic,
-        first_test_kafka_offset
-    ):
-        return PositionData(
-            last_published_message_position_info=first_test_position,
-            topic_to_last_position_info_map={test_topic: first_test_position},
-            topic_to_kafka_offset_map={test_topic: first_test_kafka_offset},
-            merged_upstream_position_info_map={}
-        )
-
-    @pytest.fixture
-    def second_position_info(
-        self,
-        second_test_position,
-        test_topic,
-        first_test_kafka_offset,
-        second_test_kafka_offset
-    ):
-        return PositionData(
-            last_published_message_position_info=second_test_position,
-            topic_to_last_position_info_map={test_topic: second_test_position},
-            topic_to_kafka_offset_map={test_topic: second_test_kafka_offset},
-            merged_upstream_position_info_map={0, first_test_kafka_offset}
-        )
-
-    @pytest.fixture
-    def producer(self, first_position_info, second_position_info):
+    def producer(self):
         producer = mock.Mock(autospect=Producer)
-        producer.get_checkpoint_position_data.side_effect = [
-            first_position_info,
-            second_position_info
-        ]
         return producer
-
-    @pytest.yield_fixture
-    def patch_upsert_data_event_checkpoint(self):
-        with mock.patch.object(
-            DataEventCheckpoint,
-            'upsert_data_event_checkpoint'
-        ) as mock_upsert_data_event_checkpoint:
-            yield mock_upsert_data_event_checkpoint
-
-    @pytest.yield_fixture
-    def patch_checkpoint_size(self):
-        with mock.patch.object(
-            DataEventHandler,
-            "checkpoint_size",
-            new_callable=mock.PropertyMock
-        ) as mock_checkpoint_size:
-            mock_checkpoint_size.return_value = 2
-            yield mock_checkpoint_size
 
     @pytest.yield_fixture
     def patch_rbr_state_rw(self, mock_rbr_state_session):
@@ -222,13 +170,6 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def mock_rbr_state_session(self):
         return mock.Mock()
-
-    @pytest.yield_fixture
-    def patch_upsert_global_event_state(self):
-        with mock.patch.object(
-            GlobalEventState, 'upsert'
-        ) as mock_upsert_global_event_state:
-            yield mock_upsert_global_event_state
 
     @pytest.yield_fixture
     def patch_table_has_pii(self):
@@ -281,21 +222,16 @@ class TestDataEventHandler(object):
         self,
         patch_rbr_state_rw,
         mock_rbr_state_session,
-        patch_upsert_data_event_checkpoint,
-        patch_checkpoint_size,
-        patch_upsert_global_event_state,
         patch_table_has_pii,
         patch_config_register_dry_run,
         patch_get_show_create_statement,
         patch_execute_query,
         patch_cluster_name,
+        patch_message_contains_pii
     ):
         return DataHandlerExternalPatches(
             patch_rbr_state_rw=patch_rbr_state_rw,
             mock_rbr_state_session=mock_rbr_state_session,
-            patch_upsert_data_event_checkpoint=patch_upsert_data_event_checkpoint,
-            patch_checkpoint_size=patch_checkpoint_size,
-            patch_upsert_global_event_state=patch_upsert_global_event_state,
             table_has_pii=patch_table_has_pii,
             patch_dry_run_config=patch_config_register_dry_run,
             patch_get_show_create_statement=patch_get_show_create_statement,
@@ -312,12 +248,10 @@ class TestDataEventHandler(object):
         ) as mock_get_payload_schema:
             yield mock_get_payload_schema
 
-    def test_handle_data_create_event_to_publish_call(
+    def _setup_handle_data_create_event_to_publish_call(
         self,
         producer,
         stats_counter,
-        first_test_position,
-        second_test_position,
         test_table,
         test_topic,
         first_test_kafka_offset,
@@ -339,67 +273,83 @@ class TestDataEventHandler(object):
             }
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(CreateMessage(
-                topic=schema_wrapper_entry.topic,
                 payload_data=data_event.row["values"],
                 schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=upstream_position_info,
                 keys=(u'primary_key', ),
-                timestamp=data_event.timestamp,
-                contains_pii=True,
+                timestamp=data_event.timestamp
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
-        assert stats_counter.increment.call_count == 4
+
+        assert producer.publish.call_count == len(data_create_events)
+
+    def test_handle_data_create_event_to_publish_call_disable_meteorite_true(
+        self,
+        producer,
+        stats_counter,
+        test_table,
+        test_topic,
+        first_test_kafka_offset,
+        second_test_kafka_offset,
+        data_event_handler,
+        data_create_events,
+        schema_wrapper_entry,
+        patches,
+        patch_get_payload_schema,
+        patch_config_meteorite_disabled_true,
+        patch_message_topic
+    ):
+        self._setup_handle_data_create_event_to_publish_call(
+            producer,
+            stats_counter,
+            test_table,
+            test_topic,
+            first_test_kafka_offset,
+            second_test_kafka_offset,
+            data_event_handler,
+            data_create_events,
+            schema_wrapper_entry,
+            patches,
+            patch_get_payload_schema
+        )
+        assert stats_counter.increment.call_count == 0
+
+    def test_handle_data_create_event_to_publish_call_disable_meteorite_false(
+        self,
+        producer,
+        stats_counter,
+        test_table,
+        test_topic,
+        first_test_kafka_offset,
+        second_test_kafka_offset,
+        data_event_handler,
+        data_create_events,
+        schema_wrapper_entry,
+        patches,
+        patch_get_payload_schema,
+        patch_config_meteorite_disabled_false,
+        patch_message_topic
+    ):
+        self._setup_handle_data_create_event_to_publish_call(
+            producer,
+            stats_counter,
+            test_table,
+            test_topic,
+            first_test_kafka_offset,
+            second_test_kafka_offset,
+            data_event_handler,
+            data_create_events,
+            schema_wrapper_entry,
+            patches,
+            patch_get_payload_schema
+        )
+        assert stats_counter.increment.call_count == len(data_create_events)
         assert stats_counter.increment.call_args[0][0] == 'fake_table'
-        assert producer.publish.call_count == 4
-        # We set the checkpoint size to 2, so 4 rows will checkpoint twice
-        # and upsert GlobalEventState twice
-        assert producer.get_checkpoint_position_data.call_count == 2
-        assert patches.patch_upsert_data_event_checkpoint.call_count == 2
-        assert patches.patch_upsert_data_event_checkpoint.call_args_list == [
-            mock.call(
-                session=patches.mock_rbr_state_session,
-                topic_to_kafka_offset_map={test_topic: first_test_kafka_offset},
-                cluster_name=test_table.cluster_name,
-            ),
-            mock.call(
-                session=patches.mock_rbr_state_session,
-                topic_to_kafka_offset_map={test_topic: second_test_kafka_offset},
-                cluster_name=test_table.cluster_name,
-            ),
-        ]
-        assert patches.patch_upsert_global_event_state.call_count == 2
-        assert patches.patch_upsert_global_event_state.call_args_list == [
-            mock.call(
-                session=patches.mock_rbr_state_session,
-                position=first_test_position["position"],
-                event_type=EventType.DATA_EVENT,
-                cluster_name=test_table.cluster_name,
-                database_name=test_table.database_name,
-                table_name=test_table.table_name,
-                is_clean_shutdown=False,
-            ),
-            mock.call(
-                session=patches.mock_rbr_state_session,
-                position=second_test_position["position"],
-                event_type=EventType.DATA_EVENT,
-                cluster_name=test_table.cluster_name,
-                database_name=test_table.database_name,
-                table_name=test_table.table_name,
-                is_clean_shutdown=False,
-            ),
-        ]
-        assert patches.table_has_pii.call_count == 4
-        assert patches.table_has_pii.call_args[1] == {
-            'database_name': 'fake_database',
-            'table_name': 'fake_table'
-        }
 
     def test_handle_data_update_event(
         self,
         producer,
-        first_test_position,
-        second_test_position,
         test_table,
         test_topic,
         first_test_kafka_offset,
@@ -409,6 +359,7 @@ class TestDataEventHandler(object):
         schema_wrapper_entry,
         patches,
         patch_get_payload_schema,
+        patch_message_topic,
     ):
         expected_call_args = []
         for data_event in data_update_events:
@@ -421,14 +372,12 @@ class TestDataEventHandler(object):
             }
             data_event_handler.handle_event(data_event, position)
             expected_call_args.append(UpdateMessage(
-                topic=schema_wrapper_entry.topic,
                 payload_data=data_event.row['after_values'],
                 schema_id=schema_wrapper_entry.schema_id,
                 upstream_position_info=upstream_position_info,
                 previous_payload_data=data_event.row["before_values"],
                 keys=(u'primary_key', ),
-                timestamp=data_event.timestamp,
-                contains_pii=True,
+                timestamp=data_event.timestamp
             ))
         actual_call_args = [i[0][0] for i in producer.publish.call_args_list]
         self._assert_messages_as_expected(expected_call_args, actual_call_args)
@@ -439,6 +388,7 @@ class TestDataEventHandler(object):
         dry_run_data_event_handler,
         data_create_events,
         patches,
+        patch_message_topic
     ):
         patches.patch_dry_run_config.return_value = True
         for data_event in data_create_events:
@@ -452,7 +402,6 @@ class TestDataEventHandler(object):
         patches,
     ):
         patches.patch_dry_run_config.return_value = True
-        assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).topic == 'dry_run'
         assert dry_run_data_event_handler._get_payload_schema(mock.Mock()).schema_id == 1
 
     def test_skip_blacklist_schema(
@@ -472,7 +421,6 @@ class TestDataEventHandler(object):
                 position = mock.Mock()
                 data_event_handler.handle_event(data_event, position)
                 assert producer.publish.call_count == 0
-                assert patches.patch_upsert_data_event_checkpoint.call_count == 0
 
     def _assert_messages_as_expected(self, expected, actual):
         for expected_message, actual_message in zip(expected, actual):
@@ -481,7 +429,6 @@ class TestDataEventHandler(object):
             assert expected_message.payload_data == actual_message.payload_data
             assert expected_message.message_type == actual_message.message_type
             assert expected_message.upstream_position_info == actual_message.upstream_position_info
-            assert expected_message.contains_pii == actual_message.contains_pii
             assert expected_message.timestamp == actual_message.timestamp
             # TODO(DATAPIPE-350): keys are inaccessible right now.
             # assert expected_message.keys == actual_message.keys

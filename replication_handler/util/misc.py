@@ -3,7 +3,10 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import os
 
+import simplejson
+from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.config import env_config
@@ -18,6 +21,10 @@ REPLICATION_HANDLER_PRODUCER_NAME = env_config.producer_name
 REPLICATION_HANDLER_TEAM_NAME = env_config.team_name
 
 HEARTBEAT_DB = "yelp_heartbeat"
+
+TRANSACTION_ID_SCHEMA_FILEPATH = os.path.join(
+    os.path.dirname(__file__),
+    '../../schema/avro_schema/transaction_id_v1.avsc')
 
 log = logging.getLogger('replication_handler.util.misc.data_event')
 
@@ -93,7 +100,27 @@ def save_position(position_data, is_clean_shutdown=False):
 
 
 def repltracker_cursor():
-    if env_config.namespace != 'canary':
-        return ConnectionSet.schema_tracker_rw().repltracker.cursor()
-    else:
-        return ConnectionSet.schema_tracker_rw().repltracker_canary.cursor()
+    schema_tracker_cluster = env_config.schema_tracker_cluster
+    connection_set = ConnectionSet.schema_tracker_rw()
+    db = getattr(connection_set, schema_tracker_cluster)
+    return db.cursor()
+
+
+def get_transaction_id_schema_id():
+    with open(TRANSACTION_ID_SCHEMA_FILEPATH, 'r') as schema_file:
+        avro_schema = simplejson.loads(schema_file.read())
+    schema = get_schematizer().register_schema_from_schema_json(
+        namespace='yelp.replication_handler',
+        source='transaction_id',
+        schema_json=avro_schema,
+        source_owner_email='bam+replication_handler@yelp.com',
+        contains_pii=False,
+    )
+    return schema.schema_id
+
+
+def transform_time_to_number_of_microseconds(value):
+    return ((value.hour * 3600000000) +
+            (value.minute * 60000000) +
+            (value.second * 1000000) +
+            (value.microsecond))

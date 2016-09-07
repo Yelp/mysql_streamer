@@ -8,7 +8,17 @@ register_dry_run: True
 
 publish_dry_run: True
 
+disable_sensu: True
+
 topology_path: /nail/srv/configs/topology.yaml
+
+namespace: dev
+
+disable_meteorite: False
+
+container_name: dev
+
+container_env: raw
 
 schema_blacklist:
     - information_schema
@@ -16,4 +26,16 @@ schema_blacklist:
     - performance_schema
     - test
 
-module_env_config: []
+table_whitelist:
+    - advertiser
+    - business_payment_account_entity
+    - payment_account_entity
+    - payment_feature
+    - payment_program
+    - replication_heartbeat
+    - salesperson
+
+module_env_config:
+    - namespace: data_pipeline
+      config:
+        load_schematizer_host_and_port_from_smartstack: False

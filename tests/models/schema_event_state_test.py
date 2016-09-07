@@ -8,9 +8,10 @@ import pytest
 
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from testing import sandbox
 
 
+@pytest.mark.itest
+@pytest.mark.itest_db
 class TestSchemaEventState(object):
 
     @pytest.fixture
@@ -36,11 +37,6 @@ class TestSchemaEventState(object):
         return "business"
 
     @pytest.yield_fixture
-    def sandbox_session(self):
-        with sandbox.database_sandbox_master_connection_set() as sandbox_session:
-            yield sandbox_session
-
-    @pytest.yield_fixture
     def pending_schema_event_state_obj(
         self,
         create_table_statement,
@@ -61,6 +57,12 @@ class TestSchemaEventState(object):
         )
         sandbox_session.flush()
         yield copy.copy(schema_event_state)
+        sandbox_session.query(
+            SchemaEventState
+        ).filter(
+            SchemaEventState.cluster_name == cluster_name,
+        ).delete()
+        sandbox_session.commit()
 
     @pytest.yield_fixture
     def completed_schema_event_state_obj(
@@ -83,6 +85,12 @@ class TestSchemaEventState(object):
         )
         sandbox_session.flush()
         yield copy.copy(schema_event_state)
+        sandbox_session.query(
+            SchemaEventState
+        ).filter(
+            SchemaEventState.cluster_name == cluster_name,
+        ).delete()
+        sandbox_session.commit()
 
     def test_get_pending_schema_event_state(
         self,

@@ -10,13 +10,16 @@ from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components._pending_schema_event_recovery_handler import PendingSchemaEventRecoveryHandler
 from replication_handler.components.base_event_handler import Table
+from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import env_config
 from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 from replication_handler.models.database import rbr_state_session
+from replication_handler.util.change_log_message_builder import ChangeLogMessageBuilder
 from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import DataEvent
+from replication_handler.util.misc import get_transaction_id_schema_id
 from replication_handler.util.misc import save_position
 from replication_handler.util.position import LogPosition
 
@@ -36,8 +39,9 @@ class RecoveryHandler(object):
       schema_wrapper(SchemaWrapper object): a wrapper for communication with schematizer.
       is_clean_shutdown(boolean): whether the last operation was cleanly stopped.
       pending_schema_event(SchemaEventState object): schema event that has a pending state
-      resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
+      register_dry_run(boolean): whether a schema has to be registered for a message to be published.
       publish_dry_run(boolean): whether actually publishing a message or not.
+      changelog_mode(boolean): If True, executes change_log flow (default: false)
     """
 
     def __init__(
@@ -49,13 +53,15 @@ class RecoveryHandler(object):
         pending_schema_event=None,
         register_dry_run=False,
         publish_dry_run=False,
+        changelog_mode=False,
     ):
         log.info("Recovery Handler Starting: %s" % json.dumps(dict(
             is_clean_shutdown=is_clean_shutdown,
             pending_schema_event=repr(pending_schema_event),
             cluster_name=source_database_config.cluster_name,
             register_dry_run=register_dry_run,
-            publish_dry_run=publish_dry_run
+            publish_dry_run=publish_dry_run,
+            changelog_mode=changelog_mode,
         )))
 
         self.stream = stream
@@ -67,11 +73,27 @@ class RecoveryHandler(object):
         self.publish_dry_run = publish_dry_run
         self.schema_wrapper = schema_wrapper
         self.latest_source_log_position = self.get_latest_source_log_position()
+        self.changelog_mode = changelog_mode
+        self.changelog_schema_wrapper = self._get_changelog_schema_wrapper()
+        self.transaction_id_schema_id = get_transaction_id_schema_id()
 
     @property
     def need_recovery(self):
         """ Determine if recovery procedure is need. """
         return not self.is_clean_shutdown or (self.pending_schema_event is not None)
+
+    def _get_changelog_schema_wrapper(self):
+        """Get schema wrapper object for changelog flow. Note schema wrapper
+        for this flow is independent of event (and hence, independent of table)
+        """
+        if not self.changelog_mode:
+            return None
+        change_log_data_event_handler = ChangeLogDataEventHandler(
+            producer=self.producer,
+            schema_wrapper=self.schema_wrapper,
+            stats_counter=None,
+            register_dry_run=self.register_dry_run)
+        return change_log_data_event_handler.schema_wrapper_entry
 
     def get_latest_source_log_position(self):
         refresh_source_cursor = ConnectionSet.rbr_source_ro().refresh_primary.cursor()
@@ -150,21 +172,32 @@ class RecoveryHandler(object):
             return True
         return False
 
+    def _get_schema_wrapper(self, event):
+        """Get schema wrapper object for the current event.
+        """
+        table = Table(
+            cluster_name=self.cluster_name,
+            table_name=event.event.table,
+            database_name=event.event.schema
+        )
+        return self.schema_wrapper[table]
+
     def _build_messages(self, events):
         messages = []
+        Builder = (MessageBuilder
+                   if not self.changelog_mode else ChangeLogMessageBuilder)
         for event in events:
             # event here is ReplicationHandlerEvent
-            table = Table(
-                cluster_name=self.cluster_name,
-                table_name=event.event.table,
-                database_name=event.event.schema
-            )
-            builder = MessageBuilder(
-                self.schema_wrapper[table],
+            schema_wrapper = (self._get_schema_wrapper(event)
+                              if not self.changelog_mode else self.changelog_schema_wrapper)
+            builder = Builder(
+                schema_wrapper,
                 event.event,
+                self.transaction_id_schema_id,
                 event.position,
-                self.register_dry_run
+                self.register_dry_run,
             )
+
             messages.append(builder.build_message())
         return messages
 

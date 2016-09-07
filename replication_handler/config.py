@@ -7,6 +7,7 @@ import os
 
 import staticconf
 import yelp_conn
+from cached_property import cached_property_with_ttl
 from yelp_servlib import clog_util
 from yelp_servlib.config_util import load_default_config
 
@@ -34,12 +35,34 @@ class EnvConfig(BaseConfig):
     not accepted, so by calling value on that we will get its original value."""
 
     @property
+    def container_name(self):
+        return os.environ.get(
+            'PAASTA_INSTANCE',
+            staticconf.get('container_name').value
+        )
+
+    @property
+    def container_env(self):
+        return os.environ.get(
+            'PAASTA_CLUSTER',
+            staticconf.get('container_env').value
+        )
+
+    @property
     def namespace(self):
         return staticconf.get('namespace').value
 
     @property
     def rbr_source_cluster(self):
         return staticconf.get('rbr_source_cluster').value
+
+    @property
+    def changelog_schemaname(self):
+        return staticconf.get('changelog_schemaname').value
+
+    @property
+    def changelog_mode(self):
+        return staticconf.get('changelog_mode', False).value
 
     @property
     def schema_tracker_cluster(self):
@@ -67,7 +90,7 @@ class EnvConfig(BaseConfig):
 
     @property
     def table_whitelist(self):
-        return staticconf.get('table_whitelist').value
+        return staticconf.get('table_whitelist', default=None).value
 
     @property
     def zookeeper_discovery_path(self):
@@ -91,11 +114,36 @@ class EnvConfig(BaseConfig):
 
     @property
     def sensu_host(self):
-        return staticconf.get('sensu_host').value
+        """If we're running in Paasta, use the paasta cluster from the
+        environment directly as laid out in PAASTA-1579.  This makes it so that
+        local-run and real sensu alerts go to the same cluster, which should
+        prevent false alerts that never resolve when we run locally.
+        """
+        if os.environ.get('PAASTA_CLUSTER'):
+            return "paasta-{cluster}.yelp".format(
+                cluster=os.environ.get('PAASTA_CLUSTER')
+            )
+        else:
+            return staticconf.get('sensu_host').value
+
+    @property
+    def sensu_source(self):
+        """This ensures that the alert tracks both the paasta environment and
+        the running instance, so we can have separate alerts for the pnw-prod
+        canary and the pnw-devc main instances.
+        """
+        return 'replication_handler_{container_env}_{container_name}'.format(
+            container_env=self.container_env,
+            container_name=self.container_name
+        )
 
     @property
     def disable_sensu(self):
         return staticconf.get('disable_sensu').value
+
+    @cached_property_with_ttl(ttl=60)
+    def disable_meteorite(self):
+        return staticconf.get('disable_meteorite').value
 
     @property
     def recovery_queue_size(self):
@@ -103,6 +151,31 @@ class EnvConfig(BaseConfig):
         # buffer size, otherwise we could potentially have stale checkpoint data which
         # would cause the recovery process to fail.
         return staticconf.get('recovery_queue_size').value
+
+    @property
+    def resume_stream(self):
+        """Controls if the replication handler will attempt to resume from
+        an existing position, or start from the beginning of replicaton.  This
+        should almost always be True.  The two exceptions are when dealing
+        with a brand new database that has never had any tables created, or
+        when running integration tests.
+
+        We may want to make this always True, and otherwise bootstrap the
+        replication handler for integration tests.  Even "schemaless" databases
+        likely have Yelp administrative tables, limiting the usefuleness of
+        this in practice.
+        """
+        return staticconf.get_bool('resume_stream', default=True).value
+
+    @property
+    def force_exit(self):
+        """Determines if we should force an exit, which can be helpful if we'd
+        otherwise block waiting for replication events that aren't going to come.
+
+        In general, this should be False in prod environments, and True in test
+        environments.
+        """
+        return staticconf.get_bool('force_exit').value
 
 
 class DatabaseConfig(object):

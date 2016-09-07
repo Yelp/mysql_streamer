@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 from datetime import datetime
-from pymysqlreplication.event import GtidEvent
-from pymysqlreplication.event import QueryEvent
 
 import mock
 import pytest
+from pymysqlreplication.event import GtidEvent
+from pymysqlreplication.event import QueryEvent
 
 from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
 from replication_handler.util.misc import DataEvent
@@ -28,6 +31,13 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             'replication_handler.components.simple_binlog_stream_reader_wrapper.SensuAlertManager.periodic_process'
         ) as mock_sensu_alert:
             yield mock_sensu_alert
+
+    @pytest.yield_fixture
+    def patch_meteorite(self):
+        with mock.patch(
+            'replication_handler.components.simple_binlog_stream_reader_wrapper.MeteoriteGaugeManager.periodic_process'
+        ) as mock_meteorite:
+            yield mock_meteorite
 
     def test_yield_events_when_gtid_enabled(self, patch_stream):
         gtid_event_0 = mock.Mock(spec=GtidEvent, gtid="sid:11")
@@ -78,10 +88,12 @@ class TestSimpleBinlogStreamReaderWrapper(object):
     def test_yield_event_with_heartbeat_event(
         self,
         patch_sensu_alert,
+        patch_meteorite,
         patch_stream,
     ):
         stream, results = self._setup_stream_and_expected_result(patch_stream)
         assert patch_sensu_alert.call_count == 1
+        assert patch_meteorite.call_count == 1
         for replication_event, result in zip(stream, results):
             assert replication_event.event == result.event
             assert replication_event.position.log_pos == result.position.log_pos
@@ -93,7 +105,11 @@ class TestSimpleBinlogStreamReaderWrapper(object):
     def _setup_stream_and_expected_result(self, patch_stream):
         log_pos = 10
         log_file = "binlog.001"
-        row = {"after_values": {"serial": 123, "timestamp": datetime(2015, 10, 21, 12, 05, 27)}}
+        row = {"after_values": {
+            "serial": 123,
+            # This timestamp is Wed, 21 Oct 2015 12:05:27 GMT
+            "timestamp": datetime.fromtimestamp(1445429127)
+        }}
         heartbeat_event = mock.Mock(
             spec=DataEvent,
             schema='yelp_heartbeat',
@@ -130,7 +146,8 @@ class TestSimpleBinlogStreamReaderWrapper(object):
                     log_file=log_file,
                     offset=1,
                     hb_serial=123,
-                    hb_timestamp="2015-10-21 12:05:27-07:00",
+                    # This is Wed, 21 Oct 2015 12:05:27 GMT
+                    hb_timestamp=1445429127,
                 )
             ),
             ReplicationHandlerEvent(
@@ -140,7 +157,8 @@ class TestSimpleBinlogStreamReaderWrapper(object):
                     log_file=log_file,
                     offset=2,
                     hb_serial=123,
-                    hb_timestamp="2015-10-21 12:05:27-07:00",
+                    # This is Wed, 21 Oct 2015 12:05:27 GMT
+                    hb_timestamp=1445429127,
                 )
             )
         ]

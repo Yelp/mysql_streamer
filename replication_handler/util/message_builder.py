@@ -4,11 +4,11 @@ from __future__ import unicode_literals
 
 import logging
 
-from pii_generator.components.pii_identifier import PIIIdentifier
+import pytz
 from data_pipeline.message import UpdateMessage
 
-from replication_handler.config import env_config
 from replication_handler.config import source_database_config
+from replication_handler.util.misc import transform_time_to_number_of_microseconds
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -18,16 +18,22 @@ class MessageBuilder(object):
     """ This class knows how to convert a data event into a respective message.
 
     Args:
+      schema_info(SchemaInfo object): contain schema_id.
       event(ReplicationHandlerEveent object): contains a create/update/delete data event and its position.
-      schema_info(SchemaInfo object): contain topic/schema_id.
-      resgiter_dry_run(boolean): whether a schema has to be registered for a message to be published.
+      transaction_id_schema_id(int): schema id for transaction id meta attribute.
+      position(Position object): contains position information for this event in binlog.
+      register_dry_run(boolean, optional): whether a schema has to be registered for a message to be published.
+      Defaults to True.
     """
-    def __init__(self, schema_info, event, position, register_dry_run=True):
+
+    def __init__(
+        self, schema_info, event, transaction_id_schema_id, position, register_dry_run=True
+    ):
         self.schema_info = schema_info
         self.event = event
+        self.transaction_id_schema_id = transaction_id_schema_id
         self.position = position
         self.register_dry_run = register_dry_run
-        self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
     def build_message(self):
         upstream_position_info = {
@@ -36,24 +42,23 @@ class MessageBuilder(object):
             "database_name": self.event.schema,
             "table_name": self.event.table,
         }
+        payload_data = self._get_values(self.event.row)
+        if self.schema_info.transformation_map:
+            self._transform_data(payload_data)
         message_params = {
-            "topic": self.schema_info.topic,
             "schema_id": self.schema_info.schema_id,
-            "keys": tuple(self.schema_info.primary_keys),
-            "payload_data": self._get_values(self.event.row),
+            "payload_data": payload_data,
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
-            "contains_pii": self.pii_identifier.table_has_pii(
-                database_name=self.event.schema,
-                table_name=self.event.table
-            ),
             "timestamp": self.event.timestamp,
-            "meta": [self.position.transaction_id],
+            "meta": [self.position.get_transaction_id(self.transaction_id_schema_id)],
         }
 
         if self.event.message_type == UpdateMessage:
-            message_params["previous_payload_data"] = self.event.row["before_values"]
-
+            previous_payload_data = self.event.row["before_values"]
+            if self.schema_info.transformation_map:
+                self._transform_data(previous_payload_data)
+            message_params["previous_payload_data"] = previous_payload_data
         return self.event.message_type(**message_params)
 
     def _get_values(self, row):
@@ -65,3 +70,21 @@ class MessageBuilder(object):
             return row['values']
         elif 'after_values' in row:
             return row['after_values']
+
+    def _transform_data(self, data):
+        """Following can happen in payload data dictionary
+        Converts mysql set datum to python 'list' datun
+        Converts mysql timestamp to python UTC aware datetime object
+        Converts mysql datetime to python string
+        Converts mysql time' to long, as offset from 00:00:00.000000
+        """
+        for column_name, column_type in self.schema_info.transformation_map.iteritems():
+            value = data[column_name]
+            if column_type.startswith('set'):
+                data[column_name] = list(value) if isinstance(value, set) else value
+            elif column_type.startswith('timestamp'):
+                data[column_name] = value.replace(tzinfo=pytz.utc)
+            elif column_type.startswith('datetime'):
+                data[column_name] = value.isoformat()
+            elif column_type.startswith('time'):
+                data[column_name] = transform_time_to_number_of_microseconds(value)

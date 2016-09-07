@@ -39,14 +39,18 @@ class ReplicationStreamRestarter(object):
         )
         self.schema_wrapper = schema_wrapper
 
-    def restart(self, producer, register_dry_run=True):
+    def restart(self, producer, register_dry_run=True, changelog_mode=False):
         """ This function retrive the saved position from database, and init
         stream with that position, and perform recovery procedure, like recreating
         tables, or publish unpublished messages.
+
+        register_dry_run(boolean): whether a schema has to be registered for a message to be published.
+        changelog_mode(boolean): If True, executes change_log flow (default: false)
         """
         position = self.position_finder.get_position_to_resume_tailing_from()
         log.info("Restarting replication: %s" % repr(position))
         self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=False)
+        log.info("Created replication stream.")
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
                 stream=self.stream,
@@ -55,6 +59,7 @@ class ReplicationStreamRestarter(object):
                 is_clean_shutdown=self.global_event_state.is_clean_shutdown,
                 pending_schema_event=self.pending_schema_event,
                 register_dry_run=register_dry_run,
+                changelog_mode=changelog_mode,
             )
 
             if recovery_handler.need_recovery:

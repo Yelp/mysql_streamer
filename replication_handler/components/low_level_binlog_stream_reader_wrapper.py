@@ -70,6 +70,8 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _get_only_tables(self):
         only_tables = config.env_config.table_whitelist
+        if not only_tables:
+            return None
         res_only_table = []
         for table_name in only_tables:
             # prevents us from whitelisting a refresh table
@@ -81,6 +83,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
                 table_name,
                 self.refresh_table_suffix
             ))
+
         return res_only_table
 
     def _refill_current_events(self):
@@ -138,7 +141,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             ctl_connection_settings=schema_tracking_config,
             server_id=1,
             only_events=allowed_event_types,
-            resume_stream=True,
+            resume_stream=config.env_config.resume_stream,
             only_tables=only_tables,
             fail_on_table_metadata_unavailable=True,
             **position.to_replication_dict()

@@ -10,23 +10,15 @@ publish_dry_run: True
 
 topology_path: topology.yaml
 
+changelog_schemaname: changelog.v2
+
+changelog_mode: False
+
 schema_blacklist:
     - information_schema
     - mysql
     - performance_schema
     - test
-
-# biz and employee_new is for acceptance tests
-table_whitelist:
-    - biz
-    - employee_new
-    - advertiser
-    - business_payment_account_entity
-    - payment_account_entity
-    - payment_feature
-    - payment_program
-    - replication_heartbeat
-    - salesperson
 
 producer_name: replication_handler
 
@@ -42,9 +34,17 @@ sensu_host: 169.254.255.254
 
 disable_sensu: False
 
+disable_meteorite: False
+
 recovery_queue_size: 1500
 
 namespace: dev
+
+container_name: none
+
+container_env: raw
+
+force_exit: False
 
 module_config:
     -   namespace: yelp_conn
@@ -71,6 +71,8 @@ module_config:
     -   namespace: clog
         config:
             log_stream_name: tmp_replication_handler_logs
+            # Works around https://bitbucket.org/pypy/pypy/issues/2280
+            scribe_errors_to_syslog: false
         file: /nail/srv/configs/clog.yaml
 
     - namespace: smartstack_services
@@ -79,7 +81,3 @@ module_config:
     - namespace: data_pipeline
       config:
         load_schematizer_host_and_port_from_smartstack: True
-        kafka_cluster_type: datapipe
-        kafka_cluster_name: uswest2-devc
-        skip_messages_with_pii: True
-        kafka_producer_buffer_size: 500

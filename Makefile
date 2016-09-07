@@ -6,6 +6,10 @@ test:
 	tox
 
 itest: cook-image
+	DOCKER_TAG=$(DOCKER_TAG) tox -e itest
+
+itest_db:
+	tox -e itest_db
 
 cook-image:
 	docker build -t $(DOCKER_TAG) .
@@ -16,10 +20,10 @@ clean:
 
 venv-dev:
 	virtualenv --python=python2.7 ./virtualenv_run
-	./virtualenv_run/bin/pip install -i https://pypi-dev.yelpcorp.com/simple  -r ./requirements-dev.txt
+	./virtualenv_run/bin/pip install -i https://pypi.yelpcorp.com/simple/  -r ./requirements-dev.txt
 
 install-hooks:
 	tox -e pre-commit -- install -f --install-hooks
 
 compose-prefix:
-	@python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"
+	@echo "DOCKER_TAG=$(DOCKER_TAG) `python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"

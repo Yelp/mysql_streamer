@@ -7,6 +7,7 @@ import logging
 
 import simplejson as json
 
+from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.schema_tracker import SchemaTracker
@@ -52,7 +53,8 @@ class SchemaEventHandler(BaseEventHandler):
             return
 
         log.info("Processing Supported Statement: %s" % event.query)
-        self.stats_counter.increment(event.query)
+        if not config.env_config.disable_meteorite:
+            self.stats_counter.increment(event.query)
 
         handle_method = self._get_handle_method(statement)
 

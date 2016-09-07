@@ -12,8 +12,8 @@ VOLUME /nail/etc/zookeeper_discovery/generic
 Add     nail-etc/ecosystem /nail/etc/ecosystem
 VOLUME /nail/etc/
 
-Add     nail-etc/yelp /nail/etc/services/database_pii/yelp
-VOLUME /nail/etc/services/database_pii
+Add     nail-etc/yelp/ /nail/etc/services/database_pii/yelp/
+VOLUME /nail/etc/services/database_pii/
 
 
 Add     nail-etc/teams.yaml /nail/etc/services/data_pipeline/teams.yaml

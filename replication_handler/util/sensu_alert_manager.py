@@ -24,12 +24,13 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
     def process(self, timestamp):
         if config.env_config.disable_sensu:
             return
+
         # This timestamp param has to be timezone aware, otherwise it will not be
         # able to compare with timezone aware timestamps.
         result_dict = {
             'name': 'replication_handler_real_time_check',
             'output': 'Replication Handler has caught up with real time.',
-            'runbook': 'y/datapipeline',
+            'runbook': ' y/replication_handler ',
             'status': 0,
             'team': 'bam',
             'page': False,
@@ -38,8 +39,7 @@ class SensuAlertManager(HeartbeatPeriodicProcessor):
             'alert_after': '5m',
             'ttl': '300s',
             'sensu_host': config.env_config.sensu_host,
-            # TODO(PAASTA-1671): change source after we have best practice.
-            'source': 'replication_handler_real_time_check',
+            'source': config.env_config.sensu_source,
         }
         delay_time = self._utc_now - timestamp
         if delay_time > timedelta(minutes=config.env_config.max_delay_allowed_in_minutes):
