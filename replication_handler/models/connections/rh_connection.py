@@ -15,16 +15,19 @@ from replication_handler.models.connections.base_connection import BaseConnectio
 class RHConnection(BaseConnection):
 
     def _set_source_session(self):
-        config = self.source_database_config
-        self._source_session = _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
+        self._source_session = _RHScopedSession(sessionmaker(
+            bind=self._get_engine(self.source_database_config))
+    )
 
     def _set_tracker_session(self):
-        config = self.tracker_database_config
-        self._tracker_session = _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
+        self._tracker_session = _RHScopedSession(sessionmaker(
+            bind=self._get_engine(self.tracker_database_config))
+        )
 
     def _set_state_session(self):
-        config = self.state_database_config
-        self._state_session = _RHScopedSession(sessionmaker(bind=self._get_engine(config)))
+        self._state_session = _RHScopedSession(sessionmaker(
+            bind=self._get_engine(self.state_database_config))
+        )
 
     def get_tracker_cursor(self):
         return self._get_cursor(self.tracker_database_config)
@@ -36,11 +39,13 @@ class RHConnection(BaseConnection):
         return self._get_cursor(self.source_database_config)
 
     def _get_cursor(self, config):
-        return pymysql.connect(
+        connection = pymysql.connect(
             host=config['host'],
             passwd=config['passwd'],
             user=config['user']
-        ).cursor()
+        )
+        yield connection.cursor()
+        connection.close()
 
     def _get_engine(self, config):
         return create_engine(

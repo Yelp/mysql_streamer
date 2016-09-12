@@ -11,7 +11,7 @@ from replication_handler.config import env_config
 
 def get_base_model():
     try:
-        if not env_config.force_avoid_yelp_conn:
+        if not env_config.force_avoid_internal_packages:
             from yelp_conn.session import declarative_base
             return declarative_base()
     except ImportError:
@@ -25,6 +25,34 @@ CLUSTER_NAME = env_config.rbr_state_cluster
 # The common declarative base used by every data model.
 Base = get_base_model()
 Base.__cluster__ = CLUSTER_NAME
+
+
+def get_connection(
+    topology_path,
+    source_cluster_name,
+    tracker_cluster_name,
+    state_cluster_name,
+    force_avoid_internal_packages
+):
+    try:
+        if not force_avoid_internal_packages:
+            from replication_handler.models.connections.yelp_conn_connection import YelpConnConnection
+            return YelpConnConnection(
+                topology_path,
+                source_cluster_name,
+                tracker_cluster_name,
+                state_cluster_name
+            )
+    except ImportError:
+        pass
+    from replication_handler.models.connections.rh_connection import RHConnection
+    return RHConnection(
+        topology_path,
+        source_cluster_name,
+        tracker_cluster_name,
+        state_cluster_name
+    )
+
 
 
 class UnixTimeStampType(types.TypeDecorator):

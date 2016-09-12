@@ -7,13 +7,10 @@ import pytest
 from tests.integration.end_to_end_base_test import EndToEndBaseTest
 
 
-pytestmark = pytest.mark.usefixtures("cleanup_avro_cache")
-
-
 @pytest.fixture(scope='module')
-def replhandler(request):
+def replhandler():
     return 'replicationhandleropensource'
 
-
+@pytest.mark.usefixtre('cleanup_avro_cache')
 class TestEndToEndOpen(EndToEndBaseTest):
     pass

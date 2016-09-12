@@ -8,7 +8,7 @@ from yelp_batch import Batch
 
 from replication_handler import config
 from replication_handler.components.heartbeat_searcher import HeartbeatSearcher
-from replication_handler.models.connections.base_connection import get_connection
+from replication_handler.models.database import get_connection
 
 
 class MySQLHeartbeatSearchBatch(Batch):
@@ -36,7 +36,7 @@ class MySQLHeartbeatSearchBatch(Batch):
             config.env_config.rbr_source_cluster,
             config.env_config.schema_tracker_cluster,
             config.env_config.rbr_state_cluster,
-            config.env_config.force_avoid_yelp_conn
+            config.env_config.force_avoid_internal_packages
         )
 
     def run(self):

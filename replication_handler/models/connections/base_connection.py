@@ -78,30 +78,3 @@ class BaseConnection(object):
                 return topo_item['entries'][0]
         raise ValueError("Database configuration for {cluster_name} not found.".format(
             cluster_name=cluster_name))
-
-
-def get_connection(
-    topology_path,
-    source_cluster_name,
-    tracker_cluster_name,
-    state_cluster_name,
-    force_avoid_yelp_conn
-):
-    try:
-        if not force_avoid_yelp_conn:
-            from replication_handler.models.connections.yelp_conn_connection import YelpConnConnection
-            return YelpConnConnection(
-                topology_path,
-                source_cluster_name,
-                tracker_cluster_name,
-                state_cluster_name
-            )
-    except ImportError:
-        pass
-    from replication_handler.models.connections.rh_connection import RHConnection
-    return RHConnection(
-        topology_path,
-        source_cluster_name,
-        tracker_cluster_name,
-        state_cluster_name
-    )

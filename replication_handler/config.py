@@ -182,11 +182,11 @@ class EnvConfig(BaseConfig):
         return staticconf.get_bool('force_exit').value
 
     @property
-    def force_avoid_yelp_conn(self):
+    def force_avoid_internal_packages(self):
         """Set this config to true to force replication handler to not use
         yelp_conn but rather use rh_connection.
         """
-        return staticconf.get('force_avoid_yelp_conn', default=False).value
+        return staticconf.get('force_avoid_internal_packages', default=False).value
 
 
 env_config = EnvConfig()
