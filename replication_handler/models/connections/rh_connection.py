@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 from contextlib import contextmanager
 
-import pymysql
+import MySQLdb
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.scoping import ScopedSession
@@ -17,7 +17,7 @@ class RHConnection(BaseConnection):
     def _set_source_session(self):
         self._source_session = _RHScopedSession(sessionmaker(
             bind=self._get_engine(self.source_database_config))
-    )
+        )
 
     def _set_tracker_session(self):
         self._tracker_session = _RHScopedSession(sessionmaker(
@@ -39,13 +39,12 @@ class RHConnection(BaseConnection):
         return self._get_cursor(self.source_database_config)
 
     def _get_cursor(self, config):
-        connection = pymysql.connect(
+        connection = MySQLdb.connect(
             host=config['host'],
             passwd=config['passwd'],
             user=config['user']
         )
-        yield connection.cursor()
-        connection.close()
+        return connection.cursor()
 
     def _get_engine(self, config):
         return create_engine(
