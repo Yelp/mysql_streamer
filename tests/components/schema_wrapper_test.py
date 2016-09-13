@@ -22,8 +22,8 @@ class TestSchemaWrapper(object):
             db_connections=mock_db_connections,
             schematizer_client=schematizer_client
         )
-        schema_wrapper.schema_tracker.get_column_types = mock.Mock()
-        schema_wrapper.schema_tracker.get_column_types.return_value = []
+        schema_wrapper.schema_tracker.get_column_type_map = mock.Mock()
+        schema_wrapper.schema_tracker.get_column_type_map.return_value = {}
         yield schema_wrapper
 
     @pytest.fixture
@@ -35,12 +35,23 @@ class TestSchemaWrapper(object):
         return Table(cluster_name="yelp_main", database_name='yelp', table_name='bogus_table')
 
     @pytest.fixture
-    def foo_table(self):
-        return Table(
-            cluster_name="yelp_main",
-            database_name='yelp',
-            table_name='foo_table'
-        )
+    def avro_schema(self):
+        return ''' {
+            "type": "record",
+            "namespace": "yelp",
+            "name": "business",
+            "pkey": ["id"],
+            "fields": [{
+                "pkey": 1,
+                "type": "int",
+                "name": "id"
+            }, {
+                "default": null,
+                "maxlen": 64,
+                "type": ["null", "string"],
+                "name": "name"
+            }]
+        } '''
 
     @pytest.fixture
     def bar_table(self):
@@ -51,30 +62,13 @@ class TestSchemaWrapper(object):
         )
 
     @pytest.fixture
-    def avro_schema(self):
-        return '{"type": "record", "namespace": "yelp", "name": "business", "pkey": ["id"], \
-            "fields": [ {"pkey": 1, "type": "int", "name": "id"}, \
-            {"default": null, "maxlen": 64, "type": ["null", "string"], "name": "name"}]}'
-
-    @pytest.fixture
-    def foo_table_column_types(self):
-        return [
-            u'int(11)',
-            u'varchar(12)',
-            u'char(1)',
-            u'double',
-            u"set('a','b','c')",
-            u'int(10) unsigned'
-        ]
-
-    @pytest.fixture
-    def bar_table_column_types(self):
-        return [
-            u'int(11)',
-            u'varchar(12)',
-            u'double',
-            u'int(10) unsigned'
-        ]
+    def bar_table_column_type_map(self):
+        return {
+            u'f1': u'int(11)',
+            u'f2': u'varchar(12)',
+            u'f3': u'double',
+            u'f4': u'int(10) unsigned'
+        }
 
     @pytest.fixture
     def primary_keys(self):
@@ -156,28 +150,76 @@ class TestSchemaWrapper(object):
         base_schema_wrapper._populate_schema_cache(bogus_table, test_response)
         assert bogus_table in base_schema_wrapper.cache
 
+    @pytest.mark.parametrize("foo_table, foo_table_column_type_map", [
+        (
+            Table(
+                cluster_name="yelp_main",
+                database_name='yelp',
+                table_name='foo_table_set'
+            ),
+            {
+                u'f1': u'int(11)',
+                u'f2': u"set('a','b','c')",
+            }
+        ),
+        (
+            Table(
+                cluster_name="yelp_main",
+                database_name='yelp',
+                table_name='foo_table_timestamp'
+            ),
+            {
+                u'f1': u'int(11)',
+                u'f2': u"timestamp(6)",
+            }
+        ),
+        (
+            Table(
+                cluster_name="yelp_main",
+                database_name='yelp',
+                table_name='foo_table_datetime'
+            ),
+            {
+                u'f1': u'int(11)',
+                u'f2': u"datetime(6)",
+            }
+        ),
+        (
+            Table(
+                cluster_name="yelp_main",
+                database_name='yelp',
+                table_name='foo_table_time'
+            ),
+            {
+                u'f1': u'int(11)',
+                u'f2': u"time(6)",
+            }
+        ),
+    ])
     def test_schema_cache_with_contains_set_true(
         self,
         base_schema_wrapper,
-        foo_table_column_types,
         foo_table,
+        foo_table_column_type_map,
     ):
-        base_schema_wrapper.schema_tracker.get_column_types.return_value = (
-            foo_table_column_types
+        base_schema_wrapper.schema_tracker.get_column_type_map.return_value = (
+            foo_table_column_type_map
         )
         assert foo_table not in base_schema_wrapper.cache
         base_schema_wrapper._populate_schema_cache(foo_table, mock.Mock())
-        assert base_schema_wrapper.cache[foo_table].transform_required
+        assert isinstance(base_schema_wrapper.cache[foo_table].transformation_map, dict)
+        assert len(base_schema_wrapper.cache[foo_table].transformation_map) == 1
 
     def test_schema_cache_with_contains_set_false(
         self,
         base_schema_wrapper,
-        bar_table_column_types,
+        bar_table_column_type_map,
         bar_table,
     ):
-        base_schema_wrapper.schema_tracker.get_column_types.return_value = (
-            bar_table_column_types
+        base_schema_wrapper.schema_tracker.get_column_type_map.return_value = (
+            bar_table_column_type_map
         )
         assert bar_table not in base_schema_wrapper.cache
         base_schema_wrapper._populate_schema_cache(bar_table, mock.Mock())
-        assert not base_schema_wrapper.cache[bar_table].transform_required
+        assert isinstance(base_schema_wrapper.cache[bar_table].transformation_map, dict)
+        assert len(base_schema_wrapper.cache[bar_table].transformation_map) == 0

@@ -145,8 +145,10 @@ class EndToEndBaseTest(object):
                 ColumnInfo('DATE', mysql.DATE(), datetime.date(1901, 1, 1)),
                 ColumnInfo('DATE', mysql.DATE(), datetime.date(2050, 12, 31)),
 
-                # ColumnInfo('DATETIME', mysql.DATETIME(), '2014-03-24 02:03:46'),
-                # ColumnInfo('DATETIME(6)', mysql.DATETIME(fsp=6), '2014-03-24 02:03:46.001212'),
+                ColumnInfo('DATETIME', mysql.DATETIME(), datetime.datetime(1970, 1, 1, 0, 0, 1, 0)),
+                ColumnInfo('DATETIME', mysql.DATETIME(), datetime.datetime(2038, 1, 19, 3, 14, 7, 0)),
+                ColumnInfo('DATETIME(6)', mysql.DATETIME(fsp=6), datetime.datetime(1970, 1, 1, 0, 0, 1, 111111)),
+                ColumnInfo('DATETIME(6)', mysql.DATETIME(fsp=6), datetime.datetime(2038, 1, 19, 3, 14, 7, 999999)),
 
                 ColumnInfo('TIMESTAMP', mysql.TIMESTAMP(), datetime.datetime(1970, 1, 1, 0, 0, 1, 0)),
                 ColumnInfo('TIMESTAMP', mysql.TIMESTAMP(), datetime.datetime(2038, 1, 19, 3, 14, 7, 0)),
@@ -208,9 +210,9 @@ class EndToEndBaseTest(object):
                 ColumnInfo("SET('ONE', 'TWO')", mysql.SET(['ONE', 'TWO']), set(['ONE', 'TWO']))
             ]
         }
-    ], ids=map(str, ['test_bit', 'test_tinyint', 'test_smallint', 'test_mediumint', 'test_int',
-                     'test_bigint', 'test_decimal', 'test_float', 'test_double', 'test_date_time',
-                     'test_char', 'test_binary', 'test_enum', 'test_set']))
+    ], ids=[str(idx) for idx in ['test_bit', 'test_tinyint', 'test_smallint', 'test_mediumint', 'test_int',
+                                 'test_bigint', 'test_decimal', 'test_float', 'test_double', 'test_date_time',
+                                 'test_char', 'test_binary', 'test_enum', 'test_set']])
     def complex_table(self, request):
         return request.param
 
@@ -305,6 +307,8 @@ class EndToEndBaseTest(object):
         for indx, complex_column_schema in enumerate(complex_table_schema):
             if isinstance(complex_column_schema.sqla_obj, mysql.DATE):
                 data = complex_column_schema.data.strftime('%Y-%m-%d')
+            elif isinstance(complex_column_schema.sqla_obj, mysql.DATETIME):
+                data = complex_column_schema.data.strftime('%Y-%m-%d %H:%M:%S.%f')
             elif isinstance(complex_column_schema.sqla_obj, mysql.TIMESTAMP):
                 data = complex_column_schema.data.strftime('%Y-%m-%d %H:%M:%S.%f')
             elif isinstance(complex_column_schema.sqla_obj, mysql.TIME):
@@ -322,6 +326,10 @@ class EndToEndBaseTest(object):
             if isinstance(complex_column_schema.sqla_obj, mysql.SET):
                 expected_complex_data_dict[column_name] = \
                     sorted(actual_complex_data[column_name])
+            elif isinstance(complex_column_schema.sqla_obj, mysql.DATETIME):
+                date_time_obj = \
+                    complex_column_schema.data.isoformat()
+                expected_complex_data_dict[column_name] = date_time_obj
             elif isinstance(complex_column_schema.sqla_obj, mysql.TIMESTAMP):
                 date_time_obj = \
                     complex_column_schema.data.replace(tzinfo=pytz.utc)
@@ -410,6 +418,31 @@ class EndToEndBaseTest(object):
             schematizer=schematizer
         )
 
+    def test_create_table_with_row_format(
+        self,
+        containers,
+        replhandler
+    ):
+        table_name = '{0}_row_format_tester'.format(replhandler)
+        create_table_stmt = """
+        CREATE TABLE {name}
+        ( id int(11) primary key) ROW_FORMAT=COMPRESSED ENGINE=InnoDB
+        """.format(name=table_name)
+        increment_heartbeat(containers)
+        execute_query_get_one_row(
+            containers,
+            RBR_SOURCE,
+            create_table_stmt
+        )
+
+        _wait_for_table(containers, SCHEMA_TRACKER, table_name)
+        # Check the schematracker db also has the table.
+        verify_create_table_query = "SHOW CREATE TABLE {table_name}".format(
+            table_name=table_name)
+        verify_create_table_result = execute_query_get_one_row(containers, SCHEMA_TRACKER, verify_create_table_query)
+        expected_create_table_result = execute_query_get_one_row(containers, RBR_SOURCE, verify_create_table_query)
+        self.assert_expected_result(verify_create_table_result, expected_create_table_result)
+
     def test_alter_table(
         self,
         containers,
@@ -421,6 +454,11 @@ class EndToEndBaseTest(object):
             containers,
             RBR_SOURCE,
             alter_table_query.format(table_name=table_name)
+        )
+        execute_query_get_one_row(
+            containers,
+            RBR_SOURCE,
+            "ALTER TABLE {name} ROW_FORMAT=COMPRESSED".format(name=table_name)
         )
 
         time.sleep(2)
@@ -448,8 +486,8 @@ class EndToEndBaseTest(object):
 
     def test_basic_table(
         self,
-        replhandler,
         containers,
+        replhandler,
         create_table_query,
         namespace,
         schematizer,

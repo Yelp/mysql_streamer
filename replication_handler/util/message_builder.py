@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import datetime
 import logging
 
 import pytz
@@ -43,7 +42,7 @@ class MessageBuilder(object):
             "table_name": self.event.table,
         }
         payload_data = self._get_values(self.event.row)
-        if self.schema_info.transform_required:
+        if self.schema_info.transformation_map:
             self._transform_data(payload_data)
         message_params = {
             "schema_id": self.schema_info.schema_id,
@@ -59,7 +58,7 @@ class MessageBuilder(object):
 
         if self.event.message_type == UpdateMessage:
             previous_payload_data = self.event.row["before_values"]
-            if self.schema_info.transform_required:
+            if self.schema_info.transformation_map:
                 self._transform_data(previous_payload_data)
             message_params["previous_payload_data"] = previous_payload_data
         return self.event.message_type(**message_params)
@@ -76,14 +75,18 @@ class MessageBuilder(object):
 
     def _transform_data(self, data):
         """Following can happen in payload data dictionary
-        Converts 'set' value to 'list' value
-        Converts naive 'datetime.datetime' to UTC aware 'datetime.datetime'
-        Converts 'datetime.time' to lomg, as offset from 00:00:00.000000
+        Converts mysql set datum to python 'list' datun
+        Converts mysql timestamp to python UTC aware datetime object
+        Converts mysql datetime to python string
+        Converts mysql time' to long, as offset from 00:00:00.000000
         """
-        for key, value in data.iteritems():
-            if isinstance(value, set):
-                data[key] = list(value)
-            elif isinstance(value, datetime.datetime):
-                data[key] = value.replace(tzinfo=pytz.utc)
-            elif isinstance(value, datetime.time):
-                data[key] = transform_time_to_number_of_microseconds(value)
+        for column_name, column_type in self.schema_info.transformation_map.iteritems():
+            value = data[column_name]
+            if column_type.startswith('set'):
+                data[column_name] = list(value) if isinstance(value, set) else value
+            elif column_type.startswith('timestamp'):
+                data[column_name] = value.replace(tzinfo=pytz.utc)
+            elif column_type.startswith('datetime'):
+                data[column_name] = value.isoformat()
+            elif column_type.startswith('time'):
+                data[column_name] = transform_time_to_number_of_microseconds(value)

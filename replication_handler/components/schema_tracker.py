@@ -73,7 +73,7 @@ class SchemaTracker(object):
         assert create_res.table == table.table_name
         return create_res
 
-    def get_column_types(self, table):
+    def get_column_type_map(self, table):
         self._use_db(table.database_name)
 
         if not self.tracker_cursor.execute(
@@ -93,4 +93,8 @@ class SchemaTracker(object):
         )
 
         self.tracker_cursor.execute(query_str)
-        return [column[1] for column in self.tracker_cursor.fetchall()]
+
+        return {
+            column[0]: column[1]
+            for column in self.tracker_cursor.fetchall()
+        }
