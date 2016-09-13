@@ -66,15 +66,14 @@ class TestReplicationStreamRestarter(object):
         ) as mock_recover:
             yield mock_recover
 
-    @pytest.yield_fixture(autouse=True)
-    def patch_source_cursor(self, mock_db_connections, mock_source_cursor):
-        with mock.patch.object(
-            mock_db_connections,
-            'get_source_cursor'
-        ) as mock_cursor:
-            mock_source_cursor.fetchone.return_value = ('mysql-bin.000003', 1133)
-            mock_cursor.return_value = mock_source_cursor
-            yield mock_cursor
+    @pytest.yield_fixture
+    def mock_source_cursor(self):
+        """ This fixture override the `mock_source_cursor`
+        fixture present in conftest.py
+        """
+        mock_cursor = mock.Mock()
+        mock_cursor.fetchone.return_value = ('mysql-bin.000003', 1133)
+        return mock_cursor
 
     def test_restart_with_clean_shutdown_and_no_pending_schema_event(
         self,

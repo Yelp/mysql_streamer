@@ -182,6 +182,9 @@ class TestRecoveryHandler(object):
 
     @pytest.yield_fixture
     def mock_source_cursor(self):
+        """ This fixture override the `mock_source_cursor`
+        fixture present in conftest.py
+        """
         mock_cursor = mock.Mock()
         mock_cursor.fetchone.return_value = ('binlog.001', 200)
         return mock_cursor

@@ -11,13 +11,18 @@ from replication_handler.config import env_config
 
 def get_base_model():
     try:
-        if not env_config.force_avoid_internal_packages:
-            from yelp_conn.session import declarative_base
-            return declarative_base()
+        if env_config.force_avoid_internal_packages:
+            # TODO(DATAPIPE-1509|abrar): Currently we have
+            # force_avoid_internal_packages as a means of simulating an absence
+            # of a yelp's internal package. And all references
+            # of force_avoid_internal_packages have to be removed from
+            # RH after we have completely ready for open source.
+            raise ImportError
+        from yelp_conn.session import declarative_base
+        return declarative_base()
     except ImportError:
-        pass
-    from sqlalchemy.ext.declarative import declarative_base
-    return declarative_base()
+        from sqlalchemy.ext.declarative import declarative_base
+        return declarative_base()
 
 
 CLUSTER_NAME = env_config.rbr_state_cluster
@@ -35,24 +40,28 @@ def get_connection(
     force_avoid_internal_packages
 ):
     try:
-        if not force_avoid_internal_packages:
-            from replication_handler.models.connections.yelp_conn_connection import YelpConnConnection
-            return YelpConnConnection(
-                topology_path,
-                source_cluster_name,
-                tracker_cluster_name,
-                state_cluster_name
-            )
+        if force_avoid_internal_packages:
+            # TODO(DATAPIPE-1509|abrar): Currently we have
+            # force_avoid_internal_packages as a means of simulating an absence
+            # of a yelp's internal package. And all references
+            # of force_avoid_internal_packages have to be removed from
+            # RH after we have completely ready for open source.
+            raise ImportError
+        from replication_handler.models.connections.yelp_conn_connection import YelpConnConnection
+        return YelpConnConnection(
+            topology_path,
+            source_cluster_name,
+            tracker_cluster_name,
+            state_cluster_name
+        )
     except ImportError:
-        pass
-    from replication_handler.models.connections.rh_connection import RHConnection
-    return RHConnection(
-        topology_path,
-        source_cluster_name,
-        tracker_cluster_name,
-        state_cluster_name
-    )
-
+        from replication_handler.models.connections.rh_connection import RHConnection
+        return RHConnection(
+            topology_path,
+            source_cluster_name,
+            tracker_cluster_name,
+            state_cluster_name
+        )
 
 
 class UnixTimeStampType(types.TypeDecorator):

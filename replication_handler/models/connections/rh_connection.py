@@ -57,6 +57,12 @@ class RHConnection(BaseConnection):
 
 
 class _RHScopedSession(ScopedSession):
+    """ This is a wrapper over sqlalchamy ScopedSession that
+    that does sql operations in a context manager. Commits
+    happens on exit of context manager, rollback if there
+    is an exception inside the context manager. Safely close the
+    session in the end.
+    """
     @contextmanager
     def connect_begin(self, *args, **kwargs):
         session = self()

@@ -183,8 +183,11 @@ class EnvConfig(BaseConfig):
 
     @property
     def force_avoid_internal_packages(self):
-        """Set this config to true to force replication handler to not use
-        yelp_conn but rather use rh_connection.
+        """ TODO(DATAPIPE-1509|abrar): Currently we have
+        force_avoid_internal_packages as a means of simulating an absence
+        of a yelp's internal package. And all references
+        of force_avoid_internal_packages have to be removed from
+        RH after we have completely ready for open source.
         """
         return staticconf.get('force_avoid_internal_packages', default=False).value
 
