@@ -61,7 +61,7 @@ class TestSchemaEventHandler(object):
 
     @pytest.fixture
     def mock_source_cluster_name(self):
-        """ This fixture override the `mock_source_cluster_name`
+        """ TODO(DATAPIPE-1525): This fixture override the `mock_source_cluster_name`
         fixture present in conftest.py
         """
         return 'yelp_main'

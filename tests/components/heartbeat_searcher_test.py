@@ -324,7 +324,12 @@ class TestHeartbeatSearcher(object):
 
     @pytest.fixture
     def mock_cursor(self):
-        """Returns a plain mock cursor object"""
+        """Returns a plain mock cursor object.
+        There is a complex implementation of CursorMock in this file
+        which returns some appropreate resultsset needed by the tests,
+        where as mock_db_connections.get_source_cursor
+        is mocked out and does not do anything.
+        """
         return CursorMock()
 
     @pytest.yield_fixture
