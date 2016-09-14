@@ -40,12 +40,12 @@ def get_connection(
     force_avoid_internal_packages
 ):
     try:
+        # TODO(DATAPIPE-1509|abrar): Currently we have
+        # force_avoid_internal_packages as a means of simulating an absence
+        # of a yelp's internal package. And all references
+        # of force_avoid_internal_packages have to be removed from
+        # RH after we have completely ready for open source.
         if force_avoid_internal_packages:
-            # TODO(DATAPIPE-1509|abrar): Currently we have
-            # force_avoid_internal_packages as a means of simulating an absence
-            # of a yelp's internal package. And all references
-            # of force_avoid_internal_packages have to be removed from
-            # RH after we have completely ready for open source.
             raise ImportError
         from replication_handler.models.connections.yelp_conn_connection import YelpConnConnection
         return YelpConnConnection(

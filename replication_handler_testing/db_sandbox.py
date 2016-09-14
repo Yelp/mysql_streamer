@@ -6,24 +6,24 @@ import atexit
 import contextlib
 from glob import glob
 
+import testing.mysqld
 from cached_property import cached_property
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker as sessionmaker_sa
 
-import testing.mysqld
 from replication_handler import config
 from replication_handler.models.database import get_connection
-
-# Generate Mysqld class which shares the generated database
-Mysqld = testing.mysqld.MysqldFactory(cache_initialized_db=True)
 
 
 class PerProcessMySQLDaemon(object):
 
+    # Generate Mysqld class which shares the generated database
+    Mysqld = testing.mysqld.MysqldFactory(cache_initialized_db=True)
+
     _db_name = 'replication_handler'
 
     def __init__(self):
-        self._mysql_daemon = Mysqld()
+        self._mysql_daemon = self.Mysqld()
         self._create_database()
         self._create_tables()
 
@@ -31,8 +31,7 @@ class PerProcessMySQLDaemon(object):
 
     def _create_tables(self):
         fixtures = glob('schema/tables/*.sql')
-        conn = self.engine.connect()
-        with conn.begin():
+        with self.engine.connect() as conn:
             conn.execute('use {db}'.format(db=self._db_name))
             for fixture in fixtures:
                 with open(fixture, 'r') as fh:

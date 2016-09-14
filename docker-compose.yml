@@ -13,6 +13,7 @@ replicationhandler:
   command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -vv --no-notification
   environment:
     - SERVICE_ENV_CONFIG_PATH=config-env-itest.yaml
+# TODO(DATAPIPE-1509|abrar): may be move this into a different file.
 replicationhandleropensource:
   build: .
   image: $DOCKER_TAG
