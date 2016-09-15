@@ -28,7 +28,7 @@ zookeeper_discovery_path: '/nail/etc/zookeeper_discovery/generic/uswest2{ecosyst
 
 pii_yaml_path: '/nail/etc/services/database_pii'
 
-max_delay_allowed_in_minutes: 10
+max_delay_allowed_in_seconds: 600
 
 sensu_host: 169.254.255.254
 

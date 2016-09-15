@@ -109,8 +109,8 @@ class EnvConfig(BaseConfig):
         return staticconf.get('pii_yaml_path').value
 
     @property
-    def max_delay_allowed_in_minutes(self):
-        return staticconf.get('max_delay_allowed_in_minutes').value
+    def max_delay_allowed_in_seconds(self):
+        return staticconf.get('max_delay_allowed_in_seconds').value
 
     @property
     def sensu_host(self):

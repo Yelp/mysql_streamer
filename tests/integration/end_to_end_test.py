@@ -218,7 +218,7 @@ class TestEndToEnd(object):
                 ColumnInfo("SET('ONE', 'TWO')", mysql.SET(['ONE', 'TWO']), set(['ONE', 'TWO']))
             ]
         }
-    ], ids=[str(id) for id in ['test_bit', 'test_tinyint', 'test_smallint', 'test_mediumint', 'test_int',
+    ], ids=[str(idx) for idx in ['test_bit', 'test_tinyint', 'test_smallint', 'test_mediumint', 'test_int',
                                'test_bigint', 'test_decimal', 'test_float', 'test_double', 'test_date_time',
                                'test_char', 'test_binary', 'test_enum', 'test_set']])
     def complex_table(self, request):
