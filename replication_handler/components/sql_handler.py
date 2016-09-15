@@ -234,7 +234,7 @@ class MysqlQualifiedIdentifierParser(object):
                 "Identifiers: {}".format(
                     self.identifier,
                     self.identifier_qualified,
-                    identifiers,
+                    self.identifier,
                 )
             )
             raise ParseError()
