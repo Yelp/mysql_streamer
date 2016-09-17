@@ -10,8 +10,8 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Text
 from sqlalchemy.types import Enum
-from yelp_lib.containers.lists import unlist
 
+from replication_handler.helpers.lists import unlist
 from replication_handler.models.database import Base
 from replication_handler.models.database import default_now
 from replication_handler.models.database import JSONType
