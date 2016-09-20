@@ -11,8 +11,8 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 
 from replication_handler import config
+from replication_handler.helpers.dates import default_now
 from replication_handler.models.database import Base
-from replication_handler.models.database import default_now
 from replication_handler.models.database import UnixTimeStampType
 
 
@@ -77,15 +77,14 @@ class DataEventCheckpoint(Base):
                 format(offset, topic, int(time.time()))
             )
 
-        table = cls.__table__
         if new_checkpoints:
             session.bulk_insert_mappings(DataEventCheckpoint, new_checkpoints)
 
         if updated_checkpoints:
             session.bulk_update_mappings(
-                    DataEventCheckpoint,
-                    updated_checkpoints
-                )
+                DataEventCheckpoint,
+                updated_checkpoints
+            )
         if not config.env_config.disable_meteorite:
             timer.stop()
 

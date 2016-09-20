@@ -54,3 +54,7 @@ def date_to_datetime(dt, preserve_max=False):
     if preserve_max and datetime.date.max == dt:
         return datetime.datetime.max
     return datetime.datetime(*dt.timetuple()[:3])
+
+
+def default_now(context):
+    return datetime.datetime.now().replace(microsecond=0)

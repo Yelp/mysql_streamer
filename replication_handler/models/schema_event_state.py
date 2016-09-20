@@ -11,9 +11,9 @@ from sqlalchemy import String
 from sqlalchemy import Text
 from sqlalchemy.types import Enum
 
+from replication_handler.helpers.dates import default_now
 from replication_handler.helpers.lists import unlist
 from replication_handler.models.database import Base
-from replication_handler.models.database import default_now
 from replication_handler.models.database import JSONType
 from replication_handler.models.database import UnixTimeStampType
 

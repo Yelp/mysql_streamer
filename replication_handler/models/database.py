@@ -2,8 +2,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import datetime
-
 import simplejson as json
 from sqlalchemy import types
 from yelp_conn.session import declarative_base
@@ -44,10 +42,6 @@ class UnixTimeStampType(types.TypeDecorator):
         if value is None:
             return None
         return dates.from_timestamp(value)
-
-
-def default_now(context):
-    return datetime.datetime.now().replace(microsecond=0)
 
 
 class JSONType(types.TypeDecorator):
