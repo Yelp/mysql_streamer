@@ -51,7 +51,6 @@ wsgiref==0.1.2
 yelp_batch==0.27.1
 yelp-cgeom==1.3.1
 yelp-clog==2.5.2
-yelp-lib==10.0.5
 yelp-logging==1.1.2
-yelp_kafka>=4.17.1,<5.0.0
+yelp_kafka==4.17.1
 yelp-servlib==4.3.0

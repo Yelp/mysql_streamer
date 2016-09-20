@@ -6,9 +6,9 @@ import logging
 import re
 
 import sqlparse
-from sqlparse.sql import Identifier
 from sqlparse import tokens as Token
 from sqlparse.sql import Comment
+from sqlparse.sql import Identifier
 from sqlparse.sql import Token as TK
 
 
@@ -215,8 +215,8 @@ class MysqlQualifiedIdentifierParser(object):
         # This is a workaround for DATAPIPE-588
         # TODO(DATAPIPE-490|justinc): We'll probably need to replace SQLParse
         # to get rid of this.
-        # https://regex101.com/r/qC3tB7/4
-        match = re.match('^(.+?)(\s+engine$|\s+ROW_FORMAT)+', identifier, re.I)
+        # https://regex101.com/r/qC3tB7/6
+        match = re.match('^(.+?)(\s+engine$|\s+ROW_FORMAT|\s+AUTO_INCREMENT)+', identifier, re.I)
         if match:
             identifier = match.group(1)
 
@@ -234,7 +234,7 @@ class MysqlQualifiedIdentifierParser(object):
                 "Identifiers: {}".format(
                     self.identifier,
                     self.identifier_qualified,
-                    identifiers,
+                    self.identifier,
                 )
             )
             raise ParseError()

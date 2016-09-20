@@ -21,7 +21,7 @@ from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
 
 
-timeout_seconds = 60
+timeout_seconds = 120
 
 logging.basicConfig(
     level=logging.DEBUG,

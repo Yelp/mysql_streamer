@@ -4,9 +4,9 @@ from __future__ import unicode_literals
 
 import simplejson as json
 from sqlalchemy import types
-from yelp_lib import dates
 
 from replication_handler.config import env_config
+from replication_handler.helpers import dates
 
 
 def get_base_model():
@@ -77,10 +77,6 @@ class UnixTimeStampType(types.TypeDecorator):
         if value is None:
             return None
         return dates.from_timestamp(value)
-
-
-def default_now(context):
-    return dates.default_now().replace(microsecond=0)
 
 
 class JSONType(types.TypeDecorator):
