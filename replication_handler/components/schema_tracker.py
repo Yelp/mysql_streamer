@@ -27,9 +27,6 @@ class SchemaTracker(object):
     def __init__(self, tracker_cursor):
         self.tracker_cursor = tracker_cursor
 
-    def __del__(self):
-        self.tracker_cursor.close()
-
     def _use_db(self, database_name):
         if database_name is not None and len(database_name.strip()) > 0:
             use_db_query = "USE {0}".format(database_name)

@@ -34,9 +34,6 @@ class HeartbeatSearcher(object):
         # Log_pos integer which corresponds to the final log_pos in the final log_file
         self.final_log_pos = self._get_last_log_position(self.all_logs[-1])
 
-    def __del__(self):
-        self.source_cursor.close()
-
     def get_position(self, hb_timestamp_epoch, hb_serial):
         """Entry method for using the class from other python modules, which
         returns the HeartbeatPosition object.
