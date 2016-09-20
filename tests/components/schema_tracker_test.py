@@ -2,6 +2,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from _mysql import DataError
+from _mysql import OperationalError
+
 import mock
 import pytest
 
@@ -12,8 +15,12 @@ from replication_handler.components.schema_tracker import SchemaTracker
 class TestSchemaTracker(object):
 
     @pytest.fixture
-    def base_schema_tracker(self, mock_tracker_cursor):
-        return SchemaTracker(mock_tracker_cursor)
+    def mock_db_connections(self):
+        return mock.Mock()
+
+    @pytest.fixture
+    def base_schema_tracker(self, mock_db_connections):
+        return SchemaTracker(mock_db_connections)
 
     @pytest.fixture
     def test_table(self):
@@ -56,3 +63,26 @@ class TestSchemaTracker(object):
             mock.call(show_create_query)
         ]
         assert mock_tracker_cursor.fetchone.call_count == 1
+
+    def test_execute_query_retry(
+        self,
+        base_schema_tracker,
+        mock_schema_tracker_cursor
+    ):
+        with mock.patch.object(
+            SchemaTracker,
+            '_use_db'
+        ) as mock_execption, mock.patch.object(
+            SchemaTracker,
+            '_recreate_cursor'
+        ) as mock_cursor:
+            mock_cursor.return_value = mock_schema_tracker_cursor
+            mock_execption.side_effect = [OperationalError, DataError, True]
+            base_schema_tracker.execute_query('use yelp', 'test_db')
+            assert mock_schema_tracker_cursor.execute.call_count == 1
+            assert mock_schema_tracker_cursor.execute.call_args_list == [
+                mock.call('use yelp')
+            ]
+
+
+
