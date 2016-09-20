@@ -8,7 +8,6 @@ from data_pipeline.message_type import MessageType
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
 from replication_handler.testing_helper.util import RBR_SOURCE
-
 from tests.integration.conftest import _fetch_messages
 from tests.integration.conftest import _generate_basic_model
 from tests.integration.conftest import _verify_messages

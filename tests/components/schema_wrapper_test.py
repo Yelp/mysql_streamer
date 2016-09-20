@@ -17,8 +17,11 @@ class TestSchemaWrapper(object):
         return mock.Mock()
 
     @pytest.yield_fixture
-    def base_schema_wrapper(self, schematizer_client):
-        schema_wrapper = SchemaWrapper(schematizer_client=schematizer_client)
+    def base_schema_wrapper(self, mock_db_connections, schematizer_client):
+        schema_wrapper = SchemaWrapper(
+            db_connections=mock_db_connections,
+            schematizer_client=schematizer_client
+        )
         schema_wrapper.schema_tracker.get_column_type_map = mock.Mock()
         schema_wrapper.schema_tracker.get_column_type_map.return_value = {}
         yield schema_wrapper

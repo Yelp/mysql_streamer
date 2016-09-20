@@ -4,29 +4,64 @@ from __future__ import unicode_literals
 
 import simplejson as json
 from sqlalchemy import types
-from yelp_conn.session import declarative_base
-from yelp_conn.session import scoped_session
-from yelp_conn.session import sessionmaker
 
 from replication_handler.config import env_config
 from replication_handler.helpers import dates
 
 
+def get_base_model():
+    try:
+        if env_config.force_avoid_internal_packages:
+            # TODO(DATAPIPE-1509|abrar): Currently we have
+            # force_avoid_internal_packages as a means of simulating an absence
+            # of a yelp's internal package. And all references
+            # of force_avoid_internal_packages have to be removed from
+            # RH after we have completely ready for open source.
+            raise ImportError
+        from yelp_conn.session import declarative_base
+        return declarative_base()
+    except ImportError:
+        from sqlalchemy.ext.declarative import declarative_base
+        return declarative_base()
+
+
 CLUSTER_NAME = env_config.rbr_state_cluster
 
 # The common declarative base used by every data model.
-Base = declarative_base()
+Base = get_base_model()
 Base.__cluster__ = CLUSTER_NAME
 
-schema_tracker_session = scoped_session(
-    sessionmaker(master_connection_set_name=str("schema_tracker_rw"))
-)
-rbr_state_session = scoped_session(
-    sessionmaker(
-        master_connection_set_name=str("rbr_state_rw"),
-        slave_connection_set_name=str("rbr_state_ro")
-    )
-)
+
+def get_connection(
+    topology_path,
+    source_cluster_name,
+    tracker_cluster_name,
+    state_cluster_name,
+    force_avoid_internal_packages
+):
+    try:
+        # TODO(DATAPIPE-1509|abrar): Currently we have
+        # force_avoid_internal_packages as a means of simulating an absence
+        # of a yelp's internal package. And all references
+        # of force_avoid_internal_packages have to be removed from
+        # RH after we have completely ready for open source.
+        if force_avoid_internal_packages:
+            raise ImportError
+        from replication_handler.models.connections.yelp_conn_connection import YelpConnConnection
+        return YelpConnConnection(
+            topology_path,
+            source_cluster_name,
+            tracker_cluster_name,
+            state_cluster_name
+        )
+    except ImportError:
+        from replication_handler.models.connections.rh_connection import RHConnection
+        return RHConnection(
+            topology_path,
+            source_cluster_name,
+            tracker_cluster_name,
+            state_cluster_name
+        )
 
 
 class UnixTimeStampType(types.TypeDecorator):

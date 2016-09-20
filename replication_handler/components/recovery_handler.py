@@ -6,16 +6,13 @@ import logging
 
 import simplejson as json
 from pymysqlreplication.event import QueryEvent
-from yelp_conn.connection_set import ConnectionSet
 
 from replication_handler.components._pending_schema_event_recovery_handler import PendingSchemaEventRecoveryHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import env_config
-from replication_handler.config import source_database_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
-from replication_handler.models.database import rbr_state_session
 from replication_handler.util.change_log_message_builder import ChangeLogMessageBuilder
 from replication_handler.util.message_builder import MessageBuilder
 from replication_handler.util.misc import DataEvent
@@ -37,6 +34,7 @@ class RecoveryHandler(object):
       producer(data_pipe.producer.Producer object): producer object from data pipeline, since
         we might need to publish unpublished messages.
       schema_wrapper(SchemaWrapper object): a wrapper for communication with schematizer.
+      db_connections(BaseConnection object): a wrapper for communication with all Databases.
       is_clean_shutdown(boolean): whether the last operation was cleanly stopped.
       pending_schema_event(SchemaEventState object): schema event that has a pending state
       register_dry_run(boolean): whether a schema has to be registered for a message to be published.
@@ -49,16 +47,18 @@ class RecoveryHandler(object):
         stream,
         producer,
         schema_wrapper,
+        db_connections,
         is_clean_shutdown=False,
         pending_schema_event=None,
         register_dry_run=False,
         publish_dry_run=False,
         changelog_mode=False,
     ):
+        self.db_connections = db_connections
         log.info("Recovery Handler Starting: %s" % json.dumps(dict(
             is_clean_shutdown=is_clean_shutdown,
             pending_schema_event=repr(pending_schema_event),
-            cluster_name=source_database_config.cluster_name,
+            source_cluster_name=self.db_connections.source_cluster_name,
             register_dry_run=register_dry_run,
             publish_dry_run=publish_dry_run,
             changelog_mode=changelog_mode,
@@ -68,7 +68,6 @@ class RecoveryHandler(object):
         self.producer = producer
         self.is_clean_shutdown = is_clean_shutdown
         self.pending_schema_event = pending_schema_event
-        self.cluster_name = source_database_config.cluster_name
         self.register_dry_run = register_dry_run
         self.publish_dry_run = publish_dry_run
         self.schema_wrapper = schema_wrapper
@@ -89,6 +88,7 @@ class RecoveryHandler(object):
         if not self.changelog_mode:
             return None
         change_log_data_event_handler = ChangeLogDataEventHandler(
+            db_connections=self.db_connections,
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
             stats_counter=None,
@@ -96,9 +96,10 @@ class RecoveryHandler(object):
         return change_log_data_event_handler.schema_wrapper_entry
 
     def get_latest_source_log_position(self):
-        refresh_source_cursor = ConnectionSet.rbr_source_ro().refresh_primary.cursor()
+        refresh_source_cursor = self.db_connections.get_source_cursor()
         refresh_source_cursor.execute("show master status")
         result = refresh_source_cursor.fetchone()
+        refresh_source_cursor.close()
         # result is a tuple with file name at pos 0, and position at pos 1.
         log.info("The latest master log position is {log_file}: {log_pos}".format(
             log_file=result[0],
@@ -114,7 +115,10 @@ class RecoveryHandler(object):
     def _handle_pending_schema_event(self):
         if self.pending_schema_event:
             log.info("Recovering from pending schema event: %s" % repr(self.pending_schema_event))
-            PendingSchemaEventRecoveryHandler(self.pending_schema_event).recover()
+            PendingSchemaEventRecoveryHandler(
+                db_connections=self.db_connections,
+                pending_schema_event=self.pending_schema_event
+            ).recover()
 
     def _handle_unclean_shutdown(self):
         if not self.is_clean_shutdown:
@@ -148,7 +152,10 @@ class RecoveryHandler(object):
         messages = self._build_messages(events)
         self.producer.ensure_messages_published(messages, topic_offsets)
         position_data = self.producer.get_checkpoint_position_data()
-        save_position(position_data)
+        save_position(
+            state_session=self.db_connections.state_session,
+            position_data=position_data
+        )
 
     def _already_caught_up(self, rh_event):
         # when we catch up with the latest position, we should stop accumulating more events.
@@ -176,7 +183,7 @@ class RecoveryHandler(object):
         """Get schema wrapper object for the current event.
         """
         table = Table(
-            cluster_name=self.cluster_name,
+            cluster_name=self.db_connections.source_cluster_name,
             table_name=event.event.table,
             database_name=event.event.schema
         )
@@ -198,13 +205,15 @@ class RecoveryHandler(object):
                 self.register_dry_run,
             )
 
-            messages.append(builder.build_message())
+            messages.append(builder.build_message(
+                self.db_connections.source_cluster_name
+            ))
         return messages
 
     def _get_topic_offsets_map_for_cluster(self):
-        with rbr_state_session.connect_begin(ro=True) as session:
+        with self.db_connections.state_session.connect_begin(ro=True) as session:
             topic_offsets = DataEventCheckpoint.get_topic_to_kafka_offset_map(
                 session,
-                self.cluster_name
+                self.db_connections.source_cluster_name
             )
         return topic_offsets

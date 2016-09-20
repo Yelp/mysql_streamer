@@ -7,12 +7,12 @@ import datetime
 import logging
 
 import pytz
+from data_pipeline.tools.meteorite_gauge_manager import MeteoriteGaugeManager
+from data_pipeline.tools.sensu_alert_manager import SensuAlertManager
 from dateutil.tz import tzlocal
 from dateutil.tz import tzutc
 from pymysqlreplication.event import GtidEvent
 
-from data_pipeline.tools.meteorite_gauge_manager import MeteoriteGaugeManager
-from data_pipeline.tools.sensu_alert_manager import SensuAlertManager
 from replication_handler import config
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
@@ -34,14 +34,14 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     events with position information attached.
 
     Args:
+      source_database_config(dict): source database connection configuration.
       position(Position object): use to specify where the stream should resume.
       gtid_enabled(bool): use to indicate if gtid is enabled in the system.
     """
 
-    def __init__(self, position, gtid_enabled=False):
+    def __init__(self, source_database_config, position, gtid_enabled=False):
         super(SimpleBinlogStreamReaderWrapper, self).__init__()
-
-        self.stream = LowLevelBinlogStreamReaderWrapper(position)
+        self.stream = LowLevelBinlogStreamReaderWrapper(source_database_config, position)
         self.gtid_enabled = gtid_enabled
         self._upstream_position = position
         self._offset = 0

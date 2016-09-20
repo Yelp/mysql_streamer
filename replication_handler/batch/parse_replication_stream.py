@@ -8,6 +8,7 @@ import signal
 import sys
 from collections import namedtuple
 from contextlib import contextmanager
+from functools import partial
 
 import vmprof
 from concurrent.futures import ThreadPoolExecutor
@@ -27,6 +28,7 @@ from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_wrapper import SchemaWrapper
+from replication_handler.models.database import get_connection
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import REPLICATION_HANDLER_PRODUCER_NAME
@@ -59,7 +61,15 @@ class ParseReplicationStream(Batch):
 
     def __init__(self):
         super(ParseReplicationStream, self).__init__()
+        self.db_connections = get_connection(
+            config.env_config.topology_path,
+            config.env_config.rbr_source_cluster,
+            config.env_config.schema_tracker_cluster,
+            config.env_config.rbr_state_cluster,
+            config.env_config.force_avoid_internal_packages
+        )
         self.schema_wrapper = SchemaWrapper(
+            db_connections=self.db_connections,
             schematizer_client=get_schematizer()
         )
         self.register_dry_run = config.env_config.register_dry_run
@@ -134,7 +144,10 @@ class ParseReplicationStream(Batch):
                     self.producer.wake()
 
     def _get_stream(self):
-        replication_stream_restarter = ReplicationStreamRestarter(self.schema_wrapper)
+        replication_stream_restarter = ReplicationStreamRestarter(
+            self.db_connections,
+            self.schema_wrapper
+        )
         replication_stream_restarter.restart(
             self.producer,
             register_dry_run=self.register_dry_run,
@@ -152,6 +165,7 @@ class ParseReplicationStream(Batch):
         Handler = (DataEventHandler
                    if not self._changelog_mode else ChangeLogDataEventHandler)
         return Handler(
+            db_connections=self.db_connections,
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
             stats_counter=self.counters['data_event_counter'],
@@ -160,6 +174,7 @@ class ParseReplicationStream(Batch):
 
     def _build_handler_map(self):
         schema_event_handler = SchemaEventHandler(
+            db_connections=self.db_connections,
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
             stats_counter=self.counters['schema_event_counter'],
@@ -179,13 +194,17 @@ class ParseReplicationStream(Batch):
 
     @contextmanager
     def _setup_producer(self):
+        save_position_callback = partial(
+            save_position,
+            state_session=self.db_connections.state_session
+        )
         with Producer(
             producer_name=REPLICATION_HANDLER_PRODUCER_NAME,
             team_name=REPLICATION_HANDLER_TEAM_NAME,
             expected_frequency_seconds=ExpectedFrequency.constantly,
             monitoring_enabled=False,
             dry_run=self.publish_dry_run,
-            position_data_callback=save_position,
+            position_data_callback=save_position_callback,
         ) as producer:
             yield producer
 
@@ -285,7 +304,11 @@ class ParseReplicationStream(Batch):
         if self.current_event_type == EventType.DATA_EVENT:
             self.producer.flush()
             position_data = self.producer.get_checkpoint_position_data()
-            save_position(position_data, is_clean_shutdown=True)
+            save_position(
+                position_data=position_data,
+                is_clean_shutdown=True,
+                state_session=self.db_connections.state_session
+            )
         log.info("Gracefully shutting down")
 
     def _force_exit(self):

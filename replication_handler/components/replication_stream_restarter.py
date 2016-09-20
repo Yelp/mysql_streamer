@@ -8,8 +8,6 @@ import logging
 from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
-from replication_handler.config import source_database_config
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 
@@ -23,19 +21,22 @@ class ReplicationStreamRestarter(object):
     if needed.
 
     Args:
+      db_connections(BaseConnection object): a wrapper for communication with mysql db.
       schema_wrapper(SchemaWrapper object): a wrapper for communication with schematizer.
     """
 
-    def __init__(self, schema_wrapper):
+    def __init__(self, db_connections, schema_wrapper):
         # Both global_event_state and pending_schema_event are information about
         # last shutdown, we need them to do recovery process.
-        cluster_name = source_database_config.cluster_name
-        self.global_event_state = self._get_global_event_state(cluster_name)
+        self.db_connections = db_connections
+        self.global_event_state = self._get_global_event_state(
+            self.db_connections.source_cluster_name
+        )
         self.pending_schema_event = self._get_pending_schema_event_state(
-            cluster_name,
+            self.db_connections.source_cluster_name
         )
         self.position_finder = PositionFinder(
-            self.global_event_state,
+            self.global_event_state
         )
         self.schema_wrapper = schema_wrapper
 
@@ -49,13 +50,18 @@ class ReplicationStreamRestarter(object):
         """
         position = self.position_finder.get_position_to_resume_tailing_from()
         log.info("Restarting replication: %s" % repr(position))
-        self.stream = SimpleBinlogStreamReaderWrapper(position, gtid_enabled=False)
+        self.stream = SimpleBinlogStreamReaderWrapper(
+            source_database_config=self.db_connections.source_database_config,
+            position=position,
+            gtid_enabled=False
+        )
         log.info("Created replication stream.")
         if self.global_event_state:
             recovery_handler = RecoveryHandler(
                 stream=self.stream,
                 producer=producer,
                 schema_wrapper=self.schema_wrapper,
+                db_connections=self.db_connections,
                 is_clean_shutdown=self.global_event_state.is_clean_shutdown,
                 pending_schema_event=self.pending_schema_event,
                 register_dry_run=register_dry_run,
@@ -71,7 +77,7 @@ class ReplicationStreamRestarter(object):
         return self.stream
 
     def _get_global_event_state(self, cluster_name):
-        with rbr_state_session.connect_begin(ro=True) as session:
+        with self.db_connections.state_session.connect_begin(ro=True) as session:
             return copy.copy(
                 GlobalEventState.get(
                     session,
@@ -80,7 +86,7 @@ class ReplicationStreamRestarter(object):
             )
 
     def _get_pending_schema_event_state(self, cluster_name):
-        with rbr_state_session.connect_begin(ro=True) as session:
+        with self.db_connections.state_session.connect_begin(ro=True) as session:
             # In services we cant do expire_on_commit=False, so
             # if we want to use the object after the session commits, we
             # need to figure out a way to hold it. for more context:

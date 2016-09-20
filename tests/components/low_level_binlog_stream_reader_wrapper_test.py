@@ -1,19 +1,22 @@
 # -*- coding: utf-8 -*-
-import mock
-import pytest
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import time
 
+import mock
+import pytest
+from data_pipeline.message import RefreshMessage
 from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
 from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import WriteRowsEvent
 
-from data_pipeline.message import RefreshMessage
 from replication_handler import config
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
 from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
-from testing.events import RowsEvent
+from replication_handler_testing.events import RowsEvent
 
 
 class TestLowLevelBinlogStreamReaderWrapper(object):
@@ -34,7 +37,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         ) as mock_stream:
             yield mock_stream
 
-    def test_schema_event(self, patch_stream):
+    def test_schema_event(self, mock_db_connections, patch_stream):
         gtid_event = mock.Mock(spec=GtidEvent)
         schema_event = mock.Mock(spec=QueryEvent)
         patch_stream.return_value.fetchone.side_effect = [
@@ -42,6 +45,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
             schema_event
         ]
         stream = LowLevelBinlogStreamReaderWrapper(
+            mock_db_connections.source_database_config,
             GtidPosition(gtid="sid:5")
         )
         assert stream.peek() == gtid_event
@@ -49,7 +53,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         assert stream.peek() == schema_event
         assert stream.pop() == schema_event
 
-    def test_flattern_data_events(self, patch_stream):
+    def test_flattern_data_events(self, mock_db_connections, patch_stream):
         data_event = self._prepare_data_event('fake_table')
         gtid_event = mock.Mock(spec=GtidEvent)
         query_event = mock.Mock(spec=QueryEvent)
@@ -60,6 +64,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         ]
         assert len(data_event.rows) == 3
         stream = LowLevelBinlogStreamReaderWrapper(
+            mock_db_connections.source_database_config,
             LogPosition(
                 log_pos=100,
                 log_file="binlog.001",
@@ -72,13 +77,14 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         assert stream.pop().row == data_event.rows[1]
         assert stream.pop().row == data_event.rows[2]
 
-    def test_get_data_events_refresh(self, patch_stream):
+    def test_get_data_events_refresh(self, mock_db_connections, patch_stream):
         data_event = self._prepare_data_event(
             'fake_table_data_pipeline_refresh'
         )
         patch_stream.return_value.fetchone.side_effect = [data_event]
         assert len(data_event.rows) == 3
         stream = LowLevelBinlogStreamReaderWrapper(
+            mock_db_connections.source_database_config,
             LogPosition(
                 log_pos=100,
                 log_file="binlog.001",
@@ -98,13 +104,14 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         data_event.timestamp = int(time.time())
         return data_event
 
-    def test_none_events(self, patch_stream):
+    def test_none_events(self, mock_db_connections, patch_stream):
         query_event = mock.Mock(spec=QueryEvent)
         patch_stream.return_value.fetchone.side_effect = [
             None,
             query_event,
         ]
         stream = LowLevelBinlogStreamReaderWrapper(
+            mock_db_connections.source_database_config,
             LogPosition(
                 log_pos=100,
                 log_file="binlog.001",
@@ -122,10 +129,11 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         ) as mock_whitelist:
             yield mock_whitelist
 
-    def test_get_only_tables(self, patch_config_whitelist):
+    def test_get_only_tables(self, mock_db_connections, patch_config_whitelist):
         patch_config_whitelist.return_value = ['tab1', 'tab2', 'tab1_data_pipeline_refresh']
         expected_only_tables = ['tab1', 'tab1_data_pipeline_refresh', 'tab2', 'tab2_data_pipeline_refresh']
         stream = LowLevelBinlogStreamReaderWrapper(
+            mock_db_connections.source_database_config,
             LogPosition(
                 log_pos=100,
                 log_file="binlog.001",

@@ -9,7 +9,6 @@ from pii_generator.components.pii_identifier import PIIIdentifier
 
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.config import env_config
-from replication_handler.util.misc import repltracker_cursor
 
 
 log = logging.getLogger('replication_handler.components.schema_wrapper')
@@ -42,11 +41,11 @@ class SchemaWrapper(object):
     __metaclass__ = SchemaWrapperSingleton
     _notify_email = "bam+replication+handler@yelp.com"
 
-    def __init__(self, schematizer_client):
+    def __init__(self, db_connections, schematizer_client):
         self.reset_cache()
         self.schematizer_client = schematizer_client
         self.schema_tracker = SchemaTracker(
-            repltracker_cursor()
+            db_connections.get_tracker_cursor()
         )
         self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
@@ -110,7 +109,7 @@ class SchemaWrapper(object):
             **table_stmt_kwargs
         )
         log.debug(
-            "Got response of {} from schematizer".format(resp)
+            "Got response of {0} from schematizer for table: {1}".format(resp, table.table_name)
         )
         self._populate_schema_cache(table, resp)
 

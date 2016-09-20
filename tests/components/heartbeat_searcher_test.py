@@ -324,18 +324,13 @@ class TestHeartbeatSearcher(object):
 
     @pytest.fixture
     def mock_cursor(self):
-        """Returns a plain mock cursor object"""
-        return CursorMock()
-
-    @pytest.fixture
-    def mock_db_cnct(self, mock_cursor):
-        """Returns a mock database connection with the sole purpose of providing a plain cursor.
-        This is used instead of patching the ConnsetionSet import of the search class because that
-        way would save 4 lines of code in __init__ of the search but adds like 10-15 lines here
+        """Returns a plain mock cursor object.
+        There is a complex implementation of CursorMock in this file
+        which returns some appropreate resultsset needed by the tests,
+        where as mock_db_connections.get_source_cursor
+        is mocked out and does not do anything.
         """
-        m = Mock()
-        m.cursor = Mock(return_value=mock_cursor)
-        return m
+        return CursorMock()
 
     @pytest.yield_fixture
     def patch_binlog_stream_reader(self):
@@ -364,8 +359,11 @@ class TestHeartbeatSearcher(object):
         return MockBinLogEvents()
 
     @pytest.fixture
-    def heartbeat_searcher(self, mock_db_cnct):
-        return HeartbeatSearcher(db_cnct=mock_db_cnct)
+    def heartbeat_searcher(self, mock_cursor, mock_db_connections):
+        return HeartbeatSearcher(
+            source_cursor=mock_cursor,
+            source_database_config=mock_db_connections.source_database_config
+        )
 
     def test_is_heartbeat(
         self,

@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-import time
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
-from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
-from pymysqlreplication.constants.BINLOG import UPDATE_ROWS_EVENT_V2
+import time
 
 from data_pipeline.message import CreateMessage
 from data_pipeline.message import UpdateMessage
+from pymysqlreplication.constants.BINLOG import UPDATE_ROWS_EVENT_V2
+from pymysqlreplication.constants.BINLOG import WRITE_ROWS_EVENT_V2
 
 from replication_handler.util.misc import DataEvent
 

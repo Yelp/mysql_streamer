@@ -11,12 +11,13 @@ from replication_handler.components.change_log_data_event_handler import ChangeL
 class TestChangeLogDataEventHandler(object):
 
     @pytest.fixture
-    def event_handler(self):
+    def event_handler(self, mock_db_connections):
         return ChangeLogDataEventHandler(
+            db_connections=mock_db_connections,
             producer=mock.MagicMock(), schema_wrapper=mock.MagicMock(),
             stats_counter=mock.MagicMock(), register_dry_run=False)
 
-    def test_get_schema_id(self):
+    def test_get_schema_id(self, mock_db_connections):
         schema_wrapper = mock.MagicMock()
         schematizer_client = schema_wrapper.schematizer_client
         schematizer_client.register_schema_from_schema_json.return_value = (
@@ -28,6 +29,7 @@ class TestChangeLogDataEventHandler(object):
                 '{"namespace": "foo", "name": "bar"}')
 
             event_handler = ChangeLogDataEventHandler(
+                db_connections=mock_db_connections,
                 producer=mock.MagicMock(), schema_wrapper=schema_wrapper,
                 stats_counter=mock.MagicMock(), register_dry_run=False)
 

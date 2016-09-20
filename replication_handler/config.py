@@ -6,7 +6,6 @@ import logging
 import os
 
 import staticconf
-import yelp_conn
 from cached_property import cached_property_with_ttl
 from yelp_servlib import clog_util
 from yelp_servlib.config_util import load_default_config
@@ -26,7 +25,6 @@ class BaseConfig(object):
         log.info("SERVICE_CONFIG_PATH is {}".format(SERVICE_CONFIG_PATH))
         log.info("SERVICE_ENV_CONFIG_PATH is {}".format(SERVICE_ENV_CONFIG_PATH))
         load_default_config(SERVICE_CONFIG_PATH, SERVICE_ENV_CONFIG_PATH)
-        yelp_conn.initialize()
         clog_util.initialize()
 
 
@@ -54,6 +52,8 @@ class EnvConfig(BaseConfig):
 
     @property
     def rbr_source_cluster(self):
+        """serves as the key to identify the source database in topology.yaml
+        """
         return staticconf.get('rbr_source_cluster').value
 
     @property
@@ -66,10 +66,14 @@ class EnvConfig(BaseConfig):
 
     @property
     def schema_tracker_cluster(self):
+        """serves as the key to identify the tracker database in topology.yaml
+        """
         return staticconf.get('schema_tracker_cluster').value
 
     @property
     def rbr_state_cluster(self):
+        """serves as the key to identify the state database in topology.yaml
+        """
         return staticconf.get('rbr_state_cluster').value
 
     @property
@@ -177,36 +181,15 @@ class EnvConfig(BaseConfig):
         """
         return staticconf.get_bool('force_exit').value
 
-
-class DatabaseConfig(object):
-    """Used for reading database config out of topology.yaml in the environment"""
-
-    def __init__(self, cluster_name, topology_path):
-        load_default_config(topology_path)
-        self._cluster_name = cluster_name
-
     @property
-    def cluster_config(self):
-        for topo_item in staticconf.get('topology'):
-            if topo_item.get('cluster') == self.cluster_name:
-                return topo_item
-
-    @property
-    def entries(self):
-        return self.cluster_config['entries']
-
-    @property
-    def cluster_name(self):
-        return self._cluster_name
+    def force_avoid_internal_packages(self):
+        """ TODO(DATAPIPE-1509|abrar): Currently we have
+        force_avoid_internal_packages as a means of simulating an absence
+        of a yelp's internal package. And all references
+        of force_avoid_internal_packages have to be removed from
+        RH after we have completely ready for open source.
+        """
+        return staticconf.get('force_avoid_internal_packages', default=False).value
 
 
 env_config = EnvConfig()
-
-source_database_config = DatabaseConfig(
-    env_config.rbr_source_cluster,
-    env_config.topology_path
-)
-schema_tracking_database_config = DatabaseConfig(
-    env_config.schema_tracker_cluster,
-    env_config.topology_path
-)

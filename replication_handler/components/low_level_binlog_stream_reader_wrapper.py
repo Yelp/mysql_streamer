@@ -41,17 +41,10 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
       position(Position object): use to specify where the stream should resume.
     """
 
-    def __init__(self, position):
+    def __init__(self, source_database_config, position):
         super(LowLevelBinlogStreamReaderWrapper, self).__init__()
         self.refresh_table_suffix = '_data_pipeline_refresh'
-        source_config = config.source_database_config.entries[0]
         only_tables = self._get_only_tables()
-        connection_config = {
-            'host': source_config['host'],
-            'port': source_config['port'],
-            'user': source_config['user'],
-            'passwd': source_config['passwd']
-        }
         allowed_event_types = [
             GtidEvent,
             QueryEvent,
@@ -60,7 +53,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             DeleteRowsEvent,
         ]
 
-        self._seek(connection_config, allowed_event_types, position, only_tables)
+        self._seek(source_database_config, allowed_event_types, position, only_tables)
 
     def _get_only_tables(self):
         only_tables = config.env_config.table_whitelist
@@ -121,10 +114,10 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             ) for row in row_event.rows
         ]
 
-    def _seek(self, connection_config, allowed_event_types, position, only_tables):
+    def _seek(self, source_database_config, allowed_event_types, position, only_tables):
         # server_id doesn't seem to matter but must be set.
         self.stream = BinLogStreamReader(
-            connection_settings=connection_config,
+            connection_settings=source_database_config,
             server_id=1,
             only_events=allowed_event_types,
             resume_stream=config.env_config.resume_stream,

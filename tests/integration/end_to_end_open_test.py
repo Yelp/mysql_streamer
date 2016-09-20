@@ -12,9 +12,9 @@ def replhandler():
     """ TODO(DATAPIPE-1525): This fixture override the `replhandler`
     fixture present in conftest.py
     """
-    return 'replicationhandler'
+    return 'replicationhandleropensource'
 
 
 @pytest.mark.usefixtre('cleanup_avro_cache')
-class TestEndToEnd(EndToEndBaseTest):
+class TestEndToEndOpen(EndToEndBaseTest):
     pass
