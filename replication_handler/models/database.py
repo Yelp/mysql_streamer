@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import simplejson as json
 from sqlalchemy import types
-
 from yelp_conn.session import declarative_base
 from yelp_conn.session import scoped_session
 from yelp_conn.session import sessionmaker
-from yelp_lib import dates
 
 from replication_handler.config import env_config
+from replication_handler.helpers import dates
 
 
 CLUSTER_NAME = env_config.rbr_state_cluster
@@ -17,12 +19,12 @@ Base = declarative_base()
 Base.__cluster__ = CLUSTER_NAME
 
 schema_tracker_session = scoped_session(
-    sessionmaker(master_connection_set_name="schema_tracker_rw")
+    sessionmaker(master_connection_set_name=str("schema_tracker_rw"))
 )
 rbr_state_session = scoped_session(
     sessionmaker(
-        master_connection_set_name="rbr_state_rw",
-        slave_connection_set_name="rbr_state_ro"
+        master_connection_set_name=str("rbr_state_rw"),
+        slave_connection_set_name=str("rbr_state_ro")
     )
 )
 
@@ -40,10 +42,6 @@ class UnixTimeStampType(types.TypeDecorator):
         if value is None:
             return None
         return dates.from_timestamp(value)
-
-
-def default_now(context):
-    return dates.default_now().replace(microsecond=0)
 
 
 class JSONType(types.TypeDecorator):
