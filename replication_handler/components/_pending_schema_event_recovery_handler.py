@@ -30,7 +30,7 @@ class PendingSchemaEventRecoveryHandler(object):
         )
         self.database_name = self.pending_schema_event.database_name
         self.schema_tracker = SchemaTracker(
-            tracker_cursor=self.db_connections.get_tracker_cursor()
+            db_connections=self.db_connections
         )
 
     def recover(self):

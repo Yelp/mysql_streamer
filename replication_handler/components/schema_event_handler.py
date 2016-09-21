@@ -32,7 +32,7 @@ class SchemaEventHandler(BaseEventHandler):
         self.register_dry_run = kwargs.pop('register_dry_run')
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
         self.schema_tracker = SchemaTracker(
-            self.db_connections.get_tracker_cursor()
+            self.db_connections
         )
 
     def handle_event(self, event, position):

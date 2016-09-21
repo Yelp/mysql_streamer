@@ -45,7 +45,7 @@ class SchemaWrapper(object):
         self.reset_cache()
         self.schematizer_client = schematizer_client
         self.schema_tracker = SchemaTracker(
-            db_connections.get_tracker_cursor()
+            db_connections
         )
         self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
 
