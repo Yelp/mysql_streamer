@@ -19,14 +19,8 @@ class TestSchemaTracker(object):
         return mock.Mock()
 
     @pytest.fixture
-    def base_schema_tracker(self, mock_db_connections, mock_tracker_cursor):
-        mock_tracker = SchemaTracker(mock_db_connections)
-        with mock.patch.object(
-            mock_tracker,
-            'tracker_cursor'
-        ) as mock_cursor:
-            mock_cursor.return_value = mock_tracker_cursor
-            return mock_tracker
+    def base_schema_tracker(self, mock_db_connections):
+        return SchemaTracker(mock_db_connections)
 
     @pytest.fixture
     def test_table(self):
@@ -71,21 +65,17 @@ class TestSchemaTracker(object):
 
     def test_execute_query_retry(
         self,
-        base_schema_tracker,
-        mock_tracker_cursor
+        base_schema_tracker
     ):
         with mock.patch.object(
             SchemaTracker,
             '_use_db'
-        ) as mock_execption, mock.patch.object(
-            SchemaTracker,
-            '_recreate_cursor'
-        ) as mock_cursor:
-            mock_cursor.return_value = mock_tracker_cursor
+        ) as mock_execption:
             mock_execption.side_effect = [OperationalError, DataError, True]
-            base_schema_tracker.execute_query('use yelp', 'test_db')
-            assert mock_tracker_cursor.execute.call_count == 1
-            assert mock_tracker_cursor.execute.call_args_list == [
+            base_schema_tracker.execute_query('use yelp', 'test_db', 5, 0.5)
+            assert base_schema_tracker.tracker_cursor.execute.call_count == 1
+            assert mock_execption.call_count == 3
+            assert base_schema_tracker.tracker_cursor.execute.call_args_list == [
                 mock.call('use yelp')
             ]
 
