@@ -23,7 +23,7 @@ class SchemaTracker(object):
     from schematizer.
 
     Args:
-      tracker_cursor(Cursor object): a cursor with connection to schema tracker db.
+        db_connections: The data base connections
     """
 
     def __init__(self, db_connections):
@@ -59,11 +59,11 @@ class SchemaTracker(object):
         for _ in range(num_of_retries):
             try:
                 self._use_db(database_name)
-                self.schema_tracker_cursor.execute(query)
+                self.tracker_cursor.execute(query)
             except SCRUBBED_MYSQL_ERRORS as e:
                 log.info("OOPS! Connection lost to db because of {}".format(e))
                 log.info("Retrying in {} seconds".format(retry_delay_sec))
-                self.schema_tracker_cursor = self._recreate_cursor()
+                self.tracker_cursor = self._recreate_cursor()
                 time.sleep(retry_delay_sec)
             else:
                 break

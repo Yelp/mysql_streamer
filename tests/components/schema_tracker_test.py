@@ -19,8 +19,14 @@ class TestSchemaTracker(object):
         return mock.Mock()
 
     @pytest.fixture
-    def base_schema_tracker(self, mock_db_connections):
-        return SchemaTracker(mock_db_connections)
+    def base_schema_tracker(self, mock_db_connections, mock_tracker_cursor):
+        mock_tracker = SchemaTracker(mock_db_connections)
+        with mock.patch.object(
+            mock_tracker,
+            'tracker_cursor'
+        ) as mock_cursor:
+            mock_cursor.return_value = mock_tracker_cursor
+            return mock_tracker
 
     @pytest.fixture
     def test_table(self):
@@ -49,25 +55,24 @@ class TestSchemaTracker(object):
     def test_get_show_create_table_statement(
         self,
         base_schema_tracker,
-        mock_tracker_cursor,
         show_create_query,
         test_table,
         table_with_schema_changes,
     ):
         base_schema_tracker.tracker_cursor.fetchone.return_value = [test_table, show_create_query]
         base_schema_tracker.get_show_create_statement(table_with_schema_changes)
-        assert mock_tracker_cursor.execute.call_count == 3
-        assert mock_tracker_cursor.execute.call_args_list == [
+        assert base_schema_tracker.tracker_cursor.execute.call_count == 3
+        assert base_schema_tracker.tracker_cursor.execute.call_args_list == [
             mock.call("USE {0}".format(table_with_schema_changes.database_name)),
             mock.call("SHOW TABLES LIKE \'{0}\'".format(table_with_schema_changes.table_name)),
             mock.call(show_create_query)
         ]
-        assert mock_tracker_cursor.fetchone.call_count == 1
+        assert base_schema_tracker.tracker_cursor.fetchone.call_count == 1
 
     def test_execute_query_retry(
         self,
         base_schema_tracker,
-        mock_schema_tracker_cursor
+        mock_tracker_cursor
     ):
         with mock.patch.object(
             SchemaTracker,
@@ -76,11 +81,11 @@ class TestSchemaTracker(object):
             SchemaTracker,
             '_recreate_cursor'
         ) as mock_cursor:
-            mock_cursor.return_value = mock_schema_tracker_cursor
+            mock_cursor.return_value = mock_tracker_cursor
             mock_execption.side_effect = [OperationalError, DataError, True]
             base_schema_tracker.execute_query('use yelp', 'test_db')
-            assert mock_schema_tracker_cursor.execute.call_count == 1
-            assert mock_schema_tracker_cursor.execute.call_args_list == [
+            assert mock_tracker_cursor.execute.call_count == 1
+            assert mock_tracker_cursor.execute.call_args_list == [
                 mock.call('use yelp')
             ]
 
