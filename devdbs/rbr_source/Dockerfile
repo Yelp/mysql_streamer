@@ -2,12 +2,10 @@
 # Run mysqld on the default port, with my.cnf settings
 #
 
-FROM    docker-dev.yelpcorp.com/lucid_yelp
+FROM    centos:latest
+RUN     rpm -Uhv https://www.percona.com/redir/downloads/percona-release/redhat/0.0-1/percona-release-0.0-1.x86_64.rpm
 
-ENV     DEBIAN_FRONTEND noninteractive
-
-RUN     apt-get update -q
-RUN     apt-get install -y percona-server-server-5.6
+RUN     yum install -y Percona-Server-server-56 Percona-Server-client-56 Percona-Server-shared-56
 
 ADD     ./startup.sh /opt/startup.sh
 ADD     ./my.cnf     /etc/my.cnf
