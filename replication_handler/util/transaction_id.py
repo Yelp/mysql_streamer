@@ -24,6 +24,10 @@ def get_transaction_id(transaction_id_schema_id, cluster_name, log_file, log_pos
         log_file (unicode): Binlog name.
         log_pos (int): Log position in the binlog.
     """
+    if isinstance(cluster_name, str):
+        cluster_name = unicode(cluster_name, 'utf-8')
+    if isinstance(log_file, str):
+        log_file = unicode(log_file, 'utf-8')
     _verify_init_params(cluster_name, log_file, log_pos)
     return MetaAttribute(
         schema_id=transaction_id_schema_id,

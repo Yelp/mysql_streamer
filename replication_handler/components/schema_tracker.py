@@ -7,7 +7,7 @@ import time
 from collections import namedtuple
 
 import simplejson as json
-from yelp_conn.mysqldb import SCRUBBED_MYSQL_ERRORS
+from yelp_conn.mysqldb import OPERATIONAL_ERRORS
 
 
 log = logging.getLogger('replication_handler.components.schema_tracker')
@@ -60,15 +60,16 @@ class SchemaTracker(object):
             try:
                 self._use_db(database_name)
                 self.tracker_cursor.execute(query)
-            except SCRUBBED_MYSQL_ERRORS as e:
-                log.info("OOPS! Connection lost to db because of {}".format(e))
-                log.info("Retrying in {} seconds".format(retry_delay_sec))
+            except OPERATIONAL_ERRORS as e:
+                log.warn("OOPS! Connection lost to db because of {}".format(e))
+                log.warn("Retrying in {} seconds".format(retry_delay_sec))
                 self.tracker_cursor = self._recreate_cursor()
                 time.sleep(retry_delay_sec)
             else:
                 break
 
     def _recreate_cursor(self):
+        self.tracker_cursor.close()
         return self.db_connections.get_tracker_cursor()
 
     def get_show_create_statement(self, table):
