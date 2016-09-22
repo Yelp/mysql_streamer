@@ -28,7 +28,8 @@ replicationhandleropensource:
     - replicationhandlerconfigs
   command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -vv --no-notification
   environment:
-    - SERVICE_ENV_CONFIG_PATH=config-env-open-itest.yaml
+    - SERVICE_ENV_CONFIG_PATH=config-env-itest.yaml
+    - FORCE_AVOID_INTERNAL_PACKAGES=True
 replicationhandlerchangelog:
   build: .
   image: $DOCKER_TAG

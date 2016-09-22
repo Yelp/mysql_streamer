@@ -28,6 +28,7 @@ from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_wrapper import SchemaWrapper
+from replication_handler.environment_configs import FORCE_AVOID_INTERNAL_PACKAGES
 from replication_handler.models.database import get_connection
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
@@ -66,7 +67,7 @@ class ParseReplicationStream(Batch):
             config.env_config.rbr_source_cluster,
             config.env_config.schema_tracker_cluster,
             config.env_config.rbr_state_cluster,
-            config.env_config.force_avoid_internal_packages
+            FORCE_AVOID_INTERNAL_PACKAGES
         )
         self.schema_wrapper = SchemaWrapper(
             db_connections=self.db_connections,
