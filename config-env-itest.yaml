@@ -34,8 +34,8 @@ module_env_config:
     - namespace: data_pipeline
       config:
         load_schematizer_host_and_port_from_smartstack: True
-        kafka_cluster_type: datapipe
-        kafka_cluster_name: uswest2-devc
+        kafka_cluster_type: standard
+        kafka_cluster_name: local-cluster
         skip_messages_with_pii: False
         kafka_producer_buffer_size: 500
         encryption_type: AES_MODE_CBC-1
