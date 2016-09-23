@@ -36,6 +36,7 @@ replicationhandlerchangelog:
   image: $DOCKER_TAG
   links:
     - kafka
+    - kafkadiscovery
     - zookeeper:zk
     - rbrsource
     - schematracker
