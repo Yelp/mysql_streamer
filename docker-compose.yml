@@ -3,6 +3,7 @@ replicationhandler:
   image: $DOCKER_TAG
   links:
     - kafka
+    - kafkadiscovery
     - zookeeper:zk
     - rbrsource
     - schematracker
@@ -19,6 +20,7 @@ replicationhandleropensource:
   image: $DOCKER_TAG
   links:
     - kafka
+    - kafkadiscovery
     - zookeeper:zk
     - rbrsource
     - schematracker
@@ -34,6 +36,7 @@ replicationhandlerchangelog:
   image: $DOCKER_TAG
   links:
     - kafka
+    - kafkadiscovery
     - zookeeper:zk
     - rbrsource
     - schematracker
@@ -53,3 +56,16 @@ schematracker:
     build: devdbs/schema_tracker/
 rbrstate:
     build: devdbs/rbr_state/
+
+kafkadiscovery:
+  image: docker-dev.yelpcorp.com/kafka-discovery-testing:latest
+  expose:
+   - "8888"
+  volumes_from:
+   - kafkadiscoveryconfigs
+  links:
+   - kafka
+   - zookeeper
+
+kafkadiscoveryconfigs:
+  image: docker-dev.yelpcorp.com/kafka-discovery-configs-testing:latest
