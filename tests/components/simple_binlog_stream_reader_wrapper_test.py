@@ -10,6 +10,7 @@ from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 
 from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
+from replication_handler.components.simple_binlog_stream_reader_wrapper import _is_meteorite_sensu_supported
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
@@ -24,20 +25,6 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             'replication_handler.components.simple_binlog_stream_reader_wrapper.LowLevelBinlogStreamReaderWrapper'
         ) as mock_stream:
             yield mock_stream
-
-    @pytest.yield_fixture
-    def patch_sensu_alert(self):
-        with mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.SensuAlertManager.periodic_process'
-        ) as mock_sensu_alert:
-            yield mock_sensu_alert
-
-    @pytest.yield_fixture
-    def patch_meteorite(self):
-        with mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.MeteoriteGaugeManager.periodic_process'
-        ) as mock_meteorite:
-            yield mock_meteorite
 
     def test_yield_events_when_gtid_enabled(self, mock_db_connections, patch_stream):
         gtid_event_0 = mock.Mock(spec=GtidEvent, gtid="sid:11")
@@ -86,10 +73,28 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             assert replication_event.position.gtid == result.position.gtid
             assert replication_event.position.offset == result.position.offset
 
+
+    def test_meteorite_and_sensu_alert(
+        self,
+        mock_db_connections,
+        patch_stream
+    ):
+        if not _is_meteorite_sensu_supported:
+            pytest.skip("meteorite and sensu are unsupported in open source version.")
+        with mock.patch(
+            'replication_handler.components.simple_binlog_stream_reader_wrapper.SensuAlertManager.periodic_process'
+        ) as mock_sensu_alert, mock.patch(
+            'replication_handler.components.simple_binlog_stream_reader_wrapper.MeteoriteGaugeManager.periodic_process'
+        ) as mock_meteorite:
+            stream, results = self._setup_stream_and_expected_result(
+                mock_db_connections.source_database_config,
+                patch_stream
+            )
+            assert mock_sensu_alert.call_count == 1
+            assert mock_meteorite.call_count == 1
+
     def test_yield_event_with_heartbeat_event(
         self,
-        patch_sensu_alert,
-        patch_meteorite,
         mock_db_connections,
         patch_stream,
     ):
@@ -97,8 +102,6 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             mock_db_connections.source_database_config,
             patch_stream
         )
-        assert patch_sensu_alert.call_count == 1
-        assert patch_meteorite.call_count == 1
         for replication_event, result in zip(stream, results):
             assert replication_event.event == result.event
             assert replication_event.position.log_pos == result.position.log_pos

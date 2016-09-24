@@ -10,7 +10,6 @@ import mock
 import pytest
 from data_pipeline.producer import Producer
 from data_pipeline.schematizer_clientlib.schematizer import SchematizerClient
-from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pymysqlreplication.event import QueryEvent
 
 import replication_handler.batch.parse_replication_stream
@@ -18,10 +17,25 @@ from replication_handler.batch.parse_replication_stream import ParseReplicationS
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
+from replication_handler.environment_configs import FORCE_AVOID_INTERNAL_PACKAGES
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
+
+
+try:
+    # TODO(DATAPIPE-1509|abrar): Currently we have
+    # force_avoid_internal_packages as a means of simulating an absence
+    # of a yelp's internal package. And all references
+    # of force_avoid_internal_packages have to be removed from
+    # RH after we have completely ready for open source.
+    if FORCE_AVOID_INTERNAL_PACKAGES:
+        raise ImportError
+    from data_pipeline.tools.meteorite_wrappers import StatsCounter
+    _is_meteorite_supported = True
+except ImportError:
+    _is_meteorite_supported = False
 
 
 class TestParseReplicationStream(object):
@@ -232,6 +246,8 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_exit
     ):
+        if not _is_meteorite_supported:
+            pytest.skip("meteorite unsupported in open source version.")
         self._different_events_builder(
             schema_event,
             data_event,
@@ -271,6 +287,8 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_exit
     ):
+        if not _is_meteorite_supported:
+            pytest.skip("meteorite unsupported in open source version.")
         self._different_events_builder(
             schema_event,
             data_event,

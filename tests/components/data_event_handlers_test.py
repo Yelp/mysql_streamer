@@ -10,7 +10,6 @@ import pytest
 from data_pipeline.message import CreateMessage
 from data_pipeline.message import UpdateMessage
 from data_pipeline.producer import Producer
-from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pii_generator.components.pii_identifier import PIIIdentifier
 
 from replication_handler import config
@@ -22,6 +21,7 @@ from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.util.position import LogPosition
 from replication_handler_testing.events import make_data_create_event
 from replication_handler_testing.events import make_data_update_event
+from tests.components.base_event_handler_test import get_mock_stats_counters
 
 
 DataHandlerExternalPatches = namedtuple(
@@ -51,9 +51,17 @@ class TestDataEventHandler(object):
     def test_gtid(self):
         return "93fd11e6-cf7c-11e4-912d-0242a9fe01db:12"
 
-    @pytest.fixture
-    def stats_counter(self):
-        return mock.Mock(autospect=StatsCounter)
+    @pytest.fixture(params=get_mock_stats_counters())
+    def stats_counter(self, request):
+        # Need a way to detect if replication handler is run internally
+        # or open-source mode and then dynamically set stats_counter fixture.
+        # Hence parameterizing stats_counter fixture with the return value of a
+        # function `mock_stats_counters`.
+        # Because mock_stats_counters is a module scoped fucntion and not a fixture
+        # its not evaluated of every test so we need to reset_mock.
+        if isinstance(request.param, mock.Mock):
+            request.param.reset_mock()
+        return request.param
 
     @pytest.fixture
     def mock_source_cluster_name(self):
@@ -123,22 +131,6 @@ class TestDataEventHandler(object):
         ) as mock_topic:
             mock_topic.return_value = str("fake_topic")
             yield
-
-    @pytest.yield_fixture
-    def patch_config_meteorite_disabled_true(self):
-        with mock.patch(
-            'replication_handler.components.data_event_handler.config.env_config'
-        ) as mock_config_meteorite_disabled_true:
-            mock_config_meteorite_disabled_true.disable_meteorite = True
-            yield mock_config_meteorite_disabled_true
-
-    @pytest.yield_fixture
-    def patch_config_meteorite_disabled_false(self):
-        with mock.patch(
-            'replication_handler.components.data_event_handler.config.env_config'
-        ) as mock_config_meteorite_disabled_false:
-            mock_config_meteorite_disabled_false.disable_meteorite = False
-            yield mock_config_meteorite_disabled_false
 
     @pytest.fixture
     def data_create_events(self):
@@ -266,7 +258,7 @@ class TestDataEventHandler(object):
 
         assert producer.publish.call_count == len(data_create_events)
 
-    def test_handle_data_create_event_to_publish_call_disable_meteorite_true(
+    def test_handle_data_create_event_to_publish_call_meteorite(
         self,
         producer,
         stats_counter,
@@ -279,7 +271,6 @@ class TestDataEventHandler(object):
         schema_wrapper_entry,
         patches,
         patch_get_payload_schema,
-        patch_config_meteorite_disabled_true,
         patch_message_topic
     ):
         self._setup_handle_data_create_event_to_publish_call(
@@ -295,39 +286,9 @@ class TestDataEventHandler(object):
             patches,
             patch_get_payload_schema
         )
-        assert stats_counter.increment.call_count == 0
-
-    def test_handle_data_create_event_to_publish_call_disable_meteorite_false(
-        self,
-        producer,
-        stats_counter,
-        test_table,
-        test_topic,
-        first_test_kafka_offset,
-        second_test_kafka_offset,
-        data_event_handler,
-        data_create_events,
-        schema_wrapper_entry,
-        patches,
-        patch_get_payload_schema,
-        patch_config_meteorite_disabled_false,
-        patch_message_topic
-    ):
-        self._setup_handle_data_create_event_to_publish_call(
-            producer,
-            stats_counter,
-            test_table,
-            test_topic,
-            first_test_kafka_offset,
-            second_test_kafka_offset,
-            data_event_handler,
-            data_create_events,
-            schema_wrapper_entry,
-            patches,
-            patch_get_payload_schema
-        )
-        assert stats_counter.increment.call_count == len(data_create_events)
-        assert stats_counter.increment.call_args[0][0] == 'fake_table'
+        if stats_counter:
+            assert stats_counter.increment.call_count == len(data_create_events)
+            assert stats_counter.increment.call_args[0][0] == 'fake_table'
 
     def test_handle_data_update_event(
         self,
