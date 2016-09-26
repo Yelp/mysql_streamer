@@ -23,7 +23,7 @@ def get_mock_stats_counters():
         # force_avoid_internal_packages as a means of simulating an absence
         # of a yelp's internal package. And all references
         # of force_avoid_internal_packages have to be removed from
-        # RH after we have completely ready for open source.
+        # RH after we are completely ready for open source.
         if FORCE_AVOID_INTERNAL_PACKAGES:
             raise ImportError
         from data_pipeline.tools.meteorite_wrappers import StatsCounter
