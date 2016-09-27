@@ -69,7 +69,10 @@ class SchemaTracker(object):
                 break
 
     def _recreate_cursor(self):
-        self.tracker_cursor.close()
+        # Unable to close the cursor here because its being used some place
+        # else. When this is done itests fail.
+        # TODO: DATAPIPE-1804
+        # self.tracker_cursor.close()
         return self.db_connections.get_tracker_cursor()
 
     def get_show_create_statement(self, table):
