@@ -8,7 +8,7 @@ from yelp_batch import Batch
 
 from replication_handler import config
 from replication_handler.components.heartbeat_searcher import HeartbeatSearcher
-from replication_handler.environment_configs import FORCE_AVOID_INTERNAL_PACKAGES
+from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.models.database import get_connection
 
 
@@ -32,12 +32,13 @@ class MySQLHeartbeatSearchBatch(Batch):
         super(MySQLHeartbeatSearchBatch, self).__init__()
         self.hb_timestamp = hb_timestamp
         self.hb_serial = hb_serial
+        avoid_internal_packages = is_avoid_internal_packages_set()
         self.db_connections = get_connection(
             config.env_config.topology_path,
             config.env_config.rbr_source_cluster,
             config.env_config.schema_tracker_cluster,
             config.env_config.rbr_state_cluster,
-            FORCE_AVOID_INTERNAL_PACKAGES
+            avoid_internal_packages
         )
 
     def run(self):

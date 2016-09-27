@@ -52,6 +52,10 @@ class TestFailureRecovery(object):
         """
         pass
 
+    @pytest.fixture(scope='module')
+    def replhandler(self):
+        return 'replicationhandleropensource'
+
     @pytest.fixture
     def rbrsource_ip(self, containers_without_repl_handler):
         return Containers.get_container_ip_address(
@@ -145,62 +149,9 @@ class TestFailureRecovery(object):
     def mock_state_cluster_host(self, rbrstate_ip):
         return rbrstate_ip
 
-    # @pytest.fixture
-    # def topology(
-    #     self,
-    #     rbrsource_ip,
-    #     rbrstate_ip,
-    #     schematracker_ip
-    # ):
-    #     return """
-    #     topology:
-    #     -   cluster: refresh_primary
-    #         replica: master
-    #         entries:
-    #             - charset: utf8
-    #               use_unicode: true
-    #               host: {rbrsource_ip}
-    #               db: yelp
-    #               user: yelpdev
-    #               passwd: ""
-    #               port: 3306
-    #     -   cluster: repltracker
-    #         replica: master
-    #         entries:
-    #             - charset: utf8
-    #               use_unicode: true
-    #               host: {schematracker_ip}
-    #               db: yelp
-    #               user: yelpdev
-    #               passwd: ""
-    #               port: 3306
-    #     -   cluster: replhandler
-    #         replica: master
-    #         entries:
-    #             - charset: utf8
-    #               use_unicode: true
-    #               host: {rbrstate_ip}
-    #               db: yelp
-    #               user: yelpdev
-    #               passwd: ""
-    #               port: 3306
-    #     """.format(
-    #         rbrsource_ip=rbrsource_ip,
-    #         rbrstate_ip=rbrstate_ip,
-    #         schematracker_ip=schematracker_ip
-    #     )
-
-    # @pytest.yield_fixture(autouse=True)
-    # def test_topology_yaml(self, topology):
-    #     cwd = os.path.dirname(os.path.realpath('__file__'))
-    #     topology_yaml = create_topology_yaml(cwd, topology)
-    #     yield topology_yaml
-    #     delete_file_if_exists(topology_yaml)
-
     @pytest.fixture
     def service_configs(
         self,
-        # test_topology_yaml,
         topology_path,
         schematizer_host_and_port,
         kafka_ip,
@@ -274,9 +225,7 @@ class TestFailureRecovery(object):
                     EnvConfig, 'schema_tracker_cluster'
                 ) as mock_tracker_cluster, mock.patch.object(
                     EnvConfig, 'topology_path'
-                ) as mock_topology_path, mock.patch.object(
-                    EnvConfig, 'force_avoid_internal_packages'
-                ) as mock_force_avoid_internal_pkg:
+                ) as mock_topology_path:
                     mock_recovery_queue_size.__get__ = mock.Mock(return_value=2)
                     mock_register_dry_run.__get__ = mock.Mock(return_value=False)
                     mock_publish_dry_run.__get__ = mock.Mock(return_value=False)
@@ -292,7 +241,7 @@ class TestFailureRecovery(object):
                     mock_state_cluster.__get__ = mock.Mock(return_value='replhandler')
                     mock_tracker_cluster.__get__ = mock.Mock(return_value='repltracker')
                     mock_topology_path.__get__ = mock.Mock(return_value=topology_yaml)
-                    mock_force_avoid_internal_pkg.__get__ = mock.Mock(return_value=True)
+                    os.environ['FORCE_AVOID_INTERNAL_PACKAGES'] = 'true'
                     test_helper = RestartHelper(
                         num_of_events_to_process=num_of_queries_to_process,
                         max_runtime_sec=end_time,
