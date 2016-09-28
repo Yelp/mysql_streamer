@@ -12,9 +12,9 @@ from dateutil.tz import tzutc
 from pymysqlreplication.event import GtidEvent
 
 from replication_handler import config
-from replication_handler.environment_configs import FORCE_AVOID_INTERNAL_PACKAGES
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
+from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
@@ -25,21 +25,6 @@ log = logging.getLogger('replication_handler.components.simple_binlog_stream_rea
 
 sensu_alert_interval_in_seconds = 30
 meteorite_interval_in_seconds = 2
-
-
-try:
-    # TODO(DATAPIPE-1509|abrar): Currently we have
-    # force_avoid_internal_packages as a means of simulating an absence
-    # of a yelp's internal package. And all references
-    # of force_avoid_internal_packages have to be removed from
-    # RH after we are completely ready for open source.
-    if FORCE_AVOID_INTERNAL_PACKAGES:
-        raise ImportError
-    from data_pipeline.tools.meteorite_gauge_manager import MeteoriteGaugeManager
-    from data_pipeline.tools.sensu_alert_manager import SensuAlertManager
-    _is_meteorite_sensu_supported = True
-except ImportError:
-    _is_meteorite_sensu_supported = False
 
 
 class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
@@ -59,19 +44,33 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         self.gtid_enabled = gtid_enabled
         self._upstream_position = position
         self._offset = 0
-        if _is_meteorite_sensu_supported:
-            self._setup_sensu_alert_manager()
-            self.meteorite_gauge_manager = MeteoriteGaugeManager(
-                meteorite_interval_in_seconds,
-                stats_gauge_name='replication_handler_delay_seconds',
-                container_name=config.env_config.container_name,
-                container_env=config.env_config.container_env,
-                disable=config.env_config.disable_meteorite,
-                rbr_source_cluster=config.env_config.rbr_source_cluster
-            )
+        self._set_sensu_alert_manager()
+        self._set_meteorite_gauge_manager()
         self._seek(self._upstream_position.offset)
 
-    def _setup_sensu_alert_manager(self):
+    @classmethod
+    def is_meteorite_sensu_supported(cls):
+        try:
+            # TODO(DATAPIPE-1509|abrar): Currently we have
+            # force_avoid_internal_packages as a means of simulating an absence
+            # of a yelp's internal package. And all references
+            # of force_avoid_internal_packages have to be removed from
+            # RH after we are completely ready for open source.
+            if is_avoid_internal_packages_set():
+                raise ImportError
+            from data_pipeline.tools.meteorite_gauge_manager import MeteoriteGaugeManager  # NOQA
+            from data_pipeline.tools.sensu_alert_manager import SensuAlertManager  # NOQA
+            return True
+        except ImportError:
+            return False
+
+    def _set_sensu_alert_manager(self):
+        if not self.is_meteorite_sensu_supported():
+            self.sensu_alert_manager = None
+            return
+
+        from data_pipeline.tools.sensu_alert_manager import SensuAlertManager
+
         sensu_result_dict = {
             'name': 'replication_handler_real_time_check',
             'output': 'Replication Handler has caught up with real time.',
@@ -92,6 +91,22 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             result_dict=sensu_result_dict,
             max_delay_seconds=config.env_config.max_delay_allowed_in_seconds,
             disable=config.env_config.disable_sensu,
+        )
+
+    def _set_meteorite_gauge_manager(self):
+        if not self.is_meteorite_sensu_supported():
+            self.meteorite_gauge_manager = None
+            return
+
+        from data_pipeline.tools.meteorite_gauge_manager import MeteoriteGaugeManager
+
+        self.meteorite_gauge_manager = MeteoriteGaugeManager(
+            meteorite_interval_in_seconds,
+            stats_gauge_name='replication_handler_delay_seconds',
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            disable=config.env_config.disable_meteorite,
+            rbr_source_cluster=config.env_config.rbr_source_cluster
         )
 
     def __iter__(self):
@@ -141,7 +156,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             timestamp = self._add_tz_info_to_tz_naive_timestamp(
                 event.row["after_values"]["timestamp"]
             )
-            if _is_meteorite_sensu_supported:
+            if self.sensu_alert_manager and self.meteorite_gauge_manager:
                 self.sensu_alert_manager.periodic_process(timestamp)
                 self.meteorite_gauge_manager.periodic_process(timestamp)
             self._log_process(timestamp, event.log_file, event.log_pos)

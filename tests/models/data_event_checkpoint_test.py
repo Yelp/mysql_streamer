@@ -4,15 +4,26 @@ from __future__ import unicode_literals
 
 import mock
 import pytest
-from data_pipeline.tools.meteorite_wrappers import StatTimer
 
-from replication_handler.models.data_event_checkpoint import _is_meteorite_supported
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 
 
 @pytest.mark.itest
 @pytest.mark.itest_db
 class TestDataEventCheckpoint(object):
+
+    @pytest.yield_fixture(params=[True, False], autouse=True)
+    def patch_is_avoid_internal_packages_set(self, request):
+        # TODO(DATAPIPE-1509|abrar): Currently we have
+        # force_avoid_internal_packages as a means of simulating an absence
+        # of a yelp's internal package. And all references
+        # of force_avoid_internal_packages have to be removed from
+        # RH after we are completely ready for open source.
+        with mock.patch(
+            'replication_handler.models.data_event_checkpoint.is_avoid_internal_packages_set'
+        ) as mock_mode:
+            mock_mode.return_value = request.param
+            yield mock_mode
 
     @pytest.fixture
     def first_kafka_offset(self):
@@ -209,13 +220,17 @@ class TestDataEventCheckpoint(object):
         expected_topic_to_kafka_offset_map,
         second_kafka_topic,
     ):
-        if not _is_meteorite_supported:
+        if not DataEventCheckpoint.is_meteorite_supported():
+            # ensure that data_event_checkpoint functions coorectly
+            # when meteorite is not supported.
             DataEventCheckpoint.upsert_data_event_checkpoint(
                 sandbox_session,
                 topic_to_kafka_offset_map={second_kafka_topic: 300},
                 cluster_name=cluster_name,
             )
+            assert True
         else:
+            from data_pipeline.tools.meteorite_wrappers import StatTimer
             with mock.patch.object(
                 StatTimer,
                 'start'
@@ -240,13 +255,17 @@ class TestDataEventCheckpoint(object):
         expected_topic_to_kafka_offset_map,
         second_kafka_topic,
     ):
-        if not _is_meteorite_supported:
+        if not DataEventCheckpoint.is_meteorite_supported():
+            # ensure that data_event_checkpoint functions coorectly
+            # when meteorite is not supported.
             DataEventCheckpoint.upsert_data_event_checkpoint(
                 sandbox_session,
                 topic_to_kafka_offset_map={second_kafka_topic: 300},
                 cluster_name=cluster_name,
             )
+            assert True
         else:
+            from data_pipeline.tools.meteorite_wrappers import StatTimer
             with mock.patch.object(
                 StatTimer,
                 'start'

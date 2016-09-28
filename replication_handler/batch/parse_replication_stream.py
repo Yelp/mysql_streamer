@@ -28,7 +28,7 @@ from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.replication_stream_restarter import ReplicationStreamRestarter
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_wrapper import SchemaWrapper
-from replication_handler.environment_configs import FORCE_AVOID_INTERNAL_PACKAGES
+from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.models.database import get_connection
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
@@ -67,7 +67,7 @@ class ParseReplicationStream(Batch):
             config.env_config.rbr_source_cluster,
             config.env_config.schema_tracker_cluster,
             config.env_config.rbr_state_cluster,
-            FORCE_AVOID_INTERNAL_PACKAGES
+            is_avoid_internal_packages_set()
         )
         self.schema_wrapper = SchemaWrapper(
             db_connections=self.db_connections,
@@ -227,6 +227,12 @@ class ParseReplicationStream(Batch):
 
     @contextmanager
     def _setup_counters(self):
+        if config.env_config.disable_meteorite:
+            yield {
+                'schema_event_counter': None,
+                'data_event_counter': None,
+            }
+            return
         schema_event_counter = StatsCounter(
             STAT_COUNTER_NAME,
             message_count_timer=STATS_FLUSH_INTERVAL,
@@ -243,12 +249,8 @@ class ParseReplicationStream(Batch):
                 'data_event_counter': data_event_counter,
             }
         finally:
-            if not config.env_config.disable_meteorite:
-                schema_event_counter.flush()
-                data_event_counter.flush()
-            else:
-                schema_event_counter._reset()
-                data_event_counter._reset()
+            schema_event_counter.flush()
+            data_event_counter.flush()
 
     @contextmanager
     def _register_signal_handlers(self):

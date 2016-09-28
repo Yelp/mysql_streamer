@@ -53,14 +53,6 @@ class TestDataEventHandler(object):
 
     @pytest.fixture(params=get_mock_stats_counters())
     def stats_counter(self, request):
-        # Need a way to detect if replication handler is run internally
-        # or open-source mode and then dynamically set stats_counter fixture.
-        # Hence parameterizing stats_counter fixture with the return value of a
-        # function `mock_stats_counters`.
-        # Because mock_stats_counters is a module scoped fucntion and not a fixture
-        # its not evaluated of every test so we need to reset_mock.
-        if isinstance(request.param, mock.Mock):
-            request.param.reset_mock()
         return request.param
 
     @pytest.fixture
@@ -158,7 +150,7 @@ class TestDataEventHandler(object):
 
     @pytest.fixture
     def producer(self):
-        producer = mock.Mock(autospect=Producer)
+        producer = mock.Mock(autospec=Producer)
         return producer
 
     @pytest.yield_fixture
@@ -289,6 +281,9 @@ class TestDataEventHandler(object):
         if stats_counter:
             assert stats_counter.increment.call_count == len(data_create_events)
             assert stats_counter.increment.call_args[0][0] == 'fake_table'
+        else:
+            # assert DataEventHandler is functional without stats_counter.
+            assert True
 
     def test_handle_data_update_event(
         self,

@@ -10,7 +10,6 @@ from pymysqlreplication.event import GtidEvent
 from pymysqlreplication.event import QueryEvent
 
 from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
-from replication_handler.components.simple_binlog_stream_reader_wrapper import _is_meteorite_sensu_supported
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
@@ -18,6 +17,19 @@ from replication_handler.util.position import LogPosition
 
 
 class TestSimpleBinlogStreamReaderWrapper(object):
+
+    @pytest.yield_fixture(params=[True, False], autouse=True)
+    def patch_is_avoid_internal_packages_set(self, request):
+        # TODO(DATAPIPE-1509|abrar): Currently we have
+        # force_avoid_internal_packages as a means of simulating an absence
+        # of a yelp's internal package. And all references
+        # of force_avoid_internal_packages have to be removed from
+        # RH after we are completely ready for open source.
+        with mock.patch(
+            'replication_handler.components.simple_binlog_stream_reader_wrapper.is_avoid_internal_packages_set'
+        ) as mock_mode:
+            mock_mode.return_value = request.param
+            yield mock_mode
 
     @pytest.yield_fixture
     def patch_stream(self):
@@ -73,25 +85,29 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             assert replication_event.position.gtid == result.position.gtid
             assert replication_event.position.offset == result.position.offset
 
-
     def test_meteorite_and_sensu_alert(
         self,
         mock_db_connections,
         patch_stream
     ):
-        if not _is_meteorite_sensu_supported:
+        if not SimpleBinlogStreamReaderWrapper.is_meteorite_sensu_supported():
             pytest.skip("meteorite and sensu are unsupported in open source version.")
-        with mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.SensuAlertManager.periodic_process'
-        ) as mock_sensu_alert, mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.MeteoriteGaugeManager.periodic_process'
-        ) as mock_meteorite:
+
+        from data_pipeline.tools.meteorite_gauge_manager import MeteoriteGaugeManager
+        from data_pipeline.tools.sensu_alert_manager import SensuAlertManager
+        with mock.patch.object(
+            MeteoriteGaugeManager,
+            'periodic_process'
+        ) as mock_meteorite, mock.patch.object(
+            SensuAlertManager,
+            'periodic_process'
+        ) as mock_sensu_alert:
             stream, results = self._setup_stream_and_expected_result(
                 mock_db_connections.source_database_config,
                 patch_stream
             )
-            assert mock_sensu_alert.call_count == 1
             assert mock_meteorite.call_count == 1
+            assert mock_sensu_alert.call_count == 1
 
     def test_yield_event_with_heartbeat_event(
         self,

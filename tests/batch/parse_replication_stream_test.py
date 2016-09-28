@@ -17,25 +17,11 @@ from replication_handler.batch.parse_replication_stream import ParseReplicationS
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
-from replication_handler.environment_configs import FORCE_AVOID_INTERNAL_PACKAGES
+from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
-
-
-try:
-    # TODO(DATAPIPE-1509|abrar): Currently we have
-    # force_avoid_internal_packages as a means of simulating an absence
-    # of a yelp's internal package. And all references
-    # of force_avoid_internal_packages have to be removed from
-    # RH after we are completely ready for open source.
-    if FORCE_AVOID_INTERNAL_PACKAGES:
-        raise ImportError
-    from data_pipeline.tools.meteorite_wrappers import StatsCounter
-    _is_meteorite_supported = True
-except ImportError:
-    _is_meteorite_supported = False
 
 
 class TestParseReplicationStream(object):
@@ -231,6 +217,20 @@ class TestParseReplicationStream(object):
             data_event_with_gtid,
         ]
 
+    def is_meteorite_supported(self):
+        try:
+            # TODO(DATAPIPE-1509|abrar): Currently we have
+            # force_avoid_internal_packages as a means of simulating an absence
+            # of a yelp's internal package. And all references
+            # of force_avoid_internal_packages have to be removed from
+            # RH after we are completely ready for open source.
+            if is_avoid_internal_packages_set():
+                raise ImportError
+            from data_pipeline.tools.meteorite_wrappers import StatsCounter  # NOQA
+            return True
+        except ImportError:
+            return False
+
     def test_meteorite_off(
         self,
         schema_event,
@@ -246,8 +246,11 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_exit
     ):
-        if not _is_meteorite_supported:
+        if not self.is_meteorite_supported():
             pytest.skip("meteorite unsupported in open source version.")
+
+        from data_pipeline.tools.meteorite_wrappers import StatsCounter
+
         self._different_events_builder(
             schema_event,
             data_event,
@@ -264,13 +267,9 @@ class TestParseReplicationStream(object):
         with mock.patch.object(
             StatsCounter,
             'flush'
-        ) as mock_flush, mock.patch.object(
-            StatsCounter,
-            '_reset'
-        ) as mock_reset:
+        ) as mock_flush:
             self._init_and_run_batch()
             assert mock_flush.call_count == 0
-            assert mock_reset.call_count == 4
 
     def test_meteorite_on(
         self,
@@ -287,8 +286,11 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_exit
     ):
-        if not _is_meteorite_supported:
+        if not self.is_meteorite_supported():
             pytest.skip("meteorite unsupported in open source version.")
+
+        from data_pipeline.tools.meteorite_wrappers import StatsCounter
+
         self._different_events_builder(
             schema_event,
             data_event,
@@ -305,14 +307,9 @@ class TestParseReplicationStream(object):
         with mock.patch.object(
             StatsCounter,
             'flush'
-        ) as mock_flush, mock.patch.object(
-            StatsCounter,
-            '_reset'
-        ) as mock_reset:
+        ) as mock_flush:
             self._init_and_run_batch()
             assert mock_flush.call_count == 2
-            # note that this is only 2 because we mock the flush method, therefore we don't end up calling its internal reset
-            assert mock_reset.call_count == 2
 
     def test_replication_stream_different_events(
         self,

@@ -10,7 +10,7 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 
 from replication_handler import config
-from replication_handler.environment_configs import FORCE_AVOID_INTERNAL_PACKAGES
+from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.helpers.dates import default_now
 from replication_handler.models.database import Base
 from replication_handler.models.database import UnixTimeStampType
@@ -20,19 +20,6 @@ log = logging.getLogger('replication_handler.models.data_event_checkpoint')
 
 
 DATA_EVENT_CHECKPOINT_TIMER_NAME = 'replication_handler_data_event_checkpoint_timer'
-
-try:
-    # TODO(DATAPIPE-1509|abrar): Currently we have
-    # force_avoid_internal_packages as a means of simulating an absence
-    # of a yelp's internal package. And all references
-    # of force_avoid_internal_packages have to be removed from
-    # RH after we are completely ready for open source.
-    if FORCE_AVOID_INTERNAL_PACKAGES:
-        raise ImportError
-    from data_pipeline.tools.meteorite_wrappers import StatTimer
-    _is_meteorite_supported = True
-except ImportError:
-    _is_meteorite_supported = False
 
 
 class DataEventCheckpoint(Base):
@@ -53,13 +40,8 @@ class DataEventCheckpoint(Base):
         topic_to_kafka_offset_map,
         cluster_name,
     ):
-        if _is_meteorite_supported and not config.env_config.disable_meteorite:
-            timer = StatTimer(
-                DATA_EVENT_CHECKPOINT_TIMER_NAME,
-                container_name=config.env_config.container_name,
-                container_env=config.env_config.container_env,
-                rbr_source_cluster=config.env_config.rbr_source_cluster,
-            )
+        if cls.is_meteorite_supported() and not config.env_config.disable_meteorite:
+            timer = cls.get_meteorite_time()
             timer.start()
         else:
             timer = None
@@ -102,6 +84,33 @@ class DataEventCheckpoint(Base):
             )
         if timer:
             timer.stop()
+
+    @classmethod
+    def is_meteorite_supported(cls):
+        try:
+            # TODO(DATAPIPE-1509|abrar): Currently we have
+            # force_avoid_internal_packages as a means of simulating an absence
+            # of a yelp's internal package. And all references
+            # of force_avoid_internal_packages have to be removed from
+            # RH after we are completely ready for open source.
+            if is_avoid_internal_packages_set():
+                raise ImportError
+            from data_pipeline.tools.meteorite_wrappers import StatTimer  # NOQA
+            return True
+        except ImportError:
+            return False
+
+    @classmethod
+    def get_meteorite_time(cls):
+
+        from data_pipeline.tools.meteorite_wrappers import StatTimer  # NOQA
+
+        return StatTimer(
+            DATA_EVENT_CHECKPOINT_TIMER_NAME,
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            rbr_source_cluster=config.env_config.rbr_source_cluster,
+        )
 
     @classmethod
     def _get_topic_to_checkpoint_record_map(cls, session, cluster_name):

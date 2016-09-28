@@ -42,11 +42,11 @@ SchemaHandlerExternalPatches = namedtuple(
 class TestSchemaEventHandler(object):
     @pytest.fixture
     def producer(self):
-        return mock.Mock(autospect=Producer)
+        return mock.Mock(autospec=Producer)
 
     @pytest.fixture
     def schematizer_client(self):
-        return mock.Mock(autospect=SchematizerClient)
+        return mock.Mock(autospec=SchematizerClient)
 
     @pytest.fixture
     def schema_wrapper(self, mock_db_connections, schematizer_client):
@@ -461,7 +461,7 @@ class TestSchemaEventHandler(object):
         assert producer.flush.call_count == 1
         assert save_position.call_count == 1
 
-    def test_handle_event_alter_table_meteorite_disabled_false(
+    def test_handle_event_alter_table_with_meteorite(
         self,
         namespace,
         producer,
@@ -499,6 +499,9 @@ class TestSchemaEventHandler(object):
         if stats_counter:
             assert stats_counter.increment.call_count == 1
             assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
+        else:
+            # assert SchemaEventHandler is functional without stats_counter.
+            assert True
 
     def test_handle_event_rename_table(
         self,
