@@ -32,6 +32,9 @@ from tests.integration.conftest import _wait_for_schematizer_topic
 TIMEOUT = 60
 
 
+pytestmark = pytest.mark.usefixtures("cleanup_avro_cache")
+
+
 @pytest.fixture(scope='module')
 def replhandler():
     return 'replicationhandler'
