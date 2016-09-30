@@ -32,13 +32,12 @@ class MySQLHeartbeatSearchBatch(Batch):
         super(MySQLHeartbeatSearchBatch, self).__init__()
         self.hb_timestamp = hb_timestamp
         self.hb_serial = hb_serial
-        avoid_internal_packages = is_avoid_internal_packages_set()
         self.db_connections = get_connection(
             config.env_config.topology_path,
             config.env_config.rbr_source_cluster,
             config.env_config.schema_tracker_cluster,
             config.env_config.rbr_state_cluster,
-            avoid_internal_packages
+            is_avoid_internal_packages_set()
         )
 
     def run(self):

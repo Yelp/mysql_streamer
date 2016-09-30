@@ -31,7 +31,7 @@ logging.basicConfig(
 
 
 @pytest.fixture(scope='module')
-def compose_file(replhandler):
+def compose_file():
     return os.path.abspath(
         os.path.join(
             os.path.split(

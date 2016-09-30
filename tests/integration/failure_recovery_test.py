@@ -3,19 +3,19 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import ast
-from collections import namedtuple
+import uuid
 
 import mock
 import os
 import pytest
+import staticconf
+import staticconf.testing
 from data_pipeline.message_type import MessageType
 from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.batch.parse_replication_stream import \
     ParseReplicationStream
-from replication_handler.config import EnvConfig
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from replication_handler.testing_helper.config_revmap import reconfigure
 from replication_handler.testing_helper.restart_helper import RestartHelper
 from replication_handler.testing_helper.util import RBR_SOURCE
 from replication_handler.testing_helper.util import RBR_STATE
@@ -23,7 +23,6 @@ from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from replication_handler.testing_helper.util import execute_query_get_all_rows
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
-from replication_handler.util.misc import delete_file_if_exists
 from tests.integration.conftest import _fetch_messages
 from tests.integration.conftest import _verify_messages
 from tests.integration.conftest import _wait_for_schematizer_topic
@@ -31,13 +30,7 @@ from tests.integration.conftest import _wait_for_schematizer_topic
 
 TIMEOUT = 60
 
-
 pytestmark = pytest.mark.usefixtures("cleanup_avro_cache")
-
-
-@pytest.fixture(scope='module')
-def replhandler():
-    return 'replicationhandler'
 
 
 @pytest.mark.itest
@@ -54,31 +47,6 @@ class TestFailureRecovery(object):
         autouse set to True
         """
         pass
-
-    @pytest.fixture(scope='module')
-    def replhandler(self):
-        return 'replicationhandleropensource'
-
-    @pytest.fixture
-    def rbrsource_ip(self, containers_without_repl_handler):
-        return Containers.get_container_ip_address(
-            project=containers_without_repl_handler.project,
-            service='rbrsource'
-        )
-
-    @pytest.fixture
-    def rbrstate_ip(self, containers_without_repl_handler):
-        return Containers.get_container_ip_address(
-            project=containers_without_repl_handler.project,
-            service='rbrstate'
-        )
-
-    @pytest.fixture
-    def schematracker_ip(self, containers_without_repl_handler):
-        return Containers.get_container_ip_address(
-            project=containers_without_repl_handler.project,
-            service='schematracker'
-        )
 
     @pytest.fixture
     def schematizer_ip(self, containers_without_repl_handler):
@@ -116,150 +84,148 @@ class TestFailureRecovery(object):
 
     @pytest.fixture
     def table_whitelist(self):
-        return [
-            'basic_table',
-            'biz',
-            'complex_table',
-            'employee_new',
-            'health_check',
-            'replication_heartbeat',
-            'hogwarts',
-            'durmstrang',
-            'coursework',
-            'animagi',
-            'ministry_of_magic'
-        ]
-
-    @pytest.yield_fixture(autouse=True)
-    def create_zk(self, zookeeper_ip):
-        cwd = os.path.dirname(os.path.realpath('__file__'))
-        with open("{cwd}/zk.yaml".format(cwd=cwd), 'w') as f:
-            f.write("---\n")
-            f.write("  - - \"{ip}\"\n".format(ip=zookeeper_ip))
-            f.write("    - 2181\n")
-        yield
-        delete_file_if_exists("{cwd}/zk.yaml".format(cwd=cwd))
+        return []
 
     @pytest.fixture
-    def mock_source_cluster_host(self, rbrsource_ip):
-        return rbrsource_ip
+    def zk_config(self, zookeeper_ip):
+        return """---
+          - - {ip}
+            - 2181
+        """.format(ip=zookeeper_ip)
+
+    @pytest.fixture(autouse=True)
+    def create_zk(self, zk_config, tmpdir):
+        tmp_path = tmpdir.mkdir("tmpzk").join("zk.yaml")
+        tmp_path.write(zk_config)
+        return tmp_path.strpath
 
     @pytest.fixture
-    def mock_tracker_cluster_host(self, schematracker_ip):
-        return schematracker_ip
+    def mock_source_cluster_host(self, containers_without_repl_handler):
+        return Containers.get_container_ip_address(
+            project=containers_without_repl_handler.project,
+            service='rbrsource'
+        )
 
     @pytest.fixture
-    def mock_state_cluster_host(self, rbrstate_ip):
-        return rbrstate_ip
+    def mock_tracker_cluster_host(self, containers_without_repl_handler):
+        return Containers.get_container_ip_address(
+            project=containers_without_repl_handler.project,
+            service='schematracker'
+        )
 
     @pytest.fixture
-    def service_configs(
+    def mock_state_cluster_host(self, containers_without_repl_handler):
+        return Containers.get_container_ip_address(
+            project=containers_without_repl_handler.project,
+            service='rbrstate'
+        )
+
+    @pytest.fixture
+    def mock_repl_handler_configs(
         self,
+        mock_source_cluster_name,
+        mock_tracker_cluster_name,
+        mock_state_cluster_name,
         topology_path,
+        schema_blacklist,
+        table_whitelist,
+    ):
+        return {
+            'rbr_source_cluster': mock_source_cluster_name,
+            'schema_tracker_cluster': mock_tracker_cluster_name,
+            'rbr_state_cluster': mock_state_cluster_name,
+            'recovery_queue_size': 2,
+            'register_dry_run': False,
+            'publish_dry_run': False,
+            'topology_path': topology_path,
+            'max_delay_allowed_in_seconds': 600,
+            'sensu_host': '169.254.255.254',
+            'disable_sensu': True,
+            'force_exit': True,
+            'schema_blacklist': schema_blacklist,
+            'table_whitelist': table_whitelist,
+            'pii_yaml_path': '/nail/etc/services/database_pii',
+            'namespace': 'dev',
+            'producer_name': 'failure_test_producer',
+            'container_name': 'failure_test',
+            'container_env': 'dev_box',
+            'disable_meteorite': True,
+        }
+
+    @pytest.fixture
+    def data_pipeline_conf(
+        self,
         schematizer_host_and_port,
         kafka_ip,
         zookeeper_ip,
-        schema_blacklist,
-        table_whitelist
+        create_zk
     ):
-        ServiceConfigs = namedtuple(
-            'ServiceConfigs',
-            """topology_path
-            schematizer_host_and_port
-            kafka_ip
-            zookeeper_ip
-            schema_blacklist
-            table_whitelist"""
-        )
-        return ServiceConfigs(
-            topology_path,
-            schematizer_host_and_port,
-            kafka_ip,
-            zookeeper_ip,
-            schema_blacklist,
-            table_whitelist
-        )
+        return {
+            'schematizer_host_and_port': schematizer_host_and_port,
+            'should_use_testing_containers': True,
+            'kafka_broker_list': ["{ip}:9092".format(ip=kafka_ip)],
+            'kafka_zookeeper': "{ip}:2181".format(ip=zookeeper_ip),
+            'zookeeper_discovery_path': create_zk,
+            'kafka_producer_buffer_size': 1
+        }
 
+    @pytest.fixture
+    def yelp_conn_conf(self, topology_path):
+        return {
+            'topology': topology_path,
+            'connection_set_file': 'connection_sets.yaml'
+        }
+
+    @pytest.fixture
     def start_service(
         self,
-        service_configs,
-        resume_stream,
-        num_of_queries_to_process,
-        end_time,
-        is_schema_event_helper_enabled,
-        num_of_schema_events
+        mock_repl_handler_configs,
+        data_pipeline_conf,
+        yelp_conn_conf
     ):
-        cwd = os.path.dirname(os.path.realpath('__file__'))
-        topology_yaml = service_configs.topology_path
-        with reconfigure(
-            schematizer_host_and_port=service_configs.schematizer_host_and_port,
-            should_use_testing_containers=True,
-            kafka_broker_list=["{ip}:9092".format(ip=service_configs.kafka_ip)],
-            kafka_zookeeper="{ip}:2181".format(ip=service_configs.zookeeper_ip),
-            zookeeper_discovery_path="{cwd}/zk.yaml".format(cwd=cwd),
-            kafka_producer_buffer_size=1
+        def func(
+            resume_stream,
+            num_of_queries_to_process,
+            end_time,
+            is_schema_event_helper_enabled,
+            num_of_schema_events
         ):
+            mock_repl_handler_configs['resume_stream'] = resume_stream
+
             with mock.patch.object(
                 ParseReplicationStream,
                 'process_commandline_options',
                 set_args_and_options
+            ), staticconf.testing.MockConfiguration(
+                mock_repl_handler_configs
+            ), staticconf.testing.MockConfiguration(
+                data_pipeline_conf,
+                namespace='data_pipeline'
+            ), staticconf.testing.MockConfiguration(
+                yelp_conn_conf,
+                namespace='yelp_conn'
             ):
-                with mock.patch.object(
-                    EnvConfig, 'recovery_queue_size'
-                ) as mock_recovery_queue_size, mock.patch.object(
-                    EnvConfig, 'register_dry_run'
-                ) as mock_register_dry_run, mock.patch.object(
-                    EnvConfig, 'publish_dry_run'
-                ) as mock_publish_dry_run, mock.patch.object(
-                    EnvConfig, 'disable_sensu'
-                ) as mock_disable_sensu, mock.patch.object(
-                    EnvConfig, 'force_exit'
-                ) as mock_force_exit, mock.patch.object(
-                    EnvConfig, 'schema_blacklist'
-                ) as mock_schema_blacklist, mock.patch.object(
-                    EnvConfig, 'table_whitelist'
-                ) as mock_table_whitelist, mock.patch.object(
-                    EnvConfig, 'resume_stream'
-                ) as mock_resume_stream, mock.patch.object(
-                    EnvConfig, 'rbr_source_cluster'
-                ) as mock_source_cluster, mock.patch.object(
-                    EnvConfig, 'rbr_state_cluster'
-                ) as mock_state_cluster, mock.patch.object(
-                    EnvConfig, 'schema_tracker_cluster'
-                ) as mock_tracker_cluster, mock.patch.object(
-                    EnvConfig, 'topology_path'
-                ) as mock_topology_path:
-                    mock_recovery_queue_size.__get__ = mock.Mock(return_value=2)
-                    mock_register_dry_run.__get__ = mock.Mock(return_value=False)
-                    mock_publish_dry_run.__get__ = mock.Mock(return_value=False)
-                    mock_disable_sensu.__get__ = mock.Mock(return_value=True)
-                    mock_force_exit.__get__ = mock.Mock(return_value=True)
-                    mock_schema_blacklist.__get__ = mock.Mock(return_value=service_configs.schema_blacklist)
-                    mock_table_whitelist.__get__ = mock.Mock(return_value=service_configs.table_whitelist)
-                    if resume_stream:
-                        mock_resume_stream.__get__ = mock.Mock(return_value=True)
-                    else:
-                        mock_resume_stream.__get__ = mock.Mock(return_value=False)
-                    mock_source_cluster.__get__ = mock.Mock(return_value='refresh_primary')
-                    mock_state_cluster.__get__ = mock.Mock(return_value='replhandler')
-                    mock_tracker_cluster.__get__ = mock.Mock(return_value='repltracker')
-                    mock_topology_path.__get__ = mock.Mock(return_value=topology_yaml)
-                    os.environ['FORCE_AVOID_INTERNAL_PACKAGES'] = 'true'
-                    test_helper = RestartHelper(
-                        num_of_events_to_process=num_of_queries_to_process,
-                        max_runtime_sec=end_time,
-                        is_schema_event_helper_enabled=is_schema_event_helper_enabled,
-                        num_of_schema_events=num_of_schema_events,
-                    )
-                    test_helper.start()
-                    return test_helper
+                os.environ['FORCE_AVOID_INTERNAL_PACKAGES'] = 'true'
+                test_helper = RestartHelper(
+                    num_of_events_to_process=num_of_queries_to_process,
+                    max_runtime_sec=end_time,
+                    is_schema_event_helper_enabled=is_schema_event_helper_enabled,
+                    num_of_schema_events=num_of_schema_events
+                )
+                test_helper.start()
+                return test_helper
+        return func
+
+    def get_random_string(self):
+        rand = uuid.uuid1()
+        return rand.hex
 
     def test_shutdown_processing_events_publishes_events_only_once(
         self,
         containers_without_repl_handler,
-        service_configs,
         schematizer,
-        namespace
+        namespace,
+        start_service,
     ):
         """Tests the guarantee that the service provides about publishing every
         MySQL change only once. A few queries are executed on the source
@@ -267,7 +233,7 @@ class TestFailureRecovery(object):
         processing a subset of events and then restart and pick up from where it
         left off.
         """
-        table_name = 'coursework'
+        table_name = "coursework_{r}".format(r=self.get_random_string())
         create_query = """
         CREATE TABLE {table}
         (name VARCHAR(255) PRIMARY KEY, teacher VARCHAR(255))
@@ -315,8 +281,7 @@ class TestFailureRecovery(object):
             )
         )
 
-        self.start_service(
-            service_configs=service_configs,
+        start_service(
             resume_stream=False,
             num_of_queries_to_process=2,
             end_time=30,
@@ -340,13 +305,12 @@ class TestFailureRecovery(object):
         ]
         _verify_messages(messages_one, expected_messages_one)
 
-        self.start_service(
-            service_configs=service_configs,
+        start_service(
             resume_stream=True,
             num_of_queries_to_process=2,
             end_time=30,
             is_schema_event_helper_enabled=False,
-            num_of_schema_events=100
+            num_of_schema_events=100,
         )
 
         messages_two = _fetch_messages(
@@ -361,12 +325,15 @@ class TestFailureRecovery(object):
         expected_messages_two = [
             {
                 'message_type': MessageType.create,
-                'payload_data': {'name': 'care of magical creatures', 'teacher': 'Rubeus Hagrid'}
+                'payload_data': {'name': 'care of magical creatures',
+                                 'teacher': 'Rubeus Hagrid'}
             },
             {
                 'message_type': MessageType.update,
-                'payload_data': {'name': 'care of magical creatures', 'teacher': 'Grubbly Plank'},
-                'previous_payload_data': {'name': 'care of magical creatures', 'teacher': 'Rubeus Hagrid'}
+                'payload_data': {'name': 'care of magical creatures',
+                                 'teacher': 'Grubbly Plank'},
+                'previous_payload_data': {'name': 'care of magical creatures',
+                                          'teacher': 'Rubeus Hagrid'}
             }
         ]
 
@@ -375,16 +342,16 @@ class TestFailureRecovery(object):
     def test_saving_topic_and_kafka_offset_info(
         self,
         containers_without_repl_handler,
-        service_configs,
         schematizer,
-        namespace
+        namespace,
+        start_service,
     ):
         """This tests that the service saves the correct topic and offset
         information on failure in the global_event_state table.
         It also asserts that it doesn't miss out on any event and
         doesn't process an event more than once.
         """
-        table_name = 'animagi'
+        table_name = "animagi_{r}".format(r=self.get_random_string())
         create_query = """
         CREATE TABLE {table}
         (name VARCHAR(255) PRIMARY KEY, animal VARCHAR(255))
@@ -437,13 +404,12 @@ class TestFailureRecovery(object):
             )
         )
 
-        self.start_service(
-            service_configs=service_configs,
+        start_service(
             resume_stream=True,
             num_of_queries_to_process=3,
             end_time=30,
             is_schema_event_helper_enabled=False,
-            num_of_schema_events=100
+            num_of_schema_events=100,
         )
 
         _wait_for_schematizer_topic(schematizer, namespace, table_name)
@@ -478,13 +444,12 @@ class TestFailureRecovery(object):
         assert saved_data_state[0]['kafka_offset'] == 2
         assert saved_data_state[0]['kafka_topic'] == topic_name
 
-        self.start_service(
-            service_configs=service_configs,
+        start_service(
             resume_stream=True,
             num_of_queries_to_process=2,
             end_time=30,
             is_schema_event_helper_enabled=False,
-            num_of_schema_events=100
+            num_of_schema_events=100,
         )
 
         saved_data_state = execute_query_get_all_rows(
@@ -515,9 +480,9 @@ class TestFailureRecovery(object):
     def test_unclean_shutdown_schema_event(
         self,
         containers_without_repl_handler,
-        service_configs,
         schematizer,
-        namespace
+        namespace,
+        start_service,
     ):
         """This tests the recovery of the service if it fails when executing an
         schema event.
@@ -528,7 +493,7 @@ class TestFailureRecovery(object):
         COMPLETED. It also asserts that it doesn't miss out on any event and
         doesn't process an event more than once.
         """
-        table_name = 'ministry_of_magic'
+        table_name = "ministry_of_magic_{r}".format(r=self.get_random_string())
         create_query = """
         CREATE TABLE {table}
         (name VARCHAR(255) PRIMARY KEY, dept VARCHAR(255))
@@ -579,13 +544,12 @@ class TestFailureRecovery(object):
             )
         )
 
-        self.start_service(
-            service_configs=service_configs,
+        start_service(
             resume_stream=True,
             num_of_queries_to_process=3,
             end_time=30,
             is_schema_event_helper_enabled=True,
-            num_of_schema_events=0
+            num_of_schema_events=0,
         )
 
         saved_schema_state = execute_query_get_all_rows(
@@ -599,16 +563,16 @@ class TestFailureRecovery(object):
         saved_alter_query = saved_schema_state[0]['query']
         saved_status = saved_schema_state[0]['status']
 
-        assert ' '.join(saved_alter_query.split()) == ' '.join(add_col_query.format(table=table_name).split())
+        assert ' '.join(saved_alter_query.split()) == ' '.join(
+            add_col_query.format(table=table_name).split())
         assert saved_status == SchemaEventStatus.PENDING
 
-        self.start_service(
-            service_configs=service_configs,
+        start_service(
             resume_stream=True,
             num_of_queries_to_process=2,
             end_time=30,
             is_schema_event_helper_enabled=False,
-            num_of_schema_events=100
+            num_of_schema_events=100,
         )
 
         saved_schema_state = execute_query_get_all_rows(
@@ -622,7 +586,8 @@ class TestFailureRecovery(object):
         saved_alter_query = saved_schema_state[0]['query']
         saved_status = saved_schema_state[0]['status']
 
-        assert ' '.join(saved_alter_query).split() == ' '.join(add_col_query.format(table=table_name)).split()
+        assert ' '.join(saved_alter_query).split() == ' '.join(
+            add_col_query.format(table=table_name)).split()
         assert saved_status == SchemaEventStatus.COMPLETED
 
         _fetch_messages(
@@ -639,9 +604,9 @@ class TestFailureRecovery(object):
     def test_unclean_shutdown_processing_table_rename(
         self,
         containers_without_repl_handler,
-        service_configs,
         schematizer,
-        namespace
+        namespace,
+        start_service,
     ):
         table_name_one = 'hogwarts'
         table_name_two = 'durmstrang'
@@ -702,13 +667,12 @@ class TestFailureRecovery(object):
             )
         )
 
-        self.start_service(
-            service_configs=service_configs,
+        start_service(
             resume_stream=True,
             num_of_queries_to_process=3,
             end_time=30,
             is_schema_event_helper_enabled=False,
-            num_of_schema_events=100
+            num_of_schema_events=100,
         )
         show_query = "SHOW CREATE TABLE {name}"
         old_source_schema = execute_query_get_one_row(
@@ -723,13 +687,12 @@ class TestFailureRecovery(object):
         )
         assert old_source_schema != old_tracker_schema
 
-        self.start_service(
-            service_configs=service_configs,
+        start_service(
             resume_stream=True,
             num_of_queries_to_process=3,
             end_time=30,
             is_schema_event_helper_enabled=False,
-            num_of_schema_events=100
+            num_of_schema_events=100,
         )
 
         old_source_schema = execute_query_get_one_row(
@@ -763,7 +726,8 @@ class TestFailureRecovery(object):
         expected_messages_one = [
             {
                 'message_type': MessageType.create,
-                'payload_data': {'name': 'Cedric Diggory', 'house': 'Hufflepuff'}
+                'payload_data': {'name': 'Cedric Diggory',
+                                 'house': 'Hufflepuff'}
             },
             {
                 'message_type': MessageType.create,
@@ -793,7 +757,6 @@ def set_args_and_options(self):
 
 
 class MockOptions(object):
-
     @property
     def custom_emails(self):
         return ''

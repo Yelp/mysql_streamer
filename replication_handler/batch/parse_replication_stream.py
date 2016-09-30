@@ -62,13 +62,12 @@ class ParseReplicationStream(Batch):
 
     def __init__(self):
         super(ParseReplicationStream, self).__init__()
-        avoid_internal_packages = is_avoid_internal_packages_set()
         self.db_connections = get_connection(
             config.env_config.topology_path,
             config.env_config.rbr_source_cluster,
             config.env_config.schema_tracker_cluster,
             config.env_config.rbr_state_cluster,
-            avoid_internal_packages
+            is_avoid_internal_packages_set()
         )
         self.schema_wrapper = SchemaWrapper(
             db_connections=self.db_connections,
