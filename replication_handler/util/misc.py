@@ -125,3 +125,27 @@ def delete_file_if_exists(filename):
         # Its fine to pass over this error cause this just means that the file
         # didn't exist in the first place.
         pass
+
+
+def create_mysql_passwd_file(secret_file, user, password):
+    """Use this to create a mysql cnf file which will be used when
+    connecting to the mysql database to retrieve the mysql dump.
+    """
+    delete_file_if_exists(secret_file)
+    secret_file_content = """
+    [client]
+    user={user}
+    password={password}
+
+    [mysql]
+    user={user}
+    password={password}
+
+    [mysqldump]
+    user={user}
+    password={password}""".format(user=user, password=password)
+    with os.fdopen(
+        os.open(secret_file, os.O_WRONLY | os.O_CREAT, 0600),
+        'w'
+    ) as f:
+        f.write(secret_file_content)
