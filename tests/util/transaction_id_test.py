@@ -10,7 +10,9 @@ from replication_handler.util.transaction_id import get_transaction_id
 class TestTransactionId(object):
 
     @pytest.fixture(params=[
-        ['cluster1', 'bin_log1', '10']
+        [str('cluster1'), 'bin_log1', 10],
+        ['cluster1', str('bin_log1'), 10],
+        ['cluster1', 'bin_log1', '10'],
     ])
     def invalid_params(self, request):
         return request.param
@@ -23,8 +25,6 @@ class TestTransactionId(object):
             get_transaction_id(*invalid_params)
 
     @pytest.fixture(params=[
-        [str('cluster1'), 'bin_log1', 10],
-        ['cluster1', str('bin_log1'), 10],
         ['cluster1', 'bin_log1', 10],
     ])
     def valid_params(self, request, fake_transaction_id_schema_id):
