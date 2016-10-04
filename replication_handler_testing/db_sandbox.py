@@ -88,13 +88,12 @@ class PerProcessMySQLDaemon(object):
 
 @contextlib.contextmanager
 def database_sandbox_session():
-    avoid_internal_packages = is_avoid_internal_packages_set()
     db_connections = get_connection(
         config.env_config.topology_path,
         config.env_config.rbr_source_cluster,
         config.env_config.schema_tracker_cluster,
         config.env_config.rbr_state_cluster,
-        avoid_internal_packages
+        is_avoid_internal_packages_set()
     )
     _per_process_mysql_daemon = PerProcessMySQLDaemon()
     _session_prev_engine = db_connections.state_session.bind

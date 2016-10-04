@@ -6,6 +6,5 @@ import os
 
 
 def is_avoid_internal_packages_set():
-    return bool(os.environ.get(
-        'FORCE_AVOID_INTERNAL_PACKAGES'
-    ))
+    return os.environ.get('FORCE_AVOID_INTERNAL_PACKAGES') and \
+           os.environ.get('FORCE_AVOID_INTERNAL_PACKAGES').lower() == 'true'

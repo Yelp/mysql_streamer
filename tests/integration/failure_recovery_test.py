@@ -747,13 +747,6 @@ class TestFailureRecovery(object):
         _verify_messages(messages_two, expected_messages_two)
 
 
-def create_topology_yaml(path, topology_yaml):
-    filename = "{path}/topology.yaml".format(path=path)
-    with open(filename, 'w') as f:
-        f.write(topology_yaml)
-    return filename
-
-
 def set_args_and_options(self):
     self.options = MockOptions()
 
