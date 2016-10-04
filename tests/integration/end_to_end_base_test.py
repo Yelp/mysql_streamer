@@ -13,18 +13,18 @@ from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy.dialects import mysql
 
+from replication_handler.testing_helper.util import RBR_SOURCE
+from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from replication_handler.testing_helper.util import execute_query_get_all_rows
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
-from replication_handler.testing_helper.util import RBR_SOURCE
-from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from replication_handler.util.misc import transform_time_to_number_of_microseconds
+from tests.integration.conftest import Base
 from tests.integration.conftest import _fetch_messages
 from tests.integration.conftest import _generate_basic_model
 from tests.integration.conftest import _verify_messages
 from tests.integration.conftest import _wait_for_schematizer_topic
 from tests.integration.conftest import _wait_for_table
-from tests.integration.conftest import Base
 
 
 ColumnInfo = namedtuple('ColumnInfo', ['type', 'sqla_obj', 'data'])

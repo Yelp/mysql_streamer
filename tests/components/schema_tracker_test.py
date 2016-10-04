@@ -71,7 +71,7 @@ class TestSchemaTracker(object):
             SchemaTracker,
             '_use_db'
         ) as mock_execption:
-            mock_execption.side_effect = [OperationalError, DataError, True]
+            mock_execption.side_effect = [OperationalError, OperationalError, True]
             base_schema_tracker.execute_query('use yelp', 'test_db', 5, 0.5)
             assert base_schema_tracker.tracker_cursor.execute.call_count == 1
             assert mock_execption.call_count == 3

@@ -7,8 +7,9 @@ import os
 
 import staticconf
 from cached_property import cached_property_with_ttl
-from yelp_servlib import clog_util
-from yelp_servlib.config_util import load_default_config
+
+from replication_handler.servlib import clog_util
+from replication_handler.servlib.config_util import load_default_config
 
 
 log = logging.getLogger('replication_handler.config')
