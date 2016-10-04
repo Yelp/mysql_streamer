@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker as sessionmaker_sa
 
 from replication_handler import config
+from replication_handler.environment_configs import FORCE_AVOID_INTERNAL_PACKAGES
 from replication_handler.models.database import get_connection
 
 
@@ -92,7 +93,7 @@ def database_sandbox_session():
         config.env_config.rbr_source_cluster,
         config.env_config.schema_tracker_cluster,
         config.env_config.rbr_state_cluster,
-        config.env_config.force_avoid_internal_packages
+        FORCE_AVOID_INTERNAL_PACKAGES
     )
     _per_process_mysql_daemon = PerProcessMySQLDaemon()
     _session_prev_engine = db_connections.state_session.bind

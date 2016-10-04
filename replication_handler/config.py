@@ -7,8 +7,9 @@ import os
 
 import staticconf
 from cached_property import cached_property_with_ttl
-from yelp_servlib import clog_util
-from yelp_servlib.config_util import load_default_config
+
+from replication_handler.servlib import clog_util
+from replication_handler.servlib.config_util import load_default_config
 
 
 log = logging.getLogger('replication_handler.config')
@@ -180,16 +181,6 @@ class EnvConfig(BaseConfig):
         environments.
         """
         return staticconf.get_bool('force_exit').value
-
-    @property
-    def force_avoid_internal_packages(self):
-        """ TODO(DATAPIPE-1509|abrar): Currently we have
-        force_avoid_internal_packages as a means of simulating an absence
-        of a yelp's internal package. And all references
-        of force_avoid_internal_packages have to be removed from
-        RH after we have completely ready for open source.
-        """
-        return staticconf.get('force_avoid_internal_packages', default=False).value
 
 
 env_config = EnvConfig()
