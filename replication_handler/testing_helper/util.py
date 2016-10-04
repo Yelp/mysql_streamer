@@ -14,6 +14,7 @@ from sqlalchemy import create_engine
 logger = logging.getLogger('replication_handler.testing_helper.util')
 
 RBR_SOURCE = 'rbrsource'
+RBR_STATE = 'rbrstate'
 SCHEMA_TRACKER = 'schematracker'
 
 
