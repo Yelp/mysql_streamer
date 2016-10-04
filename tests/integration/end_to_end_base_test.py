@@ -13,18 +13,18 @@ from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy.dialects import mysql
 
+from replication_handler.testing_helper.util import RBR_SOURCE
+from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from replication_handler.testing_helper.util import execute_query_get_all_rows
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
-from replication_handler.testing_helper.util import RBR_SOURCE
-from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from replication_handler.util.misc import transform_time_to_number_of_microseconds
+from tests.integration.conftest import Base
 from tests.integration.conftest import _fetch_messages
 from tests.integration.conftest import _generate_basic_model
 from tests.integration.conftest import _verify_messages
 from tests.integration.conftest import _wait_for_schematizer_topic
 from tests.integration.conftest import _wait_for_table
-from tests.integration.conftest import Base
 
 
 ColumnInfo = namedtuple('ColumnInfo', ['type', 'sqla_obj', 'data'])
@@ -53,95 +53,69 @@ class EndToEndBaseTest(object):
 
     @pytest.fixture(params=[
         {
-            'table_name': 'test_bit',
+            'table_name': 'test_complex_table',
             'test_schema': [
-                # ColumnInfo('BIT(8)', mysql.BIT, 3)
-            ]
-        },
-        {
-            'table_name': 'test_tinyint',
-            'test_schema': [
+                # test_bit
+                # ColumnInfo('BIT(8)', mysql.BIT, 3),
+
+                # test_tinyint
                 ColumnInfo('TINYINT', mysql.TINYINT(), 127),
                 ColumnInfo('TINYINT(3) SIGNED', mysql.TINYINT(display_width=3, unsigned=False), -128),
                 ColumnInfo('TINYINT(3) UNSIGNED', mysql.TINYINT(display_width=3, unsigned=True), 255),
                 ColumnInfo('TINYINT(3) UNSIGNED ZEROFILL', mysql.TINYINT(display_width=3, unsigned=True, zerofill=True), 5),
                 ColumnInfo('BOOL', mysql.BOOLEAN(), 1),
-                ColumnInfo('BOOLEAN', mysql.BOOLEAN(), 1)
-            ]
-        },
-        {
-            'table_name': 'test_smallint',
-            'test_schema': [
+                ColumnInfo('BOOLEAN', mysql.BOOLEAN(), 1),
+
+                # test_smallint
                 ColumnInfo('SMALLINT', mysql.SMALLINT(), 32767),
                 ColumnInfo('SMALLINT(5) SIGNED', mysql.SMALLINT(display_width=5, unsigned=False), -32768),
                 ColumnInfo('SMALLINT(5) UNSIGNED', mysql.SMALLINT(display_width=5, unsigned=True), 65535),
-                ColumnInfo('SMALLINT(3) UNSIGNED ZEROFILL', mysql.SMALLINT(display_width=3, unsigned=True, zerofill=True), 5)
-            ]
-        },
-        {
-            'table_name': 'test_mediumint',
-            'test_schema': [
+                ColumnInfo('SMALLINT(3) UNSIGNED ZEROFILL', mysql.SMALLINT(display_width=3, unsigned=True, zerofill=True), 5),
+
+                # test_mediumint
                 ColumnInfo('MEDIUMINT', mysql.MEDIUMINT(), 8388607),
                 ColumnInfo('MEDIUMINT(7) SIGNED', mysql.MEDIUMINT(display_width=7, unsigned=False), -8388608),
                 ColumnInfo('MEDIUMINT(8) UNSIGNED', mysql.MEDIUMINT(display_width=8, unsigned=True), 16777215),
-                ColumnInfo('MEDIUMINT(3) UNSIGNED ZEROFILL', mysql.MEDIUMINT(display_width=3, unsigned=True, zerofill=True), 5)
-            ]
-        },
-        {
-            'table_name': 'test_int',
-            'test_schema': [
+                ColumnInfo('MEDIUMINT(3) UNSIGNED ZEROFILL', mysql.MEDIUMINT(display_width=3, unsigned=True, zerofill=True), 5),
+
+                # test_int
                 ColumnInfo('INT', mysql.INTEGER(), 2147483647),
                 ColumnInfo('INT(10) SIGNED', mysql.INTEGER(display_width=10, unsigned=False), -2147483648),
                 ColumnInfo('INT(11) UNSIGNED', mysql.INTEGER(display_width=11, unsigned=True), 4294967295),
                 ColumnInfo('INT(3) UNSIGNED ZEROFILL', mysql.INTEGER(display_width=3, unsigned=True, zerofill=True), 5),
-                ColumnInfo('INTEGER(3)', mysql.INTEGER(display_width=3), 3)
-            ]
-        },
-        {
-            'table_name': 'test_bigint',
-            'test_schema': [
+                ColumnInfo('INTEGER(3)', mysql.INTEGER(display_width=3), 3),
+
+                # test_bigint
                 ColumnInfo('BIGINT(19)', mysql.BIGINT(display_width=19), 23372854775807),
                 ColumnInfo('BIGINT(19) SIGNED', mysql.BIGINT(display_width=19, unsigned=False), -9223372036854775808),
                 # ColumnInfo('BIGINT(20) UNSIGNED', mysql.INTEGER(display_width=20, unsigned=True), 18446744073709551615),
                 ColumnInfo('BIGINT(3) UNSIGNED ZEROFILL', mysql.BIGINT(display_width=3, unsigned=True, zerofill=True), 5),
-            ]
-        },
-        {
-            'table_name': 'test_decimal',
-            'test_schema': [
+
+                # test_decimal
                 ColumnInfo('DECIMAL(9, 2)', mysql.DECIMAL(precision=9, scale=2), 101.41),
                 ColumnInfo('DECIMAL(12, 11) SIGNED', mysql.DECIMAL(precision=12, scale=11, unsigned=False), -3.14159265359),
                 ColumnInfo('DECIMAL(2, 1) UNSIGNED', mysql.DECIMAL(precision=2, scale=1, unsigned=True), 0.0),
                 ColumnInfo('DECIMAL(9, 2) UNSIGNED ZEROFILL', mysql.DECIMAL(precision=9, scale=2, unsigned=True, zerofill=True), 5.22),
                 ColumnInfo('DEC(9, 3)', mysql.DECIMAL(precision=9, scale=3), 5.432),
-                ColumnInfo('FIXED(9, 3)', mysql.DECIMAL(precision=9, scale=3), 45.432)
-            ]
-        },
-        {
-            'table_name': 'test_float',
-            'test_schema': [
+                ColumnInfo('FIXED(9, 3)', mysql.DECIMAL(precision=9, scale=3), 45.432),
+
+                # test_float
                 ColumnInfo('FLOAT', mysql.FLOAT(), 3.14),
                 ColumnInfo('FLOAT(5, 3) SIGNED', mysql.FLOAT(precision=5, scale=3, unsigned=False), -2.14),
                 ColumnInfo('FLOAT(5, 3) UNSIGNED', mysql.FLOAT(precision=5, scale=3, unsigned=True), 2.14),
                 ColumnInfo('FLOAT(5, 3) UNSIGNED ZEROFILL', mysql.FLOAT(precision=5, scale=3, unsigned=True, zerofill=True), 24.00),
                 ColumnInfo('FLOAT(5)', mysql.FLOAT(5), 24.01),
-                ColumnInfo('FLOAT(30)', mysql.FLOAT(30), 24.01)
-            ]
-        },
-        {
-            'table_name': 'test_double',
-            'test_schema': [
+                ColumnInfo('FLOAT(30)', mysql.FLOAT(30), 24.01),
+
+                # test_double
                 ColumnInfo('DOUBLE', mysql.DOUBLE(), 3.14),
                 ColumnInfo('DOUBLE(5, 3) SIGNED', mysql.DOUBLE(precision=5, scale=3, unsigned=False), -3.14),
                 ColumnInfo('DOUBLE(5, 3) UNSIGNED', mysql.DOUBLE(precision=5, scale=3, unsigned=True), 2.14),
                 ColumnInfo('DOUBLE(5, 3) UNSIGNED ZEROFILL', mysql.DOUBLE(precision=5, scale=3, unsigned=True, zerofill=True), 24.00),
                 ColumnInfo('DOUBLE PRECISION', mysql.DOUBLE(), 3.14),
-                ColumnInfo('REAL', mysql.DOUBLE(), 3.14)
-            ]
-        },
-        {
-            'table_name': 'test_date_time',
-            'test_schema': [
+                ColumnInfo('REAL', mysql.DOUBLE(), 3.14),
+
+                # test_date_time
                 ColumnInfo('DATE', mysql.DATE(), datetime.date(1901, 1, 1)),
                 ColumnInfo('DATE', mysql.DATE(), datetime.date(2050, 12, 31)),
 
@@ -162,11 +136,8 @@ class EndToEndBaseTest(object):
 
                 ColumnInfo('YEAR', mysql.YEAR(), 2000),
                 ColumnInfo('YEAR(4)', mysql.YEAR(display_width=4), 2000),
-            ]
-        },
-        {
-            'table_name': 'test_char',
-            'test_schema': [
+
+                # test_char
                 ColumnInfo('CHAR', mysql.CHAR(), 'a'),
                 ColumnInfo('CHARACTER', mysql.CHAR(), 'a'),
                 ColumnInfo('NATIONAL CHAR', mysql.CHAR(), 'a'),
@@ -179,11 +150,8 @@ class EndToEndBaseTest(object):
                 ColumnInfo('NATIONAL VARCHAR(1000)', mysql.VARCHAR(length=1000), 'asdkjasd'),
                 ColumnInfo('NVARCHAR(1000)', mysql.VARCHAR(length=1000), 'asdkjasd'),
                 ColumnInfo('VARCHAR(10000)', mysql.VARCHAR(length=10000), '1234567890'),
-            ]
-        },
-        {
-            'table_name': 'test_binary',
-            'test_schema': [
+
+                # test_binary
                 ColumnInfo('BINARY(5)', mysql.BINARY(length=5), 'hello'),
                 ColumnInfo('VARBINARY(100)', mysql.VARBINARY(length=100), 'hello'),
                 ColumnInfo('TINYBLOB', mysql.TINYBLOB(), 'hello'),
@@ -195,24 +163,16 @@ class EndToEndBaseTest(object):
                 ColumnInfo('MEDIUMBLOB', mysql.MEDIUMBLOB(), 'hello'),
                 ColumnInfo('MEDIUMTEXT', mysql.MEDIUMTEXT(), 'hello'),
                 ColumnInfo('LONGBLOB', mysql.LONGBLOB(), 'hello'),
-                ColumnInfo('LONGTEXT', mysql.LONGTEXT(), 'hello')
-            ]
-        },
-        {
-            'table_name': 'test_enum',
-            'test_schema': [
-                ColumnInfo("ENUM('ONE', 'TWO')", mysql.ENUM(['ONE', 'TWO']), 'ONE')
-            ]
-        },
-        {
-            'table_name': 'test_set',
-            'test_schema': [
+                ColumnInfo('LONGTEXT', mysql.LONGTEXT(), 'hello'),
+
+                # test_enum
+                ColumnInfo("ENUM('ONE', 'TWO')", mysql.ENUM(['ONE', 'TWO']), 'ONE'),
+
+                # test_set
                 ColumnInfo("SET('ONE', 'TWO')", mysql.SET(['ONE', 'TWO']), set(['ONE', 'TWO']))
             ]
         }
-    ], ids=[str(idx) for idx in ['test_bit', 'test_tinyint', 'test_smallint', 'test_mediumint', 'test_int',
-                                 'test_bigint', 'test_decimal', 'test_float', 'test_double', 'test_date_time',
-                                 'test_char', 'test_binary', 'test_enum', 'test_set']])
+    ])
     def complex_table(self, request):
         return request.param
 

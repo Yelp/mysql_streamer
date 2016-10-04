@@ -31,7 +31,7 @@ logging.basicConfig(
 
 
 @pytest.fixture(scope='module')
-def compose_file(replhandler):
+def compose_file():
     return os.path.abspath(
         os.path.join(
             os.path.split(
@@ -53,7 +53,16 @@ def services(replhandler):
 
 
 @pytest.fixture(scope='module')
-def dbs(replhandler):
+def services_without_repl_handler():
+    return [
+        'rbrsource',
+        'schematracker',
+        'rbrstate'
+    ]
+
+
+@pytest.fixture(scope='module')
+def dbs():
     return ["rbrsource", "schematracker", "rbrstate"]
 
 
@@ -70,6 +79,18 @@ def containers(compose_file, services, dbs, replhandler):
         for db in dbs:
             db_health_check(containers, db, timeout_seconds)
         replication_handler_health_check(containers, timeout_seconds)
+        yield containers
+
+
+@pytest.yield_fixture(scope='module')
+def containers_without_repl_handler(
+    compose_file,
+    services_without_repl_handler,
+    dbs
+):
+    with Containers(compose_file, services_without_repl_handler) as containers:
+        for db in dbs:
+            db_health_check(containers, db, timeout_seconds)
         yield containers
 
 
@@ -132,10 +153,28 @@ def mock_state_cluster_name():
 
 
 @pytest.fixture
+def mock_source_cluster_host():
+    return 'rbrsource'
+
+
+@pytest.fixture
+def mock_tracker_cluster_host():
+    return 'schematracker'
+
+
+@pytest.fixture
+def mock_state_cluster_host():
+    return 'rbrstate'
+
+
+@pytest.fixture
 def topology(
     mock_source_cluster_name,
     mock_tracker_cluster_name,
-    mock_state_cluster_name
+    mock_state_cluster_name,
+    mock_source_cluster_host,
+    mock_tracker_cluster_host,
+    mock_state_cluster_host
 ):
     return """
         topology:
@@ -144,17 +183,7 @@ def topology(
             entries:
                 - charset: utf8
                   use_unicode: true
-                  host: rbrsource
-                  db: yelp
-                  user: yelpdev
-                  passwd: ""
-                  port: 3306
-        -   cluster: {1}
-            replica: master
-            entries:
-                - charset: utf8
-                  use_unicode: true
-                  host: schematracker
+                  host: {1}
                   db: yelp
                   user: yelpdev
                   passwd: ""
@@ -164,15 +193,28 @@ def topology(
             entries:
                 - charset: utf8
                   use_unicode: true
-                  host: rbrstate
+                  host: {3}
+                  db: yelp
+                  user: yelpdev
+                  passwd: ""
+                  port: 3306
+        -   cluster: {4}
+            replica: master
+            entries:
+                - charset: utf8
+                  use_unicode: true
+                  host: {5}
                   db: yelp
                   user: yelpdev
                   passwd: ""
                   port: 3306
     """.format(
         mock_source_cluster_name,
+        mock_source_cluster_host,
         mock_tracker_cluster_name,
-        mock_state_cluster_name
+        mock_tracker_cluster_host,
+        mock_state_cluster_name,
+        mock_state_cluster_host
     )
 
 
@@ -264,6 +306,6 @@ def patch_transaction_id_schema_id(fake_transaction_id_schema_id):
         recovery_handler,
         'get_transaction_id_schema_id'
     ) as mock_recovery_transaction_id_schema_id:
-        mock_data_event_transaction_id_schema_id.return_value = 911
-        mock_recovery_transaction_id_schema_id.return_value = 911
+        mock_data_event_transaction_id_schema_id.return_value = fake_transaction_id_schema_id
+        mock_recovery_transaction_id_schema_id.return_value = fake_transaction_id_schema_id
         yield
