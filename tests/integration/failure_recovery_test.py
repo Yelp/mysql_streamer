@@ -10,6 +10,7 @@ import os
 import pytest
 import staticconf
 import staticconf.testing
+import yelp_conn
 from data_pipeline.message_type import MessageType
 from data_pipeline.testing_helpers.containers import Containers
 
@@ -205,7 +206,8 @@ class TestFailureRecovery(object):
                 yelp_conn_conf,
                 namespace='yelp_conn'
             ):
-                os.environ['FORCE_AVOID_INTERNAL_PACKAGES'] = 'true'
+                yelp_conn.reset_module()
+                os.environ['FORCE_AVOID_INTERNAL_PACKAGES'] = 'false'
                 test_helper = RestartHelper(
                     num_of_events_to_process=num_of_queries_to_process,
                     max_runtime_sec=end_time,

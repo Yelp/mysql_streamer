@@ -142,7 +142,7 @@ class LogPosition(Position):
         return get_transaction_id(
             transaction_id_schema_id,
             unicode(cluster_name),
-            self.log_file,
+            unicode(self.log_file),
             self.log_pos
         )
 
