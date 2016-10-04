@@ -479,6 +479,8 @@ class TestSchemaEventHandler(object):
         alter_table_schema_store_response,
         test_schema
     ):
+        if not stats_counter:
+            pytest.skip("StatsCounter is not supported in open source version.")
         self._setup_handle_event_alter_table(
             namespace,
             producer,
@@ -496,12 +498,8 @@ class TestSchemaEventHandler(object):
             alter_table_schema_store_response,
             test_schema
         )
-        if stats_counter:
-            assert stats_counter.increment.call_count == 1
-            assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
-        else:
-            # assert SchemaEventHandler is functional without stats_counter.
-            assert True
+        assert stats_counter.increment.call_count == 1
+        assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
 
     def test_handle_event_rename_table(
         self,

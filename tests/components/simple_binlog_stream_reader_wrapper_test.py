@@ -18,19 +18,6 @@ from replication_handler.util.position import LogPosition
 
 class TestSimpleBinlogStreamReaderWrapper(object):
 
-    @pytest.yield_fixture(params=[True, False], autouse=True)
-    def patch_is_avoid_internal_packages_set(self, request):
-        # TODO(DATAPIPE-1509|abrar): Currently we have
-        # force_avoid_internal_packages as a means of simulating an absence
-        # of a yelp's internal package. And all references
-        # of force_avoid_internal_packages have to be removed from
-        # RH after we are completely ready for open source.
-        with mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.is_avoid_internal_packages_set'
-        ) as mock_mode:
-            mock_mode.return_value = request.param
-            yield mock_mode
-
     @pytest.yield_fixture
     def patch_stream(self):
         with mock.patch(

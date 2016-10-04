@@ -265,6 +265,8 @@ class TestDataEventHandler(object):
         patch_get_payload_schema,
         patch_message_topic
     ):
+        if not stats_counter:
+            pytest.skip("StatsCounter is not supported in open source version.")
         self._setup_handle_data_create_event_to_publish_call(
             producer,
             stats_counter,
@@ -278,12 +280,8 @@ class TestDataEventHandler(object):
             patches,
             patch_get_payload_schema
         )
-        if stats_counter:
-            assert stats_counter.increment.call_count == len(data_create_events)
-            assert stats_counter.increment.call_args[0][0] == 'fake_table'
-        else:
-            # assert DataEventHandler is functional without stats_counter.
-            assert True
+        assert stats_counter.increment.call_count == len(data_create_events)
+        assert stats_counter.increment.call_args[0][0] == 'fake_table'
 
     def test_handle_data_update_event(
         self,
