@@ -1,1 +1,2 @@
+pii_generator==0.1.5
 yelp-conn==10.0.2

@@ -11,7 +11,6 @@ from data_pipeline.message import CreateMessage
 from data_pipeline.message import UpdateMessage
 from data_pipeline.producer import Producer
 from data_pipeline.tools.meteorite_wrappers import StatsCounter
-from pii_generator.components.pii_identifier import PIIIdentifier
 
 from replication_handler import config
 from replication_handler.components.base_event_handler import Table
@@ -171,13 +170,17 @@ class TestDataEventHandler(object):
 
     @pytest.yield_fixture
     def patch_table_has_pii(self):
-        with mock.patch.object(
-            PIIIdentifier,
-            'table_has_pii',
-            autospec=True
-        ) as mock_table_has_pii:
-            mock_table_has_pii.return_value = True
-            yield mock_table_has_pii
+        if SchemaWrapper.is_pii_supported():
+            from pii_generator.components.pii_identifier import PIIIdentifier
+            with mock.patch.object(
+                PIIIdentifier,
+                'table_has_pii',
+                autospec=True
+            ) as mock_table_has_pii:
+                mock_table_has_pii.return_value = True
+                yield mock_table_has_pii
+        else:
+            yield
 
     @pytest.yield_fixture
     def patch_config_register_dry_run(self):
