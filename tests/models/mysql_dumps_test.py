@@ -43,11 +43,23 @@ class TestMySQLDumps(object):
         test_dump,
         sandbox_session
     ):
+        new_dump = 'This is a new dump'
         retrieved_dump = MySQLDumps.get_latest_mysql_dump(
             session=sandbox_session,
             cluster_name=cluster_name
         )
         assert retrieved_dump == test_dump
+
+        MySQLDumps.update_mysql_dump(
+            session=sandbox_session,
+            database_dump=new_dump,
+            cluster_name=cluster_name
+        )
+        returned_new_dump = MySQLDumps.get_latest_mysql_dump(
+            session=sandbox_session,
+            cluster_name=cluster_name
+        )
+        assert returned_new_dump == new_dump
 
         MySQLDumps.delete_mysql_dump(
             session=sandbox_session,
@@ -59,4 +71,4 @@ class TestMySQLDumps(object):
             cluster_name=cluster_name
         )
 
-        assert dump_exists is False
+        assert not dump_exists
