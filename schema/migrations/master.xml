@@ -3,4 +3,5 @@
   <include file="data_event_checkpoint.xml"/>
   <include file="global_event_state.xml"/>
   <include file="schema_event_state.xml"/>
+  <include file="mysql_dumps.xml"/>
 </databaseChangeLog>
