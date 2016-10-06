@@ -6,9 +6,9 @@ import time
 from decimal import Decimal
 
 import pytest
-from data_pipeline.consumer import Consumer
-from data_pipeline.expected_frequency import ExpectedFrequency
+from data_pipeline.message import create_from_offset_and_message
 from data_pipeline.meta_attribute import MetaAttribute
+from kafka import SimpleConsumer
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -59,25 +59,28 @@ def _fetch_messages(
         namespace_name=namespace,
         source_name=source
     )
-
     assert len(topics) == 1
 
     _wait_for_kafka_topic(containers, topics[0].name)
 
-    with Consumer(
-        'replhandler-consumer',
-        'bam',
-        ExpectedFrequency.constantly,
-        {topics[0].name: None},
-        auto_offset_reset='smallest'
-    ) as consumer:
-        messages = consumer.get_messages(message_count, blocking=True, timeout=60)
-        assert len(messages) == message_count
+    consumer = get_consumer(containers, topics[0].name)
+    messages = [
+        create_from_offset_and_message(kafka_message)
+        for kafka_message in consumer.get_messages(count=message_count, block=True, timeout=60)
+    ]
+
+    assert len(messages) == message_count
     _assert_topic_set_in_messages(messages, topics[0].name)
     _assert_contains_pii_set_in_messages(messages, topics[0].contains_pii)
     _assert_keys_set_in_messages(messages, topics[0].primary_keys)
     _assert_meta_in_messages(messages)
     return messages
+
+
+def get_consumer(containers, topic):
+    kafka = containers.get_kafka_connection()
+    group = str('replication_handler_itest')
+    return SimpleConsumer(kafka, group, topic)
 
 
 def _verify_messages(messages, expected_messages):
@@ -152,12 +155,7 @@ def _wait_for_schematizer_topic(schematizer, namespace, source):
 
 def _wait_for_kafka_topic(containers, topic):
     kafka = containers.get_kafka_connection()
-    end_time = time.time() + timeout_seconds
-    while end_time > time.time():
-        if kafka.has_metadata_for_topic(topic):
-            break
-        time.sleep(0.05)
-        kafka.load_metadata_for_topics()
+    kafka.ensure_topic_exists(topic, timeout_seconds)
 
 
 def _generate_basic_model(table_name):

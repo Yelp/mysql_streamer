@@ -3,10 +3,10 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import ast
+import os
 import uuid
 
 import mock
-import os
 import pytest
 import staticconf
 import staticconf.testing
@@ -18,12 +18,12 @@ from replication_handler.batch.parse_replication_stream import \
     ParseReplicationStream
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.testing_helper.restart_helper import RestartHelper
-from replication_handler.testing_helper.util import RBR_SOURCE
-from replication_handler.testing_helper.util import RBR_STATE
-from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from replication_handler.testing_helper.util import execute_query_get_all_rows
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
+from replication_handler.testing_helper.util import RBR_SOURCE
+from replication_handler.testing_helper.util import RBR_STATE
+from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from tests.integration.conftest import _fetch_messages
 from tests.integration.conftest import _verify_messages
 from tests.integration.conftest import _wait_for_schematizer_topic
