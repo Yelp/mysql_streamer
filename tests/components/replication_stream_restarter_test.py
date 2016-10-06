@@ -18,7 +18,7 @@ class TestReplicationStreamRestarter(object):
 
     @pytest.fixture
     def producer(self):
-        return mock.Mock(autospect=Producer)
+        return mock.Mock(autospec=Producer)
 
     @pytest.fixture
     def mock_schema_wrapper(self):

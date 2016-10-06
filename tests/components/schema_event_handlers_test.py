@@ -8,7 +8,6 @@ import mock
 import pytest
 from data_pipeline.producer import Producer
 from data_pipeline.schema_cache import SchematizerClient
-from data_pipeline.tools.meteorite_wrappers import StatsCounter
 
 import replication_handler.components.schema_event_handler
 from replication_handler import config
@@ -21,6 +20,7 @@ from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.util.position import GtidPosition
 from replication_handler_testing.events import QueryEvent
+from tests.components.base_event_handler_test import get_mock_stats_counters
 
 
 SchemaHandlerExternalPatches = namedtuple(
@@ -41,11 +41,11 @@ SchemaHandlerExternalPatches = namedtuple(
 class TestSchemaEventHandler(object):
     @pytest.fixture
     def producer(self):
-        return mock.Mock(autospect=Producer)
+        return mock.Mock(autospec=Producer)
 
     @pytest.fixture
     def schematizer_client(self):
-        return mock.Mock(autospect=SchematizerClient)
+        return mock.Mock(autospec=SchematizerClient)
 
     @pytest.fixture
     def schema_wrapper(self, mock_db_connections, schematizer_client):
@@ -54,9 +54,17 @@ class TestSchemaEventHandler(object):
             schematizer_client=schematizer_client
         )
 
-    @pytest.fixture
-    def stats_counter(self):
-        return mock.Mock(autospect=StatsCounter)
+    @pytest.fixture(params=get_mock_stats_counters())
+    def stats_counter(self, request):
+        # Need a way to detect if replication handler is run internally
+        # or open-source mode and then dynamically set stats_counter fixture.
+        # Hence parameterizing stats_counter fixture with the return value of a
+        # function `mock_stats_counters`.
+        # Because mock_stats_counters is a module scoped fucntion and not a fixture
+        # its not evaluated of every test so we need to reset_mock.
+        if isinstance(request.param, mock.Mock):
+            request.param.reset_mock()
+        return request.param
 
     @pytest.fixture
     def mock_source_cluster_name(self):
@@ -304,22 +312,6 @@ class TestSchemaEventHandler(object):
             mock_register_dry_run.return_value = False
             yield mock_register_dry_run
 
-    @pytest.yield_fixture
-    def patch_config_meteorite_disabled_true(self):
-        with mock.patch(
-            'replication_handler.components.schema_event_handler.config.env_config'
-        ) as mock_config_meteorite_disabled_true:
-            mock_config_meteorite_disabled_true.disable_meteorite = True
-            yield mock_config_meteorite_disabled_true
-
-    @pytest.yield_fixture
-    def patch_config_meteorite_disabled_false(self):
-        with mock.patch(
-            'replication_handler.components.schema_event_handler.config.env_config'
-        ) as mock_config_meteorite_disabled_false:
-            mock_config_meteorite_disabled_false.disable_meteorite = False
-            yield mock_config_meteorite_disabled_false
-
     @pytest.fixture()
     def namespace(self):
         return "main1"
@@ -472,7 +464,7 @@ class TestSchemaEventHandler(object):
         assert producer.flush.call_count == 1
         assert save_position.call_count == 1
 
-    def test_handle_event_alter_table_meteorite_disabled_true(
+    def test_handle_event_alter_table_with_meteorite(
         self,
         namespace,
         producer,
@@ -488,9 +480,10 @@ class TestSchemaEventHandler(object):
         mock_schema_tracker_cursor,
         table_with_schema_changes,
         alter_table_schema_store_response,
-        test_schema,
-        patch_config_meteorite_disabled_true
+        test_schema
     ):
+        if not stats_counter:
+            pytest.skip("StatsCounter is not supported in open source version.")
         self._setup_handle_event_alter_table(
             namespace,
             producer,
@@ -508,46 +501,6 @@ class TestSchemaEventHandler(object):
             alter_table_schema_store_response,
             test_schema
         )
-
-        assert stats_counter.increment.call_count == 0
-
-    def test_handle_event_alter_table_meteorite_disabled_false(
-        self,
-        namespace,
-        producer,
-        stats_counter,
-        test_position,
-        save_position,
-        external_patches,
-        schema_event_handler,
-        schematizer_client,
-        alter_table_schema_event,
-        show_create_result_initial,
-        show_create_result_after_alter,
-        mock_schema_tracker_cursor,
-        table_with_schema_changes,
-        alter_table_schema_store_response,
-        test_schema,
-        patch_config_meteorite_disabled_false
-    ):
-        self._setup_handle_event_alter_table(
-            namespace,
-            producer,
-            stats_counter,
-            test_position,
-            save_position,
-            external_patches,
-            schema_event_handler,
-            schematizer_client,
-            alter_table_schema_event,
-            show_create_result_initial,
-            show_create_result_after_alter,
-            mock_schema_tracker_cursor,
-            table_with_schema_changes,
-            alter_table_schema_store_response,
-            test_schema
-        )
-
         assert stats_counter.increment.call_count == 1
         assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
 
@@ -781,4 +734,5 @@ class TestSchemaEventHandler(object):
         schema_event_handler.handle_event(query_event, test_position)
         assert external_patches.execute_query.call_count == 0
         assert producer.flush.call_count == 0
-        assert stats_counter.increment.call_count == 0
+        if stats_counter:
+            assert stats_counter.increment.call_count == 0

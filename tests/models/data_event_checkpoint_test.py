@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 import mock
 import pytest
-from data_pipeline.tools.meteorite_wrappers import StatTimer
 
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
 
@@ -208,20 +207,31 @@ class TestDataEventCheckpoint(object):
         expected_topic_to_kafka_offset_map,
         second_kafka_topic,
     ):
-        with mock.patch.object(
-            StatTimer,
-            'start'
-        ) as mock_start, mock.patch.object(
-            StatTimer,
-            'stop'
-        ) as mock_stop:
+        if not DataEventCheckpoint.is_meteorite_supported():
+            # ensure that data_event_checkpoint functions coorectly
+            # when meteorite is not supported.
             DataEventCheckpoint.upsert_data_event_checkpoint(
                 sandbox_session,
                 topic_to_kafka_offset_map={second_kafka_topic: 300},
                 cluster_name=cluster_name,
             )
-            assert mock_start.call_count == 1
-            assert mock_stop.call_count == 1
+            assert True
+        else:
+            from data_pipeline.tools.meteorite_wrappers import StatTimer
+            with mock.patch.object(
+                StatTimer,
+                'start'
+            ) as mock_start, mock.patch.object(
+                StatTimer,
+                'stop'
+            ) as mock_stop:
+                DataEventCheckpoint.upsert_data_event_checkpoint(
+                    sandbox_session,
+                    topic_to_kafka_offset_map={second_kafka_topic: 300},
+                    cluster_name=cluster_name,
+                )
+                assert mock_start.call_count == 1
+                assert mock_stop.call_count == 1
 
     def test_meteorite_off(
         self,
@@ -232,17 +242,28 @@ class TestDataEventCheckpoint(object):
         expected_topic_to_kafka_offset_map,
         second_kafka_topic,
     ):
-        with mock.patch.object(
-            StatTimer,
-            'start'
-        ) as mock_start, mock.patch.object(
-            StatTimer,
-            'stop'
-        ) as mock_stop:
+        if not DataEventCheckpoint.is_meteorite_supported():
+            # ensure that data_event_checkpoint functions coorectly
+            # when meteorite is not supported.
             DataEventCheckpoint.upsert_data_event_checkpoint(
                 sandbox_session,
                 topic_to_kafka_offset_map={second_kafka_topic: 300},
                 cluster_name=cluster_name,
             )
-            assert mock_start.call_count == 0
-            assert mock_stop.call_count == 0
+            assert True
+        else:
+            from data_pipeline.tools.meteorite_wrappers import StatTimer
+            with mock.patch.object(
+                StatTimer,
+                'start'
+            ) as mock_start, mock.patch.object(
+                StatTimer,
+                'stop'
+            ) as mock_stop:
+                DataEventCheckpoint.upsert_data_event_checkpoint(
+                    sandbox_session,
+                    topic_to_kafka_offset_map={second_kafka_topic: 300},
+                    cluster_name=cluster_name,
+                )
+                assert mock_start.call_count == 0
+                assert mock_stop.call_count == 0

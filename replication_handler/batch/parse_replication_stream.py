@@ -227,28 +227,30 @@ class ParseReplicationStream(Batch):
 
     @contextmanager
     def _setup_counters(self):
-        schema_event_counter = StatsCounter(
-            STAT_COUNTER_NAME,
-            message_count_timer=STATS_FLUSH_INTERVAL,
-            event_type='schema',
-            container_name=config.env_config.container_name,
-            container_env=config.env_config.container_env,
-            rbr_source_cluster=config.env_config.rbr_source_cluster,
-        )
-        data_event_counter = self._get_data_event_counter()
-
-        try:
+        if config.env_config.disable_meteorite:
             yield {
-                'schema_event_counter': schema_event_counter,
-                'data_event_counter': data_event_counter,
+                'schema_event_counter': None,
+                'data_event_counter': None,
             }
-        finally:
-            if not config.env_config.disable_meteorite:
+        else:
+            schema_event_counter = StatsCounter(
+                STAT_COUNTER_NAME,
+                message_count_timer=STATS_FLUSH_INTERVAL,
+                event_type='schema',
+                container_name=config.env_config.container_name,
+                container_env=config.env_config.container_env,
+                rbr_source_cluster=config.env_config.rbr_source_cluster,
+            )
+            data_event_counter = self._get_data_event_counter()
+
+            try:
+                yield {
+                    'schema_event_counter': schema_event_counter,
+                    'data_event_counter': data_event_counter,
+                }
+            finally:
                 schema_event_counter.flush()
                 data_event_counter.flush()
-            else:
-                schema_event_counter._reset()
-                data_event_counter._reset()
 
     @contextmanager
     def _register_signal_handlers(self):
