@@ -156,13 +156,6 @@ def _wait_for_schematizer_topic(schematizer, namespace, source):
 def _wait_for_kafka_topic(containers, topic):
     kafka = containers.get_kafka_connection()
     kafka.ensure_topic_exists(topic, timeout_seconds)
-    time.sleep(10)
-    # end_time = time.time() + timeout_seconds
-    # while end_time > time.time():
-    #     if kafka.has_metadata_for_topic(topic):
-    #         break
-    #     time.sleep(0.05)
-    #     kafka.load_metadata_for_topics()
 
 
 def _generate_basic_model(table_name):

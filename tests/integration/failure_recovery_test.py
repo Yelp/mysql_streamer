@@ -320,8 +320,9 @@ class TestFailureRecovery(object):
             schematizer,
             namespace,
             table_name,
-            2
+            3
         )
+        messages_two = messages_two[1:]
 
         expected_messages_two = [
             {
