@@ -5,10 +5,9 @@ from __future__ import unicode_literals
 import logging
 from collections import namedtuple
 
-from pii_generator.components.pii_identifier import PIIIdentifier
-
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.config import env_config
+from replication_handler.environment_configs import is_avoid_internal_packages_set
 
 
 log = logging.getLogger('replication_handler.components.schema_wrapper')
@@ -47,7 +46,29 @@ class SchemaWrapper(object):
         self.schema_tracker = SchemaTracker(
             db_connections
         )
-        self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
+        self._set_pii_identifier()
+
+    @classmethod
+    def is_pii_supported(cls):
+        try:
+            # TODO(DATAPIPE-1509|abrar): Currently we have
+            # force_avoid_internal_packages as a means of simulating an absence
+            # of a yelp's internal package. And all references
+            # of force_avoid_internal_packages have to be removed from
+            # RH after we are completely ready for open source.
+            if is_avoid_internal_packages_set():
+                raise ImportError
+            from pii_generator.components.pii_identifier import PIIIdentifier  # NOQA
+            return True
+        except ImportError:
+            return False
+
+    def _set_pii_identifier(self):
+        if SchemaWrapper.is_pii_supported():
+            from pii_generator.components.pii_identifier import PIIIdentifier  # NOQA
+            self.pii_identifier = PIIIdentifier(env_config.pii_yaml_path)
+        else:
+            self.pii_identifier = None
 
     def __getitem__(self, table):
         if table not in self.cache:
@@ -93,7 +114,7 @@ class SchemaWrapper(object):
             'contains_pii': self.pii_identifier.table_has_pii(
                 database_name=table.database_name,
                 table_name=table.table_name
-            ),
+            ) if self.pii_identifier else False,
             'new_create_table_stmt': new_create_table_stmt
         }
         if old_create_table_stmt:

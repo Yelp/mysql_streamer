@@ -8,7 +8,6 @@ import mock
 import pytest
 from data_pipeline.producer import Producer
 from data_pipeline.schema_cache import SchematizerClient
-from pii_generator.components.pii_identifier import PIIIdentifier
 
 import replication_handler.components.schema_event_handler
 from replication_handler import config
@@ -375,13 +374,17 @@ class TestSchemaEventHandler(object):
 
     @pytest.yield_fixture
     def patch_table_has_pii(self):
-        with mock.patch.object(
-            PIIIdentifier,
-            'table_has_pii',
-            autospec=True
-        ) as mock_table_has_pii:
-            mock_table_has_pii.return_value = True
-            yield mock_table_has_pii
+        if SchemaWrapper.is_pii_supported():
+            from pii_generator.components.pii_identifier import PIIIdentifier
+            with mock.patch.object(
+                PIIIdentifier,
+                'table_has_pii',
+                autospec=True
+            ) as mock_table_has_pii:
+                mock_table_has_pii.return_value = True
+                yield mock_table_has_pii
+        else:
+            yield
 
     @pytest.fixture
     def external_patches(
