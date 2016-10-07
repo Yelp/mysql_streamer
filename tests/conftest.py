@@ -16,6 +16,7 @@ from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.components import data_event_handler
 from replication_handler.components import recovery_handler
+from replication_handler.environment_configs import is_envvar_set
 from replication_handler.models.connections.base_connection import BaseConnection
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
@@ -37,9 +38,14 @@ def compose_file():
             os.path.split(
                 os.path.dirname(__file__)
             )[0],
-            "docker-compose.yml"
+            "docker-compose-opensource.yml"
+            if is_envvar_set('OPEN_SOURCE_MODE') else "docker-compose.yml"
         )
     )
+
+
+def _is_envvar_set(envvar):
+    return os.getenv(envvar, 'false').lower() in ['t', 'true', 'y', 'yes']
 
 
 @pytest.fixture(scope='module')
