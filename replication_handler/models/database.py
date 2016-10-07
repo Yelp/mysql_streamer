@@ -6,13 +6,13 @@ import simplejson as json
 from sqlalchemy import types
 
 from replication_handler.config import env_config
-from replication_handler.environment_configs import FORCE_AVOID_INTERNAL_PACKAGES
+from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.helpers import dates
 
 
 def get_base_model():
     try:
-        if FORCE_AVOID_INTERNAL_PACKAGES:
+        if is_avoid_internal_packages_set():
             # TODO(DATAPIPE-1509|abrar): Currently we have
             # force_avoid_internal_packages as a means of simulating an absence
             # of a yelp's internal package. And all references

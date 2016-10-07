@@ -3,10 +3,11 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
-import os
 
+import os
 import simplejson
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
+from os import remove
 
 from replication_handler.config import env_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
@@ -115,3 +116,12 @@ def transform_time_to_number_of_microseconds(value):
             (value.minute * 60000000) +
             (value.second * 1000000) +
             (value.microsecond))
+
+
+def delete_file_if_exists(filename):
+    try:
+        remove(filename)
+    except OSError:
+        # Its fine to pass over this error cause this just means that the file
+        # didn't exist in the first place.
+        pass

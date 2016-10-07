@@ -13,6 +13,7 @@ from replication_handler.models.connections.base_connection import BaseConnectio
 class YelpConnConnection(BaseConnection):
 
     def __init__(self, *args, **kwargs):
+        yelp_conn.reset_module()
         yelp_conn.initialize()
         super(YelpConnConnection, self).__init__(*args, **kwargs)
 

@@ -5,12 +5,12 @@ from __future__ import unicode_literals
 import logging
 import time
 
-from data_pipeline.tools.meteorite_wrappers import StatTimer
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
 
 from replication_handler import config
+from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.helpers.dates import default_now
 from replication_handler.models.database import Base
 from replication_handler.models.database import UnixTimeStampType
@@ -40,14 +40,11 @@ class DataEventCheckpoint(Base):
         topic_to_kafka_offset_map,
         cluster_name,
     ):
-        timer = StatTimer(
-            DATA_EVENT_CHECKPOINT_TIMER_NAME,
-            container_name=config.env_config.container_name,
-            container_env=config.env_config.container_env,
-            rbr_source_cluster=config.env_config.rbr_source_cluster,
-        )
-        if not config.env_config.disable_meteorite:
+        if cls.is_meteorite_supported() and not config.env_config.disable_meteorite:
+            timer = cls.get_meteorite_time()
             timer.start()
+        else:
+            timer = None
 
         existing_topics_to_records = cls._get_topic_to_checkpoint_record_map(
             session,
@@ -85,8 +82,35 @@ class DataEventCheckpoint(Base):
                 DataEventCheckpoint,
                 updated_checkpoints
             )
-        if not config.env_config.disable_meteorite:
+        if timer:
             timer.stop()
+
+    @classmethod
+    def is_meteorite_supported(cls):
+        try:
+            # TODO(DATAPIPE-1509|abrar): Currently we have
+            # force_avoid_internal_packages as a means of simulating an absence
+            # of a yelp's internal package. And all references
+            # of force_avoid_internal_packages have to be removed from
+            # RH after we are completely ready for open source.
+            if is_avoid_internal_packages_set():
+                raise ImportError
+            from data_pipeline.tools.meteorite_wrappers import StatTimer  # NOQA
+            return True
+        except ImportError:
+            return False
+
+    @classmethod
+    def get_meteorite_time(cls):
+
+        from data_pipeline.tools.meteorite_wrappers import StatTimer  # NOQA
+
+        return StatTimer(
+            DATA_EVENT_CHECKPOINT_TIMER_NAME,
+            container_name=config.env_config.container_name,
+            container_env=config.env_config.container_env,
+            rbr_source_cluster=config.env_config.rbr_source_cluster,
+        )
 
     @classmethod
     def _get_topic_to_checkpoint_record_map(cls, session, cluster_name):
