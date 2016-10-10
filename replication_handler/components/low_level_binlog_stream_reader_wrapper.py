@@ -119,6 +119,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         self.stream = BinLogStreamReader(
             connection_settings=source_database_config,
             server_id=1,
+            blocking=True,
             only_events=allowed_event_types,
             resume_stream=config.env_config.resume_stream,
             only_tables=only_tables,
