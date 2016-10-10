@@ -299,7 +299,6 @@ class BaseParseReplicationStreamTest(object):
         assert [
             mock.call(signal.SIGINT, replication_stream._handle_shutdown_signal),
             mock.call(signal.SIGTERM, replication_stream._handle_shutdown_signal),
-            mock.call(signal.SIGUSR2, replication_stream._handle_profiler_signal),
         ] in patch_signal.call_args_list
 
     def test_graceful_exit_if_buffer_size_mismatch(
@@ -338,35 +337,6 @@ class BaseParseReplicationStreamTest(object):
         replication_stream.counters = mock.MagicMock()
         handler_info = replication_stream._build_handler_map()[DataEvent]
         assert isinstance(handler_info.handler, DataEventHandler)
-
-    def test_profiler_signal(
-        self,
-        patch_config,
-        patch_db_connections
-    ):
-        replication_stream = self._get_parse_replication_stream()
-        with mock.patch.object(
-            replication_handler.batch.base_parse_replication_stream,
-            'vmprof'
-        ) as vmprof_mock, mock.patch.object(
-            replication_handler.batch.base_parse_replication_stream,
-            'os'
-        ) as os_mock:
-            replication_stream = self._get_parse_replication_stream()
-
-            # Toggle profiling on
-            replication_stream._handle_profiler_signal(None, None)
-            assert os_mock.open.call_count == 1
-            vmprof_mock.enable.assert_called_once_with(
-                os_mock.open.return_value
-            )
-
-            # Toggle profiling off
-            replication_stream._handle_profiler_signal(None, None)
-            assert vmprof_mock.disable.call_count == 1
-            os_mock.close.assert_called_once_with(
-                os_mock.open.return_value
-            )
 
     def test_handle_graceful_termination_data_event(
         self,

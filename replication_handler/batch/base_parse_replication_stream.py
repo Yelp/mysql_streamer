@@ -10,7 +10,6 @@ from collections import namedtuple
 from contextlib import contextmanager
 from functools import partial
 
-import vmprof
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
 from data_pipeline.config import get_config
@@ -39,11 +38,9 @@ log = logging.getLogger('replication_handler.batch.base_parse_replication_stream
 
 HandlerInfo = namedtuple("HandlerInfo", ("event_type", "handler"))
 
-PROFILER_FILE_NAME = "repl.vmprof"
-
 
 class BaseParseReplicationStream(object):
-    """Batch that follows the replication stream and continuously publishes
+    """Process that follows the replication stream and continuously publishes
        to kafka.
        This involves
        (1) Using python-mysql-replication to get stream events.
@@ -74,8 +71,8 @@ class BaseParseReplicationStream(object):
         if get_config().kafka_producer_buffer_size > config.env_config.recovery_queue_size:
             # Printing here, since this executes *before* logging is
             # configured.
-            print "Shutting down because kafka_producer_buffer_size was greater than \
-                    recovery_queue_size"
+            sys.stderr.write("Shutting down because kafka_producer_buffer_size was greater than \
+                    recovery_queue_size")
             sys.exit(1)
 
     @property
@@ -219,52 +216,15 @@ class BaseParseReplicationStream(object):
 
     @contextmanager
     def _register_signal_handlers(self):
-        """Register the handler for SIGINT(KeyboardInterrupt), SigTerm
-        and SIGUSR2, which will toggle a profiler on and off.
+        """Register the handler for SIGINT(KeyboardInterrupt) and SigTerm.
         """
-        try:
-            signal.signal(signal.SIGINT, self._handle_shutdown_signal)
-            signal.signal(signal.SIGTERM, self._handle_shutdown_signal)
-            signal.signal(signal.SIGUSR2, self._handle_profiler_signal)
-            yield
-        finally:
-            # Cleanup for the profiler signal handler has to happen here,
-            # because signals that are handled don't unwind up the stack in the
-            # way that normal methods do.  Any contextmanager or finally
-            # statement won't live past the handler function returning.
-            signal.signal(signal.SIGUSR2, signal.SIG_DFL)
-            if self._profiler_running:
-                self._disable_profiler()
+        signal.signal(signal.SIGINT, self._handle_shutdown_signal)
+        signal.signal(signal.SIGTERM, self._handle_shutdown_signal)
+        yield
 
     def _handle_shutdown_signal(self, sig, frame):
         log.info("Shutdown Signal Received")
         self._running = False
-
-    def _handle_profiler_signal(self, sig, frame):
-        log.info("Toggling Profiler")
-        if self._profiler_running:
-            self._disable_profiler()
-        else:
-            self._enable_profiler()
-
-    def _disable_profiler(self):
-        log.info(
-            "Disable Profiler - wrote to {}".format(
-                PROFILER_FILE_NAME
-            )
-        )
-        vmprof.disable()
-        os.close(self._profiler_fd)
-        self._profiler_running = False
-
-    def _enable_profiler(self):
-        log.info("Enable Profiler")
-        self._profiler_fd = os.open(
-            PROFILER_FILE_NAME,
-            os.O_RDWR | os.O_CREAT | os.O_TRUNC
-        )
-        vmprof.enable(self._profiler_fd)
-        self._profiler_running = True
 
     def _handle_graceful_termination(self):
         # We will not do anything for SchemaEvent, because we have

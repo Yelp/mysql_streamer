@@ -3,8 +3,11 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import os
+import signal
 from contextlib import contextmanager
 
+import vmprof
 from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from yelp_batch import Batch
 
@@ -17,6 +20,8 @@ log = logging.getLogger('replication_handler.batch.parse_replication_stream_inte
 STAT_COUNTER_NAME = 'replication_handler_counter'
 
 STATS_FLUSH_INTERVAL = 10
+
+PROFILER_FILE_NAME = "repl.vmprof"
 
 
 class ParseReplicationStreamInternal(BaseParseReplicationStream, Batch):
@@ -44,7 +49,10 @@ class ParseReplicationStreamInternal(BaseParseReplicationStream, Batch):
     @contextmanager
     def _setup_counters(self):
         if config.env_config.disable_meteorite:
-            super(ParseReplicationStreamInternal, self)._setup_counters()
+            yield {
+                'schema_event_counter': None,
+                'data_event_counter': None,
+            }
         else:
             schema_event_counter = StatsCounter(
                 STAT_COUNTER_NAME,
@@ -64,6 +72,50 @@ class ParseReplicationStreamInternal(BaseParseReplicationStream, Batch):
             finally:
                 schema_event_counter.flush()
                 data_event_counter.flush()
+
+    @contextmanager
+    def _register_signal_handlers(self):
+        """Register the handler SIGUSR2, which will toggle a profiler on and off.
+        """
+        try:
+            signal.signal(signal.SIGINT, self._handle_shutdown_signal)
+            signal.signal(signal.SIGTERM, self._handle_shutdown_signal)
+            signal.signal(signal.SIGUSR2, self._handle_profiler_signal)
+            yield
+        finally:
+            # Cleanup for the profiler signal handler has to happen here,
+            # because signals that are handled don't unwind up the stack in the
+            # way that normal methods do.  Any contextmanager or finally
+            # statement won't live past the handler function returning.
+            signal.signal(signal.SIGUSR2, signal.SIG_DFL)
+            if self._profiler_running:
+                self._disable_profiler()
+
+    def _handle_profiler_signal(self, sig, frame):
+        log.info("Toggling Profiler")
+        if self._profiler_running:
+            self._disable_profiler()
+        else:
+            self._enable_profiler()
+
+    def _disable_profiler(self):
+        log.info(
+            "Disable Profiler - wrote to {}".format(
+                PROFILER_FILE_NAME
+            )
+        )
+        vmprof.disable()
+        os.close(self._profiler_fd)
+        self._profiler_running = False
+
+    def _enable_profiler(self):
+        log.info("Enable Profiler")
+        self._profiler_fd = os.open(
+            PROFILER_FILE_NAME,
+            os.O_RDWR | os.O_CREAT | os.O_TRUNC
+        )
+        vmprof.enable(self._profiler_fd)
+        self._profiler_running = True
 
 
 if __name__ == '__main__':
