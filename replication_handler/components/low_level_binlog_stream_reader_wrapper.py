@@ -75,8 +75,7 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _refill_current_events(self):
         if not self.current_events:
-            event = self.stream.fetchone()
-            self.current_events.extend(self._prepare_event(event))
+            self.current_events.extend(self._prepare_event(self.stream.fetchone()))
 
     def _prepare_event(self, event):
         """ event can be None, see http://bit.ly/1JaLW9G."""
