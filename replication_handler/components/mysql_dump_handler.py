@@ -9,14 +9,15 @@ from os.path import expanduser
 from os.path import join
 from subprocess import Popen
 
+from replication_handler.components.mysql_tools import create_mysql_dump
+from replication_handler.components.mysql_tools import restore_mysql_dump
 from replication_handler.models.mysql_dumps import MySQLDumps
 from replication_handler.util.misc import delete_file_if_exists
 
 
 logger = logging.getLogger('replication_handler.components.mysql_dump_handler')
 
-BLACKLISTED_DATABASES = ['information_schema', 'yelp_heartbeat']
-EMPTY_WAITING_OPTIONS = 0
+BLACKLISTED_DATABASES = ['information_schema', 'performance_schema' 'yelp_heartbeat']
 
 
 class MySQLDumpHandler(object):
@@ -88,20 +89,13 @@ class MySQLDumpHandler(object):
         with open(dump_file, 'w') as f:
             f.write(latest_dump)
 
-        restore_cmd = "mysql --host={h} --port={p} --user={u} --password={pa} < {dump_file_path}".format(
-            h=self.host,
-            p=self.port,
-            u=self.user,
-            pa=self.password,
-            dump_file_path=dump_file
+        restore_mysql_dump(
+            host=self.host,
+            port=self.port,
+            user=self.user,
+            password=self.password,
+            dump_file=dump_file
         )
-
-        logger.info("Running restore on host {h} as user {u}".format(
-            h=self.host,
-            u=self.user
-        ))
-        p = Popen(restore_cmd, shell=True)
-        os.waitpid(p.pid, EMPTY_WAITING_OPTIONS)
 
         delete_file_if_exists(dump_file)
         logger.info('Successfully completed restoration')
@@ -163,23 +157,14 @@ class MySQLDumpHandler(object):
             filter(lambda db_name: db_name not in BLACKLISTED_DATABASES,
                    unfiltered_databases)
         )
-        dump_cmd = "mysqldump --defaults-file={} --host={} --port={} {} {} {} {} --databases {} > {}".format(
-            secret_file,
-            self.host,
-            self.port,
-            '--no-data',
-            '--single-transaction',
-            '--add-drop-database',
-            '--add-drop-table',
-            databases,
-            dump_file
+
+        create_mysql_dump(
+            host=self.host,
+            port=self.port,
+            secret_file=secret_file,
+            databases=databases,
+            dump_file=dump_file
         )
-        logger.info("Running command {cmd} to create dump of {db}".format(
-            cmd=dump_cmd,
-            db=databases
-        ))
-        p = Popen(dump_cmd, shell=True)
-        os.waitpid(p.pid, EMPTY_WAITING_OPTIONS)
         logger.info("Successfully created dump of the current state of dbs {db}".format(
             db=databases
         ))

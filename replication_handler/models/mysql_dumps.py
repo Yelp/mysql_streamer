@@ -12,6 +12,13 @@ from replication_handler.models.database import Base
 logger = logging.getLogger('replication_handler.models.mysql_dumps')
 
 
+class DumpUnavailableError(Exception):
+    def __init__(self, cluster_name):
+        Exception.__init__(self, "MySQL Dump unavailable for cluster {c}".format(
+            c=cluster_name
+        ))
+
+
 class MySQLDumps(Base):
     __tablename__ = 'mysql_dumps'
 
@@ -31,7 +38,10 @@ class MySQLDumps(Base):
             ).first()
             latest_dump = copy.copy(ret)
             logger.info("Fetched the latest MySQL dump")
-        return latest_dump.database_dump
+        try:
+            return latest_dump.database_dump
+        except AttributeError as ae:
+            raise DumpUnavailableError(cluster_name=cluster_name)
 
     @classmethod
     def dump_exists(cls, session, cluster_name):
