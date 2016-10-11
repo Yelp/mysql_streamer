@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from contextlib import closing
 from contextlib import contextmanager
 
 import MySQLdb
@@ -29,22 +30,30 @@ class RHConnection(BaseConnection):
             bind=self._get_engine(self.state_database_config))
         )
 
+    @contextmanager
     def get_tracker_cursor(self):
-        return self._get_cursor(self.tracker_database_config)
+        connection = self._get_connection(self.tracker_database_config)
+        with closing(connection.cursor()) as cursor:
+            yield cursor
 
+    @contextmanager
     def get_state_cursor(self):
-        return self._get_cursor(self.state_database_config)
+        connection = self._get_connection(self.state_database_config)
+        with closing(connection.cursor()) as cursor:
+            yield cursor
 
+    @contextmanager
     def get_source_cursor(self):
-        return self._get_cursor(self.source_database_config)
+        connection = self._get_connection(self.source_database_config)
+        with closing(connection.cursor()) as cursor:
+            yield cursor
 
-    def _get_cursor(self, config):
-        connection = MySQLdb.connect(
+    def _get_connection(self, config):
+        return MySQLdb.connect(
             host=config['host'],
             passwd=config['passwd'],
             user=config['user']
         )
-        return connection.cursor()
 
     def _get_engine(self, config):
         return create_engine(

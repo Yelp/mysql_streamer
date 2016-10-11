@@ -35,13 +35,9 @@ class SchemaTracker(object):
     def execute_query(
         self,
         query,
-        database_name,
-        num_of_retries=3,
-        retry_delay_sec=5
+        database_name
     ):
         """Executes the given query against the schema tracker database.
-        If it loses connection to the server, it gets a new connection and
-        retries the query.
 
         Warning: Either the query must be unambiguous (i.e containing both the
             table and database names), or the database name must be given.
@@ -53,57 +49,54 @@ class SchemaTracker(object):
             query=query,
             database_name=database_name
         )))
-        cursor = self.db_connections.get_tracker_cursor()
-        self._use_db(cursor, database_name)
-        cursor.execute(query)
-        cursor.close()
+        with self.db_connections.get_tracker_cursor() as cursor:
+            self._use_db(cursor, database_name)
+            cursor.execute(query)
 
     def get_show_create_statement(self, table):
-        cursor = self.db_connections.get_tracker_cursor()
-        self._use_db(cursor, table.database_name)
+        with self.db_connections.get_tracker_cursor() as cursor:
+            self._use_db(cursor, table.database_name)
 
-        if not self._does_table_exists(cursor, table.table_name):
-            log.info(
-                "Table {table} doesn't exist in database {database}".format(
-                    table=table.table_name,
-                    database=table.database_name
+            if not self._does_table_exists(cursor, table.table_name):
+                log.info(
+                    "Table {table} doesn't exist in database {database}".format(
+                        table=table.table_name,
+                        database=table.database_name
+                    )
                 )
-            )
-            return ShowCreateResult(table=table.table_name, query='')
+                return ShowCreateResult(table=table.table_name, query='')
 
-        query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(table.database_name, table.table_name)
-        cursor.execute(query_str)
-        res = cursor.fetchone()
-        cursor.close()
-        create_res = ShowCreateResult(*res)
-        assert create_res.table == table.table_name
-        return create_res
+            query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(table.database_name, table.table_name)
+            cursor.execute(query_str)
+            res = cursor.fetchone()
+            create_res = ShowCreateResult(*res)
+            assert create_res.table == table.table_name
+            return create_res
 
     def get_column_type_map(self, table):
-        cursor = self.db_connections.get_tracker_cursor()
-        self._use_db(cursor, table.database_name)
+        with self.db_connections.get_tracker_cursor() as cursor:
+            self._use_db(cursor, table.database_name)
 
-        if not self._does_table_exists(cursor, table.table_name):
-            log.info(
-                "Table {table} doesn't exist in database {database}".format(
-                    table=table.table_name,
-                    database=table.database_name
+            if not self._does_table_exists(cursor, table.table_name):
+                log.info(
+                    "Table {table} doesn't exist in database {database}".format(
+                        table=table.table_name,
+                        database=table.database_name
+                    )
                 )
+                return []
+
+            query_str = "SHOW COLUMNS FROM `{0}`.`{1}`".format(
+                table.database_name,
+                table.table_name
             )
-            return []
 
-        query_str = "SHOW COLUMNS FROM `{0}`.`{1}`".format(
-            table.database_name,
-            table.table_name
-        )
-
-        cursor.execute(query_str)
-        columns = cursor.fetchall()
-        cursor.close()
-        return {
-            column[0]: column[1]
-            for column in columns
-        }
+            cursor.execute(query_str)
+            columns = cursor.fetchall()
+            return {
+                column[0]: column[1]
+                for column in columns
+            }
 
     def _does_table_exists(self, cursor, table_name):
         cursor.execute(

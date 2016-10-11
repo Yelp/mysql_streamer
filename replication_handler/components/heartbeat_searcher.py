@@ -23,10 +23,9 @@ class HeartbeatSearcher(object):
         or None if it wasnt found
     """
 
-    def __init__(self, source_cursor, source_database_config):
+    def __init__(self, db_connections):
         # Set up database configuration info and connection
-        self.source_cursor = source_cursor
-        self.source_database_config = source_database_config
+        self.db_connections = db_connections
 
         # Load in a list of every log file
         self.all_logs = self._get_log_file_list()
@@ -51,21 +50,23 @@ class HeartbeatSearcher(object):
         """Returns a list of all the log files names on the configured
         db connection
         """
-        self.source_cursor.execute('SHOW BINARY LOGS;')
-        names = []
-        for row in self.source_cursor.fetchall():
-            names.append(row[0])
-        return names
+        with self.db_connections.get_source_cursor() as cursor:
+            cursor.execute('SHOW BINARY LOGS;')
+            names = []
+            for row in cursor.fetchall():
+                names.append(row[0])
+            return names
 
     def _get_last_log_position(self, binlog):
         """Returns the end log position of the final log entry in the requested
         binlog. This process isn't exactly free so it is used as little as
         possible in the search.
         """
-        self.source_cursor.execute('SHOW BINLOG EVENTS IN \'{}\';'.format(binlog))
-        # Each event is a tuple of the form
-        # (0:Log_name 1:Pos 2:Event_type 3:Server_id 4:End_log_pos 5:Info)
-        return self.source_cursor.fetchall()[-1][4]
+        with self.db_connections.get_source_cursor() as cursor:
+            cursor.execute('SHOW BINLOG EVENTS IN \'{}\';'.format(binlog))
+            # Each event is a tuple of the form
+            # (0:Log_name 1:Pos 2:Event_type 3:Server_id 4:End_log_pos 5:Info)
+            return cursor.fetchall()[-1][4]
 
     def _reaches_bound(self, current_log, current_position):
         """Returns true if the stream has hit the last element of the last log
@@ -82,7 +83,7 @@ class HeartbeatSearcher(object):
         at log_pos 4.
         """
         return BinLogStreamReader(
-            connection_settings=self.source_database_config,
+            connection_settings=self.db_connections.source_database_config,
             server_id=1,
             blocking=False,
             resume_stream=True,
