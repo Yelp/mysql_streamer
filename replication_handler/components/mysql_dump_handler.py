@@ -4,20 +4,19 @@ from __future__ import unicode_literals
 
 import logging
 
-import os
 from os.path import expanduser
 from os.path import join
-from subprocess import Popen
 
 from replication_handler.components.mysql_tools import create_mysql_dump
 from replication_handler.components.mysql_tools import restore_mysql_dump
+from replication_handler.config import env_config
 from replication_handler.models.mysql_dumps import MySQLDumps
 from replication_handler.util.misc import delete_file_if_exists
 
 
 logger = logging.getLogger('replication_handler.components.mysql_dump_handler')
 
-BLACKLISTED_DATABASES = ['information_schema', 'performance_schema' 'yelp_heartbeat']
+BLACKLISTED_DATABASES = env_config.schema_blacklist
 
 
 class MySQLDumpHandler(object):
@@ -105,14 +104,10 @@ class MySQLDumpHandler(object):
         )
 
     def _create_schema_dump(self):
-        home_dir = expanduser('~')
-        secret_file = join(home_dir, '.my.cnf')
-        self._create_mysql_passwd_file(secret_file)
         dump_file = self._get_dump_file()
-        self._create_database_dump(dump_file, secret_file)
+        self._create_database_dump(dump_file)
         dump_content = self._read_dump_content(dump_file)
         delete_file_if_exists(dump_file)
-        delete_file_if_exists(secret_file)
         return dump_content
 
     def _get_dump_file(self):
@@ -126,27 +121,7 @@ class MySQLDumpHandler(object):
             content = f.read()
         return content
 
-    def _create_mysql_passwd_file(self, secret_file):
-        delete_file_if_exists(secret_file)
-        secret_file_content = """
-        [client]
-        user={user}
-        password={password}
-
-        [mysql]
-        user={user}
-        password={password}
-
-        [mysqldump]
-        user={user}
-        password={password}""".format(user=self.user, password=self.password)
-        with os.fdopen(
-            os.open(secret_file, os.O_WRONLY | os.O_CREAT, 0600),
-            'w'
-        ) as f:
-            f.write(secret_file_content)
-
-    def _create_database_dump(self, dump_file, secret_file):
+    def _create_database_dump(self, dump_file):
         tracker_cursor = self.db_connections.get_tracker_cursor()
         tracker_cursor.execute("show databases")
         result = tracker_cursor.fetchall()
@@ -161,7 +136,8 @@ class MySQLDumpHandler(object):
         create_mysql_dump(
             host=self.host,
             port=self.port,
-            secret_file=secret_file,
+            user=self.user,
+            password=self.password,
             databases=databases,
             dump_file=dump_file
         )
