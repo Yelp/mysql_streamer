@@ -2,11 +2,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import os
 import pytest
 import staticconf
 import staticconf.testing
-import yelp_conn
 from data_pipeline.testing_helpers.containers import Containers
 
 from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
@@ -48,15 +46,37 @@ class TestMySQLDumpHandler(object):
             service='rbrstate'
         )
 
-    @pytest.fixture
+    @pytest.yield_fixture
     def yelp_conn_conf(self, topology_path):
-        return {
+        yelp_conn_configs = {
             'topology': topology_path,
             'connection_set_file': 'connection_sets.yaml'
         }
+        with staticconf.testing.MockConfiguration(
+            yelp_conn_configs,
+            namespace='yelp_conn'
+        ) as mock_conf:
+            yield mock_conf
+
+    @pytest.yield_fixture
+    def mock_db_connections(
+        self,
+        topology_path,
+        mock_source_cluster_name,
+        mock_tracker_cluster_name,
+        mock_state_cluster_name,
+        yelp_conn_conf
+    ):
+        yield get_connection(
+            topology_path,
+            mock_source_cluster_name,
+            mock_tracker_cluster_name,
+            mock_state_cluster_name,
+            is_avoid_internal_packages_set()
+        )
 
     @pytest.fixture
-    def create_table(self):
+    def create_table_query(self):
         return """CREATE TABLE {table_name}
         (
             `id` int(11) NOT NULL PRIMARY KEY,
@@ -64,58 +84,62 @@ class TestMySQLDumpHandler(object):
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8
         """
 
-    def test_mysql_handler_apis(
+    @pytest.yield_fixture(autouse=True)
+    def setup_db_and_get_cursor(self, mock_db_connections, create_table_query):
+        tracker_cursor = mock_db_connections.get_tracker_cursor()
+        table_one = create_table_query.format(table_name='one')
+        table_two = create_table_query.format(table_name='two')
+        tracker_cursor.execute('use yelp')
+        tracker_cursor.execute(table_one)
+        tracker_cursor.execute(table_two)
+        yield tracker_cursor
+        tracker_cursor.execute('drop table one')
+        tracker_cursor.execute('drop table two')
+
+    def test_recovery_from_schema_dump(
         self,
-        yelp_conn_conf,
-        create_table,
-        topology_path,
-        mock_source_cluster_name,
-        mock_tracker_cluster_name,
-        mock_state_cluster_name
+        create_table_query,
+        setup_db_and_get_cursor,
+        mock_db_connections
     ):
         """Inserts two table schemas in schema tracker db. Then tests if the
         dump is created successfully and is persisted in the state db.
         Then deletes one table and checks if the recovery process works.
         """
-        with staticconf.testing.MockConfiguration(
-            yelp_conn_conf,
-            namespace='yelp_conn'
-        ):
-            yelp_conn.reset_module()
-            os.environ['FORCE_AVOID_INTERNAL_PACKAGES'] = 'false'
-            db_conn = get_connection(
-                topology_path,
-                mock_source_cluster_name,
-                mock_tracker_cluster_name,
-                mock_state_cluster_name,
-                is_avoid_internal_packages_set()
-            )
-            mock_mysql_dump_handler = MySQLDumpHandler(db_conn)
-            tracker_cursor = db_conn.get_tracker_cursor()
-            table_one = create_table.format(table_name='one')
-            table_two = create_table.format(table_name='two')
-            tracker_cursor.execute('use yelp')
-            tracker_cursor.execute(table_one)
-            tracker_cursor.execute(table_two)
+        tracker_cursor = setup_db_and_get_cursor
+        mock_mysql_dump_handler = MySQLDumpHandler(mock_db_connections)
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert not dump_exists
 
-            dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
-            assert not dump_exists
+        mock_mysql_dump_handler.create_and_persist_schema_dump()
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert dump_exists
 
-            mock_mysql_dump_handler.create_and_persist_schema_dump()
-            dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
-            assert dump_exists
+        tracker_cursor.execute('drop table one')
+        tracker_cursor.execute('show tables')
+        all_tables = tracker_cursor.fetchall()
+        assert len(all_tables) == 1
 
-            tracker_cursor.execute('drop table one')
-            tracker_cursor.execute('show tables')
-            all_tables = tracker_cursor.fetchall()
-            assert len(all_tables) == 1
+        mock_mysql_dump_handler.recover()
+        tracker_cursor.execute('show tables')
+        all_tables = tracker_cursor.fetchall()
+        assert len(all_tables) == 2
 
-            mock_mysql_dump_handler.recover()
-            tracker_cursor.execute('show tables')
-            all_tables = tracker_cursor.fetchall()
-            assert len(all_tables) == 2
+        mock_mysql_dump_handler.delete_persisted_dump()
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert not dump_exists
 
-            mock_mysql_dump_handler.delete_persisted_dump()
-            dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
-            assert not dump_exists
+    def test_create_and_persist_dump(
+        self,
+        create_table_query,
+        mock_db_connections,
+        setup_db_and_get_cursor
+    ):
+        mock_mysql_dump_handler = MySQLDumpHandler(mock_db_connections)
 
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert not dump_exists
+
+        mock_mysql_dump_handler.create_and_persist_schema_dump()
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert dump_exists

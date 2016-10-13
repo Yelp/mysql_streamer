@@ -4,9 +4,8 @@ from __future__ import unicode_literals
 
 import logging
 
-from os.path import expanduser
-from os.path import join
-
+from replication_handler.components.mysql_tools import _get_dump_file
+from replication_handler.components.mysql_tools import _write_dump_content
 from replication_handler.components.mysql_tools import create_mysql_dump
 from replication_handler.components.mysql_tools import restore_mysql_dump
 from replication_handler.config import env_config
@@ -16,8 +15,6 @@ from replication_handler.util.misc import delete_file_if_exists
 
 logger = logging.getLogger('replication_handler.components.mysql_dump_handler')
 
-BLACKLISTED_DATABASES = env_config.schema_blacklist
-
 
 class MySQLDumpHandler(object):
     """Provides APIs to interact with the MySQL dumps table
@@ -25,14 +22,6 @@ class MySQLDumpHandler(object):
 
     def __init__(self, db_connections):
         self.db_connections = db_connections
-        self.cluster_name = db_connections.tracker_cluster_name
-        self.state_session = db_connections.state_session
-
-        db_creds = db_connections.tracker_database_config
-        self.user = db_creds['user']
-        self.password = db_creds['passwd']
-        self.host = db_creds['host']
-        self.port = db_creds['port']
 
     def create_and_persist_schema_dump(self):
         """Creates the actual schema dump of the current state of all the
@@ -45,28 +34,27 @@ class MySQLDumpHandler(object):
 
         Returns: The copy of the record that persists on MySQLDumps table
         """
-        database_dump = self._create_schema_dump()
-        updated_dump = MySQLDumps.update_mysql_dump(
-            session=self.state_session,
+        database_dump = self._create_database_dump()
+        MySQLDumps.update_mysql_dump(
+            session=self.db_connections.state_session,
             database_dump=database_dump,
-            cluster_name=self.cluster_name
+            cluster_name=self.db_connections.tracker_cluster_name
         )
-        return updated_dump
 
     def delete_persisted_dump(self):
         """Deletes the existing schema dump from MySQLDumps table.
         """
         MySQLDumps.delete_mysql_dump(
-            session=self.state_session,
-            cluster_name=self.cluster_name
+            session=self.db_connections.state_session,
+            cluster_name=self.db_connections.tracker_cluster_name
         )
 
     def mysql_dump_exists(self):
         """Checks the MySQL dump table to see if a row exists or not
         """
         return MySQLDumps.dump_exists(
-            session=self.state_session,
-            cluster_name=self.cluster_name
+            session=self.db_connections.state_session,
+            cluster_name=self.db_connections.tracker_cluster_name
         )
 
     def recover(self):
@@ -75,72 +63,48 @@ class MySQLDumpHandler(object):
         """
         logger.info('Recovering stored MySQL dump from database')
         latest_dump = MySQLDumps.get_latest_mysql_dump(
-            session=self.state_session,
-            cluster_name=self.cluster_name
+            session=self.db_connections.state_session,
+            cluster_name=self.db_connections.tracker_cluster_name
         )
 
-        dump_file = self._get_dump_file()
-        delete_file_if_exists(dump_file)
-
+        # TODO: DATAPIPE-1911
+        dump_file = _get_dump_file()
         logger.info("Writing MySQL dump to file {f}".format(
             f=dump_file
         ))
-        with open(dump_file, 'w') as f:
-            f.write(latest_dump)
+        _write_dump_content(dump_file, latest_dump)
 
         restore_mysql_dump(
-            host=self.host,
-            port=self.port,
-            user=self.user,
-            password=self.password,
+            db_creds=self.db_connections.tracker_database_config,
             dump_file=dump_file
         )
 
-        delete_file_if_exists(dump_file)
         logger.info('Successfully completed restoration')
         MySQLDumps.delete_mysql_dump(
-            session=self.state_session,
-            cluster_name=self.cluster_name
+            session=self.db_connections.state_session,
+            cluster_name=self.db_connections.tracker_cluster_name
         )
-
-    def _create_schema_dump(self):
-        dump_file = self._get_dump_file()
-        self._create_database_dump(dump_file)
-        dump_content = self._read_dump_content(dump_file)
         delete_file_if_exists(dump_file)
-        return dump_content
 
-    def _get_dump_file(self):
-        home_dir = expanduser('~')
-        return join(home_dir, "{}_{}".format(
-            self.cluster_name, 'mysql_dump'
+    def _create_database_dump(self):
+        databases = self._get_filtered_dbs()
+        mysql_dump = create_mysql_dump(
+            db_creds=self.db_connections.tracker_database_config,
+            databases=databases
+        )
+        logger.info("Successfully created dump of the current state of dbs {db}".format(
+            db=databases
         ))
+        return mysql_dump
 
-    def _read_dump_content(self, dump_file):
-        with open(dump_file, 'r') as f:
-            content = f.read()
-        return content
-
-    def _create_database_dump(self, dump_file):
+    def _get_filtered_dbs(self):
         tracker_cursor = self.db_connections.get_tracker_cursor()
         tracker_cursor.execute("show databases")
         result = tracker_cursor.fetchall()
         tracker_cursor.close()
 
         unfiltered_databases = [ele for tupl in result for ele in tupl]
-        databases = ' '.join(
-            filter(lambda db_name: db_name not in BLACKLISTED_DATABASES,
+        return ' '.join(
+            filter(lambda db_name: db_name not in env_config.schema_blacklist,
                    unfiltered_databases)
         )
-
-        create_mysql_dump(
-            host=self.host,
-            port=self.port,
-            user=self.user,
-            password=self.password,
-            databases=databases,
-            dump_file=dump_file
-        )
-        logger.info("Successfully created dump of the current state of dbs {db}".format(
-            db=databases
-        ))
