@@ -332,6 +332,10 @@ class TestHeartbeatSearcher(object):
         """
         return CursorMock()
 
+    @pytest.fixture
+    def mock_source_cursor(self, mock_cursor):
+        return mock_cursor
+
     @pytest.yield_fixture
     def patch_binlog_stream_reader(self):
         """Patches the binlog stream in the search class with a mock one from here
@@ -359,10 +363,9 @@ class TestHeartbeatSearcher(object):
         return MockBinLogEvents()
 
     @pytest.fixture
-    def heartbeat_searcher(self, mock_cursor, mock_db_connections):
+    def heartbeat_searcher(self, mock_db_connections):
         return HeartbeatSearcher(
-            source_cursor=mock_cursor,
-            source_database_config=mock_db_connections.source_database_config
+            db_connections=mock_db_connections
         )
 
     def test_is_heartbeat(

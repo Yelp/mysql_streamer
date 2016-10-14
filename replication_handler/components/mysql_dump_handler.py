@@ -98,10 +98,9 @@ class MySQLDumpHandler(object):
         return mysql_dump
 
     def _get_filtered_dbs(self):
-        tracker_cursor = self.db_connections.get_tracker_cursor()
-        tracker_cursor.execute("show databases")
-        result = tracker_cursor.fetchall()
-        tracker_cursor.close()
+        with self.db_connections.get_tracker_cursor() as tracker_cursor:
+            tracker_cursor.execute("show databases")
+            result = tracker_cursor.fetchall()
 
         unfiltered_databases = [ele for tupl in result for ele in tupl]
         return ' '.join(

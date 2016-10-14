@@ -43,8 +43,7 @@ class MySQLHeartbeatSearchBatch(Batch):
     def run(self):
         """Runs the batch by calling out to the heartbeat searcher component"""
         print HeartbeatSearcher(
-            source_cursor=self.db_connections.get_source_cursor(),
-            source_database_config=self.db_connections.source_database_config
+            db_connections=self.db_connections
         ).get_position(self.hb_timestamp, self.hb_serial)
 
 
