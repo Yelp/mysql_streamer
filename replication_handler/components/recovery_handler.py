@@ -10,6 +10,7 @@ from pymysqlreplication.event import QueryEvent
 from replication_handler.components._pending_schema_event_recovery_handler import PendingSchemaEventRecoveryHandler
 from replication_handler.components.base_event_handler import Table
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
+from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.config import env_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
@@ -53,6 +54,7 @@ class RecoveryHandler(object):
         register_dry_run=False,
         publish_dry_run=False,
         changelog_mode=False,
+        activate_mysql_dump_recovery=False
     ):
         self.db_connections = db_connections
         log.info("Recovery Handler Starting: %s" % json.dumps(dict(
@@ -62,6 +64,7 @@ class RecoveryHandler(object):
             register_dry_run=register_dry_run,
             publish_dry_run=publish_dry_run,
             changelog_mode=changelog_mode,
+            activate_mysql_dump_recovery=activate_mysql_dump_recovery
         )))
 
         self.stream = stream
@@ -75,11 +78,19 @@ class RecoveryHandler(object):
         self.changelog_mode = changelog_mode
         self.changelog_schema_wrapper = self._get_changelog_schema_wrapper()
         self.transaction_id_schema_id = get_transaction_id_schema_id()
+        self.activate_mysql_dump_recovery = activate_mysql_dump_recovery
+        self.mysql_dump_handler = MySQLDumpHandler(db_connections)
 
     @property
     def need_recovery(self):
-        """ Determine if recovery procedure is need. """
-        return not self.is_clean_shutdown or (self.pending_schema_event is not None)
+        """Determine if recovery procedure is need.
+        """
+        if not self.is_clean_shutdown:
+            return True
+        if self.activate_mysql_dump_recovery:
+            return self.mysql_dump_handler.mysql_dump_exists()
+        else:
+            return self.pending_schema_event is not None
 
     def _get_changelog_schema_wrapper(self):
         """Get schema wrapper object for changelog flow. Note schema wrapper
@@ -109,7 +120,10 @@ class RecoveryHandler(object):
 
     def recover(self):
         """ Handles the recovery procedure. """
-        self._handle_pending_schema_event()
+        if self.activate_mysql_dump_recovery:
+            self.mysql_dump_handler.recover()
+        else:
+            self._handle_pending_schema_event()
         self._handle_unclean_shutdown()
 
     def _handle_pending_schema_event(self):
@@ -127,7 +141,7 @@ class RecoveryHandler(object):
     def _recover_from_unclean_shutdown(self, stream):
         events = []
         log.info("Recovering from unclean shutdown.")
-        while(len(events) < env_config.recovery_queue_size):
+        while len(events) < env_config.recovery_queue_size:
             event = stream.peek().event
             if not isinstance(event, DataEvent):
                 if self._is_unsupported_query_event(event):

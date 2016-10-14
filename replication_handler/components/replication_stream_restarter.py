@@ -25,7 +25,7 @@ class ReplicationStreamRestarter(object):
       schema_wrapper(SchemaWrapper object): a wrapper for communication with schematizer.
     """
 
-    def __init__(self, db_connections, schema_wrapper):
+    def __init__(self, db_connections, schema_wrapper, activate_mysql_dump_recovery):
         # Both global_event_state and pending_schema_event are information about
         # last shutdown, we need them to do recovery process.
         self.db_connections = db_connections
@@ -39,6 +39,7 @@ class ReplicationStreamRestarter(object):
             self.global_event_state
         )
         self.schema_wrapper = schema_wrapper
+        self.activate_mysql_dump_recovery = activate_mysql_dump_recovery
 
     def restart(self, producer, register_dry_run=True, changelog_mode=False):
         """ This function retrive the saved position from database, and init
@@ -66,6 +67,7 @@ class ReplicationStreamRestarter(object):
                 pending_schema_event=self.pending_schema_event,
                 register_dry_run=register_dry_run,
                 changelog_mode=changelog_mode,
+                activate_mysql_dump_recovery=self.activate_mysql_dump_recovery
             )
 
             if recovery_handler.need_recovery:
