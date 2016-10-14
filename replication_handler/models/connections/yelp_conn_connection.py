@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from contextlib import closing
 from contextlib import contextmanager
 
 import yelp_conn
@@ -47,21 +46,24 @@ class YelpConnConnection(BaseConnection):
         rbr_source_cluster = self.source_cluster_name
         connection_set = ConnectionSet.rbr_source_ro()
         db = getattr(connection_set, rbr_source_cluster)
-        with closing(db.cursor()) as cursor:
-            yield cursor
+        cursor = db.cursor()
+        yield cursor
+        cursor.close()
 
     @contextmanager
     def get_tracker_cursor(self):
         schema_tracker_cluster = self.tracker_cluster_name
         connection_set = ConnectionSet.schema_tracker_rw()
         db = getattr(connection_set, schema_tracker_cluster)
-        with closing(db.cursor()) as cursor:
-            yield cursor
+        cursor = db.cursor()
+        yield cursor
+        cursor.close()
 
     @contextmanager
     def get_state_cursor(self):
         rbr_state_cluster = self.state_cluster_name
         connection_set = ConnectionSet.rbr_state_rw()
         db = getattr(connection_set, rbr_state_cluster)
-        with closing(db.cursor()) as cursor:
-            yield cursor
+        cursor = db.cursor()
+        yield cursor
+        cursor.close()
