@@ -96,10 +96,9 @@ class RecoveryHandler(object):
         return change_log_data_event_handler.schema_wrapper_entry
 
     def get_latest_source_log_position(self):
-        refresh_source_cursor = self.db_connections.get_source_cursor()
-        refresh_source_cursor.execute("show master status")
-        result = refresh_source_cursor.fetchone()
-        refresh_source_cursor.close()
+        with self.db_connections.get_source_cursor() as cursor:
+            cursor.execute("show master status")
+            result = cursor.fetchone()
         # result is a tuple with file name at pos 0, and position at pos 1.
         log.info("The latest master log position is {log_file}: {log_pos}".format(
             log_file=result[0],

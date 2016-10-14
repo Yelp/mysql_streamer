@@ -2,6 +2,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from contextlib import contextmanager
+
 import yaml
 
 
@@ -63,12 +65,15 @@ class BaseConnection(object):
     def _set_state_session(self):
         raise NotImplementedError
 
+    @contextmanager
     def get_tracker_cursor(self):
         raise NotImplementedError
 
+    @contextmanager
     def get_state_cursor(self):
         raise NotImplementedError
 
+    @contextmanager
     def get_source_cursor(self):
         raise NotImplementedError
 

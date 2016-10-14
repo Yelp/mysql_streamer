@@ -13,6 +13,7 @@ from data_pipeline.message import Message
 from data_pipeline.schematizer_clientlib.schematizer import _Cache
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.testing_helpers.containers import Containers
+from MySQLdb.cursors import Cursor
 
 from replication_handler.components import data_event_handler
 from replication_handler.components import recovery_handler
@@ -227,17 +228,17 @@ def topology_path(tmpdir, topology):
 
 @pytest.fixture
 def mock_source_cursor():
-    return mock.Mock()
+    return mock.Mock(spec=Cursor)
 
 
 @pytest.fixture
 def mock_tracker_cursor():
-    return mock.Mock()
+    return mock.Mock(spec=Cursor)
 
 
 @pytest.fixture
 def mock_state_cursor():
-    return mock.Mock()
+    return mock.Mock(spec=Cursor)
 
 
 @pytest.fixture
@@ -279,9 +280,9 @@ def mock_db_connections(
         patch_tracker_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
         patch_state_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
 
-        patch_get_source_cursor.return_value = mock_source_cursor
-        patch_get_tracker_cursor.return_value = mock_tracker_cursor
-        patch_get_state_cursor.return_value = mock_state_cursor
+        patch_get_source_cursor.return_value.__enter__.return_value = mock_source_cursor
+        patch_get_tracker_cursor.return_value.__enter__.return_value = mock_tracker_cursor
+        patch_get_state_cursor.return_value.__enter__.return_value = mock_state_cursor
 
         db_connections = BaseConnection(
             topology_path=topology_path,
