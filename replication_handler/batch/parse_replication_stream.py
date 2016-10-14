@@ -7,15 +7,16 @@ import logging
 from replication_handler.batch.base_parse_replication_stream import BaseParseReplicationStream
 
 
-log = logging.getLogger('replication_handler.batch.parse_replication_stream')
-
 CONSOLE_FORMAT = '%(asctime)s - %(name)-12s: %(levelname)-8s %(message)s'
 
 
 class ParseReplicationStream(BaseParseReplicationStream):
 
     def __init__(self):
+        # setup logging before doing anything else to ensure
+        # we dont miss any logs.
         self.setup_console_logging()
+
         super(ParseReplicationStream, self).__init__()
 
     def setup_console_logging(self):
@@ -37,9 +38,9 @@ class ParseReplicationStream(BaseParseReplicationStream):
         if formatter is not None:
             handler.setFormatter(formatter)
 
-        log = logging.getLogger()
+        logger_obj = logging.getLogger()
         # reduce the logger log level when necessary based on handlers need
-        log.setLevel(min(log.getEffectiveLevel(), log_level))
+        logger_obj.setLevel(min(logger_obj.getEffectiveLevel(), log_level))
         handler.setLevel(log_level)
         logging.getLogger(logger).addHandler(handler)
 
