@@ -44,42 +44,51 @@ def compose_file():
 
 
 @pytest.fixture(scope='module')
-def services(replhandler):
-    return [
-        replhandler,
-        'rbrsource',
-        'schematracker',
-        'rbrstate'
-    ]
+def rbrsource():
+    return 'rbrsource'
 
 
 @pytest.fixture(scope='module')
-def services_without_repl_handler():
-    return [
-        'rbrsource',
-        'schematracker',
-        'rbrstate'
-    ]
+def schematracker():
+    return 'schematracker'
 
 
 @pytest.fixture(scope='module')
-def dbs():
-    return ["rbrsource", "schematracker", "rbrstate"]
+def rbrstate():
+    return 'rbrstate'
+
+
+@pytest.fixture(scope='module')
+def dbs(rbrsource, schematracker, rbrstate):
+    return [rbrsource, schematracker, rbrstate]
+
+
+@pytest.fixture(scope='module')
+def services(replhandler, dbs):
+    servs = [replhandler]
+    servs.extend(dbs)
+    return servs
+
+
+@pytest.fixture(scope='module')
+def services_without_repl_handler(dbs):
+    return dbs
 
 
 @pytest.yield_fixture(scope='module')
-def containers(compose_file, services, dbs, replhandler):
+def containers(compose_file, services, dbs, replhandler, rbrsource, schematracker):
     with Containers(compose_file, services) as containers:
         # Need to wait for all containers to spin up
         replication_handler_ip = None
         while replication_handler_ip is None:
             replication_handler_ip = Containers.get_container_ip_address(
                 containers.project,
-                replhandler)
+                replhandler
+            )
 
         for db in dbs:
             db_health_check(containers, db, timeout_seconds)
-        replication_handler_health_check(containers, timeout_seconds)
+        replication_handler_health_check(containers, rbrsource, schematracker, timeout_seconds)
         yield containers
 
 
