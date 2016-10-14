@@ -86,15 +86,15 @@ class TestMySQLDumpHandler(object):
 
     @pytest.yield_fixture(autouse=True)
     def setup_db_and_get_cursor(self, mock_db_connections, create_table_query):
-        tracker_cursor = mock_db_connections.get_tracker_cursor()
-        table_one = create_table_query.format(table_name='one')
-        table_two = create_table_query.format(table_name='two')
-        tracker_cursor.execute('use yelp')
-        tracker_cursor.execute(table_one)
-        tracker_cursor.execute(table_two)
-        yield tracker_cursor
-        tracker_cursor.execute('drop table one')
-        tracker_cursor.execute('drop table two')
+        with mock_db_connections.get_tracker_cursor() as tracker_cursor:
+            table_one = create_table_query.format(table_name='one')
+            table_two = create_table_query.format(table_name='two')
+            tracker_cursor.execute('use yelp')
+            tracker_cursor.execute(table_one)
+            tracker_cursor.execute(table_two)
+            yield tracker_cursor
+            tracker_cursor.execute('drop table one')
+            tracker_cursor.execute('drop table two')
 
     def test_recovery_from_schema_dump(
         self,
