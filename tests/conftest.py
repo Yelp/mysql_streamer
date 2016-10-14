@@ -45,10 +45,6 @@ def compose_file():
     )
 
 
-def _is_envvar_set(envvar):
-    return os.getenv(envvar, 'false').lower() in ['t', 'true', 'y', 'yes']
-
-
 @pytest.fixture(scope='module')
 def rbrsource():
     return 'rbrsource'

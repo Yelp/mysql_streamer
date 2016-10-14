@@ -7,7 +7,7 @@ import logging
 from replication_handler.batch.base_parse_replication_stream import BaseParseReplicationStream
 
 
-CONSOLE_FORMAT = '%(asctime)s - %(name)-12s: %(levelname)-8s %(message)s'
+CONSOLE_FORMAT = '%(asctime)s - %(name)-12s:%(lineno)d: %(levelname)-8s %(message)s'
 
 
 class ParseReplicationStream(BaseParseReplicationStream):
