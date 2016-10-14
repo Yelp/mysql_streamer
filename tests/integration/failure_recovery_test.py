@@ -3,14 +3,12 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import ast
-import os
 import uuid
 
 import mock
 import pytest
 import staticconf
 import staticconf.testing
-import yelp_conn
 from data_pipeline.message_type import MessageType
 from data_pipeline.testing_helpers.containers import Containers
 
@@ -21,9 +19,6 @@ from replication_handler.testing_helper.restart_helper import RestartHelper
 from replication_handler.testing_helper.util import execute_query_get_all_rows
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
-from replication_handler.testing_helper.util import RBR_SOURCE
-from replication_handler.testing_helper.util import RBR_STATE
-from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from tests.integration.conftest import _fetch_messages
 from tests.integration.conftest import _verify_messages
 from tests.integration.conftest import _wait_for_schematizer_topic
@@ -101,24 +96,24 @@ class TestFailureRecovery(object):
         return tmp_path.strpath
 
     @pytest.fixture
-    def mock_source_cluster_host(self, containers_without_repl_handler):
+    def mock_source_cluster_host(self, containers_without_repl_handler, rbrsource):
         return Containers.get_container_ip_address(
             project=containers_without_repl_handler.project,
-            service='rbrsource'
+            service=rbrsource
         )
 
     @pytest.fixture
-    def mock_tracker_cluster_host(self, containers_without_repl_handler):
+    def mock_tracker_cluster_host(self, containers_without_repl_handler, schematracker):
         return Containers.get_container_ip_address(
             project=containers_without_repl_handler.project,
-            service='schematracker'
+            service=schematracker
         )
 
     @pytest.fixture
-    def mock_state_cluster_host(self, containers_without_repl_handler):
+    def mock_state_cluster_host(self, containers_without_repl_handler, rbrstate):
         return Containers.get_container_ip_address(
             project=containers_without_repl_handler.project,
-            service='rbrstate'
+            service=rbrstate
         )
 
     @pytest.fixture
@@ -206,8 +201,6 @@ class TestFailureRecovery(object):
                 yelp_conn_conf,
                 namespace='yelp_conn'
             ):
-                yelp_conn.reset_module()
-                os.environ['FORCE_AVOID_INTERNAL_PACKAGES'] = 'false'
                 test_helper = RestartHelper(
                     num_of_events_to_process=num_of_queries_to_process,
                     max_runtime_sec=end_time,
@@ -225,6 +218,7 @@ class TestFailureRecovery(object):
     def test_shutdown_processing_events_publishes_events_only_once(
         self,
         containers_without_repl_handler,
+        rbrsource,
         schematizer,
         namespace,
         start_service,
@@ -249,15 +243,15 @@ class TestFailureRecovery(object):
         SET teacher="{one}"
         WHERE name="{two}"
         """
-        increment_heartbeat(containers_without_repl_handler)
+        increment_heartbeat(containers_without_repl_handler, rbrsource)
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             create_query.format(table=table_name)
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query_one.format(
                 table=table_name,
                 one='potions',
@@ -266,7 +260,7 @@ class TestFailureRecovery(object):
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query_one.format(
                 table=table_name,
                 one='care of magical creatures',
@@ -275,7 +269,7 @@ class TestFailureRecovery(object):
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             update_query.format(
                 table=table_name,
                 one='Grubbly Plank',
@@ -344,6 +338,8 @@ class TestFailureRecovery(object):
     def test_saving_topic_and_kafka_offset_info(
         self,
         containers_without_repl_handler,
+        rbrsource,
+        rbrstate,
         schematizer,
         namespace,
         start_service,
@@ -363,15 +359,15 @@ class TestFailureRecovery(object):
         ("{one}", "{two}")
         """
 
-        increment_heartbeat(containers_without_repl_handler)
+        increment_heartbeat(containers_without_repl_handler, rbrsource)
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             create_query.format(table=table_name)
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query_one.format(
                 table=table_name,
                 one='James Potter',
@@ -380,7 +376,7 @@ class TestFailureRecovery(object):
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query_one.format(
                 table=table_name,
                 one='Sirius Black',
@@ -389,7 +385,7 @@ class TestFailureRecovery(object):
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query_one.format(
                 table=table_name,
                 one='Rita Skeeter',
@@ -398,7 +394,7 @@ class TestFailureRecovery(object):
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query_one.format(
                 table=table_name,
                 one='Minerva McGonagall',
@@ -423,7 +419,7 @@ class TestFailureRecovery(object):
 
         saved_data_state = execute_query_get_all_rows(
             containers_without_repl_handler,
-            RBR_STATE,
+            rbrstate,
             "SELECT * FROM {table} WHERE kafka_topic like \"%{t}%\"".format(
                 table='data_event_checkpoint',
                 t=table_name
@@ -432,7 +428,7 @@ class TestFailureRecovery(object):
 
         saved_heartbeat_state = execute_query_get_all_rows(
             containers_without_repl_handler,
-            RBR_STATE,
+            rbrstate,
             "SELECT * FROM {table} WHERE table_name=\"{name}\"".format(
                 table='global_event_state',
                 name=table_name
@@ -456,7 +452,7 @@ class TestFailureRecovery(object):
 
         saved_data_state = execute_query_get_all_rows(
             containers_without_repl_handler,
-            RBR_STATE,
+            rbrstate,
             "SELECT * FROM {table} WHERE kafka_topic like \"%{t}%\"".format(
                 table='data_event_checkpoint',
                 t=table_name
@@ -465,7 +461,7 @@ class TestFailureRecovery(object):
 
         saved_heartbeat_state = execute_query_get_all_rows(
             containers_without_repl_handler,
-            RBR_STATE,
+            rbrstate,
             "SELECT * FROM {table} WHERE table_name=\"{name}\"".format(
                 table='global_event_state',
                 name=table_name
@@ -482,6 +478,8 @@ class TestFailureRecovery(object):
     def test_unclean_shutdown_schema_event(
         self,
         containers_without_repl_handler,
+        rbrsource,
+        rbrstate,
         schematizer,
         namespace,
         start_service,
@@ -513,15 +511,15 @@ class TestFailureRecovery(object):
         ("{one}", "{two}", "{three}")
         """
 
-        increment_heartbeat(containers_without_repl_handler)
+        increment_heartbeat(containers_without_repl_handler, rbrsource)
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             create_query.format(table=table_name)
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query_one.format(
                 table=table_name,
                 one='Rufus Scrimgeour',
@@ -530,14 +528,14 @@ class TestFailureRecovery(object):
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             add_col_query.format(
                 table=table_name
             )
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query_two.format(
                 table=table_name,
                 one='Kingsley Shacklebolt',
@@ -556,7 +554,7 @@ class TestFailureRecovery(object):
 
         saved_schema_state = execute_query_get_all_rows(
             containers_without_repl_handler,
-            RBR_STATE,
+            rbrstate,
             "SELECT * FROM {table} WHERE table_name=\"{name}\"".format(
                 table='schema_event_state',
                 name=table_name
@@ -579,7 +577,7 @@ class TestFailureRecovery(object):
 
         saved_schema_state = execute_query_get_all_rows(
             containers_without_repl_handler,
-            RBR_STATE,
+            rbrstate,
             "SELECT * FROM {table} WHERE table_name=\"{name}\"".format(
                 table='schema_event_state',
                 name=table_name
@@ -606,6 +604,8 @@ class TestFailureRecovery(object):
     def test_unclean_shutdown_processing_table_rename(
         self,
         containers_without_repl_handler,
+        rbrsource,
+        schematracker,
         schematizer,
         namespace,
         start_service,
@@ -624,7 +624,7 @@ class TestFailureRecovery(object):
         change_table_name_query = """
         RENAME TABLE {old} TO {new}
         """
-        increment_heartbeat(containers_without_repl_handler)
+        increment_heartbeat(containers_without_repl_handler, rbrsource)
         create_query = create_table_query.format(table_name=table_name_one)
         rename_query = change_table_name_query.format(
             old=table_name_one,
@@ -632,12 +632,12 @@ class TestFailureRecovery(object):
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             create_query
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query.format(
                 table=table_name_one,
                 one='Cedric Diggory',
@@ -647,7 +647,7 @@ class TestFailureRecovery(object):
 
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query.format(
                 table=table_name_one,
                 one='Hannah Abbott',
@@ -656,12 +656,12 @@ class TestFailureRecovery(object):
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             rename_query
         )
         execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             insert_query.format(
                 table=table_name_two,
                 one='Viktor Krum',
@@ -679,12 +679,12 @@ class TestFailureRecovery(object):
         show_query = "SHOW CREATE TABLE {name}"
         old_source_schema = execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             show_query.format(name=table_name_two)
         )
         old_tracker_schema = execute_query_get_one_row(
             containers_without_repl_handler,
-            SCHEMA_TRACKER,
+            schematracker,
             show_query.format(name=table_name_one)
         )
         assert old_source_schema != old_tracker_schema
@@ -699,12 +699,12 @@ class TestFailureRecovery(object):
 
         old_source_schema = execute_query_get_one_row(
             containers_without_repl_handler,
-            RBR_SOURCE,
+            rbrsource,
             show_query.format(name=table_name_two)
         )
         old_tracker_schema = execute_query_get_one_row(
             containers_without_repl_handler,
-            SCHEMA_TRACKER,
+            schematracker,
             show_query.format(name=table_name_two)
         )
         assert old_source_schema == old_tracker_schema
