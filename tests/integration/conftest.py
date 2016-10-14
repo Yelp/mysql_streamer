@@ -17,7 +17,6 @@ from sqlalchemy.orm import sessionmaker
 
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import get_db_engine
-from replication_handler.testing_helper.util import RBR_SOURCE
 
 timeout_seconds = 60
 
@@ -40,8 +39,8 @@ def alter_table_query():
 
 
 @pytest.fixture(scope='module')
-def rbr_source_session(containers):
-    engine = get_db_engine(containers, RBR_SOURCE)
+def rbr_source_session(containers, rbrsource):
+    engine = get_db_engine(containers, rbrsource)
     Session = sessionmaker(bind=engine)
     return Session()
 

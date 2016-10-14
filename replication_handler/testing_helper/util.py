@@ -13,10 +13,6 @@ from sqlalchemy import create_engine
 
 logger = logging.getLogger('replication_handler.testing_helper.util')
 
-RBR_SOURCE = 'rbrsource'
-RBR_STATE = 'rbrstate'
-SCHEMA_TRACKER = 'schematracker'
-
 
 def get_service_host(containers, service_name):
     return Containers.get_container_ip_address(containers.project, service_name)
@@ -67,16 +63,16 @@ def execute_query_get_all_rows(containers, db_name, query):
         connection.close()
 
 
-def increment_heartbeat(containers):
+def increment_heartbeat(containers, rbrsource):
     heartbeat_query = (
         "update yelp_heartbeat.replication_heartbeat set serial=serial+1"
     )
-    execute_query_get_one_row(containers, RBR_SOURCE, heartbeat_query)
+    execute_query_get_one_row(containers, rbrsource, heartbeat_query)
 
 
-def get_heartbeat_serial(containers):
+def get_heartbeat_serial(containers, rbrsource):
     query = "select * from yelp_heartbeat.replication_heartbeat"
-    return execute_query_get_one_row(containers, RBR_SOURCE, query)['serial']
+    return execute_query_get_one_row(containers, rbrsource, query)['serial']
 
 
 def db_health_check(containers, db_name, timeout_seconds):
@@ -97,7 +93,7 @@ def db_health_check(containers, db_name, timeout_seconds):
     raise ContainerUnavailableError()
 
 
-def replication_handler_health_check(containers, timeout_seconds):
+def replication_handler_health_check(containers, rbrsource, schematracker, timeout_seconds):
     table_name = "health_check"
     end_time = time.time() + timeout_seconds
     logger.info("Waiting for replication handler to pass health check")
@@ -105,9 +101,9 @@ def replication_handler_health_check(containers, timeout_seconds):
     check_query = "SHOW TABLES LIKE '{}'".format(table_name)
     while end_time > time.time():
         time.sleep(0.1)
-        if not execute_query_get_one_row(containers, RBR_SOURCE, check_query):
-            execute_query_get_one_row(containers, RBR_SOURCE, create_query)
-        if execute_query_get_one_row(containers, SCHEMA_TRACKER, check_query):
+        if not execute_query_get_one_row(containers, rbrsource, check_query):
+            execute_query_get_one_row(containers, rbrsource, create_query)
+        if execute_query_get_one_row(containers, schematracker, check_query):
             logger.info("replication handler is ready!")
             return
         else:

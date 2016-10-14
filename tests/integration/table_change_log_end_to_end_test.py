@@ -7,7 +7,6 @@ from data_pipeline.message_type import MessageType
 
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
-from replication_handler.testing_helper.util import RBR_SOURCE
 from tests.integration.conftest import _fetch_messages
 from tests.integration.conftest import _generate_basic_model
 from tests.integration.conftest import _verify_messages
@@ -34,6 +33,7 @@ def source():
 @pytest.mark.itest
 def test_change_log_messages(
     containers,
+    rbrsource,
     create_table_query,
     schematizer,
     namespace,
@@ -41,11 +41,11 @@ def test_change_log_messages(
     rbr_source_session,
 ):
 
-    increment_heartbeat(containers)
+    increment_heartbeat(containers, rbrsource)
 
     execute_query_get_one_row(
         containers,
-        RBR_SOURCE,
+        rbrsource,
         create_table_query.format(table_name=source)
     )
 

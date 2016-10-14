@@ -17,8 +17,6 @@ from replication_handler.testing_helper.config_revamp import reconfigure
 from replication_handler.testing_helper.util import execute_query_get_all_rows
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
-from replication_handler.testing_helper.util import RBR_SOURCE
-from replication_handler.testing_helper.util import SCHEMA_TRACKER
 from replication_handler.util.misc import transform_time_to_number_of_microseconds
 from tests.integration.conftest import _fetch_messages
 from tests.integration.conftest import _generate_basic_model
@@ -230,6 +228,7 @@ class TestEndToEnd(object):
     def create_complex_table(
         self,
         containers,
+        rbrsource,
         complex_table_name,
         complex_table_create_query
     ):
@@ -247,7 +246,7 @@ class TestEndToEnd(object):
             complex_table_create_query=complex_table_create_query
         )
 
-        execute_query_get_one_row(containers, RBR_SOURCE, query)
+        execute_query_get_one_row(containers, rbrsource, query)
 
     @pytest.fixture
     def ComplexModel(
@@ -318,6 +317,7 @@ class TestEndToEnd(object):
     def test_complex_table(
         self,
         containers,
+        rbrsource,
         complex_table_name,
         ComplexModel,
         actual_complex_data,
@@ -326,7 +326,7 @@ class TestEndToEnd(object):
         namespace,
         rbr_source_session
     ):
-        increment_heartbeat(containers)
+        increment_heartbeat(containers, rbrsource)
 
         complex_instance = ComplexModel(**actual_complex_data)
         rbr_source_session.add(complex_instance)
@@ -350,6 +350,8 @@ class TestEndToEnd(object):
     def test_create_table(
         self,
         containers,
+        rbrsource,
+        schematracker,
         create_table_query,
         avro_schema,
         table_name,
@@ -357,21 +359,21 @@ class TestEndToEnd(object):
         schematizer,
         rbr_source_session
     ):
-        increment_heartbeat(containers)
+        increment_heartbeat(containers, rbrsource)
         execute_query_get_one_row(
             containers,
-            RBR_SOURCE,
+            rbrsource,
             create_table_query.format(table_name=table_name)
         )
 
         # Need to poll for the creation of the table
-        _wait_for_table(containers, SCHEMA_TRACKER, table_name)
+        _wait_for_table(containers, schematracker, table_name)
 
         # Check the schematracker db also has the table.
         verify_create_table_query = "SHOW CREATE TABLE {table_name}".format(
             table_name=table_name)
-        verify_create_table_result = execute_query_get_one_row(containers, SCHEMA_TRACKER, verify_create_table_query)
-        expected_create_table_result = execute_query_get_one_row(containers, RBR_SOURCE, verify_create_table_query)
+        verify_create_table_result = execute_query_get_one_row(containers, schematracker, verify_create_table_query)
+        expected_create_table_result = execute_query_get_one_row(containers, rbrsource, verify_create_table_query)
         self.assert_expected_result(verify_create_table_result, expected_create_table_result)
 
         # It's necessary to insert data for the topic to actually be created.
@@ -392,6 +394,8 @@ class TestEndToEnd(object):
     def test_create_table_with_row_format(
         self,
         containers,
+        rbrsource,
+        schematracker,
         replhandler
     ):
         table_name = '{0}_row_format_tester'.format(replhandler)
@@ -399,36 +403,38 @@ class TestEndToEnd(object):
         CREATE TABLE {name}
         ( id int(11) primary key) ROW_FORMAT=COMPRESSED ENGINE=InnoDB
         """.format(name=table_name)
-        increment_heartbeat(containers)
+        increment_heartbeat(containers, rbrsource)
         execute_query_get_one_row(
             containers,
-            RBR_SOURCE,
+            rbrsource,
             create_table_stmt
         )
 
-        _wait_for_table(containers, SCHEMA_TRACKER, table_name)
+        _wait_for_table(containers, schematracker, table_name)
         # Check the schematracker db also has the table.
         verify_create_table_query = "SHOW CREATE TABLE {table_name}".format(
             table_name=table_name)
-        verify_create_table_result = execute_query_get_one_row(containers, SCHEMA_TRACKER, verify_create_table_query)
-        expected_create_table_result = execute_query_get_one_row(containers, RBR_SOURCE, verify_create_table_query)
+        verify_create_table_result = execute_query_get_one_row(containers, schematracker, verify_create_table_query)
+        expected_create_table_result = execute_query_get_one_row(containers, rbrsource, verify_create_table_query)
         self.assert_expected_result(verify_create_table_result, expected_create_table_result)
 
     def test_alter_table(
         self,
         containers,
+        rbrsource,
+        schematracker,
         alter_table_query,
         table_name,
     ):
-        increment_heartbeat(containers)
+        increment_heartbeat(containers, rbrsource)
         execute_query_get_one_row(
             containers,
-            RBR_SOURCE,
+            rbrsource,
             alter_table_query.format(table_name=table_name)
         )
         execute_query_get_one_row(
             containers,
-            RBR_SOURCE,
+            rbrsource,
             "ALTER TABLE {name} ROW_FORMAT=COMPRESSED".format(name=table_name)
         )
 
@@ -438,8 +444,8 @@ class TestEndToEnd(object):
         verify_describe_table_query = "DESCRIBE {table_name}".format(
             table_name=table_name
         )
-        verify_alter_table_result = execute_query_get_all_rows(containers, SCHEMA_TRACKER, verify_describe_table_query)
-        expected_alter_table_result = execute_query_get_all_rows(containers, RBR_SOURCE, verify_describe_table_query)
+        verify_alter_table_result = execute_query_get_all_rows(containers, schematracker, verify_describe_table_query)
+        expected_alter_table_result = execute_query_get_all_rows(containers, rbrsource, verify_describe_table_query)
 
         if 'address' in verify_alter_table_result[0].values():
             actual_result = verify_alter_table_result[0]
@@ -459,17 +465,18 @@ class TestEndToEnd(object):
         self,
         containers,
         replhandler,
+        rbrsource,
         create_table_query,
         namespace,
         schematizer,
         rbr_source_session
     ):
-        increment_heartbeat(containers)
+        increment_heartbeat(containers, rbrsource)
 
         source = "{0}_basic_table".format(replhandler)
         execute_query_get_one_row(
             containers,
-            RBR_SOURCE,
+            rbrsource,
             create_table_query.format(table_name=source)
         )
 
@@ -515,6 +522,7 @@ class TestEndToEnd(object):
         self,
         containers,
         replhandler,
+        rbrsource,
         create_table_query,
         namespace,
         schematizer,
@@ -524,12 +532,12 @@ class TestEndToEnd(object):
             encryption_type='AES_MODE_CBC-1',
             key_location='acceptance/configs/data_pipeline/'
         ):
-            increment_heartbeat(containers)
+            increment_heartbeat(containers, rbrsource)
 
             source = "{}_secret_table".format(replhandler)
             execute_query_get_one_row(
                 containers,
-                RBR_SOURCE,
+                rbrsource,
                 create_table_query.format(table_name=source)
             )
 

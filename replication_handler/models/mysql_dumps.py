@@ -1,5 +1,6 @@
 import logging
 
+import copy
 from sqlalchemy import Column
 from sqlalchemy import String
 from sqlalchemy import UnicodeText
@@ -9,6 +10,13 @@ from replication_handler.models.database import Base
 
 
 logger = logging.getLogger('replication_handler.models.mysql_dumps')
+
+
+class DumpUnavailableError(Exception):
+    def __init__(self, cluster_name):
+        Exception.__init__(self, "MySQL Dump unavailable for cluster {c}".format(
+            c=cluster_name
+        ))
 
 
 class MySQLDumps(Base):
@@ -22,26 +30,32 @@ class MySQLDumps(Base):
         logger.info("Retrieving the latest MySQL dump for cluster {c}".format(
             c=cluster_name
         ))
-        latest_dump = session.query(
-            MySQLDumps
-        ).filter(
-            MySQLDumps.cluster_name == cluster_name
-        ).first()
-        logger.info("Fetched the latest MySQL dump")
-        return latest_dump.database_dump
+        with session.connect_begin(ro=True) as s:
+            ret = s.query(
+                MySQLDumps
+            ).filter(
+                MySQLDumps.cluster_name == cluster_name
+            ).first()
+            latest_dump = copy.copy(ret)
+            logger.info("Fetched the latest MySQL dump")
+        try:
+            return latest_dump.database_dump
+        except AttributeError as ae:
+            raise DumpUnavailableError(cluster_name=cluster_name)
 
     @classmethod
     def dump_exists(cls, session, cluster_name):
         logger.info("Checking for MySQL dump for cluster {c}".format(
             c=cluster_name
         ))
-        mysql_dump_exists = session.query(
-            exists().where(
-                MySQLDumps.cluster_name == cluster_name
-            )
-        ).scalar()
-        logger.info("MySQL dump exists") if mysql_dump_exists else \
-            logger.info("MySQL dump doesn't exist")
+        with session.connect_begin(ro=True) as s:
+            mysql_dump_exists = s.query(
+                exists().where(
+                    MySQLDumps.cluster_name == cluster_name
+                )
+            ).scalar()
+            logger.info("MySQL dump exists") if mysql_dump_exists else \
+                logger.info("MySQL dump doesn't exist")
         return mysql_dump_exists
 
     @classmethod
@@ -49,13 +63,14 @@ class MySQLDumps(Base):
         logger.info("Replacing MySQL dump for cluster {c}".format(
             c=cluster_name
         ))
-        session.query(MySQLDumps).filter(
-            MySQLDumps.cluster_name == cluster_name
-        ).delete()
-        new_dump = MySQLDumps()
-        new_dump.database_dump = database_dump
-        new_dump.cluster_name = cluster_name
-        session.add(new_dump)
+        with session.connect_begin(ro=False) as s:
+            s.query(MySQLDumps).filter(
+                MySQLDumps.cluster_name == cluster_name
+            ).delete()
+            new_dump = MySQLDumps()
+            new_dump.database_dump = database_dump
+            new_dump.cluster_name = cluster_name
+            s.add(new_dump)
         logger.info("Replaced the old MySQL dump with new one")
         return new_dump
 
@@ -64,6 +79,7 @@ class MySQLDumps(Base):
         logger.info("Deleting the existing database dump for cluster {c}".format(
             c=cluster_name
         ))
-        session.query(MySQLDumps).filter(
-            MySQLDumps.cluster_name == cluster_name
-        ).delete()
+        with session.connect_begin(ro=False) as s:
+            s.query(MySQLDumps).filter(
+                MySQLDumps.cluster_name == cluster_name
+            ).delete()

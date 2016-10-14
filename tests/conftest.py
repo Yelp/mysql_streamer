@@ -13,6 +13,7 @@ from data_pipeline.message import Message
 from data_pipeline.schematizer_clientlib.schematizer import _Cache
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.testing_helpers.containers import Containers
+from MySQLdb.cursors import Cursor
 
 from replication_handler.components import data_event_handler
 from replication_handler.components import recovery_handler
@@ -49,42 +50,51 @@ def _is_envvar_set(envvar):
 
 
 @pytest.fixture(scope='module')
-def services(replhandler):
-    return [
-        replhandler,
-        'rbrsource',
-        'schematracker',
-        'rbrstate'
-    ]
+def rbrsource():
+    return 'rbrsource'
 
 
 @pytest.fixture(scope='module')
-def services_without_repl_handler():
-    return [
-        'rbrsource',
-        'schematracker',
-        'rbrstate'
-    ]
+def schematracker():
+    return 'schematracker'
 
 
 @pytest.fixture(scope='module')
-def dbs():
-    return ["rbrsource", "schematracker", "rbrstate"]
+def rbrstate():
+    return 'rbrstate'
+
+
+@pytest.fixture(scope='module')
+def dbs(rbrsource, schematracker, rbrstate):
+    return [rbrsource, schematracker, rbrstate]
+
+
+@pytest.fixture(scope='module')
+def services(replhandler, dbs):
+    servs = [replhandler]
+    servs.extend(dbs)
+    return servs
+
+
+@pytest.fixture(scope='module')
+def services_without_repl_handler(dbs):
+    return dbs
 
 
 @pytest.yield_fixture(scope='module')
-def containers(compose_file, services, dbs, replhandler):
+def containers(compose_file, services, dbs, replhandler, rbrsource, schematracker):
     with Containers(compose_file, services) as containers:
         # Need to wait for all containers to spin up
         replication_handler_ip = None
         while replication_handler_ip is None:
             replication_handler_ip = Containers.get_container_ip_address(
                 containers.project,
-                replhandler)
+                replhandler
+            )
 
         for db in dbs:
             db_health_check(containers, db, timeout_seconds)
-        replication_handler_health_check(containers, timeout_seconds)
+        replication_handler_health_check(containers, rbrsource, schematracker, timeout_seconds)
         yield containers
 
 
@@ -233,17 +243,17 @@ def topology_path(tmpdir, topology):
 
 @pytest.fixture
 def mock_source_cursor():
-    return mock.Mock()
+    return mock.Mock(spec=Cursor)
 
 
 @pytest.fixture
 def mock_tracker_cursor():
-    return mock.Mock()
+    return mock.Mock(spec=Cursor)
 
 
 @pytest.fixture
 def mock_state_cursor():
-    return mock.Mock()
+    return mock.Mock(spec=Cursor)
 
 
 @pytest.fixture
@@ -285,9 +295,9 @@ def mock_db_connections(
         patch_tracker_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
         patch_state_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
 
-        patch_get_source_cursor.return_value = mock_source_cursor
-        patch_get_tracker_cursor.return_value = mock_tracker_cursor
-        patch_get_state_cursor.return_value = mock_state_cursor
+        patch_get_source_cursor.return_value.__enter__.return_value = mock_source_cursor
+        patch_get_tracker_cursor.return_value.__enter__.return_value = mock_tracker_cursor
+        patch_get_state_cursor.return_value.__enter__.return_value = mock_state_cursor
 
         db_connections = BaseConnection(
             topology_path=topology_path,
