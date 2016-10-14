@@ -436,7 +436,8 @@ class TestSchemaEventHandler(object):
         mock_schema_tracker_cursor,
         table_with_schema_changes,
         alter_table_schema_store_response,
-        test_schema
+        test_schema,
+        mock_dump_handler
     ):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
@@ -468,6 +469,7 @@ class TestSchemaEventHandler(object):
             alter_table_schema_store_response,
             external_patches,
             test_schema,
+            mock_dump_handler,
             mysql_statements=mysql_statements
         )
         assert producer.flush.call_count == 1
@@ -509,7 +511,8 @@ class TestSchemaEventHandler(object):
             mock_schema_tracker_cursor,
             table_with_schema_changes,
             alter_table_schema_store_response,
-            test_schema
+            test_schema,
+            mock_dump_handler
         )
         assert stats_counter.increment.call_count == 1
         assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
@@ -647,6 +650,7 @@ class TestSchemaEventHandler(object):
         schema_store_response,
         external_patches,
         test_schema,
+        mock_dump_handler,
         mysql_statements=None
     ):
         """Test helper method that checks various things in a successful scenario
@@ -655,6 +659,7 @@ class TestSchemaEventHandler(object):
 
         # Make sure query was executed on tracking db
         # execute of show create is mocked out above
+        assert mock_dump_handler.call_count == 1
         assert external_patches.execute_query.call_count == 1
         assert external_patches.execute_query.call_args_list == [
             mock.call(event.query, test_schema)

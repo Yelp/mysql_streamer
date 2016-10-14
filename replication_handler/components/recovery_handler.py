@@ -83,7 +83,7 @@ class RecoveryHandler(object):
 
     @property
     def need_recovery(self):
-        """Determine if recovery procedure is need.
+        """Determine if recovery procedure is needed.
         """
         if not self.is_clean_shutdown:
             return True
