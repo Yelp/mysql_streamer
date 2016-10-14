@@ -9,6 +9,7 @@ import simplejson as json
 
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
+from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.sql_handler import AlterTableStatement
@@ -30,9 +31,8 @@ class SchemaEventHandler(BaseEventHandler):
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
-        self.schema_tracker = SchemaTracker(
-            self.db_connections
-        )
+        self.schema_tracker = SchemaTracker(self.db_connections)
+        self.mysql_dump_handler = MySQLDumpHandler(self.db_connections)
 
     def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
@@ -44,6 +44,8 @@ class SchemaEventHandler(BaseEventHandler):
             return
 
         statement = mysql_statement_factory(event.query)
+
+        self.mysql_dump_handler.create_and_persist_schema_dump()
 
         if not statement.is_supported():
             return

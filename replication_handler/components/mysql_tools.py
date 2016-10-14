@@ -3,10 +3,10 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import uuid
 from subprocess import Popen
 
 import os
-from os.path import expanduser, join
 
 from replication_handler.util.misc import delete_file_if_exists
 
@@ -58,8 +58,8 @@ def create_mysql_dump(db_creds, databases):
 
 
 def _get_dump_file():
-        home_dir = expanduser('~')
-        return join(home_dir, "{}".format('mysql_dump'))
+    rand = uuid.uuid1().hex
+    return "mysql_dump.{}".format(rand)
 
 
 def _read_dump_content(dump_file):

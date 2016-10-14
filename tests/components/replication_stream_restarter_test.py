@@ -93,7 +93,11 @@ class TestReplicationStreamRestarter(object):
             is_clean_shutdown=True
         )
         patch_get_pending_schema_event_state.return_value = None
-        restarter = ReplicationStreamRestarter(mock_db_connections, mock_schema_wrapper)
+        restarter = ReplicationStreamRestarter(
+            mock_db_connections,
+            mock_schema_wrapper,
+            False
+        )
         restarter.restart(producer)
         assert restarter.get_stream().next() == next_event
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
@@ -115,7 +119,11 @@ class TestReplicationStreamRestarter(object):
             is_clean_shutdown=False
         )
         patch_get_pending_schema_event_state.return_value = None
-        restarter = ReplicationStreamRestarter(mock_db_connections, mock_schema_wrapper)
+        restarter = ReplicationStreamRestarter(
+            mock_db_connections,
+            mock_schema_wrapper,
+            False
+        )
         restarter.restart(producer)
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
         assert patch_recover.call_count == 1
@@ -136,7 +144,11 @@ class TestReplicationStreamRestarter(object):
             is_clean_shutdown=True
         )
         patch_get_pending_schema_event_state.return_value = mock.Mock()
-        restarter = ReplicationStreamRestarter(mock_db_connections, mock_schema_wrapper)
+        restarter = ReplicationStreamRestarter(
+            mock_db_connections,
+            mock_schema_wrapper,
+            False
+        )
         restarter.restart(producer)
         assert patch_get_gtid_to_resume_tailing_from.call_count == 1
         assert patch_recover.call_count == 1

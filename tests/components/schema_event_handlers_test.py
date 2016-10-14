@@ -12,6 +12,7 @@ from data_pipeline.schema_cache import SchematizerClient
 import replication_handler.components.schema_event_handler
 from replication_handler import config
 from replication_handler.components.base_event_handler import Table
+from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_tracker import ShowCreateResult
@@ -53,6 +54,14 @@ class TestSchemaEventHandler(object):
             db_connections=mock_db_connections,
             schematizer_client=schematizer_client
         )
+
+    @pytest.yield_fixture
+    def mock_dump_handler(self):
+        with mock.patch.object(
+            MySQLDumpHandler,
+            'create_and_persist_schema_dump'
+        ) as mock_create_dump:
+            yield mock_create_dump
 
     @pytest.fixture(params=get_mock_stats_counters())
     def stats_counter(self, request):
@@ -427,7 +436,8 @@ class TestSchemaEventHandler(object):
         mock_schema_tracker_cursor,
         table_with_schema_changes,
         alter_table_schema_store_response,
-        test_schema
+        test_schema,
+        mock_dump_handler
     ):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
@@ -459,6 +469,7 @@ class TestSchemaEventHandler(object):
             alter_table_schema_store_response,
             external_patches,
             test_schema,
+            mock_dump_handler,
             mysql_statements=mysql_statements
         )
         assert producer.flush.call_count == 1
@@ -480,7 +491,8 @@ class TestSchemaEventHandler(object):
         mock_schema_tracker_cursor,
         table_with_schema_changes,
         alter_table_schema_store_response,
-        test_schema
+        test_schema,
+        mock_dump_handler
     ):
         if not stats_counter:
             pytest.skip("StatsCounter is not supported in open source version.")
@@ -499,7 +511,8 @@ class TestSchemaEventHandler(object):
             mock_schema_tracker_cursor,
             table_with_schema_changes,
             alter_table_schema_store_response,
-            test_schema
+            test_schema,
+            mock_dump_handler
         )
         assert stats_counter.increment.call_count == 1
         assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
@@ -512,7 +525,8 @@ class TestSchemaEventHandler(object):
         external_patches,
         schema_event_handler,
         rename_table_schema_event,
-        schema_wrapper_mock
+        schema_wrapper_mock,
+        mock_dump_handler
     ):
         schema_event_handler.handle_event(rename_table_schema_event, test_position)
 
@@ -539,6 +553,7 @@ class TestSchemaEventHandler(object):
         external_patches,
         schema_event_handler,
         alter_table_schema_event,
+        mock_dump_handler
     ):
         external_patches.database_config.return_value = ['fake_schema']
         schema_event_handler.handle_event(alter_table_schema_event, test_position)
@@ -556,6 +571,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         mock_schema_tracker_cursor,
         non_schema_relevant_query_event,
+        mock_dump_handler
     ):
         schema_event_handler.handle_event(non_schema_relevant_query_event, test_position)
         assert external_patches.execute_query.call_count == 1
@@ -587,6 +603,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         mock_schema_tracker_cursor,
         unsupported_query_event,
+        mock_dump_handler
     ):
         self._assert_query_skipped(
             schema_event_handler,
@@ -606,6 +623,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         alter_table_schema_event,
         show_create_result_initial,
+        mock_dump_handler
     ):
         external_patches.get_show_create_statement.side_effect = [
             show_create_result_initial,
@@ -632,6 +650,7 @@ class TestSchemaEventHandler(object):
         schema_store_response,
         external_patches,
         test_schema,
+        mock_dump_handler,
         mysql_statements=None
     ):
         """Test helper method that checks various things in a successful scenario
@@ -640,6 +659,7 @@ class TestSchemaEventHandler(object):
 
         # Make sure query was executed on tracking db
         # execute of show create is mocked out above
+        assert mock_dump_handler.call_count == 1
         assert external_patches.execute_query.call_count == 1
         assert external_patches.execute_query.call_args_list == [
             mock.call(event.query, test_schema)
@@ -690,6 +710,7 @@ class TestSchemaEventHandler(object):
         test_position,
         create_table_schema_event,
         mock_schema_tracker_cursor,
+        mock_dump_handler
     ):
         external_patches.dry_run_config.return_value = True
         dry_run_schema_event_handler.handle_event(create_table_schema_event, test_position)
@@ -707,6 +728,7 @@ class TestSchemaEventHandler(object):
         external_patches,
         schema_event_handler,
         mock_schema_tracker_cursor,
+        mock_dump_handler
     ):
         with mock.patch(
             'replication_handler.components.schema_event_handler.mysql_statement_factory',

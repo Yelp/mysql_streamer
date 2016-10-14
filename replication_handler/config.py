@@ -182,5 +182,16 @@ class EnvConfig(BaseConfig):
         """
         return staticconf.get_bool('force_exit').value
 
+    @property
+    def activate_mysql_dump_recovery(self):
+        """Determines the recovery mechanism. When set to true, will use the
+        mysql dumps to recover during a failure.
+        Defaults to false which uses journaling for recovery
+        """
+        return staticconf.get_bool(
+            'activate_mysql_dump_recovery',
+            default=False
+        ).value
+
 
 env_config = EnvConfig()
