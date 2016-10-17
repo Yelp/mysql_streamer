@@ -3,11 +3,11 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
-
 import os
+from os import remove
+
 import simplejson
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
-from os import remove
 
 from replication_handler.config import env_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
@@ -21,9 +21,12 @@ REPLICATION_HANDLER_TEAM_NAME = env_config.team_name
 
 HEARTBEAT_DB = "yelp_heartbeat"
 
-TRANSACTION_ID_SCHEMA_FILEPATH = os.path.join(
+LOG_TRANSACTION_ID_SCHEMA_FILEPATH = os.path.join(
     os.path.dirname(__file__),
-    '../../schema/avro_schema/transaction_id_v1.avsc')
+    '../../schema/avro_schema/log_transaction_id_v1.avsc')
+GLOBAL_TRANSACTION_ID_SCHEMA_FILEPATH = os.path.join(
+    os.path.dirname(__file__),
+    '../../schema/avro_schema/global_transaction_id_v1.avsc')
 
 log = logging.getLogger('replication_handler.util.misc.data_event')
 
@@ -98,12 +101,19 @@ def save_position(position_data, state_session, is_clean_shutdown=False):
         )
 
 
-def get_transaction_id_schema_id():
-    with open(TRANSACTION_ID_SCHEMA_FILEPATH, 'r') as schema_file:
+def get_transaction_id_schema_id(gtid_enabled):
+    if gtid_enabled:
+        file_name = GLOBAL_TRANSACTION_ID_SCHEMA_FILEPATH
+        source = 'global_transaction_id'
+    else:
+        file_name = LOG_TRANSACTION_ID_SCHEMA_FILEPATH
+        source = 'log_transaction_id'
+
+    with open(file_name, 'r') as schema_file:
         avro_schema = simplejson.loads(schema_file.read())
     schema = get_schematizer().register_schema_from_schema_json(
         namespace='yelp.replication_handler',
-        source='transaction_id',
+        source=source,
         schema_json=avro_schema,
         source_owner_email='bam+replication_handler@yelp.com',
         contains_pii=False,

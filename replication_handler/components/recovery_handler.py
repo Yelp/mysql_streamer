@@ -54,7 +54,8 @@ class RecoveryHandler(object):
         register_dry_run=False,
         publish_dry_run=False,
         changelog_mode=False,
-        activate_mysql_dump_recovery=False
+        activate_mysql_dump_recovery=False,
+        gtid_enabled=False
     ):
         self.db_connections = db_connections
         log.info("Recovery Handler Starting: %s" % json.dumps(dict(
@@ -64,7 +65,8 @@ class RecoveryHandler(object):
             register_dry_run=register_dry_run,
             publish_dry_run=publish_dry_run,
             changelog_mode=changelog_mode,
-            activate_mysql_dump_recovery=activate_mysql_dump_recovery
+            activate_mysql_dump_recovery=activate_mysql_dump_recovery,
+            gtid_enabled=gtid_enabled
         )))
 
         self.stream = stream
@@ -76,8 +78,9 @@ class RecoveryHandler(object):
         self.schema_wrapper = schema_wrapper
         self.latest_source_log_position = self.get_latest_source_log_position()
         self.changelog_mode = changelog_mode
+        self.gtid_enabled = gtid_enabled
+        self.transaction_id_schema_id = get_transaction_id_schema_id(gtid_enabled)
         self.changelog_schema_wrapper = self._get_changelog_schema_wrapper()
-        self.transaction_id_schema_id = get_transaction_id_schema_id()
         self.activate_mysql_dump_recovery = activate_mysql_dump_recovery
         self.mysql_dump_handler = MySQLDumpHandler(db_connections)
 
@@ -103,7 +106,9 @@ class RecoveryHandler(object):
             producer=self.producer,
             schema_wrapper=self.schema_wrapper,
             stats_counter=None,
-            register_dry_run=self.register_dry_run)
+            register_dry_run=self.register_dry_run,
+            gtid_enabled=self.gtid_enabled
+        )
         return change_log_data_event_handler.schema_wrapper_entry
 
     def get_latest_source_log_position(self):

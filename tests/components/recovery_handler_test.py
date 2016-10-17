@@ -439,6 +439,8 @@ class TestRecoveryHandler(object):
             is_clean_shutdown=False,
             pending_schema_event=None,
             changelog_mode=changelog_mode,
+            activate_mysql_dump_recovery=False,
+            gtid_enabled=False
         )
         if max_size:
             patch_config_recovery_queue_size.return_value = max_size

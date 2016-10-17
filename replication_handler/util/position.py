@@ -2,7 +2,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from replication_handler.util.transaction_id import get_transaction_id
+from replication_handler.util.transaction_id import get_global_transaction_id
+from replication_handler.util.transaction_id import get_log_transaction_id
 
 
 class InvalidPositionDictException(Exception):
@@ -26,6 +27,9 @@ class Position(object):
         to be used in resuming replication.
         """
         return {}
+
+    def get_transaction_id(self, transaction_id_schema_id, cluster_name):
+        raise NotImplemented()
 
 
 class GtidPosition(Position):
@@ -88,6 +92,13 @@ class GtidPosition(Position):
             next_transaction_id=int(transaction_id) + 1
         )
 
+    def get_transaction_id(self, transaction_id_schema_id, cluster_name):
+        return get_global_transaction_id(
+            transaction_id_schema_id,
+            unicode(cluster_name),
+            unicode(self.gtid)
+        )
+
 
 class LogPosition(Position):
     """ This class uses log_pos, log_file and offset to represent a position.
@@ -139,7 +150,7 @@ class LogPosition(Position):
         return position_dict
 
     def get_transaction_id(self, transaction_id_schema_id, cluster_name):
-        return get_transaction_id(
+        return get_log_transaction_id(
             transaction_id_schema_id,
             unicode(cluster_name),
             unicode(self.log_file),
