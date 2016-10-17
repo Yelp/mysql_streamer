@@ -16,7 +16,6 @@ class ParseReplicationStream(BaseParseReplicationStream):
         # setup logging before doing anything else to ensure
         # we dont miss any logs.
         self.setup_console_logging()
-
         super(ParseReplicationStream, self).__init__()
 
     def setup_console_logging(self):

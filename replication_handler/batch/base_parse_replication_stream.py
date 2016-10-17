@@ -142,12 +142,13 @@ class BaseParseReplicationStream(object):
     def _get_stream(self):
         replication_stream_restarter = ReplicationStreamRestarter(
             self.db_connections,
-            self.schema_wrapper
+            self.schema_wrapper,
+            config.env_config.activate_mysql_dump_recovery
         )
         replication_stream_restarter.restart(
             self.producer,
             register_dry_run=self.register_dry_run,
-            changelog_mode=self._changelog_mode,
+            changelog_mode=self._changelog_mode
         )
         log.info("Replication stream successfully restarted.")
         return replication_stream_restarter.get_stream()
