@@ -13,15 +13,16 @@ from data_pipeline.message import Message
 from data_pipeline.schematizer_clientlib.schematizer import _Cache
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from data_pipeline.testing_helpers.containers import Containers
+from MySQLdb.cursors import Cursor
 
 from replication_handler.components import data_event_handler
 from replication_handler.components import recovery_handler
+from replication_handler.models.connections.base_connection import BaseConnection
 from replication_handler.testing_helper.util import db_health_check
 from replication_handler.testing_helper.util import replication_handler_health_check
-from testing import sandbox
 
 
-timeout_seconds = 60
+timeout_seconds = 120
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -31,7 +32,7 @@ logging.basicConfig(
 
 
 @pytest.fixture(scope='module')
-def compose_file(replhandler):
+def compose_file():
     return os.path.abspath(
         os.path.join(
             os.path.split(
@@ -43,28 +44,63 @@ def compose_file(replhandler):
 
 
 @pytest.fixture(scope='module')
-def services(replhandler):
-    return [
-        replhandler,
-        'rbrsource',
-        'schematracker',
-        'rbrstate'
-    ]
+def rbrsource():
+    return 'rbrsource'
+
+
+@pytest.fixture(scope='module')
+def schematracker():
+    return 'schematracker'
+
+
+@pytest.fixture(scope='module')
+def rbrstate():
+    return 'rbrstate'
+
+
+@pytest.fixture(scope='module')
+def dbs(rbrsource, schematracker, rbrstate):
+    return [rbrsource, schematracker, rbrstate]
+
+
+@pytest.fixture(scope='module')
+def services(replhandler, dbs):
+    servs = [replhandler]
+    servs.extend(dbs)
+    return servs
+
+
+@pytest.fixture(scope='module')
+def services_without_repl_handler(dbs):
+    return dbs
 
 
 @pytest.yield_fixture(scope='module')
-def containers(compose_file, services, replhandler):
+def containers(compose_file, services, dbs, replhandler, rbrsource, schematracker):
     with Containers(compose_file, services) as containers:
         # Need to wait for all containers to spin up
         replication_handler_ip = None
         while replication_handler_ip is None:
             replication_handler_ip = Containers.get_container_ip_address(
                 containers.project,
-                replhandler)
+                replhandler
+            )
 
-        for db in ["rbrsource", "schematracker", "rbrstate"]:
+        for db in dbs:
             db_health_check(containers, db, timeout_seconds)
-        replication_handler_health_check(containers, timeout_seconds)
+        replication_handler_health_check(containers, rbrsource, schematracker, timeout_seconds)
+        yield containers
+
+
+@pytest.yield_fixture(scope='module')
+def containers_without_repl_handler(
+    compose_file,
+    services_without_repl_handler,
+    dbs
+):
+    with Containers(compose_file, services_without_repl_handler) as containers:
+        for db in dbs:
+            db_health_check(containers, db, timeout_seconds)
         yield containers
 
 
@@ -86,12 +122,6 @@ def schematizer():
     schematizer._cache = _Cache()
     schematizer._avro_schema_cache = {}
     return schematizer
-
-
-@pytest.yield_fixture(scope='module')
-def sandbox_session():
-    with sandbox.database_sandbox_master_connection_set() as sandbox_session:
-        yield sandbox_session
 
 
 @pytest.fixture(scope='module')
@@ -118,6 +148,161 @@ def patch_message_contains_pii():
 
 
 @pytest.fixture
+def mock_source_cluster_name():
+    return 'refresh_primary'
+
+
+@pytest.fixture
+def mock_tracker_cluster_name():
+    return 'repltracker'
+
+
+@pytest.fixture
+def mock_state_cluster_name():
+    return 'replhandler'
+
+
+@pytest.fixture
+def mock_source_cluster_host():
+    return 'rbrsource'
+
+
+@pytest.fixture
+def mock_tracker_cluster_host():
+    return 'schematracker'
+
+
+@pytest.fixture
+def mock_state_cluster_host():
+    return 'rbrstate'
+
+
+@pytest.fixture
+def topology(
+    mock_source_cluster_name,
+    mock_tracker_cluster_name,
+    mock_state_cluster_name,
+    mock_source_cluster_host,
+    mock_tracker_cluster_host,
+    mock_state_cluster_host
+):
+    return """
+        topology:
+        -   cluster: {0}
+            replica: master
+            entries:
+                - charset: utf8
+                  use_unicode: true
+                  host: {1}
+                  db: yelp
+                  user: yelpdev
+                  passwd: ""
+                  port: 3306
+        -   cluster: {2}
+            replica: master
+            entries:
+                - charset: utf8
+                  use_unicode: true
+                  host: {3}
+                  db: yelp
+                  user: yelpdev
+                  passwd: ""
+                  port: 3306
+        -   cluster: {4}
+            replica: master
+            entries:
+                - charset: utf8
+                  use_unicode: true
+                  host: {5}
+                  db: yelp
+                  user: yelpdev
+                  passwd: ""
+                  port: 3306
+    """.format(
+        mock_source_cluster_name,
+        mock_source_cluster_host,
+        mock_tracker_cluster_name,
+        mock_tracker_cluster_host,
+        mock_state_cluster_name,
+        mock_state_cluster_host
+    )
+
+
+@pytest.fixture
+def topology_path(tmpdir, topology):
+    local = tmpdir.mkdir("dummy").join("topology.yaml")
+    local.write(topology)
+    return local.strpath
+
+
+@pytest.fixture
+def mock_source_cursor():
+    return mock.Mock(spec=Cursor)
+
+
+@pytest.fixture
+def mock_tracker_cursor():
+    return mock.Mock(spec=Cursor)
+
+
+@pytest.fixture
+def mock_state_cursor():
+    return mock.Mock(spec=Cursor)
+
+
+@pytest.fixture
+def mock_db_connections(
+    topology_path,
+    mock_source_cluster_name,
+    mock_tracker_cluster_name,
+    mock_state_cluster_name,
+    mock_source_cursor,
+    mock_tracker_cursor,
+    mock_state_cursor
+):
+    with mock.patch.object(
+        BaseConnection,
+        'set_sessions'
+    ), mock.patch.object(
+        BaseConnection,
+        'source_session',
+        new_callable=mock.PropertyMock
+    ) as patch_source_session, mock.patch.object(
+        BaseConnection,
+        'tracker_session',
+        new_callable=mock.PropertyMock
+    ) as patch_tracker_session, mock.patch.object(
+        BaseConnection,
+        'state_session',
+        new_callable=mock.PropertyMock
+    ) as patch_state_session, mock.patch.object(
+        BaseConnection,
+        'get_source_cursor'
+    ) as patch_get_source_cursor, mock.patch.object(
+        BaseConnection,
+        'get_tracker_cursor'
+    ) as patch_get_tracker_cursor, mock.patch.object(
+        BaseConnection,
+        'get_state_cursor'
+    ) as patch_get_state_cursor:
+        patch_source_session.connect_begin.return_value.__enter__.return_value = mock.Mock()
+        patch_tracker_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
+        patch_state_session.return_value.connect_begin.return_value.__enter__.return_value = mock.Mock()
+
+        patch_get_source_cursor.return_value.__enter__.return_value = mock_source_cursor
+        patch_get_tracker_cursor.return_value.__enter__.return_value = mock_tracker_cursor
+        patch_get_state_cursor.return_value.__enter__.return_value = mock_state_cursor
+
+        db_connections = BaseConnection(
+            topology_path=topology_path,
+            source_cluster_name=mock_source_cluster_name,
+            tracker_cluster_name=mock_tracker_cluster_name,
+            state_cluster_name=mock_state_cluster_name
+        )
+        yield db_connections
+
+
+@pytest.fixture
 def fake_transaction_id_schema_id():
     return 911
 
@@ -131,6 +316,6 @@ def patch_transaction_id_schema_id(fake_transaction_id_schema_id):
         recovery_handler,
         'get_transaction_id_schema_id'
     ) as mock_recovery_transaction_id_schema_id:
-        mock_data_event_transaction_id_schema_id.return_value = 911
-        mock_recovery_transaction_id_schema_id.return_value = 911
+        mock_data_event_transaction_id_schema_id.return_value = fake_transaction_id_schema_id
+        mock_recovery_transaction_id_schema_id.return_value = fake_transaction_id_schema_id
         yield

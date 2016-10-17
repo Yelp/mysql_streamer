@@ -8,13 +8,11 @@ import mock
 import pytest
 from data_pipeline.producer import Producer
 from data_pipeline.schema_cache import SchematizerClient
-from data_pipeline.tools.meteorite_wrappers import StatsCounter
-from pii_generator.components.pii_identifier import PIIIdentifier
-from yelp_conn.connection_set import ConnectionSet
 
 import replication_handler.components.schema_event_handler
 from replication_handler import config
 from replication_handler.components.base_event_handler import Table
+from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_tracker import ShowCreateResult
@@ -22,16 +20,14 @@ from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.util.position import GtidPosition
-from testing.events import QueryEvent
+from replication_handler_testing.events import QueryEvent
+from tests.components.base_event_handler_test import get_mock_stats_counters
 
 
 SchemaHandlerExternalPatches = namedtuple(
     'SchemaHandlerExternalPatches', (
-        'schema_tracking_db_conn',
-        'rbr_source_ro_db_conn',
         'database_config',
         'dry_run_config',
-        'cluster_name',
         'get_show_create_statement',
         'execute_query',
         'populate_schema_cache',
@@ -46,23 +42,57 @@ SchemaHandlerExternalPatches = namedtuple(
 class TestSchemaEventHandler(object):
     @pytest.fixture
     def producer(self):
-        return mock.Mock(autospect=Producer)
+        return mock.Mock(autospec=Producer)
 
     @pytest.fixture
     def schematizer_client(self):
-        return mock.Mock(autospect=SchematizerClient)
+        return mock.Mock(autospec=SchematizerClient)
 
     @pytest.fixture
-    def schema_wrapper(self, schematizer_client):
-        return SchemaWrapper(schematizer_client=schematizer_client)
+    def schema_wrapper(self, mock_db_connections, schematizer_client):
+        return SchemaWrapper(
+            db_connections=mock_db_connections,
+            schematizer_client=schematizer_client
+        )
+
+    @pytest.yield_fixture
+    def mock_dump_handler(self):
+        with mock.patch.object(
+            MySQLDumpHandler,
+            'create_and_persist_schema_dump'
+        ) as mock_create_dump:
+            yield mock_create_dump
+
+    @pytest.fixture(params=get_mock_stats_counters())
+    def stats_counter(self, request):
+        # Need a way to detect if replication handler is run internally
+        # or open-source mode and then dynamically set stats_counter fixture.
+        # Hence parameterizing stats_counter fixture with the return value of a
+        # function `mock_stats_counters`.
+        # Because mock_stats_counters is a module scoped fucntion and not a fixture
+        # its not evaluated of every test so we need to reset_mock.
+        if isinstance(request.param, mock.Mock):
+            request.param.reset_mock()
+        return request.param
 
     @pytest.fixture
-    def stats_counter(self):
-        return mock.Mock(autospect=StatsCounter)
+    def mock_source_cluster_name(self):
+        """ TODO(DATAPIPE-1525): This fixture override the `mock_source_cluster_name`
+        fixture present in conftest.py
+        """
+        return 'yelp_main'
 
     @pytest.fixture
-    def schema_event_handler(self, producer, schema_wrapper, stats_counter):
+    def schema_event_handler(
+        self,
+        mock_source_cluster_name,
+        mock_db_connections,
+        producer,
+        schema_wrapper,
+        stats_counter
+    ):
         return SchemaEventHandler(
+            db_connections=mock_db_connections,
             producer=producer,
             schema_wrapper=schema_wrapper,
             stats_counter=stats_counter,
@@ -70,8 +100,16 @@ class TestSchemaEventHandler(object):
         )
 
     @pytest.fixture
-    def dry_run_schema_event_handler(self, producer, schema_wrapper, stats_counter):
+    def dry_run_schema_event_handler(
+        self,
+        mock_source_cluster_name,
+        mock_db_connections,
+        producer,
+        schema_wrapper,
+        stats_counter
+    ):
         return SchemaEventHandler(
+            db_connections=mock_db_connections,
             producer=producer,
             schema_wrapper=schema_wrapper,
             stats_counter=stats_counter,
@@ -264,22 +302,6 @@ class TestSchemaEventHandler(object):
         return mock.Mock()
 
     @pytest.yield_fixture
-    def patch_schema_tracker_rw(self, mock_schema_tracker_cursor):
-        with mock.patch.object(ConnectionSet, 'schema_tracker_rw') as mock_schema_tracker_rw:
-            mock_schema_tracker_rw.return_value.repltracker.cursor.return_value \
-                = mock_schema_tracker_cursor
-            yield mock_schema_tracker_rw
-
-    @pytest.yield_fixture
-    def patch_rbr_source_ro(self, mock_rbr_source_cursor):
-        with mock.patch.object(
-            ConnectionSet,
-            'rbr_source_ro'
-        ) as mock_rbr_source_ro:
-            mock_rbr_source_ro.return_value.refresh_primary.cursor.return_value = mock_rbr_source_cursor
-            yield mock_rbr_source_ro
-
-    @pytest.yield_fixture
     def patch_config_db(self, test_schema):
         with mock.patch.object(
             config.EnvConfig,
@@ -298,32 +320,6 @@ class TestSchemaEventHandler(object):
         ) as mock_register_dry_run:
             mock_register_dry_run.return_value = False
             yield mock_register_dry_run
-
-    @pytest.yield_fixture
-    def patch_config_meteorite_disabled_true(self):
-        with mock.patch(
-            'replication_handler.components.schema_event_handler.config.env_config'
-        ) as mock_config_meteorite_disabled_true:
-            mock_config_meteorite_disabled_true.disable_meteorite = True
-            yield mock_config_meteorite_disabled_true
-
-    @pytest.yield_fixture
-    def patch_config_meteorite_disabled_false(self):
-        with mock.patch(
-            'replication_handler.components.schema_event_handler.config.env_config'
-        ) as mock_config_meteorite_disabled_false:
-            mock_config_meteorite_disabled_false.disable_meteorite = False
-            yield mock_config_meteorite_disabled_false
-
-    @pytest.yield_fixture
-    def patch_cluster_name(self, test_schema):
-        with mock.patch.object(
-            config.DatabaseConfig,
-            'cluster_name',
-            new_callable=mock.PropertyMock
-        ) as mock_cluster_name:
-            mock_cluster_name.return_value = "yelp_main"
-            yield mock_cluster_name
 
     @pytest.fixture()
     def namespace(self):
@@ -387,22 +383,23 @@ class TestSchemaEventHandler(object):
 
     @pytest.yield_fixture
     def patch_table_has_pii(self):
-        with mock.patch.object(
-            PIIIdentifier,
-            'table_has_pii',
-            autospec=True
-        ) as mock_table_has_pii:
-            mock_table_has_pii.return_value = True
-            yield mock_table_has_pii
+        if SchemaWrapper.is_pii_supported():
+            from pii_generator.components.pii_identifier import PIIIdentifier
+            with mock.patch.object(
+                PIIIdentifier,
+                'table_has_pii',
+                autospec=True
+            ) as mock_table_has_pii:
+                mock_table_has_pii.return_value = True
+                yield mock_table_has_pii
+        else:
+            yield
 
     @pytest.fixture
     def external_patches(
         self,
-        patch_schema_tracker_rw,
-        patch_rbr_source_ro,
         patch_config_db,
         patch_config_register_dry_run,
-        patch_cluster_name,
         patch_get_show_create_statement,
         patch_execute_query,
         patch_populate_schema_cache,
@@ -412,11 +409,8 @@ class TestSchemaEventHandler(object):
         patch_table_has_pii,
     ):
         return SchemaHandlerExternalPatches(
-            schema_tracking_db_conn=patch_schema_tracker_rw,
-            rbr_source_ro_db_conn=patch_rbr_source_ro,
             database_config=patch_config_db,
             dry_run_config=patch_config_register_dry_run,
-            cluster_name=patch_cluster_name,
             get_show_create_statement=patch_get_show_create_statement,
             execute_query=patch_execute_query,
             populate_schema_cache=patch_populate_schema_cache,
@@ -425,6 +419,7 @@ class TestSchemaEventHandler(object):
             upsert_global_event_state=patch_upsert_global_event_state,
             table_has_pii=patch_table_has_pii,
         )
+
     def _setup_handle_event_alter_table(
         self,
         namespace,
@@ -441,7 +436,8 @@ class TestSchemaEventHandler(object):
         mock_schema_tracker_cursor,
         table_with_schema_changes,
         alter_table_schema_store_response,
-        test_schema
+        test_schema,
+        mock_dump_handler
     ):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
@@ -473,12 +469,13 @@ class TestSchemaEventHandler(object):
             alter_table_schema_store_response,
             external_patches,
             test_schema,
+            mock_dump_handler,
             mysql_statements=mysql_statements
         )
         assert producer.flush.call_count == 1
         assert save_position.call_count == 1
 
-    def test_handle_event_alter_table_meteorite_disabled_true(
+    def test_handle_event_alter_table_with_meteorite(
         self,
         namespace,
         producer,
@@ -495,8 +492,10 @@ class TestSchemaEventHandler(object):
         table_with_schema_changes,
         alter_table_schema_store_response,
         test_schema,
-        patch_config_meteorite_disabled_true
+        mock_dump_handler
     ):
+        if not stats_counter:
+            pytest.skip("StatsCounter is not supported in open source version.")
         self._setup_handle_event_alter_table(
             namespace,
             producer,
@@ -512,48 +511,9 @@ class TestSchemaEventHandler(object):
             mock_schema_tracker_cursor,
             table_with_schema_changes,
             alter_table_schema_store_response,
-            test_schema
+            test_schema,
+            mock_dump_handler
         )
-
-        assert stats_counter.increment.call_count == 0
-
-    def test_handle_event_alter_table_meteorite_disabled_false(
-        self,
-        namespace,
-        producer,
-        stats_counter,
-        test_position,
-        save_position,
-        external_patches,
-        schema_event_handler,
-        schematizer_client,
-        alter_table_schema_event,
-        show_create_result_initial,
-        show_create_result_after_alter,
-        mock_schema_tracker_cursor,
-        table_with_schema_changes,
-        alter_table_schema_store_response,
-        test_schema,
-        patch_config_meteorite_disabled_false
-    ):
-        self._setup_handle_event_alter_table(
-            namespace,
-            producer,
-            stats_counter,
-            test_position,
-            save_position,
-            external_patches,
-            schema_event_handler,
-            schematizer_client,
-            alter_table_schema_event,
-            show_create_result_initial,
-            show_create_result_after_alter,
-            mock_schema_tracker_cursor,
-            table_with_schema_changes,
-            alter_table_schema_store_response,
-            test_schema
-        )
-
         assert stats_counter.increment.call_count == 1
         assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
 
@@ -565,7 +525,8 @@ class TestSchemaEventHandler(object):
         external_patches,
         schema_event_handler,
         rename_table_schema_event,
-        schema_wrapper_mock
+        schema_wrapper_mock,
+        mock_dump_handler
     ):
         schema_event_handler.handle_event(rename_table_schema_event, test_position)
 
@@ -592,6 +553,7 @@ class TestSchemaEventHandler(object):
         external_patches,
         schema_event_handler,
         alter_table_schema_event,
+        mock_dump_handler
     ):
         external_patches.database_config.return_value = ['fake_schema']
         schema_event_handler.handle_event(alter_table_schema_event, test_position)
@@ -609,6 +571,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         mock_schema_tracker_cursor,
         non_schema_relevant_query_event,
+        mock_dump_handler
     ):
         schema_event_handler.handle_event(non_schema_relevant_query_event, test_position)
         assert external_patches.execute_query.call_count == 1
@@ -640,6 +603,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         mock_schema_tracker_cursor,
         unsupported_query_event,
+        mock_dump_handler
     ):
         self._assert_query_skipped(
             schema_event_handler,
@@ -659,6 +623,7 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         alter_table_schema_event,
         show_create_result_initial,
+        mock_dump_handler
     ):
         external_patches.get_show_create_statement.side_effect = [
             show_create_result_initial,
@@ -685,6 +650,7 @@ class TestSchemaEventHandler(object):
         schema_store_response,
         external_patches,
         test_schema,
+        mock_dump_handler,
         mysql_statements=None
     ):
         """Test helper method that checks various things in a successful scenario
@@ -693,6 +659,7 @@ class TestSchemaEventHandler(object):
 
         # Make sure query was executed on tracking db
         # execute of show create is mocked out above
+        assert mock_dump_handler.call_count == 1
         assert external_patches.execute_query.call_count == 1
         assert external_patches.execute_query.call_args_list == [
             mock.call(event.query, test_schema)
@@ -743,6 +710,7 @@ class TestSchemaEventHandler(object):
         test_position,
         create_table_schema_event,
         mock_schema_tracker_cursor,
+        mock_dump_handler
     ):
         external_patches.dry_run_config.return_value = True
         dry_run_schema_event_handler.handle_event(create_table_schema_event, test_position)
@@ -760,6 +728,7 @@ class TestSchemaEventHandler(object):
         external_patches,
         schema_event_handler,
         mock_schema_tracker_cursor,
+        mock_dump_handler
     ):
         with mock.patch(
             'replication_handler.components.schema_event_handler.mysql_statement_factory',
@@ -787,4 +756,5 @@ class TestSchemaEventHandler(object):
         schema_event_handler.handle_event(query_event, test_position)
         assert external_patches.execute_query.call_count == 0
         assert producer.flush.call_count == 0
-        assert stats_counter.increment.call_count == 0
+        if stats_counter:
+            assert stats_counter.increment.call_count == 0

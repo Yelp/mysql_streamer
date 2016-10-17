@@ -2,3 +2,6 @@
 schematizer.main:
   host: schematizer
   port: 8888
+kafka_discovery.main:
+  host: kafkadiscovery
+  port: 8888

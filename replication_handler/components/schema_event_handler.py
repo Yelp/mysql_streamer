@@ -7,23 +7,20 @@ import logging
 
 import simplejson as json
 
-from replication_handler import config
 from replication_handler.components.base_event_handler import BaseEventHandler
 from replication_handler.components.base_event_handler import Table
+from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.sql_handler import AlterTableStatement
 from replication_handler.components.sql_handler import CreateDatabaseStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.components.sql_handler import RenameTableStatement
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from replication_handler.util.misc import repltracker_cursor
 from replication_handler.util.misc import save_position
-
 
 log = logging.getLogger('replication_handler.components.schema_event_handler')
 
@@ -33,10 +30,9 @@ class SchemaEventHandler(BaseEventHandler):
 
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
-        self.schema_tracker = SchemaTracker(
-            repltracker_cursor()
-        )
         super(SchemaEventHandler, self).__init__(*args, **kwargs)
+        self.schema_tracker = SchemaTracker(self.db_connections)
+        self.mysql_dump_handler = MySQLDumpHandler(self.db_connections)
 
     def handle_event(self, event, position):
         """Handle queries related to schema change, schema registration."""
@@ -49,11 +45,13 @@ class SchemaEventHandler(BaseEventHandler):
 
         statement = mysql_statement_factory(event.query)
 
+        self.mysql_dump_handler.create_and_persist_schema_dump()
+
         if not statement.is_supported():
             return
 
         log.info("Processing Supported Statement: %s" % event.query)
-        if not config.env_config.disable_meteorite:
+        if self.stats_counter:
             self.stats_counter.increment(event.query)
 
         handle_method = self._get_handle_method(statement)
@@ -65,7 +63,10 @@ class SchemaEventHandler(BaseEventHandler):
         # We'll probably want to get more aggressive about filtering query
         # events, since this makes applying them kind of expensive.
         self.producer.flush()
-        save_position(self.producer.get_checkpoint_position_data())
+        save_position(
+            position_data=self.producer.get_checkpoint_position_data(),
+            state_session=self.db_connections.state_session
+        )
 
         # If it's a rename query, don't handle it, just let it pass through.
         # We also reset the cache on the schema wrapper singleton, which will
@@ -90,14 +91,14 @@ class SchemaEventHandler(BaseEventHandler):
                 return
 
             table = Table(
-                cluster_name=self.cluster_name,
+                cluster_name=self.db_connections.source_cluster_name,
                 database_name=database_name,
                 table_name=statement.table
             )
 
             log.info(json.dumps(dict(
                 message="Using table info",
-                cluster_name=self.cluster_name,
+                cluster_name=self.db_connections.source_cluster_name,
                 database_name=database_name,
                 table_name=statement.table,
             )))
@@ -137,12 +138,12 @@ class SchemaEventHandler(BaseEventHandler):
             return event.schema
 
     def _mark_schema_event_complete(self, event, position):
-        with rbr_state_session.connect_begin(ro=False) as session:
+        with self.db_connections.state_session.connect_begin(ro=False) as session:
             GlobalEventState.upsert(
                 session=session,
                 position=position.to_dict(),
                 event_type=EventType.SCHEMA_EVENT,
-                cluster_name=self.cluster_name,
+                cluster_name=self.db_connections.source_cluster_name,
                 database_name=event.schema,
                 table_name=None
             )
@@ -162,7 +163,7 @@ class SchemaEventHandler(BaseEventHandler):
         create_table_statement = self.schema_tracker.get_show_create_statement(
             table
         )
-        with rbr_state_session.connect_begin(ro=False) as session:
+        with self.db_connections.state_session.connect_begin(ro=False) as session:
             record = SchemaEventState.create_schema_event_state(
                 session=session,
                 position=position.to_dict(),
@@ -177,7 +178,7 @@ class SchemaEventHandler(BaseEventHandler):
             return copy.copy(record)
 
     def _update_journaling_record(self, record, table):
-        with rbr_state_session.connect_begin(ro=False) as session:
+        with self.db_connections.state_session.connect_begin(ro=False) as session:
             SchemaEventState.update_schema_event_state_to_complete_by_id(
                 session,
                 record.id

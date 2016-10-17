@@ -3,6 +3,7 @@ replicationhandler:
   image: $DOCKER_TAG
   links:
     - kafka
+    - kafkadiscovery
     - zookeeper:zk
     - rbrsource
     - schematracker
@@ -13,11 +14,30 @@ replicationhandler:
   command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -vv --no-notification
   environment:
     - SERVICE_ENV_CONFIG_PATH=config-env-itest.yaml
+# TODO(DATAPIPE-1509|abrar): may be move this into a different file.
+replicationhandleropensource:
+  build: .
+  image: $DOCKER_TAG
+  links:
+    - kafka
+    - kafkadiscovery
+    - zookeeper:zk
+    - rbrsource
+    - schematracker
+    - rbrstate
+    - schematizer
+  volumes_from:
+    - replicationhandlerconfigs
+  command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py -vv --no-notification
+  environment:
+    - SERVICE_ENV_CONFIG_PATH=config-env-itest.yaml
+    - FORCE_AVOID_INTERNAL_PACKAGES=True
 replicationhandlerchangelog:
   build: .
   image: $DOCKER_TAG
   links:
     - kafka
+    - kafkadiscovery
     - zookeeper:zk
     - rbrsource
     - schematracker
@@ -37,3 +57,16 @@ schematracker:
     build: devdbs/schema_tracker/
 rbrstate:
     build: devdbs/rbr_state/
+
+kafkadiscovery:
+  image: docker-dev.yelpcorp.com/kafka-discovery-testing:latest
+  expose:
+   - "8888"
+  volumes_from:
+   - kafkadiscoveryconfigs
+  links:
+   - kafka
+   - zookeeper
+
+kafkadiscoveryconfigs:
+  image: docker-dev.yelpcorp.com/kafka-discovery-configs-testing:latest

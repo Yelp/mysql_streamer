@@ -180,7 +180,8 @@ class TestAlterTableStatement(MysqlTableStatementBaseTest):
         'DROP test_col',
         'CHANGE name to address varchar(255)',
         'ENGINE=INNODB',  # Added to test condition from DATAPIPE-588
-        'ROW_FORMAT=COMPRESSED'  # Added to test condition from DATAPIPE-1456
+        'ROW_FORMAT=COMPRESSED',  # Added to test condition from DATAPIPE-1456
+        'AUTO_INCREMENT=14412601'  # Added to test condition from DATAPIPE-1536
     ])
     def operation(self, request):
         return request.param

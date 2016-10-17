@@ -10,16 +10,14 @@ import mock
 import pytest
 from data_pipeline.producer import Producer
 from data_pipeline.schematizer_clientlib.schematizer import SchematizerClient
-from data_pipeline.tools.meteorite_wrappers import StatsCounter
 from pymysqlreplication.event import QueryEvent
-from yelp_conn.connection_set import ConnectionSet
 
 import replication_handler.batch.parse_replication_stream
 from replication_handler.batch.parse_replication_stream import ParseReplicationStream
 from replication_handler.components.change_log_data_event_handler import ChangeLogDataEventHandler
 from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_event_handler import SchemaEventHandler
-from replication_handler.models.database import rbr_state_session
+from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.models.global_event_state import EventType
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
@@ -118,23 +116,12 @@ class TestParseReplicationStream(object):
             yield mock_schematizer
 
     @pytest.yield_fixture
-    def patch_rbr_state_rw(self, mock_rbr_state_session):
-        with mock.patch.object(
-            rbr_state_session,
-            'connect_begin'
-        ) as mock_session_connect_begin:
-            mock_session_connect_begin.return_value.__enter__.return_value = \
-                mock_rbr_state_session
-            yield mock_session_connect_begin
-
-    @pytest.yield_fixture
-    def patch_schema_tracker(self):
-        with mock.patch.object(
-            ConnectionSet,
-            'schema_tracker_rw'
-        ) as mock_schema_tracker_rw:
-            mock_schema_tracker_rw.return_value.repltracker.cursor.return_value = mock.Mock()
-            yield mock_schema_tracker_rw
+    def patch_db_connections(self, mock_db_connections):
+        with mock.patch(
+            'replication_handler.batch.parse_replication_stream.get_connection'
+        ) as mock_get_db_conn:
+            mock_get_db_conn.return_value = mock_db_connections
+            yield mock_get_db_conn
 
     @pytest.yield_fixture
     def patch_exit(self):
@@ -161,10 +148,6 @@ class TestParseReplicationStream(object):
             yield mock_signal
 
     @pytest.fixture
-    def mock_rbr_state_session(self):
-        return mock.Mock()
-
-    @pytest.fixture
     def position_gtid_1(self):
         return GtidPosition(gtid="fake_gtid_1")
 
@@ -182,6 +165,7 @@ class TestParseReplicationStream(object):
             mock_config.namespace = "test_namespace"
             mock_config.disable_meteorite = False
             mock_config.changelog_mode = False
+            mock_config.topology_path = 'topology.yaml'
             yield mock_config
 
     @pytest.yield_fixture
@@ -213,8 +197,7 @@ class TestParseReplicationStream(object):
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_data_handle_event,
         patch_schema_handle_event,
         patch_producer,
@@ -234,6 +217,20 @@ class TestParseReplicationStream(object):
             data_event_with_gtid,
         ]
 
+    def is_meteorite_supported(self):
+        try:
+            # TODO(DATAPIPE-1509|abrar): Currently we have
+            # force_avoid_internal_packages as a means of simulating an absence
+            # of a yelp's internal package. And all references
+            # of force_avoid_internal_packages have to be removed from
+            # RH after we are completely ready for open source.
+            if is_avoid_internal_packages_set():
+                raise ImportError
+            from data_pipeline.tools.meteorite_wrappers import StatsCounter  # NOQA
+            return True
+        except ImportError:
+            return False
+
     def test_meteorite_off(
         self,
         schema_event,
@@ -242,14 +239,18 @@ class TestParseReplicationStream(object):
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_data_handle_event,
         patch_schema_handle_event,
         patch_producer,
         patch_save_position,
         patch_exit
     ):
+        if not self.is_meteorite_supported():
+            pytest.skip("meteorite unsupported in open source version.")
+
+        from data_pipeline.tools.meteorite_wrappers import StatsCounter
+
         self._different_events_builder(
             schema_event,
             data_event,
@@ -257,8 +258,7 @@ class TestParseReplicationStream(object):
             position_gtid_1,
             position_gtid_2,
             patch_restarter,
-            patch_rbr_state_rw,
-            patch_schema_tracker,
+            patch_db_connections,
             patch_data_handle_event,
             patch_schema_handle_event,
             patch_producer,
@@ -267,13 +267,9 @@ class TestParseReplicationStream(object):
         with mock.patch.object(
             StatsCounter,
             'flush'
-        ) as mock_flush, mock.patch.object(
-            StatsCounter,
-            '_reset'
-        ) as mock_reset:
+        ) as mock_flush:
             self._init_and_run_batch()
             assert mock_flush.call_count == 0
-            assert mock_reset.call_count == 4
 
     def test_meteorite_on(
         self,
@@ -283,14 +279,18 @@ class TestParseReplicationStream(object):
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_data_handle_event,
         patch_schema_handle_event,
         patch_producer,
         patch_save_position,
         patch_exit
     ):
+        if not self.is_meteorite_supported():
+            pytest.skip("meteorite unsupported in open source version.")
+
+        from data_pipeline.tools.meteorite_wrappers import StatsCounter
+
         self._different_events_builder(
             schema_event,
             data_event,
@@ -298,8 +298,7 @@ class TestParseReplicationStream(object):
             position_gtid_1,
             position_gtid_2,
             patch_restarter,
-            patch_rbr_state_rw,
-            patch_schema_tracker,
+            patch_db_connections,
             patch_data_handle_event,
             patch_schema_handle_event,
             patch_producer,
@@ -308,14 +307,9 @@ class TestParseReplicationStream(object):
         with mock.patch.object(
             StatsCounter,
             'flush'
-        ) as mock_flush, mock.patch.object(
-            StatsCounter,
-            '_reset'
-        ) as mock_reset:
+        ) as mock_flush:
             self._init_and_run_batch()
             assert mock_flush.call_count == 2
-            # note that this is only 2 because we mock the flush method, therefore we don't end up calling its internal reset
-            assert mock_reset.call_count == 2
 
     def test_replication_stream_different_events(
         self,
@@ -325,8 +319,7 @@ class TestParseReplicationStream(object):
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_data_handle_event,
         patch_schema_handle_event,
         patch_producer,
@@ -340,8 +333,7 @@ class TestParseReplicationStream(object):
             position_gtid_1,
             position_gtid_2,
             patch_restarter,
-            patch_rbr_state_rw,
-            patch_schema_tracker,
+            patch_db_connections,
             patch_data_handle_event,
             patch_schema_handle_event,
             patch_producer,
@@ -365,8 +357,7 @@ class TestParseReplicationStream(object):
         position_gtid_1,
         position_gtid_2,
         patch_restarter,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_data_handle_event,
         patch_producer,
         patch_exit,
@@ -395,8 +386,7 @@ class TestParseReplicationStream(object):
     def test_register_signal_handler(
         self,
         patch_config,
-        patch_rbr_state_rw,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_restarter,
         patch_signal,
         patch_running,
@@ -418,7 +408,7 @@ class TestParseReplicationStream(object):
         patch_config_with_small_recovery_queue_size,
         patch_restarter,
         patch_data_handle_event,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_save_position,
     ):
         with pytest.raises(SystemExit):
@@ -429,6 +419,7 @@ class TestParseReplicationStream(object):
         patch_config,
         patch_config_changelog_on,
         producer,
+        patch_db_connections
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.producer = producer
@@ -440,6 +431,7 @@ class TestParseReplicationStream(object):
         self,
         patch_config,
         producer,
+        patch_db_connections
     ):
         replication_stream = ParseReplicationStream()
         replication_stream.producer = producer
@@ -449,7 +441,8 @@ class TestParseReplicationStream(object):
 
     def test_profiler_signal(
         self,
-        patch_config
+        patch_config,
+        patch_db_connections
     ):
         replication_stream = ParseReplicationStream()
         with mock.patch.object(
@@ -485,7 +478,7 @@ class TestParseReplicationStream(object):
         patch_save_position,
         patch_exit,
         patch_running,
-        patch_schema_tracker
+        patch_db_connections
     ):
         patch_running.return_value = False
         replication_stream = ParseReplicationStream()
@@ -504,7 +497,7 @@ class TestParseReplicationStream(object):
         patch_data_handle_event,
         patch_exit,
         patch_running,
-        patch_schema_tracker
+        patch_db_connections
     ):
         patch_running.return_value = False
         replication_stream = ParseReplicationStream()
@@ -514,7 +507,7 @@ class TestParseReplicationStream(object):
         assert producer.flush.call_count == 0
         assert patch_exit.call_count == 1
 
-    def test_with_dry_run_options(self, patch_rbr_state_rw, patch_restarter):
+    def test_with_dry_run_options(self, patch_db_connections, patch_restarter):
         with mock.patch(
             'replication_handler.batch.parse_replication_stream.config.env_config'
         ) as mock_config:
@@ -529,7 +522,7 @@ class TestParseReplicationStream(object):
         patch_config,
         patch_exit,
         patch_restarter,
-        patch_schema_tracker,
+        patch_db_connections,
         patch_zk,
         patch_process_event,
     ):
@@ -547,6 +540,7 @@ class TestParseReplicationStream(object):
         self,
         patch_config,
         patch_restarter,
+        patch_db_connections,
         patch_zk
     ):
         patch_restarter.return_value.get_stream.return_value.__iter__.side_effect = Exception

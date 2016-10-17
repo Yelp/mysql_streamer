@@ -25,21 +25,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         ) as mock_stream:
             yield mock_stream
 
-    @pytest.yield_fixture
-    def patch_sensu_alert(self):
-        with mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.SensuAlertManager.periodic_process'
-        ) as mock_sensu_alert:
-            yield mock_sensu_alert
-
-    @pytest.yield_fixture
-    def patch_meteorite(self):
-        with mock.patch(
-            'replication_handler.components.simple_binlog_stream_reader_wrapper.MeteoriteGaugeManager.periodic_process'
-        ) as mock_meteorite:
-            yield mock_meteorite
-
-    def test_yield_events_when_gtid_enabled(self, patch_stream):
+    def test_yield_events_when_gtid_enabled(self, mock_db_connections, patch_stream):
         gtid_event_0 = mock.Mock(spec=GtidEvent, gtid="sid:11")
         query_event_0 = mock.Mock(spec=QueryEvent)
         query_event_1 = mock.Mock(spec=QueryEvent)
@@ -60,6 +46,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         patch_stream.return_value.pop.side_effect = event_list
         # set offset to 1, meaning we want to skip event at offset 0
         stream = SimpleBinlogStreamReaderWrapper(
+            mock_db_connections.source_database_config,
             GtidPosition(
                 gtid="sid:10",
                 offset=1
@@ -85,15 +72,39 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             assert replication_event.position.gtid == result.position.gtid
             assert replication_event.position.offset == result.position.offset
 
+    def test_meteorite_and_sensu_alert(
+        self,
+        mock_db_connections,
+        patch_stream
+    ):
+        if not SimpleBinlogStreamReaderWrapper.is_meteorite_sensu_supported():
+            pytest.skip("meteorite and sensu are unsupported in open source version.")
+
+        from data_pipeline.tools.meteorite_gauge_manager import MeteoriteGaugeManager
+        from data_pipeline.tools.sensu_alert_manager import SensuAlertManager
+        with mock.patch.object(
+            MeteoriteGaugeManager,
+            'periodic_process'
+        ) as mock_meteorite, mock.patch.object(
+            SensuAlertManager,
+            'periodic_process'
+        ) as mock_sensu_alert:
+            stream, results = self._setup_stream_and_expected_result(
+                mock_db_connections.source_database_config,
+                patch_stream
+            )
+            assert mock_meteorite.call_count == 1
+            assert mock_sensu_alert.call_count == 1
+
     def test_yield_event_with_heartbeat_event(
         self,
-        patch_sensu_alert,
-        patch_meteorite,
+        mock_db_connections,
         patch_stream,
     ):
-        stream, results = self._setup_stream_and_expected_result(patch_stream)
-        assert patch_sensu_alert.call_count == 1
-        assert patch_meteorite.call_count == 1
+        stream, results = self._setup_stream_and_expected_result(
+            mock_db_connections.source_database_config,
+            patch_stream
+        )
         for replication_event, result in zip(stream, results):
             assert replication_event.event == result.event
             assert replication_event.position.log_pos == result.position.log_pos
@@ -102,7 +113,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             assert replication_event.position.hb_serial == result.position.hb_serial
             assert replication_event.position.hb_timestamp == result.position.hb_timestamp
 
-    def _setup_stream_and_expected_result(self, patch_stream):
+    def _setup_stream_and_expected_result(self, source_database_config, patch_stream):
         log_pos = 10
         log_file = "binlog.001"
         row = {"after_values": {
@@ -129,6 +140,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         patch_stream.return_value.peek.side_effect = event_list
         patch_stream.return_value.pop.side_effect = event_list
         stream = SimpleBinlogStreamReaderWrapper(
+            source_database_config,
             LogPosition(
                 log_pos=log_pos,
                 log_file=log_file,

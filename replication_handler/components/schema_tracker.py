@@ -21,18 +21,22 @@ class SchemaTracker(object):
     from schematizer.
 
     Args:
-      schema_cursor(Cursor object): a cursor with connection to schema tracker db.
+        db_connections: The data base connections
     """
 
-    def __init__(self, schema_cursor):
-        self.schema_tracker_cursor = schema_cursor
+    def __init__(self, db_connections):
+        self.db_connections = db_connections
 
-    def _use_db(self, database_name):
+    def _use_db(self, cursor, database_name):
         if database_name is not None and len(database_name.strip()) > 0:
             use_db_query = "USE {0}".format(database_name)
-            self.schema_tracker_cursor.execute(use_db_query)
+            cursor.execute(use_db_query)
 
-    def execute_query(self, query, database_name):
+    def execute_query(
+        self,
+        query,
+        database_name
+    ):
         """Executes the given query against the schema tracker database.
 
         Warning: Either the query must be unambiguous (i.e containing both the
@@ -45,53 +49,57 @@ class SchemaTracker(object):
             query=query,
             database_name=database_name
         )))
-        self._use_db(database_name)
-
-        self.schema_tracker_cursor.execute(query)
+        with self.db_connections.get_tracker_cursor() as cursor:
+            self._use_db(cursor, database_name)
+            cursor.execute(query)
 
     def get_show_create_statement(self, table):
-        self._use_db(table.database_name)
+        with self.db_connections.get_tracker_cursor() as cursor:
+            self._use_db(cursor, table.database_name)
 
-        if not self.schema_tracker_cursor.execute(
-            'SHOW TABLES LIKE \'{table}\''.format(table=table.table_name)
-        ):
-            log.info(
-                "Table {table} doesn't exist in database {database}".format(
-                    table=table.table_name,
-                    database=table.database_name
+            if not self._does_table_exists(cursor, table.table_name):
+                log.info(
+                    "Table {table} doesn't exist in database {database}".format(
+                        table=table.table_name,
+                        database=table.database_name
+                    )
                 )
-            )
-            return ShowCreateResult(table=table.table_name, query='')
+                return ShowCreateResult(table=table.table_name, query='')
 
-        query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(table.database_name, table.table_name)
-        self.schema_tracker_cursor.execute(query_str)
-        res = self.schema_tracker_cursor.fetchone()
-        create_res = ShowCreateResult(*res)
-        assert create_res.table == table.table_name
-        return create_res
+            query_str = "SHOW CREATE TABLE `{0}`.`{1}`".format(table.database_name, table.table_name)
+            cursor.execute(query_str)
+            res = cursor.fetchone()
+            create_res = ShowCreateResult(*res)
+            assert create_res.table == table.table_name
+            return create_res
 
     def get_column_type_map(self, table):
-        self._use_db(table.database_name)
+        with self.db_connections.get_tracker_cursor() as cursor:
+            self._use_db(cursor, table.database_name)
 
-        if not self.schema_tracker_cursor.execute(
-            'SHOW TABLES LIKE \'{table}\''.format(table=table.table_name)
-        ):
-            log.info(
-                "Table {table} doesn't exist in database {database}".format(
-                    table=table.table_name,
-                    database=table.database_name
+            if not self._does_table_exists(cursor, table.table_name):
+                log.info(
+                    "Table {table} doesn't exist in database {database}".format(
+                        table=table.table_name,
+                        database=table.database_name
+                    )
                 )
+                return []
+
+            query_str = "SHOW COLUMNS FROM `{0}`.`{1}`".format(
+                table.database_name,
+                table.table_name
             )
-            return []
 
-        query_str = "SHOW COLUMNS FROM `{0}`.`{1}`".format(
-            table.database_name,
-            table.table_name
+            cursor.execute(query_str)
+            columns = cursor.fetchall()
+            return {
+                column[0]: column[1]
+                for column in columns
+            }
+
+    def _does_table_exists(self, cursor, table_name):
+        cursor.execute(
+            'SHOW TABLES LIKE \'{table}\''.format(table=table_name)
         )
-
-        self.schema_tracker_cursor.execute(query_str)
-
-        return {
-            column[0]: column[1]
-            for column in self.schema_tracker_cursor.fetchall()
-        }
+        return bool(cursor.fetchone())

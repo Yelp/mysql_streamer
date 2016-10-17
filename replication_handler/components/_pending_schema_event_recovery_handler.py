@@ -5,10 +5,8 @@ from __future__ import unicode_literals
 import logging
 
 from replication_handler.components.schema_tracker import SchemaTracker
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.models.schema_event_state import SchemaEventStatus
-from replication_handler.util.misc import repltracker_cursor
 
 
 log = logging.getLogger('replication_handler.components.pending_schema_event_recovery_handler')
@@ -21,16 +19,18 @@ class BadSchemaEventStateException(Exception):
 class PendingSchemaEventRecoveryHandler(object):
     def __init__(
         self,
+        db_connections,
         pending_schema_event
     ):
         self.pending_schema_event = pending_schema_event
+        self.db_connections = db_connections
         self._assert_event_state_status(
             self.pending_schema_event,
             SchemaEventStatus.PENDING
         )
         self.database_name = self.pending_schema_event.database_name
         self.schema_tracker = SchemaTracker(
-            repltracker_cursor()
+            db_connections=self.db_connections
         )
 
     def recover(self):
@@ -44,7 +44,7 @@ class PendingSchemaEventRecoveryHandler(object):
                 self.pending_schema_event.create_table_statement,
             )
 
-        with rbr_state_session.connect_begin(ro=False) as session:
+        with self.db_connections.state_session.connect_begin(ro=False) as session:
             log.info("Removing schema event: %s" % self.pending_schema_event.id)
             SchemaEventState.delete_schema_event_state_by_id(
                 session,

@@ -6,10 +6,10 @@ import logging
 import os
 
 import staticconf
-import yelp_conn
 from cached_property import cached_property_with_ttl
-from yelp_servlib import clog_util
-from yelp_servlib.config_util import load_default_config
+
+from replication_handler.servlib import clog_util
+from replication_handler.servlib.config_util import load_default_config
 
 
 log = logging.getLogger('replication_handler.config')
@@ -26,7 +26,6 @@ class BaseConfig(object):
         log.info("SERVICE_CONFIG_PATH is {}".format(SERVICE_CONFIG_PATH))
         log.info("SERVICE_ENV_CONFIG_PATH is {}".format(SERVICE_ENV_CONFIG_PATH))
         load_default_config(SERVICE_CONFIG_PATH, SERVICE_ENV_CONFIG_PATH)
-        yelp_conn.initialize()
         clog_util.initialize()
 
 
@@ -54,6 +53,8 @@ class EnvConfig(BaseConfig):
 
     @property
     def rbr_source_cluster(self):
+        """serves as the key to identify the source database in topology.yaml
+        """
         return staticconf.get('rbr_source_cluster').value
 
     @property
@@ -66,10 +67,14 @@ class EnvConfig(BaseConfig):
 
     @property
     def schema_tracker_cluster(self):
+        """serves as the key to identify the tracker database in topology.yaml
+        """
         return staticconf.get('schema_tracker_cluster').value
 
     @property
     def rbr_state_cluster(self):
+        """serves as the key to identify the state database in topology.yaml
+        """
         return staticconf.get('rbr_state_cluster').value
 
     @property
@@ -177,36 +182,16 @@ class EnvConfig(BaseConfig):
         """
         return staticconf.get_bool('force_exit').value
 
-
-class DatabaseConfig(object):
-    """Used for reading database config out of topology.yaml in the environment"""
-
-    def __init__(self, cluster_name, topology_path):
-        load_default_config(topology_path)
-        self._cluster_name = cluster_name
-
     @property
-    def cluster_config(self):
-        for topo_item in staticconf.get('topology'):
-            if topo_item.get('cluster') == self.cluster_name:
-                return topo_item
-
-    @property
-    def entries(self):
-        return self.cluster_config['entries']
-
-    @property
-    def cluster_name(self):
-        return self._cluster_name
+    def activate_mysql_dump_recovery(self):
+        """Determines the recovery mechanism. When set to true, will use the
+        mysql dumps to recover during a failure.
+        Defaults to false which uses journaling for recovery
+        """
+        return staticconf.get_bool(
+            'activate_mysql_dump_recovery',
+            default=False
+        ).value
 
 
 env_config = EnvConfig()
-
-source_database_config = DatabaseConfig(
-    env_config.rbr_source_cluster,
-    env_config.topology_path
-)
-schema_tracking_database_config = DatabaseConfig(
-    env_config.schema_tracker_cluster,
-    env_config.topology_path
-)

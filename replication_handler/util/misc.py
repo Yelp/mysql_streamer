@@ -3,15 +3,14 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
-import os
 
+import os
 import simplejson
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
-from yelp_conn.connection_set import ConnectionSet
+from os import remove
 
 from replication_handler.config import env_config
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
-from replication_handler.models.database import rbr_state_session
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
 
@@ -71,7 +70,7 @@ class DataEvent(object):
         self.message_type = message_type
 
 
-def save_position(position_data, is_clean_shutdown=False):
+def save_position(position_data, state_session, is_clean_shutdown=False):
     if not position_data or not position_data.last_published_message_position_info:
         log.info(
             "Unable to save position with invalid position_data: ".format(
@@ -82,7 +81,7 @@ def save_position(position_data, is_clean_shutdown=False):
     log.info("Saving position with position data {}.".format(position_data))
     position_info = position_data.last_published_message_position_info
     topic_to_kafka_offset_map = position_data.topic_to_kafka_offset_map
-    with rbr_state_session.connect_begin(ro=False) as session:
+    with state_session.connect_begin(ro=False) as session:
         GlobalEventState.upsert(
             session=session,
             position=position_info["position"],
@@ -97,13 +96,6 @@ def save_position(position_data, is_clean_shutdown=False):
             topic_to_kafka_offset_map=topic_to_kafka_offset_map,
             cluster_name=position_info["cluster_name"]
         )
-
-
-def repltracker_cursor():
-    schema_tracker_cluster = env_config.schema_tracker_cluster
-    connection_set = ConnectionSet.schema_tracker_rw()
-    db = getattr(connection_set, schema_tracker_cluster)
-    return db.cursor()
 
 
 def get_transaction_id_schema_id():
@@ -124,3 +116,12 @@ def transform_time_to_number_of_microseconds(value):
             (value.minute * 60000000) +
             (value.second * 1000000) +
             (value.microsecond))
+
+
+def delete_file_if_exists(filename):
+    try:
+        remove(filename)
+    except OSError:
+        # Its fine to pass over this error cause this just means that the file
+        # didn't exist in the first place.
+        pass

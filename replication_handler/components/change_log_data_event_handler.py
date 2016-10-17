@@ -60,6 +60,9 @@ class ChangeLogDataEventHandler(DataEventHandler):
             position,
             self.register_dry_run
         )
-        message = builder.build_message()
+        message = builder.build_message(
+            self.db_connections.source_cluster_name,
+        )
         self.producer.publish(message)
-        self.stats_counter.increment(event.table)
+        if self.stats_counter:
+            self.stats_counter.increment(event.table)

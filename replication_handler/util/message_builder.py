@@ -7,7 +7,6 @@ import logging
 import pytz
 from data_pipeline.message import UpdateMessage
 
-from replication_handler.config import source_database_config
 from replication_handler.util.misc import transform_time_to_number_of_microseconds
 
 
@@ -35,10 +34,10 @@ class MessageBuilder(object):
         self.position = position
         self.register_dry_run = register_dry_run
 
-    def build_message(self):
+    def build_message(self, source_cluster_name):
         upstream_position_info = {
             "position": self.position.to_dict(),
-            "cluster_name": source_database_config.cluster_name,
+            "cluster_name": source_cluster_name,
             "database_name": self.event.schema,
             "table_name": self.event.table,
         }
@@ -51,7 +50,10 @@ class MessageBuilder(object):
             "upstream_position_info": upstream_position_info,
             "dry_run": self.register_dry_run,
             "timestamp": self.event.timestamp,
-            "meta": [self.position.get_transaction_id(self.transaction_id_schema_id)],
+            "meta": [self.position.get_transaction_id(
+                self.transaction_id_schema_id,
+                source_cluster_name
+            )],
         }
 
         if self.event.message_type == UpdateMessage:

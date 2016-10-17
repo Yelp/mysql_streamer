@@ -41,13 +41,9 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
       position(Position object): use to specify where the stream should resume.
     """
 
-    def __init__(self, position):
+    def __init__(self, source_database_config, tracker_database_config, position):
         super(LowLevelBinlogStreamReaderWrapper, self).__init__()
         self.refresh_table_suffix = '_data_pipeline_refresh'
-        source_config = config.source_database_config.entries[0]
-        schema_tracking_config = config.schema_tracking_database_config.entries[0]
-        connection_config = self._extract_database_connection_config(source_config)
-        schema_tracking_config = self._extract_database_connection_config(schema_tracking_config)
         only_tables = self._get_only_tables()
         allowed_event_types = [
             GtidEvent,
@@ -56,17 +52,11 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             UpdateRowsEvent,
             DeleteRowsEvent,
         ]
-
         self._seek(
-            connection_config,
-            schema_tracking_config,
-            allowed_event_types,
-            position,
+            source_database_config, tracker_database_config,
+            allowed_event_types, position,
             only_tables
         )
-
-    def _extract_database_connection_config(self, config):
-        return {key: config[key] for key in ('host', 'port', 'user', 'passwd')}
 
     def _get_only_tables(self):
         only_tables = config.env_config.table_whitelist
@@ -129,17 +119,16 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _seek(
         self,
-        connection_config,
-        schema_tracking_config,
-        allowed_event_types,
-        position,
+        source_database_config, tracker_database_config,
+        allowed_event_types, position,
         only_tables
     ):
         # server_id doesn't seem to matter but must be set.
         self.stream = BinLogStreamReader(
-            connection_settings=connection_config,
-            ctl_connection_settings=schema_tracking_config,
+            connection_settings=source_database_config,
+            ctl_connection_settings=tracker_database_config,
             server_id=1,
+            blocking=True,
             only_events=allowed_event_types,
             resume_stream=config.env_config.resume_stream,
             only_tables=only_tables,

@@ -6,7 +6,10 @@ import sys
 
 from yelp_batch import Batch
 
+from replication_handler import config
 from replication_handler.components.heartbeat_searcher import HeartbeatSearcher
+from replication_handler.environment_configs import is_avoid_internal_packages_set
+from replication_handler.models.database import get_connection
 
 
 class MySQLHeartbeatSearchBatch(Batch):
@@ -29,10 +32,19 @@ class MySQLHeartbeatSearchBatch(Batch):
         super(MySQLHeartbeatSearchBatch, self).__init__()
         self.hb_timestamp = hb_timestamp
         self.hb_serial = hb_serial
+        self.db_connections = get_connection(
+            config.env_config.topology_path,
+            config.env_config.rbr_source_cluster,
+            config.env_config.schema_tracker_cluster,
+            config.env_config.rbr_state_cluster,
+            is_avoid_internal_packages_set()
+        )
 
     def run(self):
         """Runs the batch by calling out to the heartbeat searcher component"""
-        print HeartbeatSearcher().get_position(self.hb_timestamp, self.hb_serial)
+        print HeartbeatSearcher(
+            db_connections=self.db_connections
+        ).get_position(self.hb_timestamp, self.hb_serial)
 
 
 if __name__ == '__main__':
