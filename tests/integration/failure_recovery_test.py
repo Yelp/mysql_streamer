@@ -5,15 +5,12 @@ from __future__ import unicode_literals
 import ast
 import uuid
 
-import mock
 import pytest
 import staticconf
 import staticconf.testing
 from data_pipeline.message_type import MessageType
 from data_pipeline.testing_helpers.containers import Containers
 
-from replication_handler.batch.parse_replication_stream import \
-    ParseReplicationStream
 from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.testing_helper.restart_helper import RestartHelper
 from replication_handler.testing_helper.util import execute_query_get_all_rows
@@ -188,11 +185,7 @@ class TestFailureRecovery(object):
         ):
             mock_repl_handler_configs['resume_stream'] = resume_stream
 
-            with mock.patch.object(
-                ParseReplicationStream,
-                'process_commandline_options',
-                set_args_and_options
-            ), staticconf.testing.MockConfiguration(
+            with staticconf.testing.MockConfiguration(
                 mock_repl_handler_configs
             ), staticconf.testing.MockConfiguration(
                 data_pipeline_conf,
@@ -745,25 +738,3 @@ class TestFailureRecovery(object):
             }
         ]
         _verify_messages(messages_two, expected_messages_two)
-
-
-def set_args_and_options(self):
-    self.options = MockOptions()
-
-
-class MockOptions(object):
-    @property
-    def custom_emails(self):
-        return ''
-
-    @property
-    def enable_error_emails(self):
-        return False
-
-    @property
-    def confirm_configuration(self):
-        return False
-
-    @property
-    def verbose(self):
-        return 1

@@ -11,9 +11,10 @@ replicationhandler:
     - schematizer
   volumes_from:
     - replicationhandlerconfigs
-  command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream_internal.py -vv --no-notification
+  command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py
   environment:
     - SERVICE_ENV_CONFIG_PATH=config-env-itest.yaml
+    - FORCE_AVOID_INTERNAL_PACKAGES=True
 replicationhandlerchangelog:
   build: .
   image: $DOCKER_TAG
@@ -27,9 +28,10 @@ replicationhandlerchangelog:
     - schematizer
   volumes_from:
     - replicationhandlerconfigs
-  command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream_internal.py -vv --no-notification
+  command: /code/virtualenv_run/bin/pypy /code/replication_handler/batch/parse_replication_stream.py
   environment:
     - SERVICE_ENV_CONFIG_PATH=config-env-changelog-itest.yaml
+    - FORCE_AVOID_INTERNAL_PACKAGES=True
 replicationhandlerconfigs:
   build: acceptance/configs/
 # Replication Handler databases
