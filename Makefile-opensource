@@ -26,4 +26,4 @@ install-hooks:
 	tox -e pre-commit -- install -f --install-hooks
 
 compose-prefix:
-	OPEN_SOURCE_MODE=True echo "DOCKER_TAG=$(DOCKER_TAG) `python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"
+	@OPEN_SOURCE_MODE=True echo "DOCKER_TAG=$(DOCKER_TAG) `python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"
