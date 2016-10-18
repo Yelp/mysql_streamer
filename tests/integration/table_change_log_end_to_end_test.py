@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import pytest
 from data_pipeline.message_type import MessageType
 
+from replication_handler.environment_configs import is_envvar_set
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
 from tests.integration.conftest import _fetch_messages
@@ -31,6 +32,10 @@ def source():
 
 
 @pytest.mark.itest
+@pytest.mark.skipif(
+    is_envvar_set('OPEN_SOURCE_MODE'),
+    reason="skip this in open source mode."
+)
 def test_change_log_messages(
     containers,
     rbrsource,
