@@ -1,0 +1,29 @@
+.PHONY: clean venv-dev test itest build-image compose-prefix
+
+DOCKER_TAG ?= replication-handler-opensource-dev-$(USER)
+
+test:
+	OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True tox
+
+itest: cook-image
+	OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True DOCKER_TAG=$(DOCKER_TAG) tox -e itest
+
+itest_db:
+	tox -e itest_db
+
+cook-image:
+	docker build -f Dockerfile-opensource -t $(DOCKER_TAG) .
+
+clean:
+	find . -name '*.pyc' -delete
+	find . -name '__pycache__' -delete
+
+venv-dev:
+	virtualenv --python=python2.7 ./virtualenv_run
+	./virtualenv_run/bin/pip install -i https://pypi.yelpcorp.com/simple/  -r requirements.d/dev.txt
+
+install-hooks:
+	tox -e pre-commit -- install -f --install-hooks
+
+compose-prefix:
+	@echo "DOCKER_TAG=$(DOCKER_TAG) `python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"

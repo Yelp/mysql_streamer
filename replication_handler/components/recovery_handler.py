@@ -55,7 +55,7 @@ class RecoveryHandler(object):
         publish_dry_run=False,
         changelog_mode=False,
         activate_mysql_dump_recovery=False,
-        gtid_enabled=True
+        gtid_enabled=False
     ):
         self.db_connections = db_connections
         log.info("Recovery Handler Starting: %s" % json.dumps(dict(

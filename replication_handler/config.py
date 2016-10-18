@@ -198,7 +198,7 @@ class EnvConfig(BaseConfig):
         """This configuration decides if replicatin handler uses GTID and heartbeat.
         Currently GTID is supported in mysql 5.6 and above.
         """
-        return staticconf.get_bool('gtid_enabled', default=True).value
+        return staticconf.get_bool('gtid_enabled', default=False).value
 
 
 env_config = EnvConfig()
