@@ -28,7 +28,4 @@ class PositionFinder(object):
     def get_position_to_resume_tailing_from(self):
         if self.global_event_state:
             return construct_position(self.global_event_state.position)
-        if self.gtid_enabled:
-            return GtidPosition()
-        else:
-            return LogPosition()
+        return GtidPosition() if self.gtid_enabled else LogPosition()
