@@ -145,7 +145,7 @@ class TestFailureRecovery(object):
             'producer_name': 'failure_test_producer',
             'container_name': 'failure_test',
             'container_env': 'dev_box',
-            'disable_meteorite': True,
+            'disable_meteorite': True
         }
 
     @pytest.fixture
@@ -605,13 +605,13 @@ class TestFailureRecovery(object):
         self,
         containers_without_repl_handler,
         rbrsource,
-        schematracker,
         schematizer,
+        schematracker,
         namespace,
         start_service,
     ):
-        table_name_one = 'hogwarts'
-        table_name_two = 'durmstrang'
+        table_name_one = "hogwarts_{r}".format(r=self.get_random_string())
+        table_name_two = "durmstrang_{r}".format(r=self.get_random_string())
         create_table_query = """
         CREATE TABLE {table_name}
         (
