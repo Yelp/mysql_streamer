@@ -5,13 +5,12 @@ from __future__ import unicode_literals
 import logging
 import sys
 import time
-from contextlib import nested
 
 from pymysqlreplication.event import QueryEvent
 
-from replication_handler.batch.parse_replication_stream import HandlerInfo
-from replication_handler.batch.parse_replication_stream import \
-    ParseReplicationStream
+from replication_handler.batch.base_parse_replication_stream import \
+    BaseParseReplicationStream
+from replication_handler.batch.base_parse_replication_stream import HandlerInfo
 from replication_handler.components.schema_event_handler import \
     SchemaEventHandler
 from replication_handler.models.global_event_state import EventType
@@ -23,11 +22,12 @@ log = logging.getLogger(
 )
 
 
-class RestartHelper(ParseReplicationStream):
+class RestartHelper(BaseParseReplicationStream):
     """This should be used only for testing purposes. It provides the
     flexibility of starting and stopping the replication handler by providing a
     few useful hooks.
     """
+
     def __init__(
         self,
         num_of_events_to_process,
@@ -75,14 +75,7 @@ class RestartHelper(ParseReplicationStream):
     def start(self):
         self.starttime = time.time()
         self.end_time += self.starttime
-        self.process_commandline_options()
-        self._call_configure_functions()
-        self._setup_logging()
-        self._pre_start()
-        self._log_startup()
-        with nested(*self._get_context_managers()):
-            self.run()
-        self._pre_shutdown()
+        self.run()
 
     def _build_handler_map(self):
         handler_map = super(

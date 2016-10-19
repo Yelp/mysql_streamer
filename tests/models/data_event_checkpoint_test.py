@@ -60,7 +60,7 @@ class TestDataEventCheckpoint(object):
     @pytest.yield_fixture
     def patch_config_meteorite_disabled(self):
         with mock.patch(
-            'replication_handler.batch.parse_replication_stream.config.env_config'
+            'replication_handler.batch.base_parse_replication_stream.config.env_config'
         ) as mock_config:
             mock_config.namespace = "test_namespace"
             mock_config.disable_meteorite = True
