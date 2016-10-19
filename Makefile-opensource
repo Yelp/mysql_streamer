@@ -3,13 +3,13 @@
 DOCKER_TAG ?= replication-handler-opensource-dev-$(USER)
 
 test:
-	OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True tox
+	OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True tox -c tox-opensource.ini
 
 itest: cook-image
-	OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True DOCKER_TAG=$(DOCKER_TAG) tox -e itest
+	OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True DOCKER_TAG=$(DOCKER_TAG) tox -c tox-opensource.ini  -e itest
 
 itest_db:
-	tox -e itest_db
+	tox -c tox-opensource.ini -e itest_db
 
 cook-image:
 	docker build -f Dockerfile-opensource -t $(DOCKER_TAG) .
@@ -26,4 +26,4 @@ install-hooks:
 	tox -e pre-commit -- install -f --install-hooks
 
 compose-prefix:
-	@echo "DOCKER_TAG=$(DOCKER_TAG) `python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"
+	@OPEN_SOURCE_MODE=True echo "DOCKER_TAG=$(DOCKER_TAG) `python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"

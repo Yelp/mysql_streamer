@@ -1,0 +1,6 @@
+[run]
+omit = replication_handler/batch/parse_replication_stream_internal.py,replication_handler/models/*,replication_handler/components/stubs/*,replication_handler/testing_helper/*
+
+[report]
+fail_under = 83
+show_missing = true
