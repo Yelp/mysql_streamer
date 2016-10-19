@@ -53,7 +53,7 @@ class ReplicationStreamRestarter(object):
         log.info("Restarting replication: %s" % repr(position))
         self.stream = SimpleBinlogStreamReaderWrapper(
             source_database_config=self.db_connections.source_database_config,
-            schema_tracking_config=self.db_connections.tracker_database_config,
+            tracker_database_config=self.db_connections.tracker_database_config,
             position=position,
             gtid_enabled=False
         )

@@ -47,6 +47,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         # set offset to 1, meaning we want to skip event at offset 0
         stream = SimpleBinlogStreamReaderWrapper(
             mock_db_connections.source_database_config,
+            mock_db_connections.tracker_database_config,
             GtidPosition(
                 gtid="sid:10",
                 offset=1
@@ -91,6 +92,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         ) as mock_sensu_alert:
             stream, results = self._setup_stream_and_expected_result(
                 mock_db_connections.source_database_config,
+                mock_db_connections.tracker_database_config,
                 patch_stream
             )
             assert mock_meteorite.call_count == 1
@@ -103,6 +105,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
     ):
         stream, results = self._setup_stream_and_expected_result(
             mock_db_connections.source_database_config,
+            mock_db_connections.tracker_database_config,
             patch_stream
         )
         for replication_event, result in zip(stream, results):
@@ -113,7 +116,12 @@ class TestSimpleBinlogStreamReaderWrapper(object):
             assert replication_event.position.hb_serial == result.position.hb_serial
             assert replication_event.position.hb_timestamp == result.position.hb_timestamp
 
-    def _setup_stream_and_expected_result(self, source_database_config, patch_stream):
+    def _setup_stream_and_expected_result(
+        self,
+        source_database_config,
+        tracker_database_config,
+        patch_stream
+    ):
         log_pos = 10
         log_file = "binlog.001"
         row = {"after_values": {
@@ -141,6 +149,7 @@ class TestSimpleBinlogStreamReaderWrapper(object):
         patch_stream.return_value.pop.side_effect = event_list
         stream = SimpleBinlogStreamReaderWrapper(
             source_database_config,
+            tracker_database_config,
             LogPosition(
                 log_pos=log_pos,
                 log_file=log_file,

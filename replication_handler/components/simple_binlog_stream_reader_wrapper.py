@@ -40,7 +40,7 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def __init__(
         self, source_database_config,
-        traacker_database_config, position, gtid_enabled=False
+        tracker_database_config, position, gtid_enabled=False
     ):
         super(SimpleBinlogStreamReaderWrapper, self).__init__()
         self.stream = LowLevelBinlogStreamReaderWrapper(
