@@ -53,8 +53,10 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             DeleteRowsEvent,
         ]
         self._seek(
-            source_database_config, tracker_database_config,
-            allowed_event_types, position,
+            source_database_config,
+            tracker_database_config,
+            allowed_event_types,
+            position,
             only_tables
         )
 
@@ -119,8 +121,10 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
 
     def _seek(
         self,
-        source_database_config, tracker_database_config,
-        allowed_event_types, position,
+        source_database_config,
+        tracker_database_config,
+        allowed_event_types,
+        position,
         only_tables
     ):
         # server_id doesn't seem to matter but must be set.
