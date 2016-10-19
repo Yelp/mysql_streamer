@@ -56,7 +56,9 @@ class TestGlobalTransactionId(object):
         return request.param
 
     def test_transaction_id_rejects_invalid_params(
-        self, fake_transaction_id_schema_id, invalid_params
+        self,
+        fake_transaction_id_schema_id,
+        invalid_params
     ):
         invalid_params = [fake_transaction_id_schema_id] + invalid_params
         with pytest.raises(TypeError):

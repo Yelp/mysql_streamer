@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 import logging
 import os
-from os import remove
 
 import simplejson
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
@@ -130,7 +129,7 @@ def transform_time_to_number_of_microseconds(value):
 
 def delete_file_if_exists(filename):
     try:
-        remove(filename)
+        os.remove(filename)
     except OSError:
         # Its fine to pass over this error cause this just means that the file
         # didn't exist in the first place.
