@@ -6,10 +6,10 @@ from data_pipeline.meta_attribute import MetaAttribute
 
 
 def get_log_transaction_id(transaction_id_schema_id, cluster_name, log_file, log_pos):
-    """Log Transaction Id is a MetaAttribute which allows us to reconstruct the
-    order of messages in replication handler by specifying a statement's exact
-    position in the binlog file. Its payload consists a dict of cluster name,
-    log_file name and log_position.
+    """Log Transaction Id MetaAttribute is a MetaAttribute which allows us to 
+    reconstruct the order of messages in replication handler by specifying a 
+    statement's exact position in the binlog file. Its payload consists a dict 
+    of cluster name, log_file name and log_position.
 
     Args:
         transaction_id_schema_id (int): schema_id for transaction_id Meta Attribute
@@ -33,10 +33,10 @@ def get_log_transaction_id(transaction_id_schema_id, cluster_name, log_file, log
 
 
 def get_global_transaction_id(transaction_id_schema_id, cluster_name, gtid):
-    """Global Transaction Id is a MetaAttribute which allows us to reconstruct the
-    order of messages in replication handler by specifying a statement's exact
-    position in the binlog file. Its payload consists a dict of cluster name and
-    GTID.
+    """Global Transaction Id MetaAttribute is a MetaAttribute which allows us 
+    to reconstruct the order of messages in replication handler by specifying a 
+    statement's exact position in the binlog file. Its payload consists a dict of 
+    cluster name and GTID.
 
     Args:
         transaction_id_schema_id (int): schema_id for transaction_id Meta Attribute
