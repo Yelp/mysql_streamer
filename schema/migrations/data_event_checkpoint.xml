@@ -25,4 +25,8 @@
       <append value=" ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci"/>
     </modifySql>
   </changeSet>
+  <changeSet author="clin" id="DATAPIPE-1953-1476975218">
+    <modifyDataType tableName="data_event_checkpoint" columnName="kafka_offset" newDataType="BIGINT(20) NOT NULL"/>
+    <comment>[2016-10-20] Change kafka_offset column type to bigint.</comment>
+  </changeSet>
 </databaseChangeLog>
