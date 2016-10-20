@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 
 import pytest
 
-from replication_handler.util.transaction_id import get_global_transaction_id
-from replication_handler.util.transaction_id import get_log_transaction_id
+from replication_handler.util.transaction_id import get_gtid_meta_attribute
+from replication_handler.util.transaction_id import get_ltid_meta_attribute
 
 
 class TestLogTransactionId(object):
@@ -23,7 +23,7 @@ class TestLogTransactionId(object):
     ):
         invalid_params = [fake_transaction_id_schema_id] + invalid_params
         with pytest.raises(TypeError):
-            get_log_transaction_id(*invalid_params)
+            get_ltid_meta_attribute(*invalid_params)
 
     @pytest.fixture(params=[
         ['cluster1', 'bin_log1', 10],
@@ -34,7 +34,7 @@ class TestLogTransactionId(object):
 
     @pytest.fixture
     def transaction_id(self, valid_params):
-        return get_log_transaction_id(*valid_params)
+        return get_ltid_meta_attribute(*valid_params)
 
     @pytest.fixture(params=[
         {'cluster_name': 'cluster1', 'log_file': 'bin_log1', 'log_pos': 10},
@@ -62,7 +62,7 @@ class TestGlobalTransactionId(object):
     ):
         invalid_params = [fake_transaction_id_schema_id] + invalid_params
         with pytest.raises(TypeError):
-            get_global_transaction_id(*invalid_params)
+            get_gtid_meta_attribute(*invalid_params)
 
     @pytest.fixture(params=[
         ['cluster1', 'bin_log1'],
@@ -73,7 +73,7 @@ class TestGlobalTransactionId(object):
 
     @pytest.fixture
     def transaction_id(self, valid_params):
-        return get_global_transaction_id(*valid_params)
+        return get_gtid_meta_attribute(*valid_params)
 
     @pytest.fixture(params=[
         {'cluster_name': 'cluster1', 'gtid': 'bin_log1'},

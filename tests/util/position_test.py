@@ -10,8 +10,8 @@ from replication_handler.util.position import HeartbeatPosition
 from replication_handler.util.position import InvalidPositionDictException
 from replication_handler.util.position import LogPosition
 from replication_handler.util.position import Position
-from replication_handler.util.transaction_id import get_global_transaction_id
-from replication_handler.util.transaction_id import get_log_transaction_id
+from replication_handler.util.transaction_id import get_gtid_meta_attribute
+from replication_handler.util.transaction_id import get_ltid_meta_attribute
 
 
 class TestPostion(object):
@@ -55,7 +55,7 @@ class TestGtidPosition(object):
             fake_transaction_id_schema_id,
             unicode(mock_source_cluster_name)
         )
-        expected_transaction_id = get_global_transaction_id(
+        expected_transaction_id = get_gtid_meta_attribute(
             fake_transaction_id_schema_id,
             unicode(mock_source_cluster_name),
             u"sid:10"
@@ -111,7 +111,7 @@ class TestLogPosition(object):
             fake_transaction_id_schema_id,
             unicode(mock_source_cluster_name)
         )
-        expected_transaction_id = get_log_transaction_id(
+        expected_transaction_id = get_ltid_meta_attribute(
             fake_transaction_id_schema_id,
             unicode(mock_source_cluster_name),
             u"binlog",

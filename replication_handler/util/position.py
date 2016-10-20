@@ -2,8 +2,8 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-from replication_handler.util.transaction_id import get_global_transaction_id
-from replication_handler.util.transaction_id import get_log_transaction_id
+from replication_handler.util.transaction_id import get_gtid_meta_attribute
+from replication_handler.util.transaction_id import get_ltid_meta_attribute
 
 
 class InvalidPositionDictException(Exception):
@@ -93,7 +93,7 @@ class GtidPosition(Position):
         )
 
     def get_transaction_id(self, transaction_id_schema_id, cluster_name):
-        return get_global_transaction_id(
+        return get_gtid_meta_attribute(
             transaction_id_schema_id,
             unicode(cluster_name),
             unicode(self.gtid)
@@ -150,7 +150,7 @@ class LogPosition(Position):
         return position_dict
 
     def get_transaction_id(self, transaction_id_schema_id, cluster_name):
-        return get_log_transaction_id(
+        return get_ltid_meta_attribute(
             transaction_id_schema_id,
             unicode(cluster_name),
             unicode(self.log_file),
