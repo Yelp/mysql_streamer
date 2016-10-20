@@ -1,0 +1,42 @@
+rbr_source_cluster: refresh_primary
+
+schema_tracker_cluster: repltracker
+
+rbr_state_cluster: replhandler
+
+register_dry_run: False
+
+publish_dry_run: False
+
+disable_sensu: True
+
+topology_path: /nail/srv/configs/topology.yaml
+
+resume_stream: False
+
+namespace: dev
+
+container_name: itest
+
+container_env: docker-compose
+
+force_exit: True
+
+pii_yaml_path: '/nail/etc/services/database_pii'
+
+schema_blacklist:
+    - information_schema
+    - mysql
+    - performance_schema
+    - test
+
+module_env_config:
+    - namespace: data_pipeline
+      config:
+        kafka_broker_list:
+            - kafka:9092
+        kafka_zookeeper: zk:2181
+        schematizer_host_and_port: schematizer:8888
+        skip_messages_with_pii: False
+        kafka_producer_buffer_size: 500
+        encryption_type: AES_MODE_CBC-1
