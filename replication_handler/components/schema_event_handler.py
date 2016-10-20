@@ -42,10 +42,10 @@ class SchemaEventHandler(BaseEventHandler):
         query statement is not supported, the method doesn't handle it.
         Args:
             event: The event containing the query
-            position: The current LogPosition (for saving state)
+            position: The current position (for saving state)
         """
         statement = mysql_statement_factory(event.query)
-        if self._can_event_be_skipped(event, statement):
+        if self._event_can_be_skipped(event, statement):
             return
 
         query = event.query
@@ -65,10 +65,7 @@ class SchemaEventHandler(BaseEventHandler):
 
         self.mysql_dump_handler.create_and_persist_schema_dump()
 
-        if isinstance(
-            statement,
-            AlterTableStatement
-        ) and not statement.does_rename_table():
+        if self._is_query_alter_and_not_rename_table(statement):
             if schema is None or not schema.strip():
                 database_name = statement.database_name
             else:
@@ -78,8 +75,8 @@ class SchemaEventHandler(BaseEventHandler):
                 # This blacklist check needs to be called again here, because if
                 # the statement doesn't have a concrete schema assigned, we
                 # won't know if it should be executed until this point.
-                logger.info("Event {e} is blacklisted, skip processing".format(
-                    e=event
+                logger.info("Query {e} is blacklisted, skip processing".format(
+                    e=event.query
                 ))
                 return
 
@@ -103,23 +100,15 @@ class SchemaEventHandler(BaseEventHandler):
                 record=record
             )
         else:
-            if(isinstance(
-                statement,
-                AlterTableStatement
-            ) and statement.does_rename_table()) or isinstance(
-                statement,
-                RenameTableStatement
-            ):
+            if self._does_query_rename_table(statement):
                 logger.info(
                     "Rename query {q} detected, clearing schema cache".format(
                         q=query
                     )
                 )
                 self.schema_wrapper.reset_cache()
-            if isinstance(statement, CreateDatabaseStatement):
-                database_name = None
-            else:
-                database_name = schema
+
+            database_name = self._get_db_for_statement(statement, schema)
             self._execute_query(query=query, database_name=database_name)
 
             self._checkpoint(
@@ -131,7 +120,12 @@ class SchemaEventHandler(BaseEventHandler):
                 record=None
             )
 
-    def _can_event_be_skipped(self, event, statement):
+    def _get_db_for_statement(self, statement, schema):
+        database_name = None if isinstance(statement, CreateDatabaseStatement) \
+            else schema
+        return database_name
+
+    def _event_can_be_skipped(self, event, statement):
         skippable_queries = {'BEGIN', 'COMMIT'}
         if event.query in skippable_queries:
             return True
@@ -141,7 +135,7 @@ class SchemaEventHandler(BaseEventHandler):
 
         if not statement.is_supported():
             logger.debug("The statement {s} is not supported".format(
-                s=statement
+                s=type(statement)
             ))
             return True
         return False
@@ -217,3 +211,16 @@ class SchemaEventHandler(BaseEventHandler):
             )
             self.mysql_dump_handler.delete_persisted_dump(
                 active_session=session)
+
+    def _is_query_alter_and_not_rename_table(self, statement):
+        return isinstance(statement, AlterTableStatement) and not \
+            statement.does_rename_table()
+
+    def _does_query_rename_table(self, statement):
+        return (isinstance(
+            statement,
+            AlterTableStatement
+        ) and statement.does_rename_table()) or isinstance(
+            statement,
+            RenameTableStatement
+        )
