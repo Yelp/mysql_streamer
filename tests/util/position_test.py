@@ -10,7 +10,8 @@ from replication_handler.util.position import HeartbeatPosition
 from replication_handler.util.position import InvalidPositionDictException
 from replication_handler.util.position import LogPosition
 from replication_handler.util.position import Position
-from replication_handler.util.transaction_id import get_transaction_id
+from replication_handler.util.transaction_id import get_gtid_meta_attribute
+from replication_handler.util.transaction_id import get_ltid_meta_attribute
 
 
 class TestPostion(object):
@@ -47,6 +48,20 @@ class TestGtidPosition(object):
     def test_dict_gtid_and_offset(self):
         p = GtidPosition(gtid="sid:10", offset=10)
         assert p.to_dict() == {"gtid": "sid:10", "offset": 10}
+
+    def test_transaction_id(self, fake_transaction_id_schema_id, mock_source_cluster_name):
+        p = GtidPosition(gtid="sid:10", offset=10)
+        actual_transaction_id = p.get_transaction_id(
+            fake_transaction_id_schema_id,
+            unicode(mock_source_cluster_name)
+        )
+        expected_transaction_id = get_gtid_meta_attribute(
+            fake_transaction_id_schema_id,
+            unicode(mock_source_cluster_name),
+            u"sid:10"
+        )
+        assert actual_transaction_id.schema_id == expected_transaction_id.schema_id
+        assert actual_transaction_id.payload_data == expected_transaction_id.payload_data
 
 
 class TestLogPosition(object):
@@ -96,7 +111,7 @@ class TestLogPosition(object):
             fake_transaction_id_schema_id,
             unicode(mock_source_cluster_name)
         )
-        expected_transaction_id = get_transaction_id(
+        expected_transaction_id = get_ltid_meta_attribute(
             fake_transaction_id_schema_id,
             unicode(mock_source_cluster_name),
             u"binlog",

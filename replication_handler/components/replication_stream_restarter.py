@@ -25,7 +25,7 @@ class ReplicationStreamRestarter(object):
       schema_wrapper(SchemaWrapper object): a wrapper for communication with schematizer.
     """
 
-    def __init__(self, db_connections, schema_wrapper, activate_mysql_dump_recovery):
+    def __init__(self, db_connections, schema_wrapper, activate_mysql_dump_recovery, gtid_enabled=False):
         # Both global_event_state and pending_schema_event are information about
         # last shutdown, we need them to do recovery process.
         self.db_connections = db_connections
@@ -36,10 +36,12 @@ class ReplicationStreamRestarter(object):
             self.db_connections.source_cluster_name
         )
         self.position_finder = PositionFinder(
+            gtid_enabled,
             self.global_event_state
         )
         self.schema_wrapper = schema_wrapper
         self.activate_mysql_dump_recovery = activate_mysql_dump_recovery
+        self.gtid_enabled = gtid_enabled
 
     def restart(self, producer, register_dry_run=True, changelog_mode=False):
         """ This function retrive the saved position from database, and init
@@ -54,7 +56,7 @@ class ReplicationStreamRestarter(object):
         self.stream = SimpleBinlogStreamReaderWrapper(
             source_database_config=self.db_connections.source_database_config,
             position=position,
-            gtid_enabled=False
+            gtid_enabled=self.gtid_enabled
         )
         log.info("Created replication stream.")
         if self.global_event_state:
@@ -67,7 +69,8 @@ class ReplicationStreamRestarter(object):
                 pending_schema_event=self.pending_schema_event,
                 register_dry_run=register_dry_run,
                 changelog_mode=changelog_mode,
-                activate_mysql_dump_recovery=self.activate_mysql_dump_recovery
+                activate_mysql_dump_recovery=self.activate_mysql_dump_recovery,
+                gtid_enabled=self.gtid_enabled
             )
 
             if recovery_handler.need_recovery:

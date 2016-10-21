@@ -143,6 +143,7 @@ class TestFailureRecovery(object):
             'container_name': 'failure_test',
             'container_env': 'dev_box',
             'disable_meteorite': True,
+            'grid_enabled': False
         }
 
     @pytest.fixture

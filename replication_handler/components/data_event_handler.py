@@ -18,7 +18,9 @@ class DataEventHandler(BaseEventHandler):
 
     def __init__(self, *args, **kwargs):
         self.register_dry_run = kwargs.pop('register_dry_run')
-        self.transaction_id_schema_id = get_transaction_id_schema_id()
+        self.transaction_id_schema_id = get_transaction_id_schema_id(
+            kwargs.pop('gtid_enabled')
+        )
         super(DataEventHandler, self).__init__(*args, **kwargs)
 
     def handle_event(self, event, position):

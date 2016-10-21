@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "namespace": "yelp.replication_handler",
+  "name": "global_transaction_id",
+  "doc": "Serializes Mysql GTID information.",
+  "fields": [
+  	{
+  	  "name": "cluster_name",
+  	  "type": "string",
+  	  "doc": "Name of the database cluster."
+  	},
+  	{
+  	  "name": "gtid",
+  	  "type": "string",
+  	  "doc": "GTID retrieved from MySQL."
+  	}
+  ]
+}
