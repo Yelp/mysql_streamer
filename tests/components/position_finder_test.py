@@ -49,13 +49,15 @@ class TestPositionFinder(object):
         schema_event_position,
         patch_get_latest_schema_event_state,
         completed_schema_event_state,
-        position_dict
+        position_dict,
+        gtid_enabled
     ):
         global_event_state = mock.Mock(
             event_type=EventType.SCHEMA_EVENT,
             position=position_dict,
         )
         position_finder = PositionFinder(
+            gtid_enabled=gtid_enabled,
             global_event_state=global_event_state,
         )
         patch_get_latest_schema_event_state.return_value = completed_schema_event_state

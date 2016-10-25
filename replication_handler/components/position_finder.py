@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import logging
 
 from replication_handler.util.position import construct_position
+from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
 
 
@@ -20,10 +21,11 @@ class PositionFinder(object):
         position information.
     """
 
-    def __init__(self, global_event_state):
+    def __init__(self, gtid_enabled, global_event_state):
+        self.gtid_enabled = gtid_enabled
         self.global_event_state = global_event_state
 
     def get_position_to_resume_tailing_from(self):
         if self.global_event_state:
             return construct_position(self.global_event_state.position)
-        return LogPosition()
+        return GtidPosition() if self.gtid_enabled else LogPosition()

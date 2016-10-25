@@ -17,6 +17,7 @@ from replication_handler.components.data_event_handler import DataEventHandler
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
+from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
 from replication_handler_testing.events import make_data_create_event
 from replication_handler_testing.events import make_data_update_event
@@ -52,6 +53,14 @@ class TestDataEventHandler(object):
 
     @pytest.fixture(params=get_mock_stats_counters())
     def stats_counter(self, request):
+        # Need a way to detect if replication handler is run internally
+        # or open-source mode and then dynamically set stats_counter fixture.
+        # Hence parameterizing stats_counter fixture with the return value of a
+        # function `mock_stats_counters`.
+        # Because mock_stats_counters is a module scoped fucntion and not a fixture
+        # its not evaluated of every test so we need to reset_mock.
+        if isinstance(request.param, mock.Mock):
+            request.param.reset_mock()
         return request.param
 
     @pytest.fixture
@@ -69,6 +78,7 @@ class TestDataEventHandler(object):
         schema_wrapper,
         producer,
         stats_counter,
+        gtid_enabled
     ):
         return DataEventHandler(
             mock_db_connections,
@@ -76,6 +86,7 @@ class TestDataEventHandler(object):
             schema_wrapper=schema_wrapper,
             stats_counter=stats_counter,
             register_dry_run=False,
+            gtid_enabled=gtid_enabled
         )
 
     @pytest.fixture
@@ -85,7 +96,8 @@ class TestDataEventHandler(object):
         mock_db_connections,
         schema_wrapper,
         stats_counter,
-        producer
+        producer,
+        gtid_enabled
     ):
         return DataEventHandler(
             mock_db_connections,
@@ -93,6 +105,7 @@ class TestDataEventHandler(object):
             schema_wrapper=schema_wrapper,
             stats_counter=stats_counter,
             register_dry_run=True,
+            gtid_enabled=gtid_enabled
         )
 
     @pytest.fixture
@@ -130,6 +143,13 @@ class TestDataEventHandler(object):
     @pytest.fixture
     def data_update_events(self):
         return make_data_update_event()
+
+    @pytest.fixture
+    def position(self, gtid_enabled):
+        if gtid_enabled:
+            return GtidPosition(gtid="sid:10")
+        else:
+            return LogPosition(log_file='binlog', log_pos=100)
 
     @pytest.fixture
     def test_table(self):
@@ -230,6 +250,7 @@ class TestDataEventHandler(object):
         schema_wrapper_entry,
         patches,
         patch_get_payload_schema,
+        position
     ):
         expected_call_args = []
         for data_event in data_create_events:
@@ -266,7 +287,8 @@ class TestDataEventHandler(object):
         schema_wrapper_entry,
         patches,
         patch_get_payload_schema,
-        patch_message_topic
+        patch_message_topic,
+        position
     ):
         if not stats_counter:
             pytest.skip("StatsCounter is not supported in open source version.")
@@ -281,7 +303,8 @@ class TestDataEventHandler(object):
             data_create_events,
             schema_wrapper_entry,
             patches,
-            patch_get_payload_schema
+            patch_get_payload_schema,
+            position
         )
         assert stats_counter.increment.call_count == len(data_create_events)
         assert stats_counter.increment.call_args[0][0] == 'fake_table'
@@ -299,6 +322,7 @@ class TestDataEventHandler(object):
         patches,
         patch_get_payload_schema,
         patch_message_topic,
+        position
     ):
         expected_call_args = []
         for data_event in data_update_events:

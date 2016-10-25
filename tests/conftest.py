@@ -32,6 +32,11 @@ logging.basicConfig(
 )
 
 
+@pytest.fixture(params=[True, False])
+def gtid_enabled(request):
+    return request.param
+
+
 @pytest.fixture(scope='module')
 def compose_file():
     return os.path.abspath(
