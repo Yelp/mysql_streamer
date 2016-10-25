@@ -66,6 +66,7 @@ class SchemaEventHandler(BaseEventHandler):
         self.mysql_dump_handler.create_and_persist_schema_dump()
 
         if self._is_query_alter_and_not_rename_table(statement):
+            # TODO: DATAPIPE-1963
             if schema is None or not schema.strip():
                 database_name = statement.database_name
             else:
@@ -213,14 +214,16 @@ class SchemaEventHandler(BaseEventHandler):
                 active_session=session)
 
     def _is_query_alter_and_not_rename_table(self, statement):
-        return isinstance(statement, AlterTableStatement) and not \
-            statement.does_rename_table()
-
-    def _does_query_rename_table(self, statement):
-        return (isinstance(
+        return isinstance(
             statement,
             AlterTableStatement
-        ) and statement.does_rename_table()) or isinstance(
+        ) and not statement.does_rename_table()
+
+    def _does_query_rename_table(self, statement):
+        return isinstance(
+            statement,
+            AlterTableStatement
+        ) and statement.does_rename_table() or isinstance(
             statement,
             RenameTableStatement
         )
