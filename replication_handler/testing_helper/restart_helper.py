@@ -115,13 +115,25 @@ class SchemaEventTestHandler(SchemaEventHandler):
         self.counter = 0
         super(SchemaEventTestHandler, self).__init__(*args, **kwargs)
 
-    def _update_journaling_record(self, record, table):
+    def _checkpoint(
+        self,
+        position,
+        event_type,
+        cluster_name,
+        database_name,
+        table_name,
+        record
+    ):
         if self.counter == self.helper.num_of_schema_events:
             log.info("Failing on purpose")
             self.running = False
         else:
-            super(SchemaEventTestHandler, self)._update_journaling_record(
-                record,
-                table
+            super(SchemaEventTestHandler, self)._checkpoint(
+                position=position,
+                event_type=event_type,
+                cluster_name=cluster_name,
+                database_name=database_name,
+                table_name=table_name,
+                record=record
             )
             self.counter += 1
