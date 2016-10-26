@@ -6,28 +6,14 @@ import signal
 
 import mock
 import pytest
+from data_pipeline.tools.meteorite_wrappers import StatsCounter
 
 import replication_handler.batch.parse_replication_stream_internal
 from replication_handler.batch.parse_replication_stream_internal import ParseReplicationStreamInternal
-from replication_handler.environment_configs import is_avoid_internal_packages_set
 from tests.batch.base_parse_replication_stream_test import BaseParseReplicationStreamTest
 
 
 class TestParseReplicationStreamInternal(BaseParseReplicationStreamTest):
-
-    def is_meteorite_supported(self):
-        try:
-            # TODO(DATAPIPE-1509|abrar): Currently we have
-            # force_avoid_internal_packages as a means of simulating an absence
-            # of a yelp's internal package. And all references
-            # of force_avoid_internal_packages have to be removed from
-            # RH after we are completely ready for open source.
-            if is_avoid_internal_packages_set():
-                raise ImportError
-            from data_pipeline.tools.meteorite_wrappers import StatsCounter  # NOQA
-            return True
-        except ImportError:
-            return False
 
     @pytest.yield_fixture
     def patch_config_meteorite_disabled(self, patch_config):
@@ -49,11 +35,6 @@ class TestParseReplicationStreamInternal(BaseParseReplicationStreamTest):
         patch_save_position,
         patch_exit
     ):
-        if not self.is_meteorite_supported():
-            pytest.skip("meteorite unsupported in open source version.")
-
-        from data_pipeline.tools.meteorite_wrappers import StatsCounter
-
         self._different_events_builder(
             schema_event,
             data_event,
@@ -89,11 +70,6 @@ class TestParseReplicationStreamInternal(BaseParseReplicationStreamTest):
         patch_save_position,
         patch_exit
     ):
-        if not self.is_meteorite_supported():
-            pytest.skip("meteorite unsupported in open source version.")
-
-        from data_pipeline.tools.meteorite_wrappers import StatsCounter
-
         self._different_events_builder(
             schema_event,
             data_event,
