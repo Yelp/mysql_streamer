@@ -44,11 +44,9 @@ def test_change_log_messages(
     namespace,
     source,
     rbr_source_session,
-    gtid_enabled
 ):
 
-    if not gtid_enabled:
-        increment_heartbeat(containers, rbrsource)
+    increment_heartbeat(containers, rbrsource)
 
     execute_query_get_one_row(
         containers,

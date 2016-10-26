@@ -324,11 +324,9 @@ class TestEndToEnd(object):
         expected_complex_data,
         schematizer,
         namespace,
-        rbr_source_session,
-        gtid_enabled
+        rbr_source_session
     ):
-        if not gtid_enabled:
-            increment_heartbeat(containers, rbrsource)
+        increment_heartbeat(containers, rbrsource)
 
         complex_instance = ComplexModel(**actual_complex_data)
         rbr_source_session.add(complex_instance)
@@ -359,11 +357,9 @@ class TestEndToEnd(object):
         table_name,
         namespace,
         schematizer,
-        rbr_source_session,
-        gtid_enabled
+        rbr_source_session
     ):
-        if not gtid_enabled:
-            increment_heartbeat(containers, rbrsource)
+        increment_heartbeat(containers, rbrsource)
         execute_query_get_one_row(
             containers,
             rbrsource,
@@ -400,16 +396,14 @@ class TestEndToEnd(object):
         containers,
         rbrsource,
         schematracker,
-        replhandler,
-        gtid_enabled
+        replhandler
     ):
         table_name = '{0}_row_format_tester'.format(replhandler)
         create_table_stmt = """
         CREATE TABLE {name}
         ( id int(11) primary key) ROW_FORMAT=COMPRESSED ENGINE=InnoDB
         """.format(name=table_name)
-        if not gtid_enabled:
-            increment_heartbeat(containers, rbrsource)
+        increment_heartbeat(containers, rbrsource)
         execute_query_get_one_row(
             containers,
             rbrsource,
@@ -431,10 +425,8 @@ class TestEndToEnd(object):
         schematracker,
         alter_table_query,
         table_name,
-        gtid_enabled
     ):
-        if not gtid_enabled:
-            increment_heartbeat(containers, rbrsource)
+        increment_heartbeat(containers, rbrsource)
         execute_query_get_one_row(
             containers,
             rbrsource,
@@ -477,11 +469,9 @@ class TestEndToEnd(object):
         create_table_query,
         namespace,
         schematizer,
-        rbr_source_session,
-        gtid_enabled
+        rbr_source_session
     ):
-        if not gtid_enabled:
-            increment_heartbeat(containers, rbrsource)
+        increment_heartbeat(containers, rbrsource)
 
         source = "{0}_basic_table".format(replhandler)
         execute_query_get_one_row(
@@ -536,15 +526,13 @@ class TestEndToEnd(object):
         create_table_query,
         namespace,
         schematizer,
-        rbr_source_session,
-        gtid_enabled
+        rbr_source_session
     ):
         with reconfigure(
             encryption_type='AES_MODE_CBC-1',
             key_location='acceptance/configs/data_pipeline/'
         ):
-            if not gtid_enabled:
-                increment_heartbeat(containers, rbrsource)
+            increment_heartbeat(containers, rbrsource)
 
             source = "{}_secret_table".format(replhandler)
             execute_query_get_one_row(

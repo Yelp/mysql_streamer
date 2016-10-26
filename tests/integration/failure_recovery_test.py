@@ -122,7 +122,6 @@ class TestFailureRecovery(object):
         topology_path,
         schema_blacklist,
         table_whitelist,
-        gtid_enabled
     ):
         return {
             'rbr_source_cluster': mock_source_cluster_name,
@@ -144,7 +143,7 @@ class TestFailureRecovery(object):
             'container_name': 'failure_test',
             'container_env': 'dev_box',
             'disable_meteorite': True,
-            'gtid_enabled': gtid_enabled
+            'grid_enabled': False
         }
 
     @pytest.fixture
@@ -217,7 +216,6 @@ class TestFailureRecovery(object):
         schematizer,
         namespace,
         start_service,
-        gtid_enabled
     ):
         """Tests the guarantee that the service provides about publishing every
         MySQL change only once. A few queries are executed on the source
@@ -239,8 +237,7 @@ class TestFailureRecovery(object):
         SET teacher="{one}"
         WHERE name="{two}"
         """
-        if not gtid_enabled:
-            increment_heartbeat(containers_without_repl_handler, rbrsource)
+        increment_heartbeat(containers_without_repl_handler, rbrsource)
         execute_query_get_one_row(
             containers_without_repl_handler,
             rbrsource,
@@ -340,7 +337,6 @@ class TestFailureRecovery(object):
         schematizer,
         namespace,
         start_service,
-        gtid_enabled
     ):
         """This tests that the service saves the correct topic and offset
         information on failure in the global_event_state table.
@@ -357,8 +353,7 @@ class TestFailureRecovery(object):
         ("{one}", "{two}")
         """
 
-        if not gtid_enabled:
-            increment_heartbeat(containers_without_repl_handler, rbrsource)
+        increment_heartbeat(containers_without_repl_handler, rbrsource)
         execute_query_get_one_row(
             containers_without_repl_handler,
             rbrsource,
@@ -425,22 +420,21 @@ class TestFailureRecovery(object):
             )
         )
 
+        saved_heartbeat_state = execute_query_get_all_rows(
+            containers_without_repl_handler,
+            rbrstate,
+            "SELECT * FROM {table} WHERE table_name=\"{name}\"".format(
+                table='global_event_state',
+                name=table_name
+            )
+        )
+        position_info = ast.literal_eval(saved_heartbeat_state[0]['position'])
+        log_pos = position_info['log_pos']
+        log_file = position_info['log_file']
+        offset = position_info['offset']
+
         assert saved_data_state[0]['kafka_offset'] == 2
         assert saved_data_state[0]['kafka_topic'] == topic_name
-
-        if not gtid_enabled:
-            saved_heartbeat_state = execute_query_get_all_rows(
-                containers_without_repl_handler,
-                rbrstate,
-                "SELECT * FROM {table} WHERE table_name=\"{name}\"".format(
-                    table='global_event_state',
-                    name=table_name
-                )
-            )
-            position_info = ast.literal_eval(saved_heartbeat_state[0]['position'])
-            log_pos = position_info['log_pos']
-            log_file = position_info['log_file']
-            offset = position_info['offset']
 
         start_service(
             resume_stream=True,
@@ -458,23 +452,22 @@ class TestFailureRecovery(object):
                 t=table_name
             )
         )
+
+        saved_heartbeat_state = execute_query_get_all_rows(
+            containers_without_repl_handler,
+            rbrstate,
+            "SELECT * FROM {table} WHERE table_name=\"{name}\"".format(
+                table='global_event_state',
+                name=table_name
+            )
+        )
+
+        position_info = ast.literal_eval(saved_heartbeat_state[0]['position'])
         assert saved_data_state[0]['kafka_offset'] == 4
         assert saved_data_state[0]['kafka_topic'] == topic_name
-
-        if not gtid_enabled:
-            saved_heartbeat_state = execute_query_get_all_rows(
-                containers_without_repl_handler,
-                rbrstate,
-                "SELECT * FROM {table} WHERE table_name=\"{name}\"".format(
-                    table='global_event_state',
-                    name=table_name
-                )
-            )
-
-            position_info = ast.literal_eval(saved_heartbeat_state[0]['position'])
-            assert position_info['log_pos'] == log_pos
-            assert position_info['log_file'] == log_file
-            assert position_info['offset'] == offset + 4
+        assert position_info['log_pos'] == log_pos
+        assert position_info['log_file'] == log_file
+        assert position_info['offset'] == offset + 4
 
     def test_unclean_shutdown_schema_event(
         self,
@@ -484,7 +477,6 @@ class TestFailureRecovery(object):
         schematizer,
         namespace,
         start_service,
-        gtid_enabled
     ):
         """This tests the recovery of the service if it fails when executing an
         schema event.
@@ -513,8 +505,7 @@ class TestFailureRecovery(object):
         ("{one}", "{two}", "{three}")
         """
 
-        if not gtid_enabled:
-            increment_heartbeat(containers_without_repl_handler, rbrsource)
+        increment_heartbeat(containers_without_repl_handler, rbrsource)
         execute_query_get_one_row(
             containers_without_repl_handler,
             rbrsource,
@@ -612,7 +603,6 @@ class TestFailureRecovery(object):
         schematracker,
         namespace,
         start_service,
-        gtid_enabled
     ):
         table_name_one = "hogwarts_{r}".format(r=self.get_random_string())
         table_name_two = "durmstrang_{r}".format(r=self.get_random_string())
@@ -628,8 +618,7 @@ class TestFailureRecovery(object):
         change_table_name_query = """
         RENAME TABLE {old} TO {new}
         """
-        if not gtid_enabled:
-            increment_heartbeat(containers_without_repl_handler, rbrsource)
+        increment_heartbeat(containers_without_repl_handler, rbrsource)
         create_query = create_table_query.format(table_name=table_name_one)
         rename_query = change_table_name_query.format(
             old=table_name_one,
