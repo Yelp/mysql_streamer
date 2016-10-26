@@ -32,9 +32,12 @@ logging.basicConfig(
 )
 
 
-@pytest.fixture(params=[True, False])
+@pytest.fixture
 def gtid_enabled(request):
-    return request.param
+    if is_envvar_set('OPEN_SOURCE_MODE'):
+        return True
+    else:
+        return False
 
 
 @pytest.fixture(scope='module')

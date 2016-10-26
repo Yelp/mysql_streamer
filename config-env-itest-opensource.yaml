@@ -22,6 +22,8 @@ container_env: docker-compose
 
 force_exit: True
 
+gtid_enabled: True
+
 pii_yaml_path: '/nail/etc/services/database_pii'
 
 schema_blacklist:
