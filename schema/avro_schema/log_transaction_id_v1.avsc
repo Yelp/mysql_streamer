@@ -2,7 +2,7 @@
   "type": "record",
   "namespace": "yelp.replication_handler",
   "name": "transaction_id",
-  "doc": "Serializes a TransactionId object.",
+  "doc": "Serializes a Log TransactionId object.",
   "fields": [
   	{
   	  "name": "cluster_name",

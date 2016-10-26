@@ -46,8 +46,7 @@ def create_mysql_dump(db_creds, databases):
         databases,
         temp_file
     )
-    logger.info("Running command {cmd} to create dump of {db}".format(
-        cmd=dump_cmd,
+    logger.info("Running mysqldump to create dump of {db}".format(
         db=databases
     ))
     p = Popen(dump_cmd, shell=True)
