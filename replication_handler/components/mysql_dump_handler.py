@@ -41,13 +41,23 @@ class MySQLDumpHandler(object):
             cluster_name=self.db_connections.tracker_cluster_name
         )
 
-    def delete_persisted_dump(self):
+    def delete_persisted_dump(self, active_session=None):
         """Deletes the existing schema dump from MySQLDumps table.
+        Args:
+            active_session: Session to connect the database with.
+            This parameter was added specifically to run the delete in the same
+            transaction as the update to the global_event_state table.
         """
-        MySQLDumps.delete_mysql_dump(
-            session=self.db_connections.state_session,
-            cluster_name=self.db_connections.tracker_cluster_name
-        )
+        if active_session:
+            MySQLDumps.delete_mysql_dump_with_active_session(
+                session=active_session,
+                cluster_name=self.db_connections.tracker_cluster_name
+            )
+        else:
+            MySQLDumps.delete_mysql_dump(
+                session=self.db_connections.state_session,
+                cluster_name=self.db_connections.tracker_cluster_name
+            )
 
     def mysql_dump_exists(self):
         """Checks the MySQL dump table to see if a row exists or not

@@ -83,3 +83,12 @@ class MySQLDumps(Base):
             s.query(MySQLDumps).filter(
                 MySQLDumps.cluster_name == cluster_name
             ).delete()
+
+    @classmethod
+    def delete_mysql_dump_with_active_session(cls, session, cluster_name):
+        logger.info("Deleting the existing database dump for cluster {c}".format(
+            c=cluster_name
+        ))
+        session.query(MySQLDumps).filter(
+            MySQLDumps.cluster_name == cluster_name
+        ).delete()

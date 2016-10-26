@@ -608,14 +608,14 @@ class TestFailureRecovery(object):
         self,
         containers_without_repl_handler,
         rbrsource,
-        schematracker,
         schematizer,
+        schematracker,
         namespace,
         start_service,
         gtid_enabled
     ):
-        table_name_one = 'hogwarts'
-        table_name_two = 'durmstrang'
+        table_name_one = "hogwarts_{r}".format(r=self.get_random_string())
+        table_name_two = "durmstrang_{r}".format(r=self.get_random_string())
         create_table_query = """
         CREATE TABLE {table_name}
         (
