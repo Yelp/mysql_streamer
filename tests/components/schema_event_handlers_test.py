@@ -127,7 +127,7 @@ class TestSchemaEventHandler(object):
     @pytest.yield_fixture
     def schema_wrapper_mock(self):
         with mock.patch.object(
-            replication_handler.components.schema_event_handler,
+            replication_handler.components.schema_wrapper,
             'SchemaWrapper'
         ) as schema_wrapper_mock:
             yield schema_wrapper_mock
@@ -452,7 +452,6 @@ class TestSchemaEventHandler(object):
         }
         external_patches.get_show_create_statement.side_effect = [
             show_create_result_initial,
-            show_create_result_initial,
             show_create_result_after_alter
         ]
 
@@ -523,23 +522,31 @@ class TestSchemaEventHandler(object):
         test_position,
         save_position,
         external_patches,
-        schema_event_handler,
         rename_table_schema_event,
         schema_wrapper_mock,
+        mock_db_connections,
+        stats_counter,
         mock_dump_handler
     ):
+        schema_event_handler = SchemaEventHandler(
+            db_connections=mock_db_connections,
+            producer=producer,
+            schema_wrapper=schema_wrapper_mock,
+            stats_counter=stats_counter,
+            register_dry_run=False,
+        )
         schema_event_handler.handle_event(rename_table_schema_event, test_position)
 
         assert producer.flush.call_count == 1
         assert save_position.call_count == 1
 
-        assert schema_wrapper_mock().reset_cache.call_count == 1
+        assert schema_wrapper_mock.reset_cache.call_count == 1
 
         assert external_patches.execute_query.call_count == 1
         assert external_patches.execute_query.call_args_list == [
             mock.call(
-                rename_table_schema_event.query,
-                rename_table_schema_event.schema,
+                query=rename_table_schema_event.query,
+                database_name=rename_table_schema_event.schema,
             )
         ]
 
@@ -583,8 +590,8 @@ class TestSchemaEventHandler(object):
 
         assert external_patches.execute_query.call_args_list == [
             mock.call(
-                non_schema_relevant_query_event.query,
-                expected_schema
+                query=non_schema_relevant_query_event.query,
+                database_name=expected_schema
             )
         ]
         # We should flush and save state before
@@ -662,7 +669,7 @@ class TestSchemaEventHandler(object):
         assert mock_dump_handler.call_count == 1
         assert external_patches.execute_query.call_count == 1
         assert external_patches.execute_query.call_args_list == [
-            mock.call(event.query, test_schema)
+            mock.call(query=event.query, database_name=test_schema)
         ]
         assert schematizer_client.register_schema_from_mysql_stmts.call_count == 1
 
@@ -742,7 +749,7 @@ class TestSchemaEventHandler(object):
                 producer,
                 stats_counter,
             )
-            assert mock_statement_factory.call_count == 0
+            assert mock_statement_factory.call_count == 1
 
     def _assert_query_skipped(
         self,
