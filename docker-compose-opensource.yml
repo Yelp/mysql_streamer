@@ -18,11 +18,8 @@ replicationhandlerconfigs:
   build: acceptance/configs/
 # Replication Handler databases
 rbrsource:
-    build: devdbs/rbr_source/
+    build: devdbs/rbr_source_with_gtid/
 schematracker:
     build: devdbs/schema_tracker/
 rbrstate:
     build: devdbs/rbr_state/
-
-kafkadiscoveryconfigs:
-  image: docker-dev.yelpcorp.com/kafka-discovery-configs-testing:latest
