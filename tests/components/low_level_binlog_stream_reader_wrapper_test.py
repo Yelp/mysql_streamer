@@ -46,6 +46,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         ]
         stream = LowLevelBinlogStreamReaderWrapper(
             mock_db_connections.source_database_config,
+            mock_db_connections.tracker_database_config,
             GtidPosition(gtid="sid:5")
         )
         assert stream.peek() == gtid_event
@@ -65,6 +66,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         assert len(data_event.rows) == 3
         stream = LowLevelBinlogStreamReaderWrapper(
             mock_db_connections.source_database_config,
+            mock_db_connections.tracker_database_config,
             LogPosition(
                 log_pos=100,
                 log_file="binlog.001",
@@ -85,6 +87,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         assert len(data_event.rows) == 3
         stream = LowLevelBinlogStreamReaderWrapper(
             mock_db_connections.source_database_config,
+            mock_db_connections.tracker_database_config,
             LogPosition(
                 log_pos=100,
                 log_file="binlog.001",
@@ -112,6 +115,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         ]
         stream = LowLevelBinlogStreamReaderWrapper(
             mock_db_connections.source_database_config,
+            mock_db_connections.tracker_database_config,
             LogPosition(
                 log_pos=100,
                 log_file="binlog.001",
@@ -134,6 +138,7 @@ class TestLowLevelBinlogStreamReaderWrapper(object):
         expected_only_tables = ['tab1', 'tab1_data_pipeline_refresh', 'tab2', 'tab2_data_pipeline_refresh']
         stream = LowLevelBinlogStreamReaderWrapper(
             mock_db_connections.source_database_config,
+            mock_db_connections.tracker_database_config,
             LogPosition(
                 log_pos=100,
                 log_file="binlog.001",

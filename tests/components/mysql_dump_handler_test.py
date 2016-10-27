@@ -118,12 +118,14 @@ class TestMySQLDumpHandler(object):
         tracker_cursor.execute('drop table one')
         tracker_cursor.execute('show tables')
         all_tables = tracker_cursor.fetchall()
-        assert len(all_tables) == 1
+        assert ('one',) not in all_tables
+        assert ('two',) in all_tables
 
         mock_mysql_dump_handler.recover()
         tracker_cursor.execute('show tables')
         all_tables = tracker_cursor.fetchall()
-        assert len(all_tables) == 2
+        assert ('one',) in all_tables
+        assert ('two',) in all_tables
 
         mock_mysql_dump_handler.delete_persisted_dump()
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
