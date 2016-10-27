@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import time
 import os
 import subprocess
 from contextlib import contextmanager
@@ -62,22 +63,39 @@ class InteractiveStreamer(object):
             )
             yield
 
-    @property
-    def attach_to_rh_logs_cmd(self):
-        container_info = Containers.get_container_info(self.containers.project, 'replicationhandler')
-        return 'docker logs -f {}'.format(container_info.get('Id'))
+    def _tmux_send_keys(self, paneid, cmd):
+        subprocess.call('tmux send-keys -t {} "{}" C-m'.format(paneid, cmd), shell=True)
 
-    @property
-    def source_db_docker_exec_cmd(self):
+    def setup_rh_logs(self, pane_id):
+        container_info = Containers.get_container_info(self.containers.project, 'replicationhandler')
+        self._tmux_send_keys(0, 'docker logs -f {}'.format(container_info.get('Id')))
+
+    def setup_kafka_tailer(self, pane_id):
+        kafka_container_info = Containers.get_container_info(self.containers.project, 'kafka')
+        zk_ip_address = Containers.get_container_ip_address(self.containers.project, 'zookeeper')
+        self._tmux_send_keys(pane_id, "docker exec -it {} bash".format(kafka_container_info.get('Id')))
+        time.sleep(10)
+        self._tmux_send_keys(
+            pane_id,
+            "/opt/kafka_2.10-0.8.2.1/bin/kafka-console-consumer.sh --from-beginning --zookeeper {}:2181 --blacklist None".format(zk_ip_address)
+        )
+
+    def setup_mysql_shell(self, pane_id):
         ip_address = Containers.get_container_ip_address(self.containers.project, 'rbrsource')
-        return 'mysql -uyelpdev -h{}'.format(ip_address)
+        self._tmux_send_keys(pane_id, 'mysql -uyelpdev -h{}'.format(ip_address))
 
     @contextmanager
     def setup_tmux(self):
         subprocess.call('tmux new-session -d', shell=True)
+        subprocess.call('tmux set -g mouse-select-pane on', shell=True)
+
         subprocess.call('tmux split-window -d -t 0 -v', shell=True)
-        subprocess.call('tmux send-keys -t 0 "{}" C-m'.format(self.attach_to_rh_logs_cmd), shell=True)
-        subprocess.call('tmux send-keys -t 1 "{}" C-m'.format(self.source_db_docker_exec_cmd), shell=True)
+        subprocess.call('tmux new-window', shell=True)
+        subprocess.call('tmux select-window -t 0', shell=True)
+
+        self.setup_kafka_tailer('0.0')
+        self.setup_mysql_shell('0.1')
+        self.setup_rh_logs('1.0')
         yield
 
 if __name__ == "__main__":
