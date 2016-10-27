@@ -181,7 +181,8 @@ class TestAlterTableStatement(MysqlTableStatementBaseTest):
         'CHANGE name to address varchar(255)',
         'ENGINE=INNODB',  # Added to test condition from DATAPIPE-588
         'ROW_FORMAT=COMPRESSED',  # Added to test condition from DATAPIPE-1456
-        'AUTO_INCREMENT=14412601'  # Added to test condition from DATAPIPE-1536
+        'AUTO_INCREMENT=14412601',  # Added to test condition from DATAPIPE-1536
+        'ENGINE=MyISAM, CONVERT TO CHARACTER SET utf8 COLLATE utf8_bin'
     ])
     def operation(self, request):
         return request.param

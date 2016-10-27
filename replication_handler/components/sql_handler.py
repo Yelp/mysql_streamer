@@ -216,7 +216,7 @@ class MysqlQualifiedIdentifierParser(object):
         # TODO(DATAPIPE-490|justinc): We'll probably need to replace SQLParse
         # to get rid of this.
         # https://regex101.com/r/qC3tB7/6
-        match = re.match('^(.+?)(\s+engine$|\s+ROW_FORMAT|\s+AUTO_INCREMENT)+', identifier, re.I)
+        match = re.match('^(.+?)(\s+engine|\s+ROW_FORMAT|\s+AUTO_INCREMENT|\s+CONVERT\s+TO\s+CHARACTER\s+SET)+', identifier, re.I)
         if match:
             identifier = match.group(1)
 
