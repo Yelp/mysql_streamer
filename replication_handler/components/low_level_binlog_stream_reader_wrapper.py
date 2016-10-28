@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import logging
+import random
 
 from data_pipeline.message import CreateMessage
 from data_pipeline.message import DeleteMessage
@@ -119,6 +120,12 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
             ) for row in row_event.rows
         ]
 
+    def get_unique_server_id(self):
+        # server_id must be unique per instance
+        MIN_SERVER_ID = 1
+        MAX_SERVER_ID = 4294967295
+        return random.randint(MIN_SERVER_ID, MAX_SERVER_ID)
+
     def _seek(
         self,
         source_database_config,
@@ -127,11 +134,10 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         position,
         only_tables
     ):
-        # server_id doesn't seem to matter but must be set.
         self.stream = BinLogStreamReader(
             connection_settings=source_database_config,
             ctl_connection_settings=tracker_database_config,
-            server_id=1,
+            server_id=self.get_unique_server_id(),
             blocking=True,
             only_events=allowed_event_types,
             resume_stream=config.env_config.resume_stream,
