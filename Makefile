@@ -27,3 +27,6 @@ install-hooks:
 
 compose-prefix:
 	@echo "DOCKER_TAG=$(DOCKER_TAG) `python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"
+
+interactive-streamer: cook-image
+	DOCKER_TAG=$(DOCKER_TAG) python interactive_streamer.py
