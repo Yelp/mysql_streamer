@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 import os
 import subprocess
-import time
 from contextlib import contextmanager
 
 from data_pipeline.testing_helpers.containers import Containers
@@ -74,7 +73,6 @@ class InteractiveStreamer(object):
         kafka_container_info = Containers.get_container_info(self.containers.project, 'kafka')
         zk_ip_address = Containers.get_container_ip_address(self.containers.project, 'zookeeper')
         self._tmux_send_keys(pane_id, "docker exec -it {} bash".format(kafka_container_info.get('Id')))
-        time.sleep(10)
         self._tmux_send_keys(
             pane_id,
             "/opt/kafka_2.10-0.8.2.1/bin/kafka-console-consumer.sh --from-beginning --zookeeper {}:2181 --blacklist None".format(zk_ip_address)
@@ -82,7 +80,7 @@ class InteractiveStreamer(object):
 
     def setup_mysql_shell(self, pane_id):
         ip_address = Containers.get_container_ip_address(self.containers.project, 'rbrsource')
-        self._tmux_send_keys(pane_id, 'mysql -uyelpdev -h{}'.format(ip_address))
+        self._tmux_send_keys(pane_id, 'mysql -uyelpdev -h{} --database=yelp'.format(ip_address))
 
     @contextmanager
     def setup_tmux(self):
@@ -90,12 +88,11 @@ class InteractiveStreamer(object):
         subprocess.call('tmux set -g mouse-select-pane on', shell=True)
 
         subprocess.call('tmux split-window -d -t 0 -v', shell=True)
-        subprocess.call('tmux new-window', shell=True)
-        subprocess.call('tmux select-window -t 0', shell=True)
+        subprocess.call('tmux split-window -d -t 0 -h', shell=True)
 
-        self.setup_kafka_tailer('0.0')
-        self.setup_mysql_shell('0.1')
-        self.setup_rh_logs('1.0')
+        self.setup_kafka_tailer('0')
+        self.setup_rh_logs('1')
+        self.setup_mysql_shell('2')
         yield
 
 if __name__ == "__main__":
