@@ -28,5 +28,5 @@ install-hooks:
 compose-prefix:
 	@OPEN_SOURCE_MODE=True echo "DOCKER_TAG=$(DOCKER_TAG) `python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"
 
-interactive-streamer:
+interactive-streamer: cook-image
 	OPEN_SOURCE_MODE=True DOCKER_TAG=$(DOCKER_TAG) python interactive_streamer.py

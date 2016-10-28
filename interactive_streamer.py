@@ -2,9 +2,9 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import time
 import os
 import subprocess
+import time
 from contextlib import contextmanager
 
 from data_pipeline.testing_helpers.containers import Containers
@@ -68,7 +68,7 @@ class InteractiveStreamer(object):
 
     def setup_rh_logs(self, pane_id):
         container_info = Containers.get_container_info(self.containers.project, 'replicationhandler')
-        self._tmux_send_keys(0, 'docker logs -f {}'.format(container_info.get('Id')))
+        self._tmux_send_keys(pane_id, 'docker logs -f {}'.format(container_info.get('Id')))
 
     def setup_kafka_tailer(self, pane_id):
         kafka_container_info = Containers.get_container_info(self.containers.project, 'kafka')
