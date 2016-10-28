@@ -127,11 +127,12 @@ class LowLevelBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
         position,
         only_tables
     ):
-        # server_id doesn't seem to matter but must be set.
+        # server_id must be unique per instance
+        server_id = 1 if config.env_config.changelog_mode else 2
         self.stream = BinLogStreamReader(
             connection_settings=source_database_config,
             ctl_connection_settings=tracker_database_config,
-            server_id=1,
+            server_id=server_id,
             blocking=True,
             only_events=allowed_event_types,
             resume_stream=config.env_config.resume_stream,
