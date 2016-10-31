@@ -1,4 +1,21 @@
 # -*- coding: utf-8 -*-
+# Copyright 2016 Yelp Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+from __future__ import absolute_import
+from __future__ import unicode_literals
+
 import json
 import sys
 import time
@@ -6,13 +23,12 @@ import time
 from behave import given
 from behave import then
 from behave import when
-
 from data_pipeline.schematizer_clientlib.schematizer import get_schematizer
 from yelp_lib.containers.lists import unlist
 
 sys.path.append('../../environment.py')
-from environment import execute_query
-from environment import setup_kafka_topic
+from environment import execute_query   # noqa: E402
+from environment import setup_kafka_topic   # noqa: E402
 
 
 DB_WAIT_TIME = 1.5
@@ -24,16 +40,19 @@ def prepare_query_step(context, table_name):
     context.data['table_name'] = table_name
     context.data['query'] = context.text
 
+
 @given(u'an expected create table statement for table {table_name}')
 def set_expected_create_table_statement_step(context, table_name):
     context.data['table_name'] = table_name
     context.data['expected_create_table_statement'] = context.text
     context.data['event_type'] = 'schema_event'
 
+
 @given(u'an expected avro schema for table {table_name}')
 def set_expected_avro_schema(context, table_name):
     context.data['table_name'] = table_name
     context.data['expected_avro_schema'] = json.loads(context.text)
+
 
 @given(u'a query to insert data for table {table_name}')
 def add_data_step(context, table_name):
@@ -41,9 +60,11 @@ def add_data_step(context, table_name):
     context.data['query'] = context.text
     context.data['row_count'] = 1
 
+
 @when(u'we execute the statement in {db_name} database')
 def execute_statement_step(context, db_name):
     execute_query(db_name, context.data['query'])
+
 
 @then(u'{db_name} should have correct schema information')
 def check_schema_tracker_has_correct_info(context, db_name):
@@ -57,6 +78,7 @@ def check_schema_tracker_has_correct_info(context, db_name):
         'Create Table': context.data['expected_create_table_statement']
     }
     assert_result_correctness(result, expected)
+
 
 @then(u'{db_name}.schema_event_state should have correct state information')
 def check_schema_event_state_has_correct_info(context, db_name):
@@ -76,6 +98,7 @@ def check_schema_event_state_has_correct_info(context, db_name):
     }
     assert_result_correctness(position, expected_position)
 
+
 @then(u'{db_name}.global_event_state should have correct state information')
 def check_global_event_state_has_correct_info(context, db_name):
     query = 'select * from global_event_state'
@@ -84,6 +107,7 @@ def check_global_event_state_has_correct_info(context, db_name):
         'event_type': context.data['event_type'],
     }
     assert_expected_db_state(db_name, query, expected)
+
 
 @then(u'schematizer should have correct info')
 def check_schematizer_has_correct_source_info(context):
@@ -98,6 +122,7 @@ def check_schematizer_has_correct_source_info(context):
     assert schema.topic.source.namespace.name == context.data['namespace']
     assert schema.schema_json == context.data['expected_avro_schema']
 
+
 @then(u'{db_name}.data_event_checkpoint should have correct state information')
 def check_data_event_checkpoint_has_correct_info(context, db_name):
     query = 'select * from data_event_checkpoint limit 1'
@@ -107,11 +132,13 @@ def check_data_event_checkpoint_has_correct_info(context, db_name):
     }
     assert_expected_db_state(db_name, query, expected)
 
+
 def assert_expected_db_state(db_name, query, expected):
     time.sleep(DB_WAIT_TIME)
     result = execute_query(db_name, query)
     assert_result_correctness(result, expected)
     return result
+
 
 def assert_result_correctness(result, expected):
     for key, value in expected.iteritems():

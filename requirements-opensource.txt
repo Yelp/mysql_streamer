@@ -19,7 +19,7 @@ kafka-python==0.9.5
 kazoo==2.2
 mccabe==0.5.0
 mrjob==0.4.3
--e git://github.com/cccc1999/python-mysql-replication.git#egg=mysql-replication
+-e git://github.com/kdparker/python-mysql-replication.git#egg=mysql-replication
 pep8==1.5.7
 ply==3.4
 py==1.4.29
