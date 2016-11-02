@@ -18,7 +18,6 @@ from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.components.schema_tracker import ShowCreateResult
 from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.models.global_event_state import GlobalEventState
-from replication_handler.models.schema_event_state import SchemaEventState
 from replication_handler.util.position import GtidPosition
 from replication_handler_testing.events import QueryEvent
 from tests.components.base_event_handler_test import get_mock_stats_counters
@@ -31,8 +30,6 @@ SchemaHandlerExternalPatches = namedtuple(
         'get_show_create_statement',
         'execute_query',
         'populate_schema_cache',
-        'create_schema_event_state',
-        'update_schema_event_state',
         'upsert_global_event_state',
         'table_has_pii',
     )
@@ -359,21 +356,6 @@ class TestSchemaEventHandler(object):
             yield mock_populate_schema_cache
 
     @pytest.yield_fixture
-    def patch_create_schema_event_state(self):
-        with mock.patch.object(
-            SchemaEventState, 'create_schema_event_state'
-        ) as mock_create_schema_event_state:
-            yield mock_create_schema_event_state
-
-    @pytest.yield_fixture
-    def patch_update_schema_event_state(self):
-        with mock.patch.object(
-            SchemaEventState,
-            'update_schema_event_state_to_complete_by_id'
-        ) as mock_update_schema_event_state:
-            yield mock_update_schema_event_state
-
-    @pytest.yield_fixture
     def patch_upsert_global_event_state(self):
         with mock.patch.object(
             GlobalEventState,
@@ -403,8 +385,6 @@ class TestSchemaEventHandler(object):
         patch_get_show_create_statement,
         patch_execute_query,
         patch_populate_schema_cache,
-        patch_create_schema_event_state,
-        patch_update_schema_event_state,
         patch_upsert_global_event_state,
         patch_table_has_pii,
     ):
@@ -414,8 +394,6 @@ class TestSchemaEventHandler(object):
             get_show_create_statement=patch_get_show_create_statement,
             execute_query=patch_execute_query,
             populate_schema_cache=patch_populate_schema_cache,
-            create_schema_event_state=patch_create_schema_event_state,
-            update_schema_event_state=patch_update_schema_event_state,
             upsert_global_event_state=patch_upsert_global_event_state,
             table_has_pii=patch_table_has_pii,
         )
@@ -565,8 +543,6 @@ class TestSchemaEventHandler(object):
         external_patches.database_config.return_value = ['fake_schema']
         schema_event_handler.handle_event(alter_table_schema_event, test_position)
         assert external_patches.populate_schema_cache.call_count == 0
-        assert external_patches.create_schema_event_state.call_count == 0
-        assert external_patches.update_schema_event_state.call_count == 0
         assert external_patches.upsert_global_event_state.call_count == 0
 
     def test_non_schema_relevant_query(
@@ -638,8 +614,6 @@ class TestSchemaEventHandler(object):
         ]
         with pytest.raises(Exception):
             schema_event_handler.handle_event(alter_table_schema_event, test_position)
-        assert external_patches.create_schema_event_state.call_count == 1
-        assert external_patches.update_schema_event_state.call_count == 0
         assert external_patches.upsert_global_event_state.call_count == 0
         assert producer.flush.call_count == 1
         assert save_position.call_count == 1
@@ -701,8 +675,6 @@ class TestSchemaEventHandler(object):
                 schema_store_response
             )]
 
-        assert external_patches.create_schema_event_state.call_count == 1
-        assert external_patches.update_schema_event_state.call_count == 1
         assert external_patches.upsert_global_event_state.call_count == 1
         assert external_patches.table_has_pii.call_count == 1
 

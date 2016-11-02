@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import copy
 import logging
 
 from replication_handler.components.base_event_handler import BaseEventHandler
@@ -15,8 +14,6 @@ from replication_handler.components.sql_handler import RenameTableStatement
 from replication_handler.components.sql_handler import mysql_statement_factory
 from replication_handler.models.global_event_state import EventType
 from replication_handler.models.global_event_state import GlobalEventState
-from replication_handler.models.schema_event_state import SchemaEventState
-from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import save_position
 
 
@@ -86,10 +83,9 @@ class SchemaEventHandler(BaseEventHandler):
                 database_name=database_name,
                 table_name=statement.table
             )
-            record = self._process_alter_table_event(
+            self._process_alter_table_event(
                 query=query,
-                table=table,
-                position=position
+                table=table
             )
 
             self._checkpoint(
@@ -97,8 +93,7 @@ class SchemaEventHandler(BaseEventHandler):
                 event_type=EventType.SCHEMA_EVENT,
                 cluster_name=table.cluster_name,
                 database_name=table.database_name,
-                table_name=table.table_name,
-                record=record
+                table_name=table.table_name
             )
         else:
             if self._does_query_rename_table(statement):
@@ -117,8 +112,7 @@ class SchemaEventHandler(BaseEventHandler):
                 event_type=EventType.SCHEMA_EVENT,
                 cluster_name=self.db_connections.source_cluster_name,
                 database_name=schema,
-                table_name=None,
-                record=None
+                table_name=None
             )
 
     def _get_db_for_statement(self, statement, schema):
@@ -141,7 +135,7 @@ class SchemaEventHandler(BaseEventHandler):
             return True
         return False
 
-    def _process_alter_table_event(self, query, table, position):
+    def _process_alter_table_event(self, query, table):
         """
         This executes the alter table query and registers the query with
         the schematizer.
@@ -153,21 +147,6 @@ class SchemaEventHandler(BaseEventHandler):
         table_before_processing = self.schema_tracker.get_show_create_statement(
             table=table
         )
-        # This state saving will be removed when schema dump is used for
-        # recovery
-        with self.db_connections.state_session.connect_begin(ro=False) as session:
-            record = SchemaEventState.create_schema_event_state(
-                session=session,
-                position=position.to_dict(),
-                status=SchemaEventStatus.PENDING,
-                query=query,
-                create_table_statement=table_before_processing.query,
-                cluster_name=table.cluster_name,
-                database_name=table.database_name,
-                table_name=table.table_name
-            )
-            session.flush()
-            record = copy.copy(record)
         self._execute_query(query=query, database_name=table.database_name)
         table_after_processing = self.schema_tracker.get_show_create_statement(
             table=table
@@ -178,7 +157,6 @@ class SchemaEventHandler(BaseEventHandler):
             old_create_table_stmt=table_before_processing.query,
             alter_table_stmt=query
         )
-        return record
 
     def _execute_query(self, query, database_name):
         self.schema_tracker.execute_query(
@@ -193,15 +171,8 @@ class SchemaEventHandler(BaseEventHandler):
         cluster_name,
         database_name,
         table_name,
-        record
     ):
         with self.db_connections.state_session.connect_begin(ro=False) as session:
-            # This update will be removed once we start using mysql dumps
-            if record:
-                SchemaEventState.update_schema_event_state_to_complete_by_id(
-                    session=session,
-                    record_id=record.id
-                )
             GlobalEventState.upsert(
                 session=session,
                 position=position,

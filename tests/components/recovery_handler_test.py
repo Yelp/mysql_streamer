@@ -11,11 +11,10 @@ from data_pipeline.producer import Producer
 from pymysqlreplication.event import QueryEvent
 
 from replication_handler import config
+from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.schema_wrapper import SchemaWrapperEntry
 from replication_handler.models.data_event_checkpoint import DataEventCheckpoint
-from replication_handler.models.schema_event_state import SchemaEventState
-from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.util.misc import DataEvent
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import LogPosition
@@ -114,47 +113,6 @@ class TestRecoveryHandler(object):
             LogPosition(log_file='binlog.001', log_pos=50)
         )
 
-    @pytest.fixture
-    def pending_alter_schema_event_state(
-        self,
-        create_table_statement,
-        alter_table_statement,
-        database_name
-    ):
-        return SchemaEventState(
-            position={"gtid": "sid:12"},
-            status=SchemaEventStatus.PENDING,
-            query=alter_table_statement,
-            table_name="Business",
-            create_table_statement=create_table_statement,
-            database_name=database_name
-        )
-
-    @pytest.fixture
-    def pending_create_schema_event_state(
-        self,
-        create_table_statement,
-        database_name
-    ):
-        return SchemaEventState(
-            position={"gtid": "sid:12"},
-            status=SchemaEventStatus.PENDING,
-            query=create_table_statement,
-            table_name="Business",
-            create_table_statement=create_table_statement,
-            database_name=database_name
-        )
-
-    @pytest.fixture
-    def bad_schema_event_state(self, create_table_statement, alter_table_statement):
-        return SchemaEventState(
-            position={"gtid": "sid:13"},
-            status='BadState',
-            query=alter_table_statement,
-            table_name="Business",
-            create_table_statement=create_table_statement,
-        )
-
     @pytest.yield_fixture
     def patch_save_position(self):
         with mock.patch(
@@ -163,22 +121,13 @@ class TestRecoveryHandler(object):
             yield mock_save_position
 
     @pytest.yield_fixture
-    def patch_get_pending_schema_event_state(
-        self,
-    ):
+    def patch_mysql_dump_handler(self):
         with mock.patch.object(
-            SchemaEventState,
-            'get_pending_schema_event_state'
-        ) as mock_get_pending_schema_event_state:
-            yield mock_get_pending_schema_event_state
-
-    @pytest.yield_fixture
-    def patch_delete(self):
-        with mock.patch.object(
-            SchemaEventState,
-            'delete_schema_event_state_by_id'
-        ) as mock_delete:
-            yield mock_delete
+            MySQLDumpHandler,
+            'mysql_dump_exists'
+        ) as mock_handler:
+            mock_handler.return_value = False
+            yield mock_handler
 
     @pytest.yield_fixture
     def mock_source_cursor(self):
@@ -206,67 +155,7 @@ class TestRecoveryHandler(object):
         ) as mock_get_topic_to_kafka_offset_map:
             yield mock_get_topic_to_kafka_offset_map
 
-    def test_recovery_when_there_is_pending_alter_state(
-        self,
-        stream,
-        producer,
-        mock_schema_wrapper,
-        mock_db_connections,
-        create_table_statement,
-        pending_alter_schema_event_state,
-        patch_delete,
-        mock_tracker_cursor,
-        database_name
-    ):
-        recovery_handler = RecoveryHandler(
-            stream,
-            producer,
-            mock_schema_wrapper,
-            db_connections=mock_db_connections,
-            is_clean_shutdown=True,
-            pending_schema_event=pending_alter_schema_event_state
-        )
-        assert recovery_handler.need_recovery is True
-        recovery_handler.recover()
-        assert mock_tracker_cursor.execute.call_count == 4
-        assert mock_tracker_cursor.execute.call_args_list == [
-            mock.call("USE %s" % database_name),
-            mock.call("DROP TABLE IF EXISTS `Business`"),
-            mock.call("USE %s" % database_name),
-            mock.call(create_table_statement)
-        ]
-        assert patch_delete.call_count == 1
-
-    def test_recovery_when_there_is_pending_create_state(
-        self,
-        stream,
-        producer,
-        mock_schema_wrapper,
-        mock_db_connections,
-        create_table_statement,
-        pending_create_schema_event_state,
-        patch_delete,
-        mock_tracker_cursor,
-        database_name
-    ):
-        recovery_handler = RecoveryHandler(
-            stream,
-            producer,
-            mock_schema_wrapper,
-            db_connections=mock_db_connections,
-            is_clean_shutdown=True,
-            pending_schema_event=pending_create_schema_event_state
-        )
-        assert recovery_handler.need_recovery is True
-        recovery_handler.recover()
-        assert mock_tracker_cursor.execute.call_count == 2
-        assert mock_tracker_cursor.execute.call_args_list == [
-            mock.call("USE %s" % database_name),
-            mock.call("DROP TABLE IF EXISTS `Business`"),
-        ]
-        assert patch_delete.call_count == 1
-
-    def test_recovery_when_unclean_shutdown_with_no_pending_state(
+    def test_recovery_when_unclean_shutdown(
         self,
         stream,
         producer,
@@ -278,7 +167,8 @@ class TestRecoveryHandler(object):
         mock_source_cursor,
         patch_save_position,
         patch_config_recovery_queue_size,
-        patch_message_topic
+        patch_message_topic,
+        patch_mysql_dump_handler
     ):
         event_list = [
             rh_data_event_before_master_log_pos,
@@ -318,7 +208,8 @@ class TestRecoveryHandler(object):
         mock_source_cursor,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
-        patch_message_topic
+        patch_message_topic,
+        patch_mysql_dump_handler
     ):
         event_list = [
             rh_data_event_before_master_log_pos,
@@ -353,7 +244,8 @@ class TestRecoveryHandler(object):
         mock_source_cursor,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
-        patch_message_topic
+        patch_message_topic,
+        patch_mysql_dump_handler
     ):
         schematizer_client = mock_schema_wrapper.schematizer_client
         schematizer_client.register_schema_from_schema_json.return_value = (
@@ -393,7 +285,8 @@ class TestRecoveryHandler(object):
         mock_source_cursor,
         patch_get_topic_to_kafka_offset_map,
         patch_save_position,
-        patch_message_topic
+        patch_message_topic,
+        patch_mysql_dump_handler
     ):
         event_list = [
             rh_data_event_before_master_log_pos,
@@ -437,9 +330,7 @@ class TestRecoveryHandler(object):
             mock_schema_wrapper,
             db_connections=mock_db_connections,
             is_clean_shutdown=False,
-            pending_schema_event=None,
             changelog_mode=changelog_mode,
-            activate_mysql_dump_recovery=False,
             gtid_enabled=False
         )
         if max_size:
