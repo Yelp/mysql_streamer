@@ -110,7 +110,6 @@ class ReplicationStreamRestarter(object):
             # In services we cant do expire_on_commit=False, so
             # if we want to use the object after the session commits, we
             # need to figure out a way to hold it. for more context:
-            # https://trac.yelpcorp.com/wiki/JulianKPage/WhyNoExpireOnCommitFalse
             return copy.copy(
                 SchemaEventState.get_pending_schema_event_state(
                     session,

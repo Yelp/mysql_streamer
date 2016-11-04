@@ -138,7 +138,8 @@ class RecoveryHandler(object):
 
     def recover(self):
         """ Handles the recovery procedure. """
-        if self.activate_mysql_dump_recovery:
+        if (self.activate_mysql_dump_recovery
+            and self.mysql_dump_handler.mysql_dump_exists()):
             self.mysql_dump_handler.recover()
         else:
             self._handle_pending_schema_event()

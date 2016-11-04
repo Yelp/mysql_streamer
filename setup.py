@@ -26,7 +26,7 @@ setup(
     description='',
     author='BAM',
     author_email='bam@yelp.com',
-    url='https://gitweb.yelpcorp.com/?p=replication_handler.git',
+    url='https://github.com/Yelp/mysql_streamer',
     packages=find_packages(exclude=['tests']),
     setup_requires=['setuptools'],
     install_requires=[

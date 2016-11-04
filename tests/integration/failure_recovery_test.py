@@ -158,7 +158,8 @@ class TestFailureRecovery(object):
             'container_name': 'failure_test',
             'container_env': 'dev_box',
             'disable_meteorite': True,
-            'gtid_enabled': gtid_enabled
+            'gtid_enabled': gtid_enabled,
+            'activate_mysql_dump_recovery': True
         }
 
     @pytest.fixture
@@ -494,7 +495,7 @@ class TestFailureRecovery(object):
         self,
         containers_without_repl_handler,
         rbrsource,
-        rbrstate,
+        schematracker,
         schematizer,
         namespace,
         start_service,
@@ -503,11 +504,10 @@ class TestFailureRecovery(object):
         """This tests the recovery of the service if it fails when executing an
         schema event.
         A failure is triggered intentionally when an alter table to add column
-        event is being handled. The test asserts that the service marks that
-        as PENDING in the schema_event_state table and after it restarts, it
-        processes that event again and changes the state of that event to
-        COMPLETED. It also asserts that it doesn't miss out on any event and
-        doesn't process an event more than once.
+        event is being handled. The test asserts that after the service restarts
+        it processes that event again and processes the schema event. It also
+        asserts that it doesn't miss out on any event and doesn't process an
+        event more than once.
         """
         table_name = "ministry_of_magic_{r}".format(r=self.get_random_string())
         create_query = """
@@ -569,20 +569,31 @@ class TestFailureRecovery(object):
             num_of_schema_events=0,
         )
 
-        saved_schema_state = execute_query_get_all_rows(
+        execute_query_get_one_row(
             containers_without_repl_handler,
-            rbrstate,
-            "SELECT * FROM {table} WHERE table_name=\"{name}\"".format(
-                table='schema_event_state',
-                name=table_name
-            )
+            schematracker,
+            "DROP TABLE {table}".format(table=table_name)
         )
-        saved_alter_query = saved_schema_state[0]['query']
-        saved_status = saved_schema_state[0]['status']
 
-        assert ' '.join(saved_alter_query.split()) == ' '.join(
-            add_col_query.format(table=table_name).split())
-        assert saved_status == SchemaEventStatus.PENDING
+        execute_query_get_one_row(
+            containers_without_repl_handler,
+            schematracker,
+            create_query.format(table=table_name)
+        )
+
+        tracker_create_table = execute_query_get_all_rows(
+            containers_without_repl_handler,
+            schematracker,
+            "SHOW CREATE TABLE {table}".format(table=table_name)
+        )[0]['Create Table']
+
+        source_create_table = execute_query_get_all_rows(
+            containers_without_repl_handler,
+            rbrsource,
+            "SHOW CREATE TABLE {table}".format(table=table_name)
+        )[0]['Create Table']
+
+        assert source_create_table != tracker_create_table
 
         start_service(
             resume_stream=True,
@@ -592,20 +603,13 @@ class TestFailureRecovery(object):
             num_of_schema_events=100,
         )
 
-        saved_schema_state = execute_query_get_all_rows(
+        tracker_create_table = execute_query_get_all_rows(
             containers_without_repl_handler,
-            rbrstate,
-            "SELECT * FROM {table} WHERE table_name=\"{name}\"".format(
-                table='schema_event_state',
-                name=table_name
-            )
-        )
-        saved_alter_query = saved_schema_state[0]['query']
-        saved_status = saved_schema_state[0]['status']
+            schematracker,
+            "SHOW CREATE TABLE {table}".format(table=table_name)
+        )[0]['Create Table']
 
-        assert ' '.join(saved_alter_query).split() == ' '.join(
-            add_col_query.format(table=table_name)).split()
-        assert saved_status == SchemaEventStatus.COMPLETED
+        assert source_create_table == tracker_create_table
 
         _fetch_messages(
             containers_without_repl_handler,
@@ -615,10 +619,7 @@ class TestFailureRecovery(object):
             2
         )
 
-    @pytest.mark.skip(
-        reason="This will work only after the schema dump change is in"
-    )
-    def test_unclean_shutdown_processing_table_rename(
+    def test_processing_table_rename(
         self,
         containers_without_repl_handler,
         rbrsource,
@@ -628,6 +629,9 @@ class TestFailureRecovery(object):
         start_service,
         gtid_enabled
     ):
+        """
+        This test verifies that the service handles table renames.
+        """
         table_name_one = "hogwarts_{r}".format(r=self.get_random_string())
         table_name_two = "durmstrang_{r}".format(r=self.get_random_string())
         create_table_query = """
@@ -690,43 +694,23 @@ class TestFailureRecovery(object):
 
         start_service(
             resume_stream=True,
-            num_of_queries_to_process=3,
+            num_of_queries_to_process=5,
             end_time=30,
             is_schema_event_helper_enabled=False,
             num_of_schema_events=100,
         )
         show_query = "SHOW CREATE TABLE {name}"
-        old_source_schema = execute_query_get_one_row(
+        source_schema = execute_query_get_one_row(
             containers_without_repl_handler,
             rbrsource,
             show_query.format(name=table_name_two)
         )
-        old_tracker_schema = execute_query_get_one_row(
-            containers_without_repl_handler,
-            schematracker,
-            show_query.format(name=table_name_one)
-        )
-        assert old_source_schema != old_tracker_schema
-
-        start_service(
-            resume_stream=True,
-            num_of_queries_to_process=3,
-            end_time=30,
-            is_schema_event_helper_enabled=False,
-            num_of_schema_events=100,
-        )
-
-        old_source_schema = execute_query_get_one_row(
-            containers_without_repl_handler,
-            rbrsource,
-            show_query.format(name=table_name_two)
-        )
-        old_tracker_schema = execute_query_get_one_row(
+        tracker_schema = execute_query_get_one_row(
             containers_without_repl_handler,
             schematracker,
             show_query.format(name=table_name_two)
         )
-        assert old_source_schema == old_tracker_schema
+        assert source_schema == tracker_schema
 
         messages_two = _fetch_messages(
             containers_without_repl_handler,
