@@ -121,10 +121,14 @@ def get_transaction_id_schema_id(gtid_enabled):
 
 
 def transform_time_to_number_of_microseconds(value):
-    return ((value.hour * 3600000000) +
+    if hasattr(value, 'hour'):
+        return ((value.hour * 3600000000) +
             (value.minute * 60000000) +
             (value.second * 1000000) +
             (value.microsecond))
+    return ((value.days * 24 * 60 * 60 * 10000000) +
+            (value.seconds * 1000000) +
+            (value.microseconds))
 
 
 def delete_file_if_exists(filename):
