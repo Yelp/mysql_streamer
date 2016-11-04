@@ -1,4 +1,18 @@
 # -*- coding: utf-8 -*-
+# Copyright 2016 Yelp Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 #
 # Replication Handler documentation build configuration file, created by
 # sphinx-quickstart on Thu Mar 12 21:49:04 2015.
@@ -11,9 +25,8 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-
-import sys
-import os
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -189,22 +202,22 @@ htmlhelp_basename = 'ReplicationHandlerdoc'
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
-# The paper size ('letterpaper' or 'a4paper').
-#'papersize': 'letterpaper',
+    # The paper size ('letterpaper' or 'a4paper').
+    #'papersize': 'letterpaper',
 
-# The font size ('10pt', '11pt' or '12pt').
-#'pointsize': '10pt',
+    # The font size ('10pt', '11pt' or '12pt').
+    #'pointsize': '10pt',
 
-# Additional stuff for the LaTeX preamble.
-#'preamble': '',
+    # Additional stuff for the LaTeX preamble.
+    #'preamble': '',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'ReplicationHandler.tex', u'Replication Handler Documentation',
-   u'Cheng Chen, Ryan Irwin', 'manual'),
+    ('index', 'ReplicationHandler.tex', u'Replication Handler Documentation',
+     u'Cheng Chen, Ryan Irwin', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -247,9 +260,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'ReplicationHandler', u'Replication Handler Documentation',
-   u'Cheng Chen, Ryan Irwin', 'ReplicationHandler', 'One line description of project.',
-   'Miscellaneous'),
+    ('index', 'ReplicationHandler', u'Replication Handler Documentation',
+     u'Cheng Chen, Ryan Irwin', 'ReplicationHandler', 'One line description of project.',
+     'Miscellaneous'),
 ]
 
 # Documents to append as an appendix to all manuals.
