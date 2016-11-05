@@ -31,7 +31,7 @@ from replication_handler.testing_helper.config_revamp import reconfigure
 from replication_handler.testing_helper.util import execute_query_get_all_rows
 from replication_handler.testing_helper.util import execute_query_get_one_row
 from replication_handler.testing_helper.util import increment_heartbeat
-from replication_handler.util.misc import transform_time_to_number_of_microseconds
+from replication_handler.util.misc import transform_timedelta_to_number_of_microseconds
 from tests.integration.conftest import _fetch_messages
 from tests.integration.conftest import _generate_basic_model
 from tests.integration.conftest import _verify_messages
@@ -152,10 +152,10 @@ class TestEndToEnd(object):
                 ColumnInfo('TIMESTAMP(6)', mysql.TIMESTAMP(fsp=6), datetime.datetime(1970, 1, 1, 0, 0, 1, 111111)),
                 ColumnInfo('TIMESTAMP(6)', mysql.TIMESTAMP(fsp=6), datetime.datetime(2038, 1, 19, 3, 14, 7, 999999)),
 
-                ColumnInfo('TIME', mysql.TIME(), datetime.time(0, 0, 0, 0)),
-                ColumnInfo('TIME', mysql.TIME(), datetime.time(23, 59, 59, 0)),
-                ColumnInfo('TIME(6)', mysql.TIME(fsp=6), datetime.time(0, 0, 0, 111111)),
-                ColumnInfo('TIME(6)', mysql.TIME(fsp=6), datetime.time(23, 59, 59, 999999)),
+                ColumnInfo('TIME', mysql.TIME(), datetime.timedelta(0, 0, 0)),
+                ColumnInfo('TIME', mysql.TIME(), datetime.timedelta(0, 23 * 3600 + 59 * 60 + 59, 0)),
+                ColumnInfo('TIME(6)', mysql.TIME(fsp=6), datetime.timedelta(0, 0, 111111)),
+                ColumnInfo('TIME(6)', mysql.TIME(fsp=6), datetime.timedelta(0, 23 * 3600 + 59 * 60 + 59, 999999)),
 
                 ColumnInfo('YEAR', mysql.YEAR(), 2000),
                 ColumnInfo('YEAR(4)', mysql.YEAR(display_width=4), 2000),
@@ -296,7 +296,13 @@ class TestEndToEnd(object):
             elif isinstance(complex_column_schema.sqla_obj, mysql.TIMESTAMP):
                 data = complex_column_schema.data.strftime('%Y-%m-%d %H:%M:%S.%f')
             elif isinstance(complex_column_schema.sqla_obj, mysql.TIME):
-                data = complex_column_schema.data.strftime('%H:%M:%S.%f')
+                time = datetime.time(
+                    complex_column_schema.data.seconds / 3600,
+                    (complex_column_schema.data.seconds / 60) % 60,
+                    complex_column_schema.data.seconds % 60,
+                    complex_column_schema.data.microseconds
+                )
+                data = time.strftime('%H:%M:%S.%f')
             else:
                 data = complex_column_schema.data
             res.update({self._build_sql_column_name(indx): data})
@@ -319,7 +325,7 @@ class TestEndToEnd(object):
                     complex_column_schema.data.replace(tzinfo=pytz.utc)
                 expected_complex_data_dict[column_name] = date_time_obj
             elif isinstance(complex_column_schema.sqla_obj, mysql.TIME):
-                number_of_micros = transform_time_to_number_of_microseconds(
+                number_of_micros = transform_timedelta_to_number_of_microseconds(
                     complex_column_schema.data
                 )
                 expected_complex_data_dict[column_name] = number_of_micros

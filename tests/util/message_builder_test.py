@@ -23,7 +23,7 @@ import pytest
 import pytz
 
 from replication_handler.util.message_builder import MessageBuilder
-from replication_handler.util.misc import transform_time_to_number_of_microseconds
+from replication_handler.util.misc import transform_timedelta_to_number_of_microseconds
 
 
 class TestMessageBuilder(object):
@@ -35,7 +35,7 @@ class TestMessageBuilder(object):
             'test_set': set(['ONE']),
             'test_timestamp': datetime.datetime(2015, 12, 31, 0, 59, 59, 999999),
             'test_datetime': datetime.datetime(2015, 12, 31, 0, 59, 59, 999999),
-            'test_time': datetime.time(0, 59, 59, 999999)
+            'test_time': datetime.timedelta(0, 59 * 60 + 59, 999999)
         }}
 
     @pytest.fixture
@@ -47,8 +47,8 @@ class TestMessageBuilder(object):
                 2015, 12, 31, 0, 59, 59, 999999, tzinfo=pytz.utc
             ),
             'test_datetime': '2015-12-31T00:59:59.999999',
-            'test_time': transform_time_to_number_of_microseconds(
-                datetime.time(0, 59, 59, 999999)
+            'test_time': transform_timedelta_to_number_of_microseconds(
+                datetime.timedelta(0, 59 * 60 + 59, 999999)
             ),
         }
 
