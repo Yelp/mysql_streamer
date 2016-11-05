@@ -7,7 +7,7 @@ import logging
 import pytz
 from data_pipeline.message import UpdateMessage
 
-from replication_handler.util.misc import transform_time_to_number_of_microseconds
+from replication_handler.util.misc import transform_timedelta_to_number_of_microseconds
 
 
 log = logging.getLogger('replication_handler.parse_replication_stream')
@@ -89,4 +89,4 @@ class MessageBuilder(object):
             elif column_type.startswith('datetime'):
                 data[column_name] = value.isoformat()
             elif column_type.startswith('time'):
-                data[column_name] = transform_time_to_number_of_microseconds(value)
+                data[column_name] = transform_timedelta_to_number_of_microseconds(value)

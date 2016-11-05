@@ -120,15 +120,8 @@ def get_transaction_id_schema_id(gtid_enabled):
     return schema.schema_id
 
 
-def transform_time_to_number_of_microseconds(value):
-    if hasattr(value, 'hour'):
-        return ((value.hour * 3600000000) +
-            (value.minute * 60000000) +
-            (value.second * 1000000) +
-            (value.microsecond))
-    return ((value.days * 24 * 60 * 60 * 10000000) +
-            (value.seconds * 1000000) +
-            (value.microseconds))
+def transform_timedelta_to_number_of_microseconds(value):
+    return (value.microseconds + (value.seconds + value.days * 86400) * 1000000)
 
 
 def delete_file_if_exists(filename):
