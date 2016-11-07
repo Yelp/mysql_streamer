@@ -109,7 +109,17 @@ def database_sandbox_session():
         config.env_config.rbr_state_cluster,
         is_avoid_internal_packages_set()
     )
-    _per_process_mysql_daemon = PerProcessMySQLDaemon()
+    done_making_mysqld = False
+    retries = 0
+    max_retries = 3
+    while not done_making_mysqld:
+        try:
+            _per_process_mysql_daemon = PerProcessMySQLDaemon()
+            done_making_mysqld = True
+        except RuntimeError as e:
+            retries += 1
+            if retries > max_retries:
+                raise(e)
     _session_prev_engine = db_connections.state_session.bind
 
     db_connections.state_session.bind = _per_process_mysql_daemon.engine
