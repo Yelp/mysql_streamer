@@ -101,7 +101,7 @@ class PerProcessMySQLDaemon(object):
 
 
 @contextlib.contextmanager
-def database_sandbox_session():
+def database_sandbox_session(max_retries=3):
     db_connections = get_connection(
         config.env_config.topology_path,
         config.env_config.rbr_source_cluster,
@@ -111,7 +111,6 @@ def database_sandbox_session():
     )
     done_making_mysqld = False
     retries = 0
-    max_retries = 3
     while not done_making_mysqld:
         try:
             _per_process_mysql_daemon = PerProcessMySQLDaemon()
