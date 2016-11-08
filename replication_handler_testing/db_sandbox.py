@@ -112,13 +112,14 @@ def database_sandbox_session(max_retries=3):
     done_making_mysqld = False
     retries = 0
     while not done_making_mysqld:
+        # Takes time for mysqld to launch, so we will attempt a few times to it
         try:
             _per_process_mysql_daemon = PerProcessMySQLDaemon()
             done_making_mysqld = True
-        except RuntimeError as e:
+        except RuntimeError:
             retries += 1
             if retries > max_retries:
-                raise(e)
+                raise
     _session_prev_engine = db_connections.state_session.bind
 
     db_connections.state_session.bind = _per_process_mysql_daemon.engine
