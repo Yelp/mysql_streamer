@@ -16,6 +16,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import random
 import time
 from contextlib import contextmanager
 
@@ -38,15 +39,19 @@ class TestMySQLParser(object):
         with get_mysql_conn() as conn:
             yield conn
 
+    def _get_random_table_name(self):
+        return 'foo{}'.format(random.random())
+
     def test_parse_create_table_stmt(self, mysql_conn):
-        stmt = 'CREATE TABLE `foo` (id int(11));'
+        table_name = self._get_random_table_name()
+        stmt = 'CREATE TABLE `{}` (id int(11));'.format(table_name)
         self._apply_ddl_stmt(mysql_conn, stmt)
 
         actual = parse_mysql_statement(mysql_conn, mysql_ddl_stmt=stmt)
 
         expected = MySQLTable(
             db_name='test',
-            table_name='foo',
+            table_name=table_name,
             columns=[
                 MySQLColumn(
                     column_name='id', ordinal_position=1,
@@ -61,26 +66,59 @@ class TestMySQLParser(object):
         )
         assert actual == expected
 
-        self._apply_ddl_stmt(mysql_conn, ddl_stmt='DROP TABLE `foo`;')  # clean up
+        self._apply_ddl_stmt(mysql_conn, 'DROP TABLE `{}`;'.format(table_name))
 
-    def test_parse_alter_table_stmt(self):
-        # TODO
-        pass
-
-    def test_parse_create_table_stmt_with_primary_key(self, mysql_conn):
-        stmt = ('CREATE TABLE `foo` ('
-                '  id int(11) not null,'
-                '  pid bigint(12) not null default 10, '
-                '  name varchar(16) CHARACTER SET utf8 COLLATE utf8_general_ci, '
-                '  primary key (pid, id)'
-                ');')
+    def test_parse_alter_table_stmt(self, mysql_conn):
+        table_name = self._get_random_table_name()
+        stmt = 'CREATE TABLE `{}` (id int(11));'.format(table_name)
+        self._apply_ddl_stmt(mysql_conn, stmt)
+        stmt = 'ALTER TABLE `{}` ADD due_by timestamp null;'.format(table_name)
         self._apply_ddl_stmt(mysql_conn, stmt)
 
         actual = parse_mysql_statement(mysql_conn, mysql_ddl_stmt=stmt)
 
         expected = MySQLTable(
             db_name='test',
-            table_name='foo',
+            table_name=table_name,
+            columns=[
+                MySQLColumn(
+                    column_name='id', ordinal_position=1,
+                    column_default=None, is_nullable='YES',
+                    data_type='int', char_max_len=None,
+                    numeric_precision=10, numeric_scale=0,
+                    char_set_name=None, collation_name=None,
+                    column_type='int(11)'
+                ),
+                MySQLColumn(
+                    column_name='due_by', ordinal_position=2,
+                    column_default=None, is_nullable='YES',
+                    data_type='timestamp', char_max_len=None,
+                    numeric_precision=None, numeric_scale=None,
+                    char_set_name=None, collation_name=None,
+                    column_type='timestamp'
+                )
+            ],
+            primary_keys=[]
+        )
+        assert actual == expected
+
+        self._apply_ddl_stmt(mysql_conn, 'DROP TABLE `{}`;'.format(table_name))
+
+    def test_parse_create_table_stmt_with_primary_key(self, mysql_conn):
+        table_name = self._get_random_table_name()
+        stmt = ('CREATE TABLE `{}` ('
+                '  id int(11) not null,'
+                '  pid bigint(12) not null default 10, '
+                '  name varchar(16) CHARACTER SET utf8 COLLATE utf8_general_ci, '
+                '  primary key (pid, id)'
+                ');').format(table_name)
+        self._apply_ddl_stmt(mysql_conn, stmt)
+
+        actual = parse_mysql_statement(mysql_conn, mysql_ddl_stmt=stmt)
+
+        expected = MySQLTable(
+            db_name='test',
+            table_name=table_name,
             columns=[
                 MySQLColumn(
                     column_name='id', ordinal_position=1,
@@ -122,13 +160,13 @@ class TestMySQLParser(object):
         )
         assert actual == expected
 
-        self._apply_ddl_stmt(mysql_conn, ddl_stmt='DROP TABLE `foo`;')  # clean up
+        self._apply_ddl_stmt(mysql_conn, 'DROP TABLE `{}`;'.format(table_name))
 
     def test_parse_empty_mysql_stmt(self, mysql_conn):
         with pytest.raises(ValueError):
             parse_mysql_statement(mysql_conn, mysql_ddl_stmt=' ')
 
-    def test_parse_non_ddl_sttm(self, mysql_conn):
+    def test_parse_non_ddl_stmt(self, mysql_conn):
         # TODO
         pass
 
