@@ -42,13 +42,13 @@ run apt-get update && apt-get upgrade -y && apt-get install -y \
 
 Tests
 -----
-Running unit test
+Running unit tests
 ```
 make -f Makefile-opensource test
 ```
 
 
-Running integration test
+Running integration tests
 ```
 make -f Makefile-opensource itest
 ```
@@ -62,6 +62,11 @@ make -f Makefile-opensource interactive-streamer
 ![MySQL Streamer Demo](https://giant.gfycat.com/AdmiredLiveCopepod.gif)
 
 In the bottom pane, you can execute any mysql statement on a barebones structure we’ve set up. Try creating a table and inserting into it to see it be sent (seen in the replication handler logs in the top right), and then received messages in the top left (seen in the kafka tailer’s logs). The received messages will probably look a little funky - this is because they’re avro-encoded.
+
+
+Disclaimer
+-------
+We're still in the process of setting up this service as a stand-alone. There may be additional work required to run MySQL Streamer instances and integrate with other applications.
 
 
 License
