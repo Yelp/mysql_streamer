@@ -104,10 +104,6 @@ class MySQLDumpHandler(object):
         )
 
         logger.info('Successfully completed restoration')
-        MySQLDumps.delete_mysql_dump(
-            session=self.db_connections.state_session,
-            cluster_name=self.db_connections.tracker_cluster_name
-        )
         delete_file_if_exists(dump_file)
 
     def _create_database_dump(self):
