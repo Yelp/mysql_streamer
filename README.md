@@ -59,7 +59,7 @@ Demo
 ```
 make -f Makefile-opensource interactive-streamer
 ```
-![MySQL Streamer Demo](https://giant.gfycat.com/AdmiredLiveCopepod.gif)
+![MySQL Streamer Demo](MySQLStreamerWorking.gif)
 
 In the bottom pane, you can execute any mysql statement on a barebones structure we’ve set up. Try creating a table and inserting into it to see it be sent (seen in the replication handler logs in the top right), and then received messages in the top left (seen in the kafka tailer’s logs). The received messages will probably look a little funky - this is because they’re avro-encoded.
 
