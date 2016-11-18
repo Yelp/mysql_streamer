@@ -20,7 +20,7 @@ clean:
 
 venv-dev:
 	virtualenv --python=python2.7 ./virtualenv_run
-	./virtualenv_run/bin/pip install -i https://pypi.yelpcorp.com/simple/  -r requirements.d/dev.txt
+	./virtualenv_run/bin/pip install -i https://pypi.yelpcorp.com/simple/  -r requirements.d/dev.txt -r requirements.txt
 
 install-hooks:
 	tox -e pre-commit -- install -f --install-hooks

@@ -1,7 +1,6 @@
 # If there are tools that a developer needs to work on your project.
 # Unit testing tools, mocking frameworks, debuggers, proxies, ...
 # These will be used for tox and other testing environments.
--r ../requirements.txt
 pytest-cov
 docker-compose==1.6.2
 flake8
