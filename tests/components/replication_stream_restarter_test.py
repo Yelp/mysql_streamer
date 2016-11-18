@@ -68,7 +68,7 @@ class TestReplicationStreamRestarter(object):
         return mock_cursor
 
     @pytest.yield_fixture
-    def mock_mysql_dump_handler(self):
+    def patch_mysql_dump_exists(self):
         with mock.patch.object(
             MySQLDumpHandler,
             'mysql_dump_exists'
@@ -84,9 +84,9 @@ class TestReplicationStreamRestarter(object):
         patch_stream_reader,
         patch_get_gtid_to_resume_tailing_from,
         patch_recover,
-        mock_mysql_dump_handler
+        patch_mysql_dump_exists
     ):
-        mock_mysql_dump_handler.return_value = False
+        patch_mysql_dump_exists.return_value = False
         next_event = mock.Mock()
         patch_stream_reader.return_value.next.return_value = next_event
         patch_get_global_event_state.return_value = mock.Mock(
@@ -112,9 +112,9 @@ class TestReplicationStreamRestarter(object):
         patch_stream_reader,
         patch_get_gtid_to_resume_tailing_from,
         patch_recover,
-        mock_mysql_dump_handler
+        patch_mysql_dump_exists
     ):
-        mock_mysql_dump_handler.return_value = True
+        patch_mysql_dump_exists.return_value = True
         patch_get_global_event_state.return_value = mock.Mock(
             event_type=EventType.SCHEMA_EVENT,
             is_clean_shutdown=False
