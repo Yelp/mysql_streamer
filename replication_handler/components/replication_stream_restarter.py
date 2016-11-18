@@ -23,7 +23,6 @@ from replication_handler.components.position_finder import PositionFinder
 from replication_handler.components.recovery_handler import RecoveryHandler
 from replication_handler.components.simple_binlog_stream_reader_wrapper import SimpleBinlogStreamReaderWrapper
 from replication_handler.models.global_event_state import GlobalEventState
-from replication_handler.models.schema_event_state import SchemaEventState
 
 
 log = logging.getLogger('replication_handler.components.replication_stream_restarter')
@@ -40,13 +39,10 @@ class ReplicationStreamRestarter(object):
     """
 
     def __init__(self, db_connections, schema_wrapper, activate_mysql_dump_recovery, gtid_enabled=False):
-        # Both global_event_state and pending_schema_event are information about
-        # last shutdown, we need them to do recovery process.
+        # global_event_state is information about
+        # last shutdown, we need it to do recovery process.
         self.db_connections = db_connections
         self.global_event_state = self._get_global_event_state(
-            self.db_connections.source_cluster_name
-        )
-        self.pending_schema_event = self._get_pending_schema_event_state(
             self.db_connections.source_cluster_name
         )
         self.position_finder = PositionFinder(
@@ -81,10 +77,8 @@ class ReplicationStreamRestarter(object):
                 schema_wrapper=self.schema_wrapper,
                 db_connections=self.db_connections,
                 is_clean_shutdown=self.global_event_state.is_clean_shutdown,
-                pending_schema_event=self.pending_schema_event,
                 register_dry_run=register_dry_run,
                 changelog_mode=changelog_mode,
-                activate_mysql_dump_recovery=self.activate_mysql_dump_recovery,
                 gtid_enabled=self.gtid_enabled
             )
 
@@ -100,18 +94,6 @@ class ReplicationStreamRestarter(object):
         with self.db_connections.state_session.connect_begin(ro=True) as session:
             return copy.copy(
                 GlobalEventState.get(
-                    session,
-                    cluster_name=cluster_name,
-                )
-            )
-
-    def _get_pending_schema_event_state(self, cluster_name):
-        with self.db_connections.state_session.connect_begin(ro=True) as session:
-            # In services we cant do expire_on_commit=False, so
-            # if we want to use the object after the session commits, we
-            # need to figure out a way to hold it. for more context:
-            return copy.copy(
-                SchemaEventState.get_pending_schema_event_state(
                     session,
                     cluster_name=cluster_name,
                 )
