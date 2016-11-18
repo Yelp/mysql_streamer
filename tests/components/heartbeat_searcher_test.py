@@ -25,6 +25,7 @@ from mock import patch
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import UpdateRowsEvent
 
+from replication_handler.components import heartbeat_searcher
 from replication_handler.components.heartbeat_searcher import HeartbeatSearcher
 from replication_handler.util.position import HeartbeatPosition
 
@@ -171,6 +172,9 @@ class CursorMock(MockBinLogEvents):
     def fetchall(self):
         return self.fetch_retv
 
+    def close(self):
+        pass
+
 
 class BinLogStreamMock(MockBinLogEvents):
     """Mock of a binary log stream which supports iteration."""
@@ -312,17 +316,9 @@ class TestHeartbeatSearcher(object):
 
     @pytest.fixture
     def mock_cursor(self, base_data):
-        """Returns a plain mock cursor object.
-        There is a complex implementation of CursorMock in this file
-        which returns some appropreate resultsset needed by the tests,
-        where as mock_db_connections.get_source_cursor
-        is mocked out and does not do anything.
+        """Returns a mock cursor setup to return base event data
         """
         return CursorMock(base_data.events)
-
-    @pytest.fixture
-    def mock_source_cursor(self, mock_cursor):
-        return mock_cursor
 
     @pytest.yield_fixture
     def patch_binlog_stream_reader(self):
@@ -346,11 +342,17 @@ class TestHeartbeatSearcher(object):
 
     @pytest.fixture
     def heartbeat_searcher(self, patch_binlog_stream_reader, mock_db_config, mock_cursor):
-        with patch.object(HeartbeatSearcher, '_get_cursor') as mock_get_cursor:
-            mock_get_cursor().__enter__.return_value = mock_cursor
-            return HeartbeatSearcher(
+        with patch.object(heartbeat_searcher.MySQLdb, 'connect') as mock_connect:
+            mock_connect.return_value.cursor.return_value = mock_cursor
+            searcher = HeartbeatSearcher(
                 db_config=mock_db_config
             )
+            mock_connect.assert_called_once_with(
+                host=mock_db_config.host,
+                passwd=mock_db_config.passwd,
+                user=mock_db_config.user
+            )
+            return searcher
 
     def test_get_position(self, heartbeat_searcher, base_data):
         for hb in base_data.hbs:
