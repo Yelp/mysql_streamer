@@ -337,16 +337,6 @@ class TestHeartbeatSearcher(object):
             yield patch_binlog_stream_reader
 
     @pytest.fixture
-    def heartbeat_binlog_event(self):
-        """Mock binary log event on the heartbeat table"""
-        return Mock(spec=UpdateRowsEvent, schema="yelp_heartbeat")
-
-    @pytest.fixture
-    def nonheartbeat_binlog_event(self):
-        """Mock binary log event which isn't a heartbeat"""
-        return Mock(spec=UpdateRowsEvent, schema="non_yelp_heartbeat")
-
-    @pytest.fixture
     def base_data(self):
         return MockBinLogEvents()
 
