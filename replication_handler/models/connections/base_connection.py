@@ -28,18 +28,20 @@ class BaseConnection(object):
         topology_path,
         source_cluster_name,
         tracker_cluster_name,
-        state_cluster_name
+        state_cluster_name,
+        source_cluster_topology_name=None,
     ):
         self.topology = yaml.load(
             file(topology_path, 'r')
         )
 
         self.source_cluster_name = source_cluster_name
+        self.source_cluster_topology_name = source_cluster_topology_name
         self.tracker_cluster_name = tracker_cluster_name
         self.state_cluster_name = state_cluster_name
 
         self.source_database_config = self._get_cluster_config(
-            self.source_cluster_name
+            self.get_source_database_topology_key()
         )
         self.tracker_database_config = self._get_cluster_config(
             self.tracker_cluster_name
@@ -90,6 +92,17 @@ class BaseConnection(object):
     @contextmanager
     def get_source_cursor(self):
         raise NotImplementedError
+
+    def get_source_database_topology_key(self):
+        """This is used so that the name of the source cluster can differ from
+        the key used to identify the cluster inside of the topology.  This is
+        necessary to support changing the underlying cluster that the
+        replication handler would point to.
+        """
+        if self.source_cluster_topology_name:
+            return self.source_cluster_topology_name
+        else:
+            return self.source_cluster_name
 
     def _get_cluster_config(self, cluster_name):
         for topo_item in self.topology.get('topology'):

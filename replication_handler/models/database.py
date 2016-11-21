@@ -52,7 +52,8 @@ def get_connection(
     source_cluster_name,
     tracker_cluster_name,
     state_cluster_name,
-    force_avoid_internal_packages
+    force_avoid_internal_packages,
+    source_cluster_topology_name=None,
 ):
     try:
         # TODO(DATAPIPE-1509|abrar): Currently we have
@@ -67,7 +68,8 @@ def get_connection(
             topology_path,
             source_cluster_name,
             tracker_cluster_name,
-            state_cluster_name
+            state_cluster_name,
+            source_cluster_topology_name
         )
     except ImportError:
         from replication_handler.models.connections.rh_connection import RHConnection
@@ -75,7 +77,8 @@ def get_connection(
             topology_path,
             source_cluster_name,
             tracker_cluster_name,
-            state_cluster_name
+            state_cluster_name,
+            source_cluster_topology_name
         )
 
 
