@@ -23,7 +23,7 @@ from tests.models.connections.base_connection_test import BaseConnectionTest
 
 @pytest.mark.itest
 @pytest.mark.itest_db
-class TestYelpConnConnection(BaseConnectionTest):
+class TestRHConnection(BaseConnectionTest):
 
     @pytest.fixture
     def connection(
