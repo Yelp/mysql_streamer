@@ -84,7 +84,7 @@ class EnvConfig(BaseConfig):
         can point the rbr_source at a different database in the topology,
         while still treating it as the same virutal cluster.
         """
-        return staticconf.get('rbr_source_cluster_topology_name').value
+        return staticconf.get('rbr_source_cluster_topology_name', default=None).value
 
     @property
     def changelog_schemaname(self):
