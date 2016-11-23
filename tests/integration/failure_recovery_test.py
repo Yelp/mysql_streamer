@@ -175,7 +175,9 @@ class TestFailureRecovery(object):
             'kafka_broker_list': ["{ip}:9092".format(ip=kafka_ip)],
             'kafka_zookeeper': "{ip}:2181".format(ip=zookeeper_ip),
             'zookeeper_discovery_path': create_zk,
-            'kafka_producer_buffer_size': 1
+            'kafka_producer_buffer_size': 1,
+            'key_location': 'acceptance/configs/data_pipeline/',
+            'data_pipeline_teams_config_file_path': 'acceptance/configs/nail-etc/teams.yaml'
         }
 
     @pytest.fixture
