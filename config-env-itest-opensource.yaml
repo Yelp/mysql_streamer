@@ -35,7 +35,6 @@ schema_blacklist:
 module_env_config:
     - namespace: data_pipeline
       config:
-        load_schematizer_host_and_port_from_smartstack: False
         kafka_broker_list:
             - kafka:9092
         kafka_zookeeper: zk:2181
