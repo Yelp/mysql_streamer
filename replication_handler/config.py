@@ -36,7 +36,6 @@ class BaseConfig(object):
 
     def __init__(self, config_path='config.yaml', env_config_path='config-env-dev.yaml'):
         SERVICE_CONFIG_PATH = os.environ.get('SERVICE_CONFIG_PATH', config_path)
-        print "service config file {}".format(SERVICE_CONFIG_PATH)
         SERVICE_ENV_CONFIG_PATH = os.environ.get('SERVICE_ENV_CONFIG_PATH', env_config_path)
         log.info("SERVICE_CONFIG_PATH is {}".format(SERVICE_CONFIG_PATH))
         log.info("SERVICE_ENV_CONFIG_PATH is {}".format(SERVICE_ENV_CONFIG_PATH))

@@ -6,7 +6,8 @@ language: python
 python:
   - '2.7'
 env:
-  SERVICE_CONFIG_PATH: config-opensource.yaml
+  global:
+    - SERVICE_CONFIG_PATH: config-opensource.yaml
 services:
   - docker
 install:
