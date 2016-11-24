@@ -5,9 +5,6 @@ branches:
 language: python
 python:
   - '2.7'
-env:
-  global:
-    - SERVICE_CONFIG_PATH: config-opensource.yaml
 services:
   - docker
 install:

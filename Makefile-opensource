@@ -3,10 +3,10 @@
 DOCKER_TAG ?= replication-handler-opensource-dev-$(USER)
 
 test:
-	OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True tox -c tox-opensource.ini
+	SERVICE_CONFIG_PATH=config-opensource.yaml OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True tox -c tox-opensource.ini
 
 itest: cook-image
-	OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True DOCKER_TAG=$(DOCKER_TAG) tox -c tox-opensource.ini  -e itest
+	SERVICE_CONFIG_PATH=config-opensource.yaml OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True DOCKER_TAG=$(DOCKER_TAG) tox -c tox-opensource.ini  -e itest
 
 itest_db:
 	tox -c tox-opensource.ini -e itest_db
