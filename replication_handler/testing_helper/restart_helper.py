@@ -135,8 +135,7 @@ class SchemaEventTestHandler(SchemaEventHandler):
         event_type,
         cluster_name,
         database_name,
-        table_name,
-        record
+        table_name
     ):
         if self.counter == self.helper.num_of_schema_events:
             log.info("Failing on purpose")
@@ -148,6 +147,5 @@ class SchemaEventTestHandler(SchemaEventHandler):
                 cluster_name=cluster_name,
                 database_name=database_name,
                 table_name=table_name,
-                record=record
             )
             self.counter += 1

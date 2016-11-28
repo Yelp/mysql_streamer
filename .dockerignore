@@ -7,3 +7,4 @@ dist
 *.log
 *.swp
 Dockerfile
+venv

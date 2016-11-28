@@ -31,6 +31,10 @@ from replication_handler.components.mysql_parser import MySQLTable
 from replication_handler.components.mysql_parser import parse_mysql_statement
 
 
+# TODO(justinc|DATAPIPE-2105) Re-enable these tests
+@pytest.mark.skip
+@pytest.mark.itest
+@pytest.mark.itest_db
 class TestMySQLParser(object):
 
     @pytest.yield_fixture(scope='module')

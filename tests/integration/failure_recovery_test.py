@@ -25,7 +25,6 @@ import staticconf.testing
 from data_pipeline.message_type import MessageType
 from data_pipeline.testing_helpers.containers import Containers
 
-from replication_handler.models.schema_event_state import SchemaEventStatus
 from replication_handler.testing_helper.restart_helper import RestartHelper
 from replication_handler.testing_helper.util import execute_query_get_all_rows
 from replication_handler.testing_helper.util import execute_query_get_one_row

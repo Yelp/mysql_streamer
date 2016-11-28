@@ -3,8 +3,6 @@
 # These will be used for tox and other testing environments.
 pytest-cov
 docker-compose==1.6.2
-ipdb
-ipython
 flake8
 mock
 pytest

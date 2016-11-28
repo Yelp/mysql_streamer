@@ -71,7 +71,8 @@ class BaseParseReplicationStream(object):
             config.env_config.rbr_source_cluster,
             config.env_config.schema_tracker_cluster,
             config.env_config.rbr_state_cluster,
-            is_avoid_internal_packages_set()
+            is_avoid_internal_packages_set(),
+            config.env_config.rbr_source_cluster_topology_name,
         )
         self.schema_wrapper = SchemaWrapper(
             db_connections=self.db_connections,

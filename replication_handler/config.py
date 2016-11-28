@@ -67,9 +67,24 @@ class EnvConfig(BaseConfig):
 
     @property
     def rbr_source_cluster(self):
-        """serves as the key to identify the source database in topology.yaml
+        """serves as the key to identify the source database in topology.yaml if
+        rbr_source_cluster_topology_name isn't given, and is used to identify
+        the cluster in message namespaces and stats.
         """
         return staticconf.get('rbr_source_cluster').value
+
+    @property
+    def rbr_source_cluster_topology_name(self):
+        """Serves as the key to identify the source database in topology.yaml if
+        given.  This value should usually not be provided, so the Replication
+        Handler will default to using rbr_source_cluster as both the name of the
+        connection, and the topology key.
+
+        This option is useful when re-parenting a replication handler, since it
+        can point the rbr_source at a different database in the topology,
+        while still treating it as the same virutal cluster.
+        """
+        return staticconf.get('rbr_source_cluster_topology_name', default=None).value
 
     @property
     def changelog_schemaname(self):

@@ -57,9 +57,8 @@ class YelpConnConnection(BaseConnection):
 
     @contextmanager
     def get_source_cursor(self):
-        rbr_source_cluster = self.source_cluster_name
         connection_set = ConnectionSet.rbr_source_ro()
-        db = getattr(connection_set, rbr_source_cluster)
+        db = getattr(connection_set, self.get_source_database_topology_key())
         cursor = db.cursor()
         yield cursor
         cursor.close()
