@@ -58,25 +58,28 @@ class YelpConnConnection(BaseConnection):
     @contextmanager
     def get_source_cursor(self):
         connection_set = ConnectionSet.rbr_source_ro()
-        db = getattr(connection_set, self.get_source_database_topology_key())
-        cursor = db.cursor()
+        connection = getattr(connection_set, self.get_source_database_topology_key())
+        cursor = connection.cursor()
         yield cursor
         cursor.close()
+        connection.close()
 
     @contextmanager
     def get_tracker_cursor(self):
         schema_tracker_cluster = self.tracker_cluster_name
         connection_set = ConnectionSet.schema_tracker_rw()
-        db = getattr(connection_set, schema_tracker_cluster)
-        cursor = db.cursor()
+        connection = getattr(connection_set, schema_tracker_cluster)
+        cursor = connection.cursor()
         yield cursor
         cursor.close()
+        connection.close()
 
     @contextmanager
     def get_state_cursor(self):
         rbr_state_cluster = self.state_cluster_name
         connection_set = ConnectionSet.rbr_state_rw()
-        db = getattr(connection_set, rbr_state_cluster)
-        cursor = db.cursor()
+        connection = getattr(connection_set, rbr_state_cluster)
+        cursor = connection.cursor()
         yield cursor
         cursor.close()
+        connection.close()
