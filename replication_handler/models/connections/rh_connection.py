@@ -70,16 +70,18 @@ class RHConnection(BaseConnection):
     def _get_connection(self, config):
         return MySQLdb.connect(
             host=config['host'],
+            user=config['user'],
             passwd=config['passwd'],
-            user=config['user']
+            port=config['port']
         )
 
     def _get_engine(self, config):
         return create_engine(
-            'mysql://{db_user}@{db_host}/{db_database}'.format(
+            'mysql://{db_user}@{db_host}:{port}/{db_database}'.format(
                 db_user=config['user'],
                 db_host=config['host'],
-                db_database=config['db']
+                db_database=config['db'],
+                port=config['port']
             )
         )
 

@@ -42,20 +42,17 @@ class TestRHConnection(BaseConnectionTest):
         )
 
     def test_source_session(self, connection):
-        with connection.source_session.connect_begin():
-            assert True
+        with connection.source_session.connect_begin() as session:
+            assert len(session.execute('SELECT 1;').fetchone()) == 1
 
     def test_tracker_session(self, connection):
-        with connection.tracker_session.connect_begin():
-            assert True
+        with connection.tracker_session.connect_begin() as session:
+            assert len(session.execute('SELECT 1;').fetchone()) == 1
 
     def test_state_session(self, connection):
-        with connection.state_session.connect_begin():
-            assert True
+        with connection.state_session.connect_begin() as session:
+            assert len(session.execute('SELECT 1;').fetchone()) == 1
 
-    @pytest.mark.skip(
-        reason="Not working, needs investigation."
-    )
     def test_cursors(self, connection):
         with connection.get_source_cursor() as cursor:
             cursor.execute('SELECT 1;')
