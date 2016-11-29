@@ -73,3 +73,9 @@ class TestYelpConnConnection(BaseConnectionTest):
         with connection.get_state_cursor() as cursor:
             cursor.execute('SELECT 1;')
             assert len(cursor.fetchone()) == 1
+
+    def test_tracker_cursor_regression(self, connection):
+        for i in range(1000):
+            with connection.get_source_cursor() as cursor:
+                cursor.execute('SELECT 1;')
+                assert len(cursor.fetchone()) == 1
