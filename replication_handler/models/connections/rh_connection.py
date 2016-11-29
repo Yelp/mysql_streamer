@@ -49,6 +49,7 @@ class RHConnection(BaseConnection):
         cursor = connection.cursor()
         yield cursor
         cursor.close()
+        connection.close()
 
     @contextmanager
     def get_state_cursor(self):
@@ -56,6 +57,7 @@ class RHConnection(BaseConnection):
         cursor = connection.cursor()
         yield cursor
         cursor.close()
+        connection.close()
 
     @contextmanager
     def get_source_cursor(self):
@@ -63,6 +65,7 @@ class RHConnection(BaseConnection):
         cursor = connection.cursor()
         yield cursor
         cursor.close()
+        connection.close()
 
     def _get_connection(self, config):
         return MySQLdb.connect(
