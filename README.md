@@ -36,9 +36,15 @@ run apt-get update && apt-get upgrade -y && apt-get install -y \
    language-pack-en-base \
    uuid-dev \
    git-core \
-   mysql-client-5.5
+   mysql-client-5.5 \
+   libffi-dev \
+   docker.io \
+   make
 ```
 
+```
+run pip install tox
+```
 
 Tests
 -----
