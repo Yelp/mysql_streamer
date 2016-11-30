@@ -191,6 +191,29 @@ class TestMySQLDumpHandler(object):
 
         self.cleanup(mock_mysql_dump_handler)
 
+    def test_persist_with_no_dump(
+        self,
+        create_table_query,
+        mock_db_connections,
+        setup_db_and_get_cursor
+    ):
+        mock_mysql_dump_handler = MySQLDumpHandler(mock_db_connections)
+        with pytest.raises(ValueError):
+            mock_mysql_dump_handler.persist_schema_dump()
+
+    def test_double_create_dump(
+        self,
+        create_table_query,
+        mock_db_connections,
+        setup_db_and_get_cursor
+    ):
+        mock_mysql_dump_handler = MySQLDumpHandler(mock_db_connections)
+        mock_mysql_dump_handler.create_schema_dump()
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert not dump_exists
+        with pytest.raises(ValueError):
+            mock_mysql_dump_handler.create_schema_dump()
+
     def get_number_of_dumps(self, db_connections):
         session = db_connections.state_session
         with session.connect_begin(ro=True) as s:

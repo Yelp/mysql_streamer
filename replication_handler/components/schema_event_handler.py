@@ -58,7 +58,6 @@ class SchemaEventHandler(BaseEventHandler):
         statement = mysql_statement_factory(event.query)
         if self._event_can_be_skipped(event, statement):
             return
-
         query = event.query
         schema = event.schema
 
@@ -186,6 +185,9 @@ class SchemaEventHandler(BaseEventHandler):
         database_name,
         table_name,
     ):
+        # Split creating and persisting dump to minimize time between updated
+        # global event state and new dump being saved.
+        self.mysql_dump_handler.create_schema_dump()
         with self.db_connections.state_session.connect_begin(ro=False) as session:
             GlobalEventState.upsert(
                 session=session,
@@ -195,8 +197,7 @@ class SchemaEventHandler(BaseEventHandler):
                 database_name=database_name,
                 table_name=table_name
             )
-            self.mysql_dump_handler.delete_persisted_dump(
-                active_session=session)
+        return self.mysql_dump_handler.persist_schema_dump()
 
     def _is_query_alter_and_not_rename_table(self, statement):
         return isinstance(

@@ -36,6 +36,36 @@ class MySQLDumpHandler(object):
 
     def __init__(self, db_connections):
         self.db_connections = db_connections
+        self.database_dump = None
+
+    def create_schema_dump(self):
+        """Creates the actual schema dump of the current state of all the
+        databases that are not blacklist. This method creates a secret file to
+        store certain database credentials but cleans up later.
+        Will raise error if a dump is already saved internally. All created
+        schema dumps should eventually be persisted."""
+        if self.database_dump:
+            raise ValueError(
+                "Creating schema_dump when one already exists internally"
+            )
+        self.database_dump = self._create_database_dump()
+
+    def persist_schema_dump(self):
+        """Persists internally stored dump on MySQLDumps table, and clears
+        that stored dump. Will fail if no dump is given.
+
+        Returns: The copy of the record that persists on MySQLDumps table
+        """
+        if self.database_dump is None:
+            raise ValueError("Attempting to persist schema dump that does not exist")
+        MySQLDumps.update_mysql_dump(
+            session=self.db_connections.state_session,
+            database_dump=self.database_dump,
+            cluster_name=self.db_connections.tracker_cluster_name
+        )
+        cleared_dump = self.database_dump
+        self.database_dump = None
+        return cleared_dump
 
     def create_and_persist_schema_dump(self):
         """Creates the actual schema dump of the current state of all the
@@ -48,12 +78,8 @@ class MySQLDumpHandler(object):
 
         Returns: The copy of the record that persists on MySQLDumps table
         """
-        database_dump = self._create_database_dump()
-        MySQLDumps.update_mysql_dump(
-            session=self.db_connections.state_session,
-            database_dump=database_dump,
-            cluster_name=self.db_connections.tracker_cluster_name
-        )
+        self.create_schema_dump()
+        return self.persist_schema_dump()
 
     def delete_persisted_dump(self, active_session=None):
         """Deletes the existing schema dump from MySQLDumps table.
