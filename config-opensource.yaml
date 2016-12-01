@@ -8,7 +8,7 @@ register_dry_run: True
 
 publish_dry_run: True
 
-topology_path: topology.yaml
+topology_path: acceptance/configs/topology.yaml
 
 changelog_schemaname: changelog.v2
 

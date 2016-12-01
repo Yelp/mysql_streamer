@@ -10,7 +10,7 @@ publish_dry_run: True
 
 disable_sensu: True
 
-topology_path: /nail/srv/configs/topology.yaml
+topology_path: acceptance/configs/topology.yaml
 
 namespace: dev
 
