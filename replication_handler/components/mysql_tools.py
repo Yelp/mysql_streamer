@@ -47,7 +47,7 @@ def restore_mysql_dump(db_creds, dump_file):
 
 def create_mysql_dump(db_creds, databases):
     temp_file = _get_dump_file()
-    dump_cmd = "mysqldump --host={} --port={} --user={} --password={} {} {} {} {} --databases {} > {}".format(
+    dump_cmd = "mysqldump --set-gtid-purged=OFF --host={} --port={} --user={} --password={} {} {} {} {} --databases {} > {}".format(
         db_creds['host'],
         db_creds['port'],
         db_creds['user'],
