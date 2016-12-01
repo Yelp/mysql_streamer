@@ -101,6 +101,7 @@ def services_without_repl_handler(dbs):
 
 @pytest.yield_fixture(scope='module')
 def containers(compose_file, services, dbs, replhandler, rbrsource, schematracker):
+    print "using compose_file: {}".format(compose_file)
     with Containers(compose_file, services) as containers:
         # Need to wait for all containers to spin up
         replication_handler_ip = None

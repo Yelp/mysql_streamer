@@ -3,10 +3,10 @@
 DOCKER_TAG ?= replication-handler-opensource-dev-$(USER)
 
 test:
-	OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True tox -c tox-opensource.ini
+	SERVICE_CONFIG_PATH=config-opensource.yaml OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True tox -c tox-opensource.ini
 
 itest: cook-image
-	OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True DOCKER_TAG=$(DOCKER_TAG) tox -c tox-opensource.ini  -e itest
+	SERVICE_CONFIG_PATH=config-opensource.yaml OPEN_SOURCE_MODE=True FORCE_AVOID_INTERNAL_PACKAGES=True DOCKER_TAG=$(DOCKER_TAG) tox -c tox-opensource.ini  -e itest
 
 itest_db:
 	tox -c tox-opensource.ini -e itest_db
@@ -20,13 +20,13 @@ clean:
 
 venv-dev:
 	virtualenv --python=python2.7 ./virtualenv_run
-	./virtualenv_run/bin/pip install -i https://pypi.yelpcorp.com/simple/  -r requirements.d/dev.txt
+	./virtualenv_run/bin/pip install -r requirements.d/dev.txt -r requirements.txt
 
 install-hooks:
 	tox -e pre-commit -- install -f --install-hooks
 
 compose-prefix:
-	@OPEN_SOURCE_MODE=True echo "DOCKER_TAG=$(DOCKER_TAG) `python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"
+	@echo "DOCKER_TAG=$(DOCKER_TAG) `OPEN_SOURCE_MODE=True python -c "from data_pipeline.testing_helpers.containers import Containers; print Containers.compose_prefix()"`"
 
 interactive-streamer: cook-image
 	OPEN_SOURCE_MODE=True DOCKER_TAG=$(DOCKER_TAG) python interactive_streamer.py
