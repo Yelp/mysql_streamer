@@ -18,10 +18,10 @@ from __future__ import unicode_literals
 
 import pytest
 
-from replication_handler_testing import db_sandbox as sandbox
+from replication_handler_testing.db_sandbox import state_sandbox_session
 
 
 @pytest.yield_fixture(scope='module')
 def sandbox_session():
-    with sandbox.database_sandbox_session() as sandbox_session:
-        yield sandbox_session
+    with state_sandbox_session() as session:
+        yield session

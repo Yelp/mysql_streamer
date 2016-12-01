@@ -19,7 +19,8 @@ from __future__ import unicode_literals
 import pytest
 
 from replication_handler.environment_configs import is_envvar_set
-from tests.models.connections.base_connection_test import BaseConnectionTest
+from replication_handler_testing.db_sandbox import get_db_connections
+from replication_handler_testing.db_sandbox import launch_mysql_daemon
 
 
 @pytest.mark.itest
@@ -28,23 +29,11 @@ from tests.models.connections.base_connection_test import BaseConnectionTest
     is_envvar_set('OPEN_SOURCE_MODE'),
     reason="skip this in open source mode."
 )
-class TestYelpConnConnection(BaseConnectionTest):
+class TestYelpConnConnection(object):
 
     @pytest.fixture
-    def connection(
-        self,
-        simple_topology_file,
-        mock_source_cluster_name,
-        mock_tracker_cluster_name,
-        mock_state_cluster_name
-    ):
-        from replication_handler.models.connections.yelp_conn_connection import YelpConnConnection
-        return YelpConnConnection(
-            simple_topology_file,
-            mock_source_cluster_name,
-            mock_tracker_cluster_name,
-            mock_state_cluster_name
-        )
+    def connection(self):
+        return get_db_connections(launch_mysql_daemon())
 
     def test_source_session(self, connection):
         with connection.source_session.connect_begin(ro=True):

@@ -18,28 +18,22 @@ from __future__ import unicode_literals
 
 import pytest
 
-from tests.models.connections.base_connection_test import BaseConnectionTest
+from replication_handler.environment_configs import is_envvar_set
+from replication_handler_testing.db_sandbox import get_db_connections
+from replication_handler_testing.db_sandbox import launch_mysql_daemon
 
 
 @pytest.mark.itest
 @pytest.mark.itest_db
-class TestRHConnection(BaseConnectionTest):
+@pytest.mark.skipif(
+    not is_envvar_set('OPEN_SOURCE_MODE'),
+    reason="skip this in non open source mode."
+)
+class TestRHConnection(object):
 
     @pytest.fixture
-    def connection(
-        self,
-        simple_topology_file,
-        mock_source_cluster_name,
-        mock_tracker_cluster_name,
-        mock_state_cluster_name
-    ):
-        from replication_handler.models.connections.rh_connection import RHConnection
-        return RHConnection(
-            simple_topology_file,
-            mock_source_cluster_name,
-            mock_tracker_cluster_name,
-            mock_state_cluster_name
-        )
+    def connection(self):
+        return get_db_connections(launch_mysql_daemon())
 
     def test_source_session(self, connection):
         with connection.source_session.connect_begin() as session:
