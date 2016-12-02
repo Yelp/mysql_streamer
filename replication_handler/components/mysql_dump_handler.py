@@ -67,38 +67,6 @@ class MySQLDumpHandler(object):
         self.database_dump = None
         return cleared_dump
 
-    def create_and_persist_schema_dump(self):
-        """Creates the actual schema dump of the current state of all the
-        databases that are not blacklisted and persists that dump on MySQLDumps
-        table. This method creates a secret file to store certain database
-        credentials but cleans up later and hence is idempotent.
-        The current blacklisted databases are:
-        1. information_schema
-        2. yelp_heartbeat
-
-        Returns: The copy of the record that persists on MySQLDumps table
-        """
-        self.create_schema_dump()
-        return self.persist_schema_dump()
-
-    def delete_persisted_dump(self, active_session=None):
-        """Deletes the existing schema dump from MySQLDumps table.
-        Args:
-            active_session: Session to connect the database with.
-            This parameter was added specifically to run the delete in the same
-            transaction as the update to the global_event_state table.
-        """
-        if active_session:
-            MySQLDumps.delete_mysql_dump_with_active_session(
-                session=active_session,
-                cluster_name=self.db_connections.tracker_cluster_name
-            )
-        else:
-            MySQLDumps.delete_mysql_dump(
-                session=self.db_connections.state_session,
-                cluster_name=self.db_connections.tracker_cluster_name
-            )
-
     def mysql_dump_exists(self):
         """Checks the MySQL dump table to see if a row exists or not
         """

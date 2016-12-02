@@ -625,6 +625,7 @@ class TestSchemaEventHandler(object):
             external_patches,
             producer,
             stats_counter,
+            mock_persist_dump
         )
 
     def test_incomplete_transaction(
@@ -646,6 +647,7 @@ class TestSchemaEventHandler(object):
         with pytest.raises(Exception):
             schema_event_handler.handle_event(alter_table_schema_event, test_position)
         assert external_patches.upsert_global_event_state.call_count == 0
+        assert mock_persist_dump.call_count == 0
         assert producer.flush.call_count == 1
         assert save_position.call_count == 1
 
@@ -671,8 +673,8 @@ class TestSchemaEventHandler(object):
         """
 
         # Backup dump, then checkpoint dump
-        assert mock_create_dump.call_count == 2
-        assert mock_persist_dump.call_count == 2
+        assert mock_create_dump.call_count == 1
+        assert mock_persist_dump.call_count == 1
         # Make sure query was executed on tracking db
         # execute of show create is mocked out above
         assert external_patches.execute_query.call_count == 1
@@ -756,6 +758,7 @@ class TestSchemaEventHandler(object):
                 external_patches,
                 producer,
                 stats_counter,
+                mock_persist_dump
             )
             assert mock_statement_factory.call_count == 1
 
@@ -767,9 +770,11 @@ class TestSchemaEventHandler(object):
         external_patches,
         producer,
         stats_counter,
+        mock_persist_dump
     ):
         schema_event_handler.handle_event(query_event, test_position)
         assert external_patches.execute_query.call_count == 0
         assert producer.flush.call_count == 0
+        assert mock_persist_dump.call_count == 0
         if stats_counter:
             assert stats_counter.increment.call_count == 0

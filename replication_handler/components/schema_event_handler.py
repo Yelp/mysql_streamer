@@ -73,8 +73,6 @@ class SchemaEventHandler(BaseEventHandler):
             state_session=self.db_connections.state_session
         )
 
-        self.mysql_dump_handler.create_and_persist_schema_dump()
-
         if self._is_query_alter_and_not_rename_table(statement):
             # TODO: DATAPIPE-1963
             if schema is None or not schema.strip():

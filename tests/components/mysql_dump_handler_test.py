@@ -112,8 +112,8 @@ class TestMySQLDumpHandler(object):
             tracker_cursor.execute('drop table one')
             tracker_cursor.execute('drop table two')
 
-    def cleanup(self, mock_mysql_dump_handler):
-        mock_mysql_dump_handler.delete_persisted_dump()
+    def cleanup(self, mock_mysql_dump_handler, db_connections):
+        self.delete_persisted_dump(db_connections)
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert not dump_exists
 
@@ -132,7 +132,8 @@ class TestMySQLDumpHandler(object):
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert not dump_exists
 
-        mock_mysql_dump_handler.create_and_persist_schema_dump()
+        mock_mysql_dump_handler.create_schema_dump()
+        mock_mysql_dump_handler.persist_schema_dump()
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert dump_exists
 
@@ -148,7 +149,7 @@ class TestMySQLDumpHandler(object):
         assert ('one',) in all_tables
         assert ('two',) in all_tables
 
-        self.cleanup(mock_mysql_dump_handler)
+        self.cleanup(mock_mysql_dump_handler, mock_db_connections)
 
     def test_create_and_persist_dump(
         self,
@@ -161,11 +162,12 @@ class TestMySQLDumpHandler(object):
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert not dump_exists
 
-        mock_mysql_dump_handler.create_and_persist_schema_dump()
+        mock_mysql_dump_handler.create_schema_dump()
+        mock_mysql_dump_handler.persist_schema_dump()
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert dump_exists
 
-        self.cleanup(mock_mysql_dump_handler)
+        self.cleanup(mock_mysql_dump_handler, mock_db_connections)
 
     def test_create_two_dumps(
         self,
@@ -177,7 +179,8 @@ class TestMySQLDumpHandler(object):
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert not dump_exists
 
-        mock_mysql_dump_handler.create_and_persist_schema_dump()
+        mock_mysql_dump_handler.create_schema_dump()
+        mock_mysql_dump_handler.persist_schema_dump()
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert dump_exists
 
@@ -185,11 +188,12 @@ class TestMySQLDumpHandler(object):
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert dump_exists
 
-        mock_mysql_dump_handler.create_and_persist_schema_dump()
+        mock_mysql_dump_handler.create_schema_dump()
+        mock_mysql_dump_handler.persist_schema_dump()
         # Creating another dump should cause us to only have one dump
         assert self.get_number_of_dumps(mock_db_connections) == 1
 
-        self.cleanup(mock_mysql_dump_handler)
+        self.cleanup(mock_mysql_dump_handler, mock_db_connections)
 
     def test_persist_with_no_dump(
         self,
@@ -223,3 +227,9 @@ class TestMySQLDumpHandler(object):
             ).filter(
                 MySQLDumps.cluster_name == cluster_name
             ).scalar()
+
+    def delete_persisted_dump(self, db_connections):
+        MySQLDumps.delete_mysql_dump(
+            session=db_connections.state_session,
+            cluster_name=db_connections.tracker_cluster_name
+        )

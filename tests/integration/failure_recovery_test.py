@@ -565,7 +565,7 @@ class TestFailureRecovery(object):
             num_of_queries_to_process=3,
             end_time=30,
             is_schema_event_helper_enabled=True,
-            num_of_schema_events=0,
+            num_of_schema_events=1  # CREATE TABLE, alter statement will be cut off
         )
 
         execute_query_get_one_row(
