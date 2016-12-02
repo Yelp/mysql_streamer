@@ -20,11 +20,13 @@ import pytest
 import staticconf
 import staticconf.testing
 from data_pipeline.testing_helpers.containers import Containers
+from sqlalchemy import func
 
 from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
 from replication_handler.environment_configs import \
     is_avoid_internal_packages_set
 from replication_handler.models.database import get_connection
+from replication_handler.models.mysql_dumps import MySQLDumps
 
 
 @pytest.mark.itest
@@ -110,6 +112,11 @@ class TestMySQLDumpHandler(object):
             tracker_cursor.execute('drop table one')
             tracker_cursor.execute('drop table two')
 
+    def cleanup(self, mock_mysql_dump_handler, db_connections):
+        self.delete_persisted_dump(db_connections)
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert not dump_exists
+
     def test_recovery_from_schema_dump(
         self,
         create_table_query,
@@ -125,7 +132,8 @@ class TestMySQLDumpHandler(object):
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert not dump_exists
 
-        mock_mysql_dump_handler.create_and_persist_schema_dump()
+        mock_mysql_dump_handler.create_schema_dump()
+        mock_mysql_dump_handler.persist_schema_dump()
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert dump_exists
 
@@ -141,9 +149,7 @@ class TestMySQLDumpHandler(object):
         assert ('one',) in all_tables
         assert ('two',) in all_tables
 
-        mock_mysql_dump_handler.delete_persisted_dump()
-        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
-        assert not dump_exists
+        self.cleanup(mock_mysql_dump_handler, mock_db_connections)
 
     def test_create_and_persist_dump(
         self,
@@ -156,6 +162,74 @@ class TestMySQLDumpHandler(object):
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert not dump_exists
 
-        mock_mysql_dump_handler.create_and_persist_schema_dump()
+        mock_mysql_dump_handler.create_schema_dump()
+        mock_mysql_dump_handler.persist_schema_dump()
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert dump_exists
+
+        self.cleanup(mock_mysql_dump_handler, mock_db_connections)
+
+    def test_create_two_dumps(
+        self,
+        create_table_query,
+        mock_db_connections,
+        setup_db_and_get_cursor
+    ):
+        mock_mysql_dump_handler = MySQLDumpHandler(mock_db_connections)
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert not dump_exists
+
+        mock_mysql_dump_handler.create_schema_dump()
+        mock_mysql_dump_handler.persist_schema_dump()
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert dump_exists
+
+        mock_mysql_dump_handler.recover()
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert dump_exists
+
+        mock_mysql_dump_handler.create_schema_dump()
+        mock_mysql_dump_handler.persist_schema_dump()
+        # Creating another dump should cause us to only have one dump
+        assert self.get_number_of_dumps(mock_db_connections) == 1
+
+        self.cleanup(mock_mysql_dump_handler, mock_db_connections)
+
+    def test_persist_with_no_dump(
+        self,
+        create_table_query,
+        mock_db_connections,
+        setup_db_and_get_cursor
+    ):
+        mock_mysql_dump_handler = MySQLDumpHandler(mock_db_connections)
+        with pytest.raises(ValueError):
+            mock_mysql_dump_handler.persist_schema_dump()
+
+    def test_double_create_dump(
+        self,
+        create_table_query,
+        mock_db_connections,
+        setup_db_and_get_cursor
+    ):
+        mock_mysql_dump_handler = MySQLDumpHandler(mock_db_connections)
+        mock_mysql_dump_handler.create_schema_dump()
+        dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
+        assert not dump_exists
+        with pytest.raises(ValueError):
+            mock_mysql_dump_handler.create_schema_dump()
+
+    def get_number_of_dumps(self, db_connections):
+        session = db_connections.state_session
+        with session.connect_begin(ro=True) as s:
+            cluster_name = db_connections.tracker_cluster_name
+            return s.query(
+                func.count(MySQLDumps)
+            ).filter(
+                MySQLDumps.cluster_name == cluster_name
+            ).scalar()
+
+    def delete_persisted_dump(self, db_connections):
+        MySQLDumps.delete_mysql_dump(
+            session=db_connections.state_session,
+            cluster_name=db_connections.tracker_cluster_name
+        )
