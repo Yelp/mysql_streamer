@@ -24,7 +24,7 @@ kafka-python==0.9.5.post6
 kazoo==2.2
 mccabe==0.5.0
 mrjob==0.4.3.post7
--e git://github.com/kdparker/python-mysql-replication.git#egg=mysql-replication
+mysql-replication==0.10.0
 pep8==1.5.7
 pii_generator==0.1.5
 ply==3.4
