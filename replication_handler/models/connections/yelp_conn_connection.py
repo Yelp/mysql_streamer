@@ -33,10 +33,6 @@ class YelpConnConnection(BaseConnection):
         yelp_conn.initialize()
         super(YelpConnConnection, self).__init__(*args, **kwargs)
 
-    def __del__(self):
-        yelp_conn.reset_module()
-        super(YelpConnConnection, self).__del__()
-
     def _set_source_session(self):
         self._source_session = scoped_session(
             sessionmaker(slave_connection_set_name=str("rbr_source_ro"))
