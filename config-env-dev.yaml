@@ -25,6 +25,7 @@ schema_blacklist:
     - mysql
     - performance_schema
     - test
+    - yelp_heartbeat
 
 table_whitelist:
     - advertiser
@@ -32,7 +33,6 @@ table_whitelist:
     - payment_account_entity
     - payment_feature
     - payment_program
-    - replication_heartbeat
     - salesperson
 
 module_env_config:
