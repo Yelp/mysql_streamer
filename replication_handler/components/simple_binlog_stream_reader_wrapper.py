@@ -28,7 +28,6 @@ from pymysqlreplication.event import GtidEvent
 from replication_handler import config
 from replication_handler.components.base_binlog_stream_reader_wrapper import BaseBinlogStreamReaderWrapper
 from replication_handler.components.low_level_binlog_stream_reader_wrapper import LowLevelBinlogStreamReaderWrapper
-from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.util.misc import HEARTBEAT_DB
 from replication_handler.util.misc import ReplicationHandlerEvent
 from replication_handler.util.position import GtidPosition
@@ -73,13 +72,6 @@ class SimpleBinlogStreamReaderWrapper(BaseBinlogStreamReaderWrapper):
     @classmethod
     def is_meteorite_sensu_supported(cls):
         try:
-            # TODO(DATAPIPE-1509|abrar): Currently we have
-            # force_avoid_internal_packages as a means of simulating an absence
-            # of a yelp's internal package. And all references
-            # of force_avoid_internal_packages have to be removed from
-            # RH after we are completely ready for open source.
-            if is_avoid_internal_packages_set():
-                raise ImportError
             from data_pipeline.tools.meteorite_gauge_manager import MeteoriteGaugeManager  # NOQA
             from data_pipeline.tools.sensu_alert_manager import SensuAlertManager  # NOQA
             return True

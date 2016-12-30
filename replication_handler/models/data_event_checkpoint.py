@@ -24,7 +24,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 
 from replication_handler import config
-from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.helpers.dates import default_now
 from replication_handler.models.database import Base
 from replication_handler.models.database import UnixTimeStampType
@@ -102,13 +101,6 @@ class DataEventCheckpoint(Base):
     @classmethod
     def is_meteorite_supported(cls):
         try:
-            # TODO(DATAPIPE-1509|abrar): Currently we have
-            # force_avoid_internal_packages as a means of simulating an absence
-            # of a yelp's internal package. And all references
-            # of force_avoid_internal_packages have to be removed from
-            # RH after we are completely ready for open source.
-            if is_avoid_internal_packages_set():
-                raise ImportError
             from data_pipeline.tools.meteorite_wrappers import StatTimer  # NOQA
             return True
         except ImportError:

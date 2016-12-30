@@ -35,7 +35,6 @@ from replication_handler.util.position import GtidPosition
 from replication_handler.util.position import LogPosition
 from replication_handler_testing.events import make_data_create_event
 from replication_handler_testing.events import make_data_update_event
-from tests.components.base_event_handler_test import get_mock_stats_counters
 
 
 DataHandlerExternalPatches = namedtuple(
@@ -65,17 +64,13 @@ class TestDataEventHandler(object):
     def test_gtid(self):
         return "93fd11e6-cf7c-11e4-912d-0242a9fe01db:12"
 
-    @pytest.fixture(params=get_mock_stats_counters())
-    def stats_counter(self, request):
-        # Need a way to detect if replication handler is run internally
-        # or open-source mode and then dynamically set stats_counter fixture.
-        # Hence parameterizing stats_counter fixture with the return value of a
-        # function `mock_stats_counters`.
-        # Because mock_stats_counters is a module scoped fucntion and not a fixture
-        # its not evaluated of every test so we need to reset_mock.
-        if isinstance(request.param, mock.Mock):
-            request.param.reset_mock()
-        return request.param
+    @pytest.fixture
+    def stats_counter(self):
+        try:
+            from data_pipeline.tools.meteorite_wrappers import StatsCounter
+            return mock.Mock(autospec=StatsCounter)
+        except ImportError:
+            return None
 
     @pytest.fixture
     def mock_source_cluster_name(self):
