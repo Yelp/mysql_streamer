@@ -21,7 +21,6 @@ from collections import namedtuple
 
 from replication_handler.components.schema_tracker import SchemaTracker
 from replication_handler.config import env_config
-from replication_handler.environment_configs import is_avoid_internal_packages_set
 
 
 log = logging.getLogger('replication_handler.components.schema_wrapper')
@@ -65,13 +64,6 @@ class SchemaWrapper(object):
     @classmethod
     def is_pii_supported(cls):
         try:
-            # TODO(DATAPIPE-1509|abrar): Currently we have
-            # force_avoid_internal_packages as a means of simulating an absence
-            # of a yelp's internal package. And all references
-            # of force_avoid_internal_packages have to be removed from
-            # RH after we are completely ready for open source.
-            if is_avoid_internal_packages_set():
-                raise ImportError
             from pii_generator.components.pii_identifier import PIIIdentifier  # NOQA
             return True
         except ImportError:

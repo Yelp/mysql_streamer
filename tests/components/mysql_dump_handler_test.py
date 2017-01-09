@@ -23,8 +23,6 @@ from data_pipeline.testing_helpers.containers import Containers
 from sqlalchemy import func
 
 from replication_handler.components.mysql_dump_handler import MySQLDumpHandler
-from replication_handler.environment_configs import \
-    is_avoid_internal_packages_set
 from replication_handler.models.database import get_connection
 from replication_handler.models.mysql_dumps import MySQLDumps
 
@@ -88,7 +86,6 @@ class TestMySQLDumpHandler(object):
             mock_source_cluster_name,
             mock_tracker_cluster_name,
             mock_state_cluster_name,
-            is_avoid_internal_packages_set()
         )
 
     @pytest.fixture
