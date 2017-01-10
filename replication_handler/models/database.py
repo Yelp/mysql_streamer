@@ -20,19 +20,11 @@ import simplejson as json
 from sqlalchemy import types
 
 from replication_handler.config import env_config
-from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.helpers import dates
 
 
 def get_base_model():
     try:
-        if is_avoid_internal_packages_set():
-            # TODO(DATAPIPE-1509|abrar): Currently we have
-            # force_avoid_internal_packages as a means of simulating an absence
-            # of a yelp's internal package. And all references
-            # of force_avoid_internal_packages have to be removed from
-            # RH after we have completely ready for open source.
-            raise ImportError
         from yelp_conn.session import declarative_base
         return declarative_base()
     except ImportError:
@@ -52,17 +44,9 @@ def get_connection(
     source_cluster_name,
     tracker_cluster_name,
     state_cluster_name,
-    force_avoid_internal_packages,
     source_cluster_topology_name=None,
 ):
     try:
-        # TODO(DATAPIPE-1509|abrar): Currently we have
-        # force_avoid_internal_packages as a means of simulating an absence
-        # of a yelp's internal package. And all references
-        # of force_avoid_internal_packages have to be removed from
-        # RH after we have completely ready for open source.
-        if force_avoid_internal_packages:
-            raise ImportError
         from replication_handler.models.connections.yelp_conn_connection import YelpConnConnection
         return YelpConnConnection(
             topology_path,

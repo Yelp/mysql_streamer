@@ -34,7 +34,6 @@ from replication_handler.components.schema_wrapper import SchemaWrapper
 from replication_handler.models.global_event_state import GlobalEventState
 from replication_handler.util.position import GtidPosition
 from replication_handler_testing.events import QueryEvent
-from tests.components.base_event_handler_test import get_mock_stats_counters
 
 
 SchemaHandlerExternalPatches = namedtuple(
@@ -67,24 +66,28 @@ class TestSchemaEventHandler(object):
         )
 
     @pytest.yield_fixture
-    def mock_dump_handler(self):
+    def mock_create_dump(self):
         with mock.patch.object(
             MySQLDumpHandler,
-            'create_and_persist_schema_dump'
+            'create_schema_dump'
         ) as mock_create_dump:
             yield mock_create_dump
 
-    @pytest.fixture(params=get_mock_stats_counters())
-    def stats_counter(self, request):
-        # Need a way to detect if replication handler is run internally
-        # or open-source mode and then dynamically set stats_counter fixture.
-        # Hence parameterizing stats_counter fixture with the return value of a
-        # function `mock_stats_counters`.
-        # Because mock_stats_counters is a module scoped fucntion and not a fixture
-        # its not evaluated of every test so we need to reset_mock.
-        if isinstance(request.param, mock.Mock):
-            request.param.reset_mock()
-        return request.param
+    @pytest.yield_fixture
+    def mock_persist_dump(self):
+        with mock.patch.object(
+            MySQLDumpHandler,
+            'persist_schema_dump'
+        ) as mock_persist_dump:
+            yield mock_persist_dump
+
+    @pytest.fixture
+    def stats_counter(self):
+        try:
+            from data_pipeline.tools.meteorite_wrappers import StatsCounter
+            return mock.Mock(autospec=StatsCounter)
+        except ImportError:
+            return None
 
     @pytest.fixture
     def mock_source_cluster_name(self):
@@ -429,7 +432,8 @@ class TestSchemaEventHandler(object):
         table_with_schema_changes,
         alter_table_schema_store_response,
         test_schema,
-        mock_dump_handler
+        mock_create_dump,
+        mock_persist_dump
     ):
         """Integration test the things that need to be called for handling an
            event with an alter table hence many mocks.
@@ -460,7 +464,8 @@ class TestSchemaEventHandler(object):
             alter_table_schema_store_response,
             external_patches,
             test_schema,
-            mock_dump_handler,
+            mock_create_dump,
+            mock_persist_dump,
             mysql_statements=mysql_statements
         )
         assert producer.flush.call_count == 1
@@ -483,7 +488,8 @@ class TestSchemaEventHandler(object):
         table_with_schema_changes,
         alter_table_schema_store_response,
         test_schema,
-        mock_dump_handler
+        mock_create_dump,
+        mock_persist_dump
     ):
         if not stats_counter:
             pytest.skip("StatsCounter is not supported in open source version.")
@@ -503,7 +509,8 @@ class TestSchemaEventHandler(object):
             table_with_schema_changes,
             alter_table_schema_store_response,
             test_schema,
-            mock_dump_handler
+            mock_create_dump,
+            mock_persist_dump
         )
         assert stats_counter.increment.call_count == 1
         assert stats_counter.increment.call_args[0][0] == alter_table_schema_event.query
@@ -518,7 +525,8 @@ class TestSchemaEventHandler(object):
         schema_wrapper_mock,
         mock_db_connections,
         stats_counter,
-        mock_dump_handler
+        mock_create_dump,
+        mock_persist_dump
     ):
         schema_event_handler = SchemaEventHandler(
             db_connections=mock_db_connections,
@@ -552,7 +560,8 @@ class TestSchemaEventHandler(object):
         external_patches,
         schema_event_handler,
         alter_table_schema_event,
-        mock_dump_handler
+        mock_create_dump,
+        mock_persist_dump
     ):
         external_patches.database_config.return_value = ['fake_schema']
         schema_event_handler.handle_event(alter_table_schema_event, test_position)
@@ -568,7 +577,8 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         mock_schema_tracker_cursor,
         non_schema_relevant_query_event,
-        mock_dump_handler
+        mock_create_dump,
+        mock_persist_dump
     ):
         schema_event_handler.handle_event(non_schema_relevant_query_event, test_position)
         assert external_patches.execute_query.call_count == 1
@@ -600,7 +610,8 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         mock_schema_tracker_cursor,
         unsupported_query_event,
-        mock_dump_handler
+        mock_create_dump,
+        mock_persist_dump
     ):
         self._assert_query_skipped(
             schema_event_handler,
@@ -609,6 +620,7 @@ class TestSchemaEventHandler(object):
             external_patches,
             producer,
             stats_counter,
+            mock_persist_dump
         )
 
     def test_incomplete_transaction(
@@ -620,7 +632,8 @@ class TestSchemaEventHandler(object):
         schema_event_handler,
         alter_table_schema_event,
         show_create_result_initial,
-        mock_dump_handler
+        mock_create_dump,
+        mock_persist_dump
     ):
         external_patches.get_show_create_statement.side_effect = [
             show_create_result_initial,
@@ -629,6 +642,7 @@ class TestSchemaEventHandler(object):
         with pytest.raises(Exception):
             schema_event_handler.handle_event(alter_table_schema_event, test_position)
         assert external_patches.upsert_global_event_state.call_count == 0
+        assert mock_persist_dump.call_count == 0
         assert producer.flush.call_count == 1
         assert save_position.call_count == 1
 
@@ -645,16 +659,19 @@ class TestSchemaEventHandler(object):
         schema_store_response,
         external_patches,
         test_schema,
-        mock_dump_handler,
+        mock_create_dump,
+        mock_persist_dump,
         mysql_statements=None
     ):
         """Test helper method that checks various things in a successful scenario
            of event handling
         """
 
+        # Backup dump, then checkpoint dump
+        assert mock_create_dump.call_count == 1
+        assert mock_persist_dump.call_count == 1
         # Make sure query was executed on tracking db
         # execute of show create is mocked out above
-        assert mock_dump_handler.call_count == 1
         assert external_patches.execute_query.call_count == 1
         assert external_patches.execute_query.call_args_list == [
             mock.call(query=event.query, database_name=test_schema)
@@ -703,7 +720,8 @@ class TestSchemaEventHandler(object):
         test_position,
         create_table_schema_event,
         mock_schema_tracker_cursor,
-        mock_dump_handler
+        mock_create_dump,
+        mock_persist_dump
     ):
         external_patches.dry_run_config.return_value = True
         dry_run_schema_event_handler.handle_event(create_table_schema_event, test_position)
@@ -721,7 +739,8 @@ class TestSchemaEventHandler(object):
         external_patches,
         schema_event_handler,
         mock_schema_tracker_cursor,
-        mock_dump_handler
+        mock_create_dump,
+        mock_persist_dump
     ):
         with mock.patch(
             'replication_handler.components.schema_event_handler.mysql_statement_factory',
@@ -734,6 +753,7 @@ class TestSchemaEventHandler(object):
                 external_patches,
                 producer,
                 stats_counter,
+                mock_persist_dump
             )
             assert mock_statement_factory.call_count == 1
 
@@ -745,9 +765,11 @@ class TestSchemaEventHandler(object):
         external_patches,
         producer,
         stats_counter,
+        mock_persist_dump
     ):
         schema_event_handler.handle_event(query_event, test_position)
         assert external_patches.execute_query.call_count == 0
         assert producer.flush.call_count == 0
+        assert mock_persist_dump.call_count == 0
         if stats_counter:
             assert stats_counter.increment.call_count == 0

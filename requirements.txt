@@ -24,7 +24,7 @@ kafka-python==0.9.5.post6
 kazoo==2.2
 mccabe==0.5.0
 mrjob==0.4.3.post7
--e git://github.com/kdparker/python-mysql-replication.git#egg=mysql-replication
+mysql-replication==0.10.0
 pep8==1.5.7
 pii_generator==0.1.5
 ply==3.4
@@ -42,7 +42,6 @@ setproctitle==1.1.8
 simplejson==3.6.5
 six==1.9.0
 -e git://github.com/Yelp/sqlparse.git@4fbab9c395752294225f60393cc0a19d6fb62d54#egg=sqlparse
-testing.mysqld
 thriftpy==0.1.15
 vmprof==0.2.7
 wheel==0.24.0

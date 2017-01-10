@@ -17,11 +17,72 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import pytest
+import staticconf.testing
+from data_pipeline.testing_helpers.containers import Containers
 
-from replication_handler_testing.db_sandbox import state_sandbox_session
+from replication_handler.models.database import get_connection
 
 
-@pytest.yield_fixture(scope='module')
-def sandbox_session():
-    with state_sandbox_session() as session:
+@pytest.fixture
+def mock_source_cluster_host(
+    containers_without_repl_handler
+):
+    return Containers.get_container_ip_address(
+        project=containers_without_repl_handler.project,
+        service='rbrsource'
+    )
+
+
+@pytest.fixture
+def mock_tracker_cluster_host(
+    containers_without_repl_handler
+):
+    return Containers.get_container_ip_address(
+        project=containers_without_repl_handler.project,
+        service='schematracker'
+    )
+
+
+@pytest.fixture
+def mock_state_cluster_host(
+    containers_without_repl_handler
+):
+    return Containers.get_container_ip_address(
+        project=containers_without_repl_handler.project,
+        service='rbrstate'
+    )
+
+
+@pytest.yield_fixture
+def yelp_conn_conf(topology_path):
+    yelp_conn_configs = {
+        'topology': topology_path,
+        'connection_set_file': 'connection_sets.yaml'
+    }
+    with staticconf.testing.MockConfiguration(
+        yelp_conn_configs,
+        namespace='yelp_conn'
+    ) as mock_conf:
+        yield mock_conf
+
+
+@pytest.yield_fixture
+def mock_db_connections(
+    topology_path,
+    mock_source_cluster_name,
+    mock_tracker_cluster_name,
+    mock_state_cluster_name,
+    yelp_conn_conf
+):
+    yield get_connection(
+        topology_path,
+        mock_source_cluster_name,
+        mock_tracker_cluster_name,
+        mock_state_cluster_name,
+    )
+
+
+@pytest.yield_fixture
+def sandbox_session(mock_db_connections):
+    with mock_db_connections.state_session.connect_begin(ro=False) as session:
         yield session

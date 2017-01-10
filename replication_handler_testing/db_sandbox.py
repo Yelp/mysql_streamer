@@ -28,7 +28,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker as sessionmaker_sa
 
 from replication_handler import config
-from replication_handler.environment_configs import is_avoid_internal_packages_set
 from replication_handler.models.database import get_connection
 
 
@@ -183,8 +182,7 @@ def get_db_connections(mysql_daemon):
         tmp_topology_file_path,
         config.env_config.rbr_source_cluster,
         config.env_config.schema_tracker_cluster,
-        config.env_config.rbr_state_cluster,
-        is_avoid_internal_packages_set()
+        config.env_config.rbr_state_cluster
     )
 
 
