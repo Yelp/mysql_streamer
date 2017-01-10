@@ -39,3 +39,4 @@ module_env_config:
     - namespace: data_pipeline
       config:
         load_schematizer_host_and_port_from_smartstack: False
+        kafka_producer_buffer_size: 500
