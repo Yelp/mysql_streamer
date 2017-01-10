@@ -19,7 +19,6 @@ from __future__ import unicode_literals
 import pytest
 
 from replication_handler.environment_configs import is_envvar_set
-from tests.models.connections.base_connection_test import BaseConnectionTest
 
 
 @pytest.mark.itest
@@ -28,54 +27,54 @@ from tests.models.connections.base_connection_test import BaseConnectionTest
     is_envvar_set('OPEN_SOURCE_MODE'),
     reason="skip this in open source mode."
 )
-class TestYelpConnConnection(BaseConnectionTest):
+class TestYelpConnConnection(object):
 
     @pytest.fixture
-    def connection(
+    def mock_db_connections(
         self,
-        simple_topology_file,
+        topology_path,
         mock_source_cluster_name,
         mock_tracker_cluster_name,
         mock_state_cluster_name
     ):
         from replication_handler.models.connections.yelp_conn_connection import YelpConnConnection
         return YelpConnConnection(
-            simple_topology_file,
+            topology_path,
             mock_source_cluster_name,
             mock_tracker_cluster_name,
             mock_state_cluster_name
         )
 
-    def test_source_session(self, connection):
-        with connection.source_session.connect_begin(ro=True):
+    def test_source_session(self, mock_db_connections):
+        with mock_db_connections.source_session.connect_begin(ro=True):
             assert True
 
-    def test_tracker_session(self, connection):
-        with connection.tracker_session.connect_begin(ro=False):
+    def test_tracker_session(self, mock_db_connections):
+        with mock_db_connections.tracker_session.connect_begin(ro=False):
             assert True
 
-    def test_state_session(self, connection):
-        with connection.state_session.connect_begin(ro=False):
+    def test_state_session(self, mock_db_connections):
+        with mock_db_connections.state_session.connect_begin(ro=False):
             assert True
 
-        with connection.state_session.connect_begin(ro=True):
+        with mock_db_connections.state_session.connect_begin(ro=True):
             assert True
 
-    def test_cursors(self, connection):
-        with connection.get_source_cursor() as cursor:
+    def test_cursors(self, mock_db_connections):
+        with mock_db_connections.get_source_cursor() as cursor:
             cursor.execute('SELECT 1;')
             assert len(cursor.fetchone()) == 1
 
-        with connection.get_tracker_cursor() as cursor:
+        with mock_db_connections.get_tracker_cursor() as cursor:
             cursor.execute('SELECT 1;')
             assert len(cursor.fetchone()) == 1
 
-        with connection.get_state_cursor() as cursor:
+        with mock_db_connections.get_state_cursor() as cursor:
             cursor.execute('SELECT 1;')
             assert len(cursor.fetchone()) == 1
 
-    def test_tracker_cursor_regression(self, connection):
+    def test_tracker_cursor_regression(self, mock_db_connections):
         for i in range(1000):
-            with connection.get_source_cursor() as cursor:
+            with mock_db_connections.get_source_cursor() as cursor:
                 cursor.execute('SELECT 1;')
                 assert len(cursor.fetchone()) == 1

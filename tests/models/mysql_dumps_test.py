@@ -34,6 +34,10 @@ class TestMySQLDumps(object):
         return 'This is a test dump'
 
     @pytest.yield_fixture
+    def sandbox_session(self, mock_db_connections):
+        yield mock_db_connections.state_session
+
+    @pytest.yield_fixture
     def initialize_dump(
         self,
         sandbox_session,
