@@ -29,6 +29,7 @@ schema_blacklist:
     - mysql
     - performance_schema
     - test
+    - yelp_heartbeat
 
 module_env_config:
     - namespace: data_pipeline
