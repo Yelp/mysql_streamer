@@ -81,6 +81,7 @@ class BaseParseReplicationStream(object):
         self._running = True
         self._profiler_running = False
         self._changelog_mode = config.env_config.changelog_mode
+
         if get_config().kafka_producer_buffer_size > config.env_config.recovery_queue_size:
             # Printing here, since this executes *before* logging is
             # configured.

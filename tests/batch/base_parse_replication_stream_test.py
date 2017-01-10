@@ -179,6 +179,7 @@ class BaseParseReplicationStreamTest(object):
             mock_config.disable_meteorite = False
             mock_config.changelog_mode = False
             mock_config.topology_path = 'topology.yaml'
+            mock_config.recovery_queue_size = 2000
             yield mock_config
 
     @pytest.yield_fixture
