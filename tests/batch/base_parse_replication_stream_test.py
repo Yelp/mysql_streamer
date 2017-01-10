@@ -398,6 +398,7 @@ class BaseParseReplicationStreamTest(object):
         ) as mock_config:
             mock_config.register_dry_run = True
             mock_config.publish_dry_run = False
+            mock_config.recovery_queue_size = 2000
             replication_stream = self._get_parse_replication_stream()
             assert replication_stream.register_dry_run is True
             assert replication_stream.publish_dry_run is False
