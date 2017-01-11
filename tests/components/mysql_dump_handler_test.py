@@ -105,7 +105,11 @@ class TestMySQLDumpHandler(object):
             tracker_cursor.execute('use yelp')
             tracker_cursor.execute(table_one)
             tracker_cursor.execute(table_two)
-            yield tracker_cursor
+
+        yield
+
+        with mock_db_connections.get_tracker_cursor() as tracker_cursor:
+            tracker_cursor.execute('use yelp')
             tracker_cursor.execute('drop table one')
             tracker_cursor.execute('drop table two')
 
@@ -124,7 +128,6 @@ class TestMySQLDumpHandler(object):
         dump is created successfully and is persisted in the state db.
         Then deletes one table and checks if the recovery process works.
         """
-        tracker_cursor = setup_db_and_get_cursor
         mock_mysql_dump_handler = MySQLDumpHandler(mock_db_connections)
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert not dump_exists
@@ -134,17 +137,22 @@ class TestMySQLDumpHandler(object):
         dump_exists = mock_mysql_dump_handler.mysql_dump_exists()
         assert dump_exists
 
-        tracker_cursor.execute('drop table one')
-        tracker_cursor.execute('show tables')
-        all_tables = tracker_cursor.fetchall()
-        assert ('one',) not in all_tables
-        assert ('two',) in all_tables
+        with mock_db_connections.get_tracker_cursor() as tracker_cursor:
+            tracker_cursor.execute('use yelp')
+            tracker_cursor.execute('drop table one')
+            tracker_cursor.execute('show tables')
+            all_tables = tracker_cursor.fetchall()
+            assert ('one',) not in all_tables
+            assert ('two',) in all_tables
 
         mock_mysql_dump_handler.recover()
-        tracker_cursor.execute('show tables')
-        all_tables = tracker_cursor.fetchall()
-        assert ('one',) in all_tables
-        assert ('two',) in all_tables
+
+        with mock_db_connections.get_tracker_cursor() as tracker_cursor:
+            tracker_cursor.execute('use yelp')
+            tracker_cursor.execute('show tables')
+            all_tables = tracker_cursor.fetchall()
+            assert ('one',) in all_tables
+            assert ('two',) in all_tables
 
         self.cleanup(mock_mysql_dump_handler, mock_db_connections)
 
