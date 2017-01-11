@@ -7,11 +7,12 @@ python:
   - '2.7'
 services:
   - docker
-  - mysql
 install:
+ - sudo apt-get update
+ - sudo apt-get install -y mysql-client-5.5
  - pip install coveralls tox
 script:
-  - make -f Makefile-opensource test
+  # - make -f Makefile-opensource test
   - make -f Makefile-opensource itest
 after_success:
   - coveralls
