@@ -10,7 +10,7 @@ publish_dry_run: False
 
 disable_sensu: True
 
-topology_path: /nail/srv/configs/topology.yaml
+topology_path: acceptance/configs/topology.yaml
 
 resume_stream: False
 
@@ -24,8 +24,6 @@ force_exit: True
 
 gtid_enabled: True
 
-pii_yaml_path: '/nail/etc/services/database_pii'
-
 schema_blacklist:
     - information_schema
     - mysql
@@ -36,6 +34,7 @@ schema_blacklist:
 module_env_config:
     - namespace: data_pipeline
       config:
+        load_schematizer_host_and_port_from_smartstack: False
         kafka_broker_list:
             - kafka:9092
         kafka_zookeeper: zk:2181
@@ -43,3 +42,7 @@ module_env_config:
         skip_messages_with_pii: False
         kafka_producer_buffer_size: 500
         encryption_type: AES_MODE_CBC-1
+        zookeeper_discovery_path: acceptance/configs/nail-etc/uswest2{ecosystem}.yaml
+        ecosystem_file_path: acceptance/configs/nail-etc/ecosystem
+        key_location: acceptance/configs/data_pipeline/
+        data_pipeline_teams_config_file_path: acceptance/configs/nail-etc/teams.yaml

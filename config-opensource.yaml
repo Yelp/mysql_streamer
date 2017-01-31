@@ -1,0 +1,49 @@
+rbr_source_cluster: refresh_primary
+
+schema_tracker_cluster: repltracker
+
+rbr_state_cluster: replhandler
+
+register_dry_run: True
+
+publish_dry_run: True
+
+topology_path: acceptance/configs/topology.yaml
+
+changelog_schemaname: changelog.v2
+
+changelog_mode: False
+
+schema_blacklist:
+    - information_schema
+    - mysql
+    - performance_schema
+    - test
+
+producer_name: replication_handler
+
+team_name: bam
+
+max_delay_allowed_in_seconds: 600
+
+recovery_queue_size: 1500
+
+namespace: dev
+
+container_name: none
+
+container_env: raw
+
+force_exit: False
+
+module_config:
+    -   namespace: clog
+        config:
+            log_stream_name: tmp_replication_handler_logs
+            # Works around https://bitbucket.org/pypy/pypy/issues/2280
+            scribe_errors_to_syslog: false
+        file: acceptance/configs/clog.yaml
+
+    - namespace: data_pipeline
+      config:
+        load_schematizer_host_and_port_from_smartstack: False

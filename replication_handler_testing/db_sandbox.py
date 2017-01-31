@@ -17,7 +17,9 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import atexit
-import contextlib
+import os
+import tempfile
+from contextlib import contextmanager
 from glob import glob
 
 import testing.mysqld
@@ -99,24 +101,8 @@ class PerProcessMySQLDaemon(object):
         return self.engine.table_names()
 
 
-@contextlib.contextmanager
-def database_sandbox_session():
-    db_connections = get_connection(
-        config.env_config.topology_path,
-        config.env_config.rbr_source_cluster,
-        config.env_config.schema_tracker_cluster,
-        config.env_config.rbr_state_cluster
-    )
-    _per_process_mysql_daemon = launch_mysql_daemon()
-    _session_prev_engine = db_connections.state_session.bind
-
-    db_connections.state_session.bind = _per_process_mysql_daemon.engine
-    db_connections.state_session.enforce_read_only = False
-    yield db_connections.state_session
-    db_connections.state_session.bind = _session_prev_engine
-
-
-def launch_mysql_daemon(max_retries=3):
+def launch_mysql_daemon():
+    max_retries = 3
     done_making_mysqld = False
     retries = 0
     while not done_making_mysqld:
@@ -128,3 +114,85 @@ def launch_mysql_daemon(max_retries=3):
             retries += 1
             if retries > max_retries:
                 raise
+
+
+def get_topology(
+    mysql_daemon,
+    mock_source_cluster_name,
+    mock_tracker_cluster_name,
+    mock_state_cluster_name
+):
+    mysql_url = mysql_daemon.engine.url
+    return '''
+        topology:
+        - cluster: {source_cluster_name}
+          replica: 'master'
+          entries:
+            - charset: utf8
+              host: '{host}'
+              db: '{db}'
+              user: '{user}'
+              passwd: '{passwd}'
+              port: {port}
+              use_unicode: true
+        - cluster: {tracker_cluster_name}
+          replica: 'master'
+          entries:
+            - charset: utf8
+              host: '{host}'
+              db: '{db}'
+              user: '{user}'
+              passwd: '{passwd}'
+              port: {port}
+              use_unicode: true
+        - cluster: {state_cluster_name}
+          replica: 'master'
+          entries:
+            - charset: utf8
+              host: '{host}'
+              db: '{db}'
+              user: '{user}'
+              passwd: '{passwd}'
+              port: {port}
+              use_unicode: true
+    '''.format(
+        source_cluster_name=mock_source_cluster_name,
+        tracker_cluster_name=mock_tracker_cluster_name,
+        state_cluster_name=mock_state_cluster_name,
+        host=mysql_url.host or 'localhost',
+        db=mysql_url.database,
+        user=mysql_url.username or '',
+        port=int(mysql_url.port) or 3306,
+        passwd=mysql_url.password or ''
+    )
+
+
+def get_db_connections(mysql_daemon):
+    tmp_topology_file_path = os.path.join(tempfile.gettempdir(), 'topolog')
+    topology = get_topology(
+        mysql_daemon,
+        config.env_config.rbr_source_cluster,
+        config.env_config.schema_tracker_cluster,
+        config.env_config.rbr_state_cluster
+    )
+    tmp_topology_file = open(tmp_topology_file_path, 'w')
+    tmp_topology_file.write(topology)
+    tmp_topology_file.close()
+    return get_connection(
+        tmp_topology_file_path,
+        config.env_config.rbr_source_cluster,
+        config.env_config.schema_tracker_cluster,
+        config.env_config.rbr_state_cluster
+    )
+
+
+@contextmanager
+def state_sandbox_session():
+    _per_process_mysql_daemon = launch_mysql_daemon()
+    db_connections = get_db_connections(_per_process_mysql_daemon)
+    _session_prev_engine = db_connections.state_session.bind
+
+    db_connections.state_session.bind = _per_process_mysql_daemon.engine
+    db_connections.state_session.enforce_read_only = False
+    yield db_connections.state_session
+    db_connections.state_session.bind = _session_prev_engine
