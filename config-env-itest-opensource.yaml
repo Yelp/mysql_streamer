@@ -43,3 +43,7 @@ module_env_config:
         skip_messages_with_pii: False
         kafka_producer_buffer_size: 500
         encryption_type: AES_MODE_CBC-1
+        zookeeper_discovery_path: acceptance/configs/nail-etc/uswest2{ecosystem}.yaml
+        ecosystem_file_patch: acceptance/configs/nail-etc/ecosystem
+        key_location: acceptance/configs/data_pipeline/
+        data_pipeline_teams_config_file_path: acceptance/configs/nail-etc/teams.yaml

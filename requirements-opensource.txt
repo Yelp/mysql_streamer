@@ -8,7 +8,7 @@ PyYAML==3.11
 SQLAlchemy==1.0.12
 boto==2.36.0
 contextdecorator==0.10.0
-data_pipeline==0.9.1
+data_pipeline==0.9.5
 dateglob==0.1
 enum34==1.0.4
 future==0.14.3
@@ -39,4 +39,4 @@ thriftpy==0.1.15
 vmprof==0.2.7
 wheel==0.24.0
 wsgiref==0.1.2
-yelp-clog==2.2.10
+yelp-clog==2.2.11
