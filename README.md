@@ -1,3 +1,10 @@
+**Deprecation Notice**
+MySQL Streamer is now archived, but we're glad you're checking out Yelp Engineering's work on GitHub! If you'd like to learn more about what we're
+up to now, please visit our [tech blog](https://engineeringblog.yelp.com/) to get the latest scoop on Yelp Engineering.
+
+If you'd like to setup a MySQL CDC connector to Kafka, check out [Debezium](https://debezium.io/documentation/reference/stable/connectors/mysql.html),
+which is an open-source solution for Change Data Capture (and not just from MySQL!)
+
 # MySQL Streamer
 
 
